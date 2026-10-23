@@ -31,7 +31,7 @@ async function run(cmd, args) {
 
 async function query(sql) {
   const out = await run("npx", [
-    "supabase",
+    "supabase@2.118.0",
     "db",
     "query",
     "--linked",

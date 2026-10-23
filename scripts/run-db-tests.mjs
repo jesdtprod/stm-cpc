@@ -42,7 +42,16 @@ for (const name of files) {
   const tmp = `supabase/.temp/run-${name}`;
   await Deno.writeTextFile(tmp, transform(src));
   const cmd = new Deno.Command("npx", {
-    args: ["supabase", "db", "query", "--linked", "-f", tmp, "-o", "json"],
+    args: [
+      "supabase@2.118.0",
+      "db",
+      "query",
+      "--linked",
+      "-f",
+      tmp,
+      "-o",
+      "json",
+    ],
     stdout: "piped",
     stderr: "piped",
   });
