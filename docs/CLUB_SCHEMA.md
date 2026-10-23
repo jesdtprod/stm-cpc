@@ -55,7 +55,7 @@ Birth dates stored as dates are read as is; text dates are read as month/day/yea
 
 | Table | Change |
 | --- | --- |
-| `persons` | None for now. Gender and address are not imported; columns can be added later by a new migration |
+| `persons` | Add address columns (D10): `street_line`, `barangay_code`, `city_muni_code`, `province_code` (null for Metro Manila), `region_code`, plus a text snapshot `address_text`. Not imported from the file; entered by members and admins |
 | `org_members` | None. The pending role (`pending_member`) is the access gate until approval |
 
 ## 4. Tables
@@ -138,6 +138,7 @@ Standings are **computed on the server** (SQL functions over finalized matches u
 | D7 | Minors (found from birth date) | Guardian link and waiver required before approval |
 | D8 | Booking approval and payment requirement defaults | Approval on, payment not required, request expires after 24 hours (all settings) |
 | D9 | Open items from FEATURES 15.2 (rank movement for formats other than split, cross-category movement, doubles ranking) | The documented defaults; no rank movement for other formats until defined |
+| D10 | Address: Barangay, City/Municipality, Province from the latest Philippine Standard Geographic Code (PSGC) | Seed PSGC into our own reference tables (`psgc_areas`, master, no personal data) with a script, and serve the cascading selects from them, not from a third-party API in the browser. Metro Manila shows as the province. Store codes plus a text snapshot |
 
 ## 6. State machines (summary)
 
@@ -161,7 +162,7 @@ Added to the catalog by migration, with the admin role receiving all of them: `m
 
 | Plan step | Migration (project range) | Content |
 | --- | --- | --- |
-| 2.2 | `1000_members.sql`, `1010_categories_ranks.sql` | persons columns, members, member_access, member_status_events, import tables, consents; categories, ladders, ranks, rules, member_ranks, rank_history; tests |
+| 2.2 | `1000_members.sql`, `1005_psgc_address.sql`, `1010_categories_ranks.sql` | persons columns, members, member_access, member_status_events, import tables, consents; categories, ladders, ranks, rules, member_ranks, rank_history; tests |
 | 2.3 | `1020_courts_bookings.sql`, `1030_payments_ledger.sql` | courts, hours, rates, blackouts, bookings (exclusion constraint), participants, events log; payment_submissions, ledger; concurrent-booking test |
 | 2.4 | `1040_events_tournaments.sql`, `1050_matches_scores.sql` | events, templates, scoring rules, divisions, stages, registrations, entries, draws, matches, games, score events, results; constraint and state-machine tests |
 | 2.5 | `1060_seed_defaults.sql` | Settings defaults and lookup lists, fake data only, idempotent |
