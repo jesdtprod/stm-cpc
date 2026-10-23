@@ -1,0 +1,43 @@
+# ---- Secrets and environment (never commit) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+supabase/.env
+supabase/.temp/
+supabase/.branches/
+
+# ---- Real data (never commit): member import file, exports, dumps, backups ----
+data/private/
+private/
+*.import.csv
+members-import*
+*-passwords*
+exports/
+dumps/
+*.dump
+*.backup
+*.bak
+
+# ---- Dependencies and build output ----
+node_modules/
+.deno/
+dist/
+build/
+coverage/
+
+# ---- Local tooling and agent settings ----
+.claude/settings.local.json
+CLAUDE.local.md
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# ---- Operating system and logs ----
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
