@@ -20,7 +20,7 @@ select is(
   1, 'persons has a single select policy');
 select is(
   (select count(*)::int from pg_policies where schemaname = 'core' and policyname = 'deny_clients'),
-  3, 'the three internal tables have an explicit deny policy');
+  4, 'the four internal tables (audit_log, idempotency_keys, counters, login_throttle) have an explicit deny policy');
 
 -- behaviour is unchanged
 create temp table fx as select (select id from public.orgs where code = 'cpc') as org, gen_random_uuid() as u1, gen_random_uuid() as u2, core.ulid() as p1, core.ulid() as p2;

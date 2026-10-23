@@ -420,3 +420,8 @@ enabled = true
 enabled = true
 verify_jwt = false
 import_map = ""
+
+[functions.member-import]
+enabled = true
+verify_jwt = false
+import_map = ""

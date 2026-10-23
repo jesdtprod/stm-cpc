@@ -103,7 +103,7 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 | ID | Step | Done when |
 | --- | --- | --- |
 | [ ] 3.1 | `member-login` Edge Function (member ID to internal account, Turnstile check, rate limit, lockout, generic errors) | Existing and non-existing IDs give indistinguishable responses; lockout triggers |
-| [ ] 3.2 | **Member import** function: validates IDs, keeps existing IDs, random temporary passwords, expiry, `must_change_password`; import report | Re-running the import creates no duplicates; the report shows created, skipped, failed |
+| [x] 3.2 | **Member import** function: validates IDs, keeps existing IDs, first passwords from the club's rule, expiry, `must_change_password`; import report | Re-running the import creates no duplicates; the report shows created, skipped, failed. *Verified live: 1,374 created (1,357 with accounts), re-run created 0; also creates the first admin (`deno task members:create-admin`).* |
 | [ ] 3.3 | `member-signup` Edge Function for **new members only**: Turnstile, rate limits, honeypot, duplicate flagging, ID assignment, pending status | A claim of an existing ID is rejected; new sign-up lands in pending with no permissions |
 | [ ] 3.4 | Pages: sign-in, forced password change, profile completion, pending-approval status | A pending user can reach only these pages |
 | [ ] 3.5 | **Approval flow** (approve, reject, suspend, restore) as permissioned, idempotent, audited RPCs, with the approval screen | Approving twice does nothing new; every action is in `audit_log` |

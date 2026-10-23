@@ -23,5 +23,8 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1040_events_tournaments.sql` | 2.4 | `events`, `format_templates`, `scoring_rules`, `divisions`, `division_stages`, `registrations`, `entries`, `entry_members`, `entity_events`; foreign keys from the rank tables; event-registration payments |
 | `1050_matches_scores.sql` | 2.4 | `draws`, `matches`, `match_games`, `score_events`, `division_results` |
 | `1060_seed_defaults.sql` | 2.5 | `core.seed_club_defaults()`: settings, lookup lists, scoring rules, format templates, starter categories and ranks (never overwrites; safe to re-run) |
+| `1070_login_throttle.sql` | 3.1 | `core.login_throttle` (hashed failure counters), lockout helpers, `member_login_state`, `member_login_succeeded`; service-only wrappers in `public` |
+| `1080_member_import.sql` | 3.2 | Import batch, member and admin creation functions (service-only), `import_authorized` |
+| `1090_import_issue_dedupe.sql` | 3.2 | A re-run does not copy open issues |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

@@ -40,20 +40,20 @@ select is((select count(*)::int from pg_class c where c.relnamespace = 'public':
 
 -- ---- members: format, uniqueness, soft delete frees the ID
 insert into public.members (id, org_id, person_id, member_no, status, rfid_code)
-  values ((select mem_a from fx), (select org from fx), (select per_a from fx), 'CPC-2026-00001', 'imported', 'RF-0001');
+  values ((select mem_a from fx), (select org from fx), (select per_a from fx), 'CPC-2026-98001', 'imported', 'RF-0001');
 select throws_ok($$insert into public.members (org_id, person_id, member_no) select org_id, core.ulid(), 'cpc-2026-00002' from public.orgs where code = 'cpc'$$,
   '23514', null, 'a member number must be uppercase and trimmed');
-select throws_ok(format($f$insert into public.members (org_id, person_id, member_no) values (%L, %L, 'CPC-2026-00009')$f$, (select org from fx), core.ulid()),
+select throws_ok(format($f$insert into public.members (org_id, person_id, member_no) values (%L, %L, 'CPC-2026-98009')$f$, (select org from fx), core.ulid()),
   '23503', null, 'a member needs an existing person');
-select throws_ok(format($f$insert into public.members (org_id, person_id, member_no) values (%L, %L, 'CPC-2026-00001')$f$, (select org from fx), (select per_b from fx)),
+select throws_ok(format($f$insert into public.members (org_id, person_id, member_no) values (%L, %L, 'CPC-2026-98001')$f$, (select org from fx), (select per_b from fx)),
   '23505', null, 'a member number is unique among active members');
-select throws_ok(format($f$insert into public.members (org_id, person_id, member_no, rfid_code) values (%L, %L, 'CPC-2026-00002', 'RF-0001')$f$, (select org from fx), (select per_b from fx)),
+select throws_ok(format($f$insert into public.members (org_id, person_id, member_no, rfid_code) values (%L, %L, 'CPC-2026-98002', 'RF-0001')$f$, (select org from fx), (select per_b from fx)),
   '23505', null, 'an RFID code is unique among active members');
-select throws_ok(format($f$insert into public.members (org_id, person_id, member_no) values (%L, %L, 'CPC-2026-00003')$f$, (select org from fx), (select per_a from fx)),
+select throws_ok(format($f$insert into public.members (org_id, person_id, member_no) values (%L, %L, 'CPC-2026-98003')$f$, (select org from fx), (select per_a from fx)),
   '23505', null, 'a person is a member only once');
-select lives_ok(format($f$insert into public.members (id, org_id, person_id, member_no, status) values (%L, %L, %L, 'CPC-2026-00002', 'pending_approval')$f$,
+select lives_ok(format($f$insert into public.members (id, org_id, person_id, member_no, status) values (%L, %L, %L, 'CPC-2026-98002', 'pending_approval')$f$,
   (select mem_b from fx), (select org from fx), (select per_b from fx)), 'two members without an RFID code are fine');
-select lives_ok(format($f$insert into public.members (org_id, person_id, member_no) values (%L, %L, 'CPC-2026-00004')$f$, (select org from fx), (select per_c from fx)),
+select lives_ok(format($f$insert into public.members (org_id, person_id, member_no) values (%L, %L, 'CPC-2026-98004')$f$, (select org from fx), (select per_c from fx)),
   'a third member without an RFID code is fine');
 
 select set_config('core.rpc', 'on', true);
@@ -67,7 +67,7 @@ select throws_ok(format($f$delete from public.members where id = %L$f$, (select 
 -- The number and the RFID code are free again while the row is deleted, and clash again on restore.
 insert into public.persons (id, org_id, display_name) values ('01H0000000000000000000PER9', (select org from fx), 'Fake Reuse');
 insert into public.members (id, org_id, person_id, member_no, rfid_code)
-  values ('01H0000000000000000000MEM9', (select org from fx), '01H0000000000000000000PER9', 'CPC-2026-00001', 'RF-0001');
+  values ('01H0000000000000000000MEM9', (select org from fx), '01H0000000000000000000PER9', 'CPC-2026-98001', 'RF-0001');
 select pass('a deleted member frees its number and RFID code');
 select set_config('core.rpc', 'on', true);
 select throws_ok(format($f$update public.members set deleted_at = null, deleted_by = null, delete_reason = null where id = %L$f$, (select mem_a from fx)),
@@ -78,7 +78,7 @@ select set_config('core.rpc', 'off', true);
 select is((select deleted_at is null from public.members where id = (select mem_a from fx)), true, 'a member can be restored once the number is free');
 
 -- ---- status guard and history
-select throws_ok(format($f$insert into public.members (org_id, person_id, member_no, status) values (%L, %L, 'CPC-2026-00007', 'active')$f$, (select org from fx), core.ulid()),
+select throws_ok(format($f$insert into public.members (org_id, person_id, member_no, status) values (%L, %L, 'CPC-2026-98007', 'active')$f$, (select org from fx), core.ulid()),
   '22023', null, 'a new member cannot start as active');
 select throws_ok(format($f$update public.members set status = 'active' where id = %L$f$, (select mem_a from fx)),
   '22023', null, 'imported cannot jump to active');
@@ -117,7 +117,7 @@ select throws_ok(format($f$insert into public.import_batches (org_id, file_sha25
 select throws_ok(format($f$insert into public.import_batches (org_id, file_sha256, status) values (%L, %L, 'weird')$f$, (select org from fx), repeat('b', 64)),
   '23514', null, 'import batch status is checked');
 insert into public.member_import_issues (org_id, batch_id, source_row, member_no_claimed, issue_code)
-  values ((select org from fx), '01H0000000000000000000BAT1', 12, 'CPC-2026-00099', 'duplicate_member_no');
+  values ((select org from fx), '01H0000000000000000000BAT1', 12, 'CPC-2026-98099', 'duplicate_member_no');
 select throws_ok(format($f$insert into public.member_import_issues (org_id, batch_id, source_row, issue_code) values (%L, '01H0000000000000000000BAT1', 12, 'duplicate_member_no')$f$, (select org from fx)),
   '23505', null, 'the same issue is reported once per row');
 select lives_ok(format($f$insert into public.member_import_issues (org_id, batch_id, source_row, issue_code) values (%L, '01H0000000000000000000BAT1', 12, 'invalid_email')$f$, (select org from fx)),
@@ -143,6 +143,8 @@ select is((select count(*)::int from public.role_permissions rp join public.role
 select lives_ok($$select core.add_permission('members.review_import', 'again')$$, 'add_permission is idempotent');
 
 -- ---- row-level security, with real users
+create temp table totals as select (select count(*)::int from public.members) as m, (select count(*)::int from public.import_batches) as b;
+grant select on totals to public;
 create temp table us(role text primary key, u uuid);
 grant select on us to public;
 insert into us values ('admin', pg_temp.mk((select org from fx), 'admin'));
@@ -153,12 +155,12 @@ update public.members set profile_id = (select id from public.profiles where aut
 select pg_temp.as_user((select u from us where role = 'member_b'));
 set local role authenticated;
 select is((select count(*)::int from public.members), 1, 'a member sees only their own member row');
-select is((select member_no from public.members), 'CPC-2026-00002', 'and it is the right one');
+select is((select member_no from public.members), 'CPC-2026-98002', 'and it is the right one');
 select is((select count(*)::int from public.consents), 0, 'a member sees only their own consents (none here)');
 select is((select count(*)::int from public.import_batches), 0, 'a member sees no import batches');
 select is((select count(*)::int from public.member_import_issues), 0, 'a member sees no import issues');
 select throws_ok($$select * from public.member_access$$, '42501', null, 'a member cannot read member_access');
-select throws_ok($$insert into public.members (org_id, person_id, member_no) values (core.ulid(), core.ulid(), 'CPC-2026-00500')$$, '42501', null, 'a member cannot create members');
+select throws_ok($$insert into public.members (org_id, person_id, member_no) values (core.ulid(), core.ulid(), 'CPC-2026-98500')$$, '42501', null, 'a member cannot create members');
 select throws_ok($$update public.members set status = 'active'$$, '42501', null, 'a member cannot change their own status');
 select throws_ok($$update public.members set rfid_code = 'RF-9999'$$, '42501', null, 'a member cannot change an RFID code directly');
 select throws_ok($$insert into public.consents (org_id, person_id, kind, doc_version) values (core.ulid(), core.ulid(), 'waiver', '1')$$, '42501', null, 'a member cannot write consents directly');
@@ -166,7 +168,7 @@ reset role;
 
 select pg_temp.as_user((select u from us where role = 'manager'));
 set local role authenticated;
-select is((select count(*)::int from public.members), 4, 'a manager (members.read) sees every member');
+select is((select count(*)::int from public.members), (select m from totals), 'a manager (members.read) sees every member');
 select is((select count(*)::int from public.member_status_events) > 0, true, 'a manager reads status history');
 select is((select count(*)::int from public.import_batches), 0, 'a manager without members.import sees no import batches');
 select is((select count(*)::int from public.consents), 0, 'a manager without consents.read sees no consents');
@@ -174,7 +176,7 @@ reset role;
 
 select pg_temp.as_user((select u from us where role = 'admin'));
 set local role authenticated;
-select is((select count(*)::int from public.import_batches), 1, 'an admin sees the import batch');
+select is((select count(*)::int from public.import_batches), (select b from totals), 'an admin sees every import batch');
 select is((select count(*)::int from public.member_import_issues where source_row = 12), 2, 'an admin sees the import issues');
 select is((select count(*)::int from public.consents), 1, 'an admin sees consents');
 select throws_ok($$select * from public.member_access$$, '42501', null, 'even an admin cannot read member_access directly');

@@ -41,7 +41,7 @@ The web app of the **Capitol Pickleball Club (CPC)**, a single club. Members sig
 | # | Topic | Decision |
 | --- | --- | --- |
 | 1 | Member ID | Format `CPC-YYYY-NNNNN`, for example `CPC-2026-00001` |
-| 2 | Sign-up | For **new members only**; existing members are imported and sign in with a temporary password |
+| 2 | Sign-up | For **new members only**; existing members are imported and sign in with a first password built from their ID and birth date |
 | 3 | Categories | Skill levels: Beginner, Novice, Advanced, and so on |
 | 4 | Rank movement timing | After the **whole event** (division finalization), not per match |
 | 5 | Court booking | Members with accounts only; payment verified by the admin; booking approved by the admin |
@@ -102,7 +102,7 @@ Members only ever see their own personal, booking, and payment data. Other membe
 - Existing members are imported through an Edge Function using the Supabase admin API, never by editing `auth.users` directly.
 - **Existing member IDs are kept exactly as given.** Each is validated against the ID pattern, and duplicates are rejected.
 - Each import row creates a `persons` row, a `members` row, a `profiles` row, an auth account, and an `org_members` link with the pending role.
-- Each member gets a **random, unique temporary password** (at least 12 characters) and `must_change_password = true`. Temporary passwords expire after a configurable number of days.
+- Each imported member gets a **first password** built by the club's rule: the last 5 digits of the member ID followed by the birth date as `MMDDYYYY` (for example `0000112212025`). It is computed on the server, never stored or logged, and `must_change_password = true` until it is changed. It expires after a configurable number of days (default 30). Members without a readable birth date get no account until an admin enters it. The first administrator gets a random 24-character password instead. Safeguards: Turnstile, lockout, generic errors (`CLUB_SCHEMA.md` section 2.2).
 - The import is idempotent: `member_no` is unique, so re-running skips or updates existing members and never duplicates.
 - The import file and any generated password list contain real personal data. They are **never committed to the repository** and are stored and shared privately.
 - Import results are reported (created, skipped, failed with reason) and audited.
@@ -129,7 +129,7 @@ Imported members start at `imported`. New sign-ups start directly at `pending_ap
 | `archived` | Soft-deleted | None; history kept |
 
 ### 4.4 Sign-up (new members only)
-- Sign-up is for people who are **not** already members. Existing members never use it; they are imported and sign in with their temporary password. A sign-up that claims an existing member ID is rejected.
+- Sign-up is for people who are **not** already members. Existing members never use it; they are imported and sign in with their first password. A sign-up that claims an existing member ID is rejected.
 - The public form is handled by the `member-signup` Edge Function: full name, mobile number (recommended), optional email, date of birth (needed for minors and age groups), a password chosen by the applicant (same policy as all passwords), consent, and CAPTCHA.
 - The function creates the person, member, profile, and auth account, assigns the next member ID from the `member-YYYY` counter, and sets the status to `pending_approval`. The new ID is shown once on screen (and sent by SMS or email if a contact was given), because the applicant needs it to sign in.
 - Possible duplicates of existing members (same name and birth date, or same mobile number) are flagged for the admin instead of silently creating a second record.
@@ -447,7 +447,7 @@ Each phase ends with a verification list. Run the checks, record the outputs, an
 
 ## 14. Acceptance checklist
 
-- [ ] Members sign in with member ID (`CPC-YYYY-NNNNN`); imports are idempotent and keep existing IDs; temporary passwords are random, expiring, and never committed; sign-up works for new members only.
+- [ ] Members sign in with member ID (`CPC-YYYY-NNNNN`); imports are idempotent and keep existing IDs; first passwords follow the club's rule, are computed on the server, expire, and are never stored or committed; sign-up works for new members only.
 - [ ] Pending, rejected, suspended, and archived members have no access beyond what their state allows.
 - [ ] Approval, rejection, suspension, and restore are permissioned, idempotent, and audited.
 - [ ] Dashboard side panel follows permission codes; every list uses the shared table standard.
