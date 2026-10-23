@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; font-src 'self'; frame-src https://challenges.cloudflare.com; img-src 'self' data: blob:; connect-src 'self' https://iohrwwrkhdkmzxntstuu.supabase.co wss://iohrwwrkhdkmzxntstuu.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1220" />
+    <title>Capitol Pickleball Club</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.png" type="image/png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <button type="button" class="skip" id="skip">Skip to content</button>
+    <header class="app-header">
+      <a class="brand" href="#/">Capitol Pickleball Club</a>
+      <nav class="app-nav" id="nav" aria-label="Main"></nav>
+    </header>
+    <main id="main" tabindex="-1"></main>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+    <noscript>This app needs JavaScript.</noscript>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
