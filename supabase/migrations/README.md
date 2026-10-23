@@ -18,5 +18,7 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1005_psgc_address.sql` | 2.2 | `psgc_areas` (data loaded by `deno task db:seed-psgc`), address columns on `persons` |
 | `1006_persons_address_update.sql`, `1007_persons_address_fix.sql` | 2.2 | Address trigger: re-derive on update; typed-literal fix |
 | `1010_categories_ranks.sql` | 2.2 | `categories`, `rank_ladders`, `ranks`, `rank_rules`, `member_ranks`, `rank_history`, rule-condition validator |
+| `1020_courts_bookings.sql` | 2.3 | `courts`, `court_hours`, `court_rates`, `court_blackouts`, `bookings` (exclusion constraint), `booking_participants`, `booking_events`, `court_availability()` |
+| `1030_payments_ledger.sql` | 2.3 | `payment_submissions`, `ledger_accounts`, `ledger_entries` (append-only), `ledger_balances` and `source_payment_totals` views |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

@@ -69,7 +69,7 @@ reset role;
 -- counters
 select is(core.next_number((select org from cx), null, 'member-2026'), 1::bigint, 'counter starts at 1');
 select is(core.next_number((select org from cx), null, 'member-2026'), 2::bigint, 'counter increments');
-select is(core.next_number((select org from cx), null, 'booking-2026'), 1::bigint, 'series are independent');
+select is(core.next_number((select org from cx), null, 'testseries-2026'), 1::bigint, 'series are independent');
 select is(core.next_number((select org from cx), (select unit1 from cx), 'member-2026'), 1::bigint, 'units are independent');
 select is(core.next_number((select org from cx), null, 'member-2026'), 3::bigint, 'the org series continues');
 

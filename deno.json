@@ -4,6 +4,7 @@
     "check": "deno run --allow-read=. --allow-run=git scripts/check-secrets.mjs && deno run --allow-read=. --allow-run=git scripts/check-repo.mjs",
     "db:test": "deno run --allow-read=supabase/tests --allow-write=supabase/.temp --allow-run=npx scripts/run-db-tests.mjs",
     "db:seed-psgc": "deno run --allow-net=psgc.gitlab.io --allow-write=supabase/.temp --allow-run=npx scripts/seed-psgc.mjs",
+    "db:concurrency": "deno run --allow-read=supabase/.temp --allow-write=supabase/.temp --allow-run=npx scripts/check-booking-concurrency.mjs",
     "db:advisors": "npx supabase@2.118.0 db advisors --linked --type all --level warn --fail-on warn",
     "db:backup": "deno run --allow-read=. --allow-env=USERPROFILE,HOME \"--allow-write=$USERPROFILE/cpc-backups\" --allow-run=npx,git scripts/backup-db.mjs",
     "test": "deno test --no-check tests/unit",
