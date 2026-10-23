@@ -13,14 +13,33 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon-192.png" type="image/png" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="shell.css" />
   </head>
   <body>
     <button type="button" class="skip" id="skip">Skip to content</button>
     <header class="app-header">
+      <button
+        type="button"
+        class="menu-btn"
+        id="menu-btn"
+        aria-label="Open menu"
+        aria-expanded="false"
+        aria-controls="side"
+      >
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
       <a class="brand" href="#/">Capitol Pickleball Club</a>
-      <nav class="app-nav" id="nav" aria-label="Main"></nav>
+      <div class="header-account" id="account"></div>
     </header>
-    <main id="main" tabindex="-1"></main>
+    <div class="app-shell">
+      <aside class="side" id="side" aria-label="Side panel">
+        <nav class="side-nav" id="nav" aria-label="Main"></nav>
+      </aside>
+      <div class="scrim" id="scrim" hidden></div>
+      <main id="main" tabindex="-1"></main>
+    </div>
     <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
     <noscript>This app needs JavaScript.</noscript>
     <script src="vendor/supabase-js-2.118.0.umd.js"></script>

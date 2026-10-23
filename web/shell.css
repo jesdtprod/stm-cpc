@@ -1,0 +1,352 @@
+/* App shell (PLAN 3.6): header, side panel, account menu and the role-aware home.
+   Uses the shared tokens from styles.css; no inline styles (the CSP forbids them). */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 41;
+  flex-wrap: nowrap;
+  gap: var(--s3);
+}
+.app-header .brand {
+  margin-right: auto;
+}
+.menu-btn {
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.menu-btn:hover {
+  background: var(--surface-3);
+}
+.menu-btn .icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* ---- layout: side panel + content */
+.app-shell {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  align-items: start;
+}
+/* main is a grid item: give it the full column, or its auto margins shrink it to its content */
+.app-shell > main {
+  width: 100%;
+  min-width: 0;
+}
+/* a page is one grid column that may shrink below its widest child (wide tables scroll inside themselves) */
+.app-shell .page {
+  grid-template-columns: minmax(0, 1fr);
+}
+body[data-signed-in="false"] .app-shell,
+body:not([data-signed-in]) .app-shell {
+  grid-template-columns: minmax(0, 1fr);
+}
+body[data-signed-in="false"] .side,
+body:not([data-signed-in]) .side,
+body[data-signed-in="false"] .menu-btn,
+body:not([data-signed-in]) .menu-btn {
+  display: none;
+}
+.side {
+  position: sticky;
+  top: 69px;
+  height: calc(100vh - 69px);
+  overflow-y: auto;
+  padding: var(--s4) var(--s3);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.side-nav {
+  display: grid;
+  gap: var(--s1);
+}
+.nav-heading {
+  margin: var(--s4) var(--s3) var(--s1);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.nav-heading:first-child {
+  margin-top: 0;
+}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-control);
+  color: var(--text-2);
+  font-weight: 600;
+  text-decoration: none;
+}
+.nav-link:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.nav-link[aria-current="page"] {
+  background: var(--surface-3);
+  color: var(--text);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.nav-link:focus-visible,
+.account-btn:focus-visible,
+.account-menu a:focus-visible,
+.account-menu button:focus-visible,
+.menu-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(0, 0, 0, 0.55);
+}
+.scrim[hidden] {
+  display: none;
+}
+
+/* ---- account menu */
+.header-account {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.account-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 44px;
+  padding: 0 var(--s3) 0 var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.account-btn:hover {
+  background: var(--surface-3);
+}
+.account-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.account-text {
+  display: grid;
+  text-align: left;
+  line-height: 1.2;
+  max-width: 180px;
+}
+.account-name,
+.account-no {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.account-no {
+  font-size: 11px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--s2));
+  z-index: 45;
+  display: grid;
+  min-width: 220px;
+  padding: var(--s2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-lg);
+}
+.account-menu[hidden] {
+  display: none;
+}
+.account-menu a,
+.account-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border: 0;
+  border-radius: var(--r-control);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.account-menu a:hover,
+.account-menu button:hover {
+  background: var(--surface-2);
+}
+
+/* ---- home */
+.home-body {
+  display: grid;
+  gap: var(--s5);
+}
+.home-section {
+  display: grid;
+  gap: var(--s3);
+}
+.home-section-title {
+  margin: 0;
+  font-size: 16px;
+}
+.home-grid {
+  display: grid;
+  gap: var(--s4);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.home-card {
+  display: grid;
+  gap: var(--s2);
+  align-content: start;
+  padding: var(--s4);
+  color: var(--text);
+  text-decoration: none;
+}
+.home-card.is-link:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+.home-card.is-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.home-card.is-attention {
+  border-color: var(--warning);
+}
+.home-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.home-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.home-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.home-card-hint {
+  font-size: 12px;
+}
+.home-welcome,
+.home-error {
+  display: grid;
+  gap: var(--s4);
+  justify-items: start;
+}
+.home-welcome p,
+.home-error p {
+  margin: 0;
+}
+.home-card.is-loading .sk-line {
+  display: block;
+  height: 14px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  animation: home-pulse 1.4s ease-in-out infinite;
+}
+.home-card.is-loading .sk-wide {
+  height: 28px;
+  width: 60%;
+}
+.home-card.is-loading .sk-short {
+  width: 45%;
+}
+@keyframes home-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-card.is-loading .sk-line {
+    animation: none;
+  }
+}
+
+/* ---- narrow screens: the side panel becomes a drawer */
+@media (max-width: 900px) {
+  .menu-btn {
+    display: grid;
+  }
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .side {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    width: min(300px, 86vw);
+    height: 100vh;
+    padding-top: 72px;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0s linear 0.2s;
+  }
+  .side[data-open] {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.2s ease, visibility 0s;
+  }
+  .account-text {
+    display: none;
+  }
+  .account-btn {
+    padding: 0 var(--s2);
+  }
+}
+@media (max-width: 480px) {
+  .app-header .brand {
+    font-size: 14px;
+  }
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .side {
+    transition: none;
+  }
+}

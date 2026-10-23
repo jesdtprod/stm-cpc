@@ -1,11 +1,6 @@
-import {
-  componentsPage,
-  forbiddenPage,
-  homePage,
-  notFoundPage,
-} from "./pages.js";
+import { componentsPage, forbiddenPage, notFoundPage } from "./pages.js";
 import { currentPath, route, routeAccess, start } from "./router.js";
-import { h, icon, toast } from "./ui.js";
+import { toast } from "./ui.js";
 import { createClients } from "./lib/supabase.js";
 import { createErrorReporter, installGlobalHandlers } from "./lib/errors.js";
 import {
@@ -18,25 +13,19 @@ import { CHANNEL, createSession } from "./lib/session.js";
 import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
+import { createHomePages } from "./pages-home.js";
+import { createShell } from "./shell.js";
 import { changePassword, memberLogin, memberSignup } from "./lib/auth-api.js";
 import { renderTurnstile } from "./lib/turnstile.js";
 
 const APP_VERSION = "0.1.0";
 
-// Menu entries use the same access rules as the routes, so each role sees only its own menu.
-const NAV = [
-  { path: "/", label: "Home", icon: "home" },
-  { path: "/components", label: "Components", icon: "grid" },
-  { path: "/admin/members", label: "Members", icon: "user" },
-];
 // Where a user held at a gate is sent (the pages arrive in step 3.4).
 const GATE_PAGES = { pending: "#/pending", password_change: "#/password" };
 
-route("/", homePage, "Home", "public");
 route("/components", componentsPage, "Components", "public");
 
 const main = document.getElementById("main");
-const nav = document.getElementById("nav");
 document.getElementById("skip").addEventListener("click", () => main.focus());
 
 const { client, api } = createClients();
@@ -130,61 +119,41 @@ route("/admin/members", () => adminPages.membersPage(), "Members", {
   any: ["members.approve", "members.suspend", "members.read"],
 });
 
+const homePages = createHomePages({ session, api });
+route("/", () => homePages.homePage(), "Home", "public");
+
+const shell = createShell({
+  session,
+  checkAccess,
+  routeAccess,
+  gatePages: GATE_PAGES,
+  isDev: isLocalDev,
+});
+
+// Restore a saved session before the first page is chosen, so a reload stays on the same page
+// instead of being sent to the sign-in page and then home.
+// (waits at most 8 seconds, so a slow network cannot keep the page blank)
+await Promise.race([
+  session.start().catch(() => {}),
+  new Promise((resolve) => setTimeout(resolve, 8000)),
+]);
+
 const router = start(main, {
-  onChange: drawNav,
+  onChange: (path) => shell.draw(path),
   notFound: notFoundPage,
   forbidden: forbiddenPage,
   check: (access) => checkAccess(access, GATE_PAGES),
 });
 
-function drawNav(path = currentPath()) {
-  const visible = NAV.filter((n) =>
-    checkAccess(routeAccess(n.path), GATE_PAGES).allow
-  );
-  const state = session.getState();
-  const links = visible.map((n) =>
-    h(
-      "a",
-      { href: `#${n.path}`, "aria-current": n.path === path ? "page" : null },
-      icon(n.icon),
-      n.label,
-    )
-  );
-  if (state.status === "signed_in") {
-    links.push(
-      h("span", { class: "nav-user" }, state.access?.member_no ?? ""),
-      h("button", {
-        class: "nav-action",
-        type: "button",
-        onClick: () => session.signOut("manual"),
-      }, "Sign out"),
-    );
-  } else {
-    links.push(
-      h(
-        "a",
-        {
-          href: "#/signin",
-          "aria-current": path === "/signin" ? "page" : null,
-        },
-        icon("check"),
-        "Sign in",
-      ),
-    );
-  }
-  nav.replaceChildren(...links);
-}
-
 // Sign-in or sign-out changes what the user may see: redraw the menu and re-check the page.
 onAuthChange(() => {
-  drawNav();
+  shell.draw(currentPath());
   router.refresh();
 });
 
 for (const type of ["pointerdown", "keydown", "scroll", "visibilitychange"]) {
   addEventListener(type, () => session.activity(), { passive: true });
 }
-session.start().catch(() => {}); // restores a saved session when there is one
 
 // Service worker: app shell only. A waiting worker is announced, never applied silently.
 if ("serviceWorker" in navigator) {

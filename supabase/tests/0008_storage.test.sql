@@ -53,7 +53,7 @@ select is((select count(*)::int from storage.objects where bucket_id = 'payment-
 select throws_ok(
   $$delete from storage.objects where bucket_id = 'payment-proofs'$$, '42501', null, 'the owner cannot delete the file') ;
 reset role;
-select is((select count(*)::int from storage.objects where bucket_id = 'payment-proofs'), 1, 'the file is still there');
+select is((select count(*)::int from storage.objects where bucket_id = 'payment-proofs' and name like '%/proof-1.png'), 1, 'the file is still there');
 
 -- others
 select pg_temp.as_user((select u from us where role = 'member2'));
@@ -73,7 +73,7 @@ select is((select count(*)::int from storage.objects where bucket_id = 'payment-
 reset role;
 select pg_temp.as_user((select u from us where role = 'admin'));
 set local role authenticated;
-select is((select count(*)::int from storage.objects where bucket_id = 'payment-proofs'), 1, 'an admin (payments.verify) can read proofs');
+select is((select count(*)::int from storage.objects where bucket_id = 'payment-proofs' and name like '%/proof-1.png'), 1, 'an admin (payments.verify) can read proofs');
 update storage.objects set name = name || 'x' where bucket_id = 'payment-proofs';
 reset role;
 select is((select count(*)::int from storage.objects where bucket_id = 'payment-proofs' and name like '%x'), 0, 'a client update changes nothing (no update policy, so no upsert)');

@@ -34,5 +34,7 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1180_no_password_expiry.sql` | 3.2 | First passwords do not expire (club decision): cleared existing expiries, setting `members.temp_password_days` = 0 |
 | `1190_import_enrich.sql` | 3.4 | Fills empty name, gender and emergency-contact fields for imported members without overwriting; finds reassigned members |
 | `1200_member_approval.sql` | 3.5 | `decide_member(action, member, reason, key, ...)`: approve, reject, reconsider, suspend, restore; permissioned, idempotent, audited; rejected members can be reconsidered |
+| `1210_my_dashboard.sql` | 3.6 | `my_dashboard()`: the figures behind the role-aware home; each section appears only when the caller holds the matching permission |
+| `1220_fix_my_dashboard.sql` | 3.6 | Fix to 1210: `events` has no `deleted_at` |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).
