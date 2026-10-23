@@ -71,7 +71,7 @@ Permission codes are from the seeded catalog; **new codes** are listed in Sectio
 | `member_status_events` | log | Append-only history: `member_id`, `from_status`, `to_status`, `reason`, `actor`, `occurred_at` |
 | `import_batches` | document | One per import run: `file_sha256`, `row_count`, `created_count`, `skipped_count`, `held_back_count`, `failed_count`, `status` (`running, completed, failed`), `started_by`. No member data inside |
 | `member_import_issues` | master | `batch_id`, `member_id` (null for held-back rows), `source_row`, `member_no_claimed`, `issue_code` (`duplicate_member_no, invalid_member_no, member_no_normalized, invalid_birth_date, duplicate_rfid_cleared, invalid_email`), `detail` (no personal data), `resolved_at/by`. Drives the admin review screen |
-| `consents` | log | Append-only: `person_id`, `kind` (`waiver, privacy`), `version`, `accepted_at`, `accepted_by_person_id` (the guardian for minors) |
+| `consents` | log | Append-only: `person_id`, `kind` (`waiver, privacy`), `doc_version`, `accepted_at`, `accepted_by_person_id` (the guardian for minors) |
 
 Guardians use `person_relations` (`guardian`). RLS: members read only their own `members`, `persons` and consent rows; `members.read` sees all; writes are RPCs (`members.update`, `members.approve`, `members.suspend`).
 

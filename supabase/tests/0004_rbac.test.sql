@@ -34,7 +34,7 @@ insert into public.org_units (id, org_id, code, name) values ((select unit1 from
 insert into public.orgs (id, code, name) values ((select org_b from cx), 'other-club', 'Other Club');
 
 -- seed
-select is((select count(*)::int from public.permissions where deleted_at is null), 33, 'permission catalog seeded (33 codes)');
+select cmp_ok((select count(*)::int from public.permissions where deleted_at is null), '>=', 33, 'permission catalog seeded (33 core codes, more added by later migrations)');
 select is((select count(*)::int from public.roles where org_id = (select org from cx)), 6, 'six default roles seeded');
 select is(
   (select count(*)::int from public.role_permissions rp join public.roles r on r.id = rp.role_id where r.code = 'admin'),
@@ -102,7 +102,7 @@ select is((select count(*)::int from public.persons), 1, 'member sees only their
 select is((select count(*)::int from public.orgs), 1, 'member sees only their own org');
 select is((select count(*)::int from public.org_units), 2, 'member sees the units of their org');
 select is((select count(*)::int from public.role_permissions), 0, 'member cannot read role bundles');
-select is((select count(*)::int from public.permissions), 33, 'permission catalog is readable');
+select cmp_ok((select count(*)::int from public.permissions), '>=', 33, 'permission catalog is readable');
 select is((select count(*)::int from public.my_permissions()), 2, 'my_permissions lists the member''s grants');
 select throws_ok(
   format($f$insert into public.org_members (org_id, profile_id, role_id) values (%L, core.current_profile_id(), %L)$f$,
