@@ -15,7 +15,11 @@ const DEFAULT_ORIGINS = [
 const url = Deno.env.get("SUPABASE_URL")!;
 const options = { auth: { persistSession: false, autoRefreshToken: false } };
 const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, options);
-const service = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, options);
+const service = createClient(
+  url,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  options,
+);
 
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await service.rpc(name, args);
@@ -24,13 +28,18 @@ async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
 }
 
 const deps: Deps = {
-  allowedOrigins: (Deno.env.get("ALLOWED_ORIGINS")?.split(",").map((s) => s.trim()).filter(Boolean)) ??
-    DEFAULT_ORIGINS,
+  allowedOrigins:
+    (Deno.env.get("ALLOWED_ORIGINS")?.split(",").map((s) => s.trim()).filter(
+      Boolean,
+    )) ??
+      DEFAULT_ORIGINS,
   now: () => Date.now(),
   sha256: async (text) => {
     const bytes = new TextEncoder().encode(text);
     const digest = await crypto.subtle.digest("SHA-256", bytes);
-    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    return [...new Uint8Array(digest)].map((b) =>
+      b.toString(16).padStart(2, "0")
+    ).join("");
   },
   isLocked: (keys) => rpc<boolean>("login_is_locked", { p_keys: keys }),
   recordFailure: (key, max, windowSeconds, lockSeconds) =>
@@ -63,7 +72,9 @@ const deps: Deps = {
     await service.auth.admin.signOut(accessToken, "global").catch(() => {});
   },
   memberState: async (userId) => {
-    const rows = await rpc<MemberState[]>("member_login_state", { p_auth_user_id: userId });
+    const rows = await rpc<MemberState[]>("member_login_state", {
+      p_auth_user_id: userId,
+    });
     return rows?.[0] ?? null;
   },
   loginSucceeded: async (memberId) => {

@@ -8,7 +8,11 @@ import { type Deps, handle } from "./handler.ts";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const options = { auth: { persistSession: false, autoRefreshToken: false } };
-const service = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, options);
+const service = createClient(
+  url,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  options,
+);
 
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await service.rpc(name, args);
@@ -17,7 +21,9 @@ async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
 }
 
 const sha = async (text: string) =>
-  new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+  new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)),
+  );
 
 /** Compares two secrets without leaking where they differ. */
 async function sameSecret(a: string, b: string): Promise<boolean> {
@@ -35,7 +41,8 @@ const ALL = UPPER + LOWER + DIGITS;
 function randomPassword(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   const chars = [...bytes].map((b) => ALL[b % ALL.length]);
-  const pick = (set: string) => set[crypto.getRandomValues(new Uint8Array(1))[0] % set.length];
+  const pick = (set: string) =>
+    set[crypto.getRandomValues(new Uint8Array(1))[0] % set.length];
   chars[0] = pick(UPPER);
   chars[1] = pick(LOWER);
   chars[2] = pick(DIGITS);
@@ -51,33 +58,74 @@ const deps: Deps = {
   authorize: async (req) => {
     const bootstrap = Deno.env.get("IMPORT_BOOTSTRAP_TOKEN");
     const presented = req.headers.get("x-import-token");
-    if (bootstrap && bootstrap.length >= 32 && presented && await sameSecret(presented, bootstrap)) {
+    if (
+      bootstrap && bootstrap.length >= 32 && presented &&
+      await sameSecret(presented, bootstrap)
+    ) {
       return "token";
     }
     const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
     if (bearer) {
       const { data } = await service.auth.getUser(bearer);
-      if (data.user && await rpc<boolean>("import_authorized", { p_auth_user_id: data.user.id })) return "admin";
+      if (
+        data.user &&
+        await rpc<boolean>("import_authorized", {
+          p_auth_user_id: data.user.id,
+        })
+      ) return "admin";
     }
     return null;
   },
   now: () => Date.now(),
   passwordDays: 30,
-  existing: async (memberNos) => {
-    const rows = await rpc<string[]>("import_existing", { p_member_nos: memberNos });
-    return new Set(rows ?? []);
+  existingPeople: async (memberNos) => {
+    const rows = await rpc<
+      {
+        member_no: string;
+        display_name: string;
+        date_of_birth: string | null;
+      }[]
+    >(
+      "import_existing_people",
+      { p_member_nos: memberNos },
+    );
+    return new Map(
+      (rows ?? []).map((
+        r,
+      ) => [r.member_no, {
+        display_name: r.display_name,
+        date_of_birth: r.date_of_birth,
+      }]),
+    );
   },
   createAuthUser: async (email, password) => {
-    const { data, error } = await service.auth.admin.createUser({ email, password, email_confirm: true });
+    const { data, error } = await service.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
     if (error || !data.user) {
-      return { ok: false, reason: error?.code === "email_exists" ? "exists" : "failed" };
+      return {
+        ok: false,
+        reason: error?.code === "email_exists" ? "exists" : "failed",
+      };
     }
     return { ok: true, id: data.user.id };
   },
   deleteAuthUser: async (id) => {
     await service.auth.admin.deleteUser(id);
   },
-  importMember: async ({ batchId, row, authUserId, passwordExpiresAt }) =>
+  allocate: async (batchId, claimedNo, displayName, dob, reserved) =>
+    await rpc("import_allocate_member_no", {
+      p_batch_id: batchId,
+      p_claimed_no: claimedNo,
+      p_display_name: displayName,
+      p_dob: dob,
+      p_reserved: reserved,
+    }),
+  importMember: async (
+    { batchId, row, claimedNo, authUserId, passwordExpiresAt },
+  ) =>
     await rpc("import_member", {
       p_batch_id: batchId,
       p_source_row: row.source_row,
@@ -89,8 +137,13 @@ const deps: Deps = {
       p_rfid: row.rfid,
       p_auth_user_id: authUserId,
       p_password_expires_at: passwordExpiresAt,
+      p_claimed_no: claimedNo,
     }),
-  begin: (sha256, rowCount) => rpc<string>("import_begin", { p_file_sha256: sha256, p_row_count: rowCount }),
+  begin: (sha256, rowCount) =>
+    rpc<string>("import_begin", {
+      p_file_sha256: sha256,
+      p_row_count: rowCount,
+    }),
   finish: async (batchId, c) => {
     await rpc("import_finish", {
       p_batch_id: batchId,
@@ -101,10 +154,19 @@ const deps: Deps = {
     });
   },
   issue: async (batchId, row, memberNo, code) => {
-    await rpc("import_issue", { p_batch_id: batchId, p_source_row: row, p_member_no: memberNo, p_code: code });
+    await rpc("import_issue", {
+      p_batch_id: batchId,
+      p_source_row: row,
+      p_member_no: memberNo,
+      p_code: code,
+    });
   },
   createAdmin: (memberNo, displayName, authUserId) =>
-    rpc<string>("create_admin_member", { p_member_no: memberNo, p_display_name: displayName, p_auth_user_id: authUserId }),
+    rpc<string>("create_admin_member", {
+      p_member_no: memberNo,
+      p_display_name: displayName,
+      p_auth_user_id: authUserId,
+    }),
   randomPassword,
   // Events carry no names, IDs, dates or passwords.
   log: (event, fields) => console.log(JSON.stringify({ event, ...fields })),

@@ -26,5 +26,7 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1070_login_throttle.sql` | 3.1 | `core.login_throttle` (hashed failure counters), lockout helpers, `member_login_state`, `member_login_succeeded`; service-only wrappers in `public` |
 | `1080_member_import.sql` | 3.2 | Import batch, member and admin creation functions (service-only), `import_authorized` |
 | `1090_import_issue_dedupe.sql` | 3.2 | A re-run does not copy open issues |
+| `1100_member_account_flow.sql`, `1120_fix_update_my_profile.sql` | 3.4 | `my_access_state()`, `update_my_profile()`, first sign-in -> invited, password-changed hook; pending approval once the password is changed and the profile is complete |
+| `1110_import_reassign.sql`, `1130_import_id_conflicts.sql` | 3.2 | Rows that share a member ID get new numbers from the yearly sequence (never one the file uses); a number held by a different person is not skipped |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

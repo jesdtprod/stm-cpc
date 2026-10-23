@@ -15,10 +15,10 @@ insert into auth.users (id, email) values
 select is((select count(*)::int from unnest(array[
     'public.import_begin(text,integer)', 'public.import_finish(text,integer,integer,integer,integer)',
     'public.import_issue(text,integer,text,text,text)', 'public.import_existing(text[])',
-    'public.import_member(text,integer,text,text,date,text,text,text,uuid,timestamptz)',
+    'public.import_member(text,integer,text,text,date,text,text,text,uuid,timestamptz,text)',
     'public.create_admin_member(text,text,uuid)', 'public.import_authorized(uuid)']) f
   where has_function_privilege('authenticated', f, 'execute') or has_function_privilege('anon', f, 'execute')), 0, 'no client or anonymous role can call any import function');
-select is(has_function_privilege('service_role', 'public.import_member(text,integer,text,text,date,text,text,text,uuid,timestamptz)', 'execute'), true, 'the Edge Function (service_role) can');
+select is(has_function_privilege('service_role', 'public.import_member(text,integer,text,text,date,text,text,text,uuid,timestamptz,text)', 'execute'), true, 'the Edge Function (service_role) can');
 
 -- ---- a batch
 create temp table b as select core.import_begin(repeat('a', 64), 5) as id;

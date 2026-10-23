@@ -113,57 +113,89 @@ const raw = (row, over = {}) => ({
   ...over,
 });
 
-Deno.test("import rules: the whole-file pass skips, holds back and cleans as the design says", () => {
+Deno.test("import rules: the whole-file pass skips, holds back, reassigns and cleans as decided", () => {
   const rows = [
     raw(2), // clean
     raw(3, { id_no: null }), // no ID: skipped
     raw(4, { id_no: "  " }), // blank ID: skipped
-    raw(5, { id_no: "CPC-2026-00010" }), // duplicate ID ...
-    raw(6, { id_no: "cpc-2026-00010 " }), // ... same ID, other spelling: both held back
+    raw(5, { id_no: "CPC-2026-00010" }), // shared ID: the first row keeps it ...
+    raw(6, { id_no: "cpc-2026-00010 " }), // ... same ID, other spelling: gets a new number
     raw(7, { id_no: "garbage" }), // invalid ID: held back
-    raw(8, { id_no: "CPC-2026-000200" }), // shortened to 00200
+    raw(8, { id_no: "CPC-2026-000200" }), // shortened to 00200, and it is the first claimant
     raw(9, { dob: null, dob_text: "13/45/2000" }), // unreadable birth date: member without account
     raw(11, { email: "nope" }), // bad email: imported without it
     raw(12, { rfid: "SAME" }),
     raw(13, { rfid: "SAME" }), // shared RFID: cleared on both
     raw(14, { display_name: "  " }), // no name: held back
-    raw(15, { id_no: "CPC-2026-00200" }), // collides with the shortened ID of row 8: both held back
+    raw(15, { id_no: "CPC-2026-00200" }), // same as row 8 once shortened: gets a new number
     raw(16, { rfid: "SAME", id_no: null }), // a third holder of the code on a skipped row still counts
     raw(17, { dob: null, dob_text: "12/21/2025" }), // text date read month/day/year
+    raw(18, { id_no: "CPC-2026-00010" }), // a third claimant of 00010
   ];
   const a = analyzeFile(rows, TODAY);
-  const imported = a.rows.map((r) => r.source_row);
-  assert.deepEqual(imported, [2, 9, 11, 12, 13, 17]);
+  assert.deepEqual(a.rows.map((r) => r.source_row), [
+    2,
+    5,
+    6,
+    8,
+    9,
+    11,
+    12,
+    13,
+    15,
+    17,
+    18,
+  ]);
+  assert.deepEqual(
+    a.rows.filter((r) => r.needs_new_id).map((r) => r.source_row),
+    [6, 15, 18],
+  );
   assert.deepEqual(a.counts, {
-    total: 15,
+    total: 16,
     skipped_no_id: 3,
-    held_back: 6,
-    importable: 6,
-    with_account: 5,
+    held_back: 2,
+    reassigned: 3,
+    importable: 11,
+    with_account: 10,
     without_account: 1,
   });
   const codes = (row) =>
     a.issues.filter((i) => i.source_row === row).map((i) => i.issue_code)
       .sort();
-  assert.deepEqual(codes(5), ["duplicate_member_no"]);
-  assert.deepEqual(codes(6), ["duplicate_member_no"]);
-  assert.deepEqual(codes(7), ["invalid_member_no"]);
+  assert.deepEqual(codes(5), [], "the first claimant has no issue");
   assert.deepEqual(
-    codes(8),
-    ["duplicate_member_no"],
-    "the shortened ID collides with row 15",
+    codes(6),
+    [],
+    "the new number is recorded by the server, not here",
   );
-  assert.deepEqual(codes(15), ["duplicate_member_no"]);
+  assert.deepEqual(codes(7), ["invalid_member_no"]);
+  assert.deepEqual(codes(8), ["member_no_normalized"]);
   assert.deepEqual(codes(9), ["invalid_birth_date"]);
   assert.deepEqual(codes(11), ["invalid_email"]);
   assert.deepEqual(codes(12), ["duplicate_rfid_cleared"]);
   assert.deepEqual(codes(14), ["missing_name"]);
+  assert.equal(
+    a.rows.find((r) => r.source_row === 6).member_no,
+    "CPC-2026-00010",
+    "it carries the claimed ID until the server assigns a number",
+  );
   assert.equal(a.rows.find((r) => r.source_row === 12).rfid, null);
   assert.equal(a.rows.find((r) => r.source_row === 13).rfid, null);
   assert.equal(a.rows.find((r) => r.source_row === 2).rfid, "RF2");
   assert.equal(a.rows.find((r) => r.source_row === 11).email, null);
   assert.equal(a.rows.find((r) => r.source_row === 17).dob, "2025-12-21");
   assert.equal(a.rows.find((r) => r.source_row === 9).dob, null);
+});
+
+Deno.test("import rules: a nameless row does not take an ID away from a named row", () => {
+  const a = analyzeFile([
+    raw(2, { display_name: null }),
+    raw(3, { id_no: "CPC-2026-00002" }),
+  ], TODAY);
+  assert.deepEqual(a.rows.map((r) => [r.source_row, r.needs_new_id]), [[
+    3,
+    false,
+  ]]);
 });
 
 Deno.test("import rules: a shortened ID that is free is imported and reported", () => {
@@ -217,9 +249,18 @@ function world(over = {}) {
     authorize: () => Promise.resolve("token"),
     now: () => TODAY.getTime(),
     passwordDays: 30,
-    existing: (nos) =>
+    existingPeople: (nos) =>
       Promise.resolve(
-        new Set(nos.filter((n) => s.members.some((m) => m.member_no === n))),
+        new Map(
+          s.members
+            .filter((m) => nos.includes(m.member_no))
+            .map((
+              m,
+            ) => [m.member_no, {
+              display_name: m.display_name,
+              date_of_birth: m.dob,
+            }]),
+        ),
       ),
     createAuthUser: (email, password) => {
       s.passwords.push(password);
@@ -234,14 +275,29 @@ function world(over = {}) {
       s.deleted.push(id);
       return Promise.resolve();
     },
-    importMember: ({ row, authUserId, passwordExpiresAt }) => {
+    allocate: (_batch, claimed, name, _dob, reserved) => {
+      s.reserved = reserved;
+      if (over.allocFails) return Promise.reject(new Error("alloc"));
+      const prior = s.members.find((m) =>
+        m.claimedNo === claimed && m.display_name === name
+      );
+      if (prior) {
+        return Promise.resolve({ member_no: prior.member_no, existing: true });
+      }
+      s.allocated = (s.allocated ?? 0) + 1;
+      return Promise.resolve({
+        member_no: `CPC-2026-${String(90000 + s.allocated)}`,
+        existing: false,
+      });
+    },
+    importMember: ({ row, claimedNo, authUserId, passwordExpiresAt }) => {
       if (over.importFails?.includes(row.member_no)) {
         return Promise.reject(new Error("db"));
       }
       if (s.members.some((m) => m.member_no === row.member_no)) {
         return Promise.resolve({ outcome: "existing", rfid_cleared: false });
       }
-      s.members.push({ ...row, authUserId, passwordExpiresAt });
+      s.members.push({ ...row, claimedNo, authUserId, passwordExpiresAt });
       return Promise.resolve({ outcome: "created", rfid_cleared: false });
     },
     begin: (sha, n) => {
@@ -573,5 +629,155 @@ Deno.test("import: if the admin rows fail, the Auth user is removed", async () =
   assert.equal(
     internalEmail("CPC-2026-00000"),
     "cpc-2026-00000@members.cpc.app",
+  );
+});
+
+Deno.test("import: a row with a shared ID gets a new number, its own password, and the old ID is remembered", async () => {
+  const { deps, s } = world();
+  const first = row(1, { dob: "1990-01-02" });
+  const shared = row(2, {
+    member_no: "CPC-2026-00001",
+    dob: "2025-12-21",
+    needs_new_id: true,
+    display_name: "Fake Second Person",
+  });
+  const r = await run(deps, {
+    action: "rows",
+    batch_id: BATCH,
+    rows: [first, shared],
+  });
+  assert.deepEqual(r.body.results, [
+    { source_row: 1, outcome: "created" },
+    {
+      source_row: 2,
+      outcome: "created",
+      member_no: "CPC-2026-90001",
+      reassigned_from: "CPC-2026-00001",
+    },
+  ]);
+  assert.equal(s.users[1].email, "cpc-2026-90001@members.cpc.app");
+  assert.equal(
+    s.passwords[1],
+    "9000112212025",
+    "the password uses the NEW number",
+  );
+  const stored = s.members.find((m) => m.member_no === "CPC-2026-90001");
+  assert.equal(stored.claimedNo, "CPC-2026-00001");
+});
+
+Deno.test("import: re-running finds the reassigned person again and allocates nothing new", async () => {
+  const { deps, s } = world();
+  const rows = [
+    row(1),
+    row(2, {
+      member_no: "CPC-2026-00001",
+      needs_new_id: true,
+      display_name: "Fake Second Person",
+    }),
+  ];
+  await run(deps, { action: "rows", batch_id: BATCH, rows });
+  const again = await run(deps, { action: "rows", batch_id: BATCH, rows });
+  assert.deepEqual(again.body.results.map((x) => x.outcome), [
+    "existing",
+    "existing",
+  ]);
+  assert.equal(again.body.results[1].member_no, "CPC-2026-90001");
+  assert.equal(s.allocated, 1);
+  assert.equal(s.members.length, 2);
+  assert.equal(s.users.length, 2);
+});
+
+Deno.test("import: if allocating a number fails, no account is created", async () => {
+  const { deps, s } = world({ allocFails: true });
+  const r = await run(deps, {
+    action: "rows",
+    batch_id: BATCH,
+    rows: [row(2, { needs_new_id: true })],
+  });
+  assert.deepEqual(r.body.results, [{
+    source_row: 2,
+    outcome: "failed",
+    reason: "allocation_failed",
+  }]);
+  assert.equal(s.users.length, 0);
+});
+
+Deno.test("import: a number held by a different person is not skipped: the newcomer gets a new number", async () => {
+  const { deps, s } = world();
+  await run(deps, {
+    action: "rows",
+    batch_id: BATCH,
+    rows: [row(1, { display_name: "Fake Holder" })],
+  });
+  const newcomer = row(2, {
+    member_no: "CPC-2026-00001",
+    display_name: "Fake Newcomer",
+    dob: "1995-05-05",
+  });
+  const r = await run(deps, {
+    action: "rows",
+    batch_id: BATCH,
+    rows: [newcomer],
+  });
+  assert.deepEqual(r.body.results, [
+    {
+      source_row: 2,
+      outcome: "created",
+      member_no: "CPC-2026-90001",
+      reassigned_from: "CPC-2026-00001",
+    },
+  ]);
+  assert.equal(s.members.length, 2);
+  const again = await run(deps, {
+    action: "rows",
+    batch_id: BATCH,
+    rows: [newcomer],
+  });
+  assert.equal(again.body.results[0].outcome, "existing");
+  assert.equal(s.members.length, 2);
+});
+
+Deno.test("import: the same person under the same number is existing, despite spacing or case", async () => {
+  const { deps, s } = world();
+  await run(deps, {
+    action: "rows",
+    batch_id: BATCH,
+    rows: [row(1, { display_name: "Fake Holder", dob: null })],
+  });
+  const r = await run(deps, {
+    action: "rows",
+    batch_id: BATCH,
+    rows: [row(1, { display_name: "  fake   HOLDER ", dob: "1990-01-02" })],
+  });
+  assert.deepEqual(r.body.results, [{ source_row: 1, outcome: "existing" }]);
+  assert.equal(s.members.length, 1);
+});
+
+Deno.test("import: the allocator is told every ID the file uses, and the list is validated", async () => {
+  const { deps, s } = world();
+  await run(deps, {
+    action: "rows",
+    batch_id: BATCH,
+    rows: [row(2, { needs_new_id: true })],
+    reserved_nos: ["CPC-2026-00005", "CPC-2026-00006"],
+  });
+  assert.deepEqual(s.reserved, ["CPC-2026-00005", "CPC-2026-00006"]);
+  assert.equal(
+    (await run(deps, {
+      action: "rows",
+      batch_id: BATCH,
+      rows: [row(3)],
+      reserved_nos: ["bad"],
+    })).status,
+    400,
+  );
+  assert.equal(
+    (await run(deps, {
+      action: "rows",
+      batch_id: BATCH,
+      rows: [row(3)],
+      reserved_nos: Array(5001).fill("CPC-2026-00001"),
+    })).status,
+    400,
   );
 });

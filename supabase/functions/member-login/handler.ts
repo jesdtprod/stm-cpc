@@ -78,7 +78,10 @@ export function internalEmail(memberNo: string): string {
   return `${memberNo.toLowerCase()}@${EMAIL_DOMAIN}`;
 }
 
-function corsHeaders(origin: string | null, deps: Deps): Record<string, string> {
+function corsHeaders(
+  origin: string | null,
+  deps: Deps,
+): Record<string, string> {
   const headers: Record<string, string> = {
     "Vary": "Origin",
     "Cache-Control": "no-store",
@@ -148,10 +151,16 @@ function parseInput(value: unknown): Input | null {
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   const origin = req.headers.get("origin");
   if (origin && !deps.allowedOrigins.includes(origin)) {
-    return new Response(null, { status: 403, headers: { "Cache-Control": "no-store" } });
+    return new Response(null, {
+      status: 403,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders(origin, deps) });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders(origin, deps),
+    });
   }
   if (req.method !== "POST") {
     return json(405, { ok: false, code: "method_not_allowed" }, origin, deps);
@@ -189,10 +198,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (!result.ok) {
     if (result.reason === "captcha") {
-      await deps.recordFailure(ipKey, LIMITS.ipMaxFailures, LIMITS.windowSeconds, LIMITS.lockSeconds);
+      await deps.recordFailure(
+        ipKey,
+        LIMITS.ipMaxFailures,
+        LIMITS.windowSeconds,
+        LIMITS.lockSeconds,
+      );
       return json(
         400,
-        { ok: false, code: "captcha_failed", message: "Please complete the security check and try again." },
+        {
+          ok: false,
+          code: "captcha_failed",
+          message: "Please complete the security check and try again.",
+        },
         origin,
         deps,
       );
@@ -201,7 +219,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       deps.log("login.auth_unavailable");
       return json(
         503,
-        { ok: false, code: "unavailable", message: "Sign-in is unavailable right now. Please try again shortly." },
+        {
+          ok: false,
+          code: "unavailable",
+          message:
+            "Sign-in is unavailable right now. Please try again shortly.",
+        },
         origin,
         deps,
       );
@@ -232,7 +255,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     await deps.revoke(result.session.access_token);
     return json(
       403,
-      { ok: false, code: "account_disabled", message: "This account cannot sign in. Please contact the club." },
+      {
+        ok: false,
+        code: "account_disabled",
+        message: "This account cannot sign in. Please contact the club.",
+      },
       origin,
       deps,
     );
@@ -244,7 +271,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     await deps.revoke(result.session.access_token);
     return json(
       403,
-      { ok: false, code: "password_expired", message: "Your first password has expired. Please ask the club to reset it." },
+      {
+        ok: false,
+        code: "password_expired",
+        message:
+          "Your first password has expired. Please ask the club to reset it.",
+      },
       origin,
       deps,
     );

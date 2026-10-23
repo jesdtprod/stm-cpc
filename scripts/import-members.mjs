@@ -64,6 +64,7 @@ for (const i of analysis.issues) {
 const c = analysis.counts;
 console.log(
   `file: ${c.total} rows | not imported (no ID): ${c.skipped_no_id} | held back: ${c.held_back} | ` +
+    `given a new ID (shared with an earlier row): ${c.reassigned} | ` +
     `to import: ${c.importable} (${c.with_account} with an account, ${c.without_account} waiting for a birth date)`,
 );
 console.log(`issues by kind: ${JSON.stringify(byCode)}`);
@@ -120,18 +121,30 @@ for (let i = 0; i < analysis.issues.length; i += 400) {
   });
 }
 
+const reservedNos = [...new Set(analysis.rows.map((r) => r.member_no))];
 const tally = { created: 0, created_no_account: 0, existing: 0, failed: 0 };
 const failures = [];
+const reassigned = [];
 for (let i = 0; i < analysis.rows.length; i += BATCH) {
   const { results } = await call({
     action: "rows",
     batch_id: batchId,
     rows: analysis.rows.slice(i, i + BATCH),
+    // Every ID the file uses, so a number given to a shared-ID row never lands on one of them.
+    reserved_nos: reservedNos,
   });
   for (const r of results) {
     tally[r.outcome]++;
     if (r.outcome === "failed") {
       failures.push({ row: r.source_row, reason: r.reason });
+    }
+    if (r.reassigned_from) {
+      reassigned.push({
+        row: r.source_row,
+        old_id: r.reassigned_from,
+        new_id: r.member_no,
+        outcome: r.outcome,
+      });
     }
   }
   console.log(
@@ -158,12 +171,10 @@ const report = {
   result: tally,
   issues_by_kind: byCode,
   held_back_rows: analysis.issues
-    .filter((i) =>
-      ["duplicate_member_no", "invalid_member_no", "missing_name"].includes(
-        i.issue_code,
-      )
-    )
+    .filter((i) => ["invalid_member_no", "missing_name"].includes(i.issue_code))
     .map((i) => ({ row: i.source_row, code: i.issue_code })),
+  // Rows that shared an ID: the club needs the new numbers to tell those members (and to fix their cards).
+  reassigned,
   failures,
 };
 await Deno.mkdir(reportDir, { recursive: true });
