@@ -24,21 +24,26 @@
 /* ===== 1. Design tokens (UI_DESIGN.md section 2) ===== */
 :root {
   color-scheme: dark;
-  --bg: #020604;
-  --surface: #070f0a;
-  --surface-2: #0d1812;
-  --surface-3: #132219;
-  --border: #1a2e22;
-  --text: #f2f7f4;
-  --text-2: #8da598;
-  --primary: #15803d;
-  --primary-hover: #16a34a;
-  --accent: #f59e0b;
-  --accent-hover: #fbbf24;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #f87171;
-  --danger-bg: #29080b;
+  --bg: #0B1210;
+  --surface: #131E19;
+  --surface-2: #1C2B23;
+  --surface-3: #24382E;
+  --border: #2C4034;
+  --text: #F2F7F4;
+  --text-2: #A6B8AC;
+  --primary: #15803D;
+  --primary-hover: #16A34A;
+  --primary-active: #14532D;
+  --active-highlight: #4ADE80;
+  --accent: #F59E0B;
+  --accent-hover: #D97706;
+  --text-on-primary: #FFFFFF;
+  --text-on-accent: #0B1210;
+  --success: #34D399;
+  --warning: #FBBF24;
+  --danger: #F87171;
+  --danger-bg: #2B1516;
+  --info: #60A5FA;
 
   --s1: 4px;
   --s2: 8px;
@@ -307,10 +312,28 @@ main[aria-busy="true"] {
 .btn-primary {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--text-on-primary, #ffffff);
 }
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: var(--text-on-primary, #ffffff);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--primary-active, #14532d);
+}
+.btn-accent,
+.btn-amber {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent, #0b1210);
+  font-weight: 700;
+}
+.btn-accent:hover:not(:disabled),
+.btn-amber:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--text-on-accent, #0b1210);
 }
 .btn-secondary {
   background: var(--surface-2);
@@ -439,14 +462,15 @@ main[aria-busy="true"] {
   padding: 0 var(--s3);
   border-radius: var(--r-control);
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--surface-2);
   color: var(--text);
   font: 400 14px var(--font);
   width: 100%;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .input:focus {
-  border-color: var(--accent);
+  border-color: var(--active-highlight);
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.16);
   outline: none;
 }
 .input::placeholder {
@@ -1134,34 +1158,34 @@ textarea.input {
   line-height: 1;
 }
 .badge-success {
-  color: #4ade80;
-  background: rgba(34, 197, 94, 0.14);
-  border-color: rgba(34, 197, 94, 0.32);
+  color: var(--success);
+  background: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.35);
 }
 .badge-warning {
-  color: #facc15;
-  background: rgba(234, 179, 8, 0.14);
-  border-color: rgba(234, 179, 8, 0.32);
+  color: var(--warning);
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.35);
 }
 .badge-danger {
-  color: #f87171;
-  background: rgba(239, 68, 68, 0.14);
-  border-color: rgba(239, 68, 68, 0.32);
+  color: var(--danger);
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.35);
 }
 .badge-info {
-  color: #38bdf8;
-  background: rgba(34, 211, 238, 0.14);
-  border-color: rgba(34, 211, 238, 0.32);
+  color: var(--info);
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.35);
 }
 .badge-primary {
-  color: #bfdbfe;
-  background: rgba(37, 99, 235, 0.22);
-  border-color: rgba(37, 99, 235, 0.45);
+  color: var(--active-highlight);
+  background: rgba(21, 128, 61, 0.22);
+  border-color: rgba(74, 222, 128, 0.35);
 }
 .badge-neutral {
   color: var(--text-2);
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(166, 184, 172, 0.08);
+  border-color: var(--border);
 }
 
 /* ===== 6. Toolbar ===== */

@@ -1,7 +1,7 @@
 // The app shell (PLAN 3.6): header with the account menu, and the side panel built from the
 // user's permissions. The menu is a convenience only; every page and every call is checked again
 // by the router and the database.
-import { h, icon } from "./ui.js";
+import { button, h, icon, openModal } from "./ui.js";
 
 // Each entry uses the access rule of its own route, so a user sees exactly the pages they can open.
 // `gated: true` entries stay visible while a user is held at a gate (password change, waiting for approval).
@@ -19,6 +19,7 @@ const GROUPS = [
         label: "Categories",
         icon: "layers",
       },
+      { path: "/admin/staff", label: "Staff and roles", icon: "user" },
       { path: "/admin/import", label: "Member import", icon: "upload" },
       { path: "/admin/ranks", label: "Ranks", icon: "layers" },
       { path: "/admin/courts", label: "Courts", icon: "grid" },
@@ -72,6 +73,47 @@ export function createShell(
   const nav = el("nav");
   const scrim = el("scrim");
   const account = el("account");
+  const mobileNav = el("mobile-bottom-nav");
+
+  function openQrScanModal() {
+    const state = session.getState();
+    const name = state.access?.display_name || "Club Member";
+    const memberNo = state.access?.member_no || "CPC-MEMBER";
+
+    let modalRef = null;
+    const closeBtn = button({
+      label: "Close",
+      variant: "secondary",
+      onClick: () => modalRef?.close(),
+    });
+
+    modalRef = openModal({
+      title: "Member QR Code & Check-in",
+      body: h(
+        "div",
+        { class: "qr-modal-body" },
+        h(
+          "div",
+          { class: "qr-viewfinder" },
+          icon("qrScan"),
+          h("div", { class: "qr-scan-bar" }),
+        ),
+        h(
+          "p",
+          { class: "qr-hint" },
+          "Scan court QR to check in or present your member ID badge:",
+        ),
+        h(
+          "div",
+          { class: "qr-badge-preview" },
+          h("div", { class: "qr-badge-name" }, name),
+          h("div", { class: "qr-badge-id" }, `Member ID: ${memberNo}`),
+          h("span", { class: "badge badge-success" }, "Active Member"),
+        ),
+      ),
+      actions: [closeBtn],
+    });
+  }
 
   // ---- mobile drawer
   function setDrawer(open) {
@@ -211,7 +253,86 @@ export function createShell(
     const state = session.getState();
     const signedIn = state.status === "signed_in";
     document.body.dataset.signedIn = String(signedIn);
+
+    // Member view vs Admin view: admin paths are under /admin
+    const isMemberView = !path.startsWith("/admin");
+    document.body.dataset.memberView = String(isMemberView);
+    document.body.dataset.adminView = String(!isMemberView);
+
     drawAccount(state);
+
+    // Render mobile floating bottom navbar
+    if (mobileNav) {
+      if (isMemberView) {
+        mobileNav.hidden = false;
+        const isHome = path === "/" || path === "";
+        const isBooking = path === "/booking";
+        const isQr = path === "/qr";
+        const isEvents = path === "/events";
+        const isAccount = path === "/profile" || path === "/password" ||
+          path === "/pending";
+
+        mobileNav.replaceChildren(
+          h(
+            "a",
+            {
+              class: `bottom-nav-item${isHome ? " is-active" : ""}`,
+              href: "#/",
+              "aria-label": "Home",
+              "aria-current": isHome ? "page" : null,
+            },
+            icon("home"),
+          ),
+          h(
+            "a",
+            {
+              class: `bottom-nav-item${isBooking ? " is-active" : ""}`,
+              href: "#/booking",
+              "aria-label": "Booking",
+              "aria-current": isBooking ? "page" : null,
+            },
+            icon("calendar"),
+          ),
+          h(
+            "button",
+            {
+              class: `bottom-nav-item bottom-nav-qr${isQr ? " is-active" : ""}`,
+              type: "button",
+              "aria-label": "QR Scan",
+              onClick: (e) => {
+                e.preventDefault();
+                openQrScanModal();
+              },
+            },
+            icon("qrScan"),
+          ),
+          h(
+            "a",
+            {
+              class: `bottom-nav-item${isEvents ? " is-active" : ""}`,
+              href: "#/events",
+              "aria-label": "Events",
+              "aria-current": isEvents ? "page" : null,
+            },
+            icon("trophy"),
+          ),
+          h(
+            "a",
+            {
+              class: `bottom-nav-item${isAccount ? " is-active" : ""}`,
+              href: signedIn ? "#/profile" : "#/signin",
+              "aria-label": "Account",
+              "aria-current": isAccount ? "page" : null,
+            },
+            icon("user"),
+          ),
+        );
+      } else {
+        mobileNav.hidden = true;
+        mobileNav.replaceChildren();
+      }
+    }
+
     if (!signedIn) {
       setDrawer(false);
       nav.replaceChildren();

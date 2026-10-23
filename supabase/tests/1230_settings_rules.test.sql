@@ -72,7 +72,7 @@ grant select on r1 to public;
 select is((select r ->> 'ok' from r1), 'true', 'the change is accepted');
 select is((select value from public.settings where key = 'booking.slot_minutes' and deleted_at is null and unit_id is null), '90'::jsonb, 'and stored');
 select is((select count(*)::int from core.audit_log where action = 'setting.update' and (new_values ->> 'key') = 'booking.slot_minutes' and (new_values ->> 'reason') = 'club decision'), 1, 'the old value, new value and reason are in the audit log');
-select is((select (old_values -> 'value')::text from core.audit_log where action = 'setting.update' and (new_values ->> 'key') = 'booking.slot_minutes'), '60', 'the old value is kept');
+select is((select (old_values -> 'value')::text from core.audit_log where action = 'setting.update' and (new_values ->> 'key') = 'booking.slot_minutes' and (new_values ->> 'reason') = 'club decision'), '60', 'the old value is kept');
 
 set local role authenticated;
 select is((select public.update_setting('booking.slot_minutes', '90', 'club decision', (select k2 from fx))), (select r from r1), 'the same key replays the first answer');

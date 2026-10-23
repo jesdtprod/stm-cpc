@@ -42,5 +42,6 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1260_rank_ladder_functions.sql` | 4.3 | `reorder_ranks(ladder, ids, key)` and `set_starting_rank(rank, key)` (whole-ladder changes in one step) and the club's four split-bracket rank rules, seeded once |
 | `1270_courts_admin.sql` | 4.4 | Courts, hours, rates and blackouts join `soft_delete` / `restore_row`; a court with upcoming bookings cannot be deleted |
 | `1280_members_admin.sql` | 4.5 | `archive_member`, `resolve_import_issue`; members join `soft_delete` / `restore_row` (only archived, rejected or never-signed-in members with nothing upcoming) |
+| `1290_staff_roles.sql` | 4.6 | `assign_role`, `staff_directory`, `role_catalog` (roles.manage): nobody changes their own role, the last admin cannot be demoted, audited with old and new role |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

@@ -485,6 +485,208 @@ a.btn:hover {
   }
 }
 
+/* ---- Floating Bottom Navbar for Mobile Member View */
+.mobile-bottom-nav {
+  display: none;
+}
+
+.bottom-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  color: #A6B8AC;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bottom-nav-item .icon {
+  width: 24px;
+  height: 24px;
+}
+
+.bottom-nav-item:hover {
+  color: #F2F7F4;
+}
+
+/* Active icon: #4ADE80 with subtle green background */
+.bottom-nav-item[aria-current="page"],
+.bottom-nav-item.is-active {
+  color: #4ADE80;
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.bottom-nav-item[aria-current="page"] .icon,
+.bottom-nav-item.is-active .icon {
+  color: #4ADE80;
+}
+
+/* Center QR Scan button: #F59E0B with dark #0B1210 icon */
+.bottom-nav-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: #F59E0B !important;
+  color: #0B1210 !important;
+  border: none;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  margin: 0 4px;
+}
+
+.bottom-nav-qr .icon {
+  width: 26px;
+  height: 26px;
+  color: #0B1210 !important;
+}
+
+.bottom-nav-qr:hover {
+  background: #D97706 !important;
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}
+
+.bottom-nav-qr:active {
+  transform: scale(0.96);
+}
+
+/* Preview container for components design system */
+.demo-bottom-nav-container {
+  display: flex;
+  justify-content: center;
+  padding: var(--s4) var(--s2);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+}
+.mobile-bottom-nav-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  max-width: 440px;
+  height: 64px;
+  background: #131E19;
+  border: 1px solid #2C4034;
+  border-radius: 24px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+  padding: 0 8px;
+}
+
+@media (max-width: 900px) {
+  /* Mobile Member View: keep the layout without a top header/navbar */
+  body[data-member-view="true"] .app-header {
+    display: none !important;
+  }
+
+  body[data-member-view="true"] .app-shell {
+    padding-top: 0;
+  }
+
+  /* Floating bottom navbar for mobile member view */
+  body[data-member-view="true"] .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 440px;
+    height: 64px;
+    background: #131E19;
+    border: 1px solid #2C4034;
+    border-radius: 24px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+    z-index: 100;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 8px;
+    backdrop-filter: blur(16px);
+  }
+
+  /* Content bottom padding to prevent overlap with floating navbar */
+  body[data-member-view="true"] main {
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Modal styles for QR Scanner */
+.qr-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--s4);
+  padding: var(--s2) 0;
+}
+.qr-viewfinder {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border-radius: 20px;
+  background: var(--surface-2);
+  border: 2px dashed #4ADE80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.qr-viewfinder .icon {
+  width: 72px;
+  height: 72px;
+  color: var(--text);
+  opacity: 0.8;
+}
+.qr-scan-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #4ADE80;
+  box-shadow: 0 0 12px #4ADE80;
+  animation: qrScanAnim 2s infinite ease-in-out;
+}
+@keyframes qrScanAnim {
+  0%, 100% { top: 10px; opacity: 0.2; }
+  50% { top: 120px; opacity: 1; }
+}
+.qr-hint {
+  color: var(--text-2);
+  font-size: 13px;
+  margin: 0;
+  max-width: 320px;
+}
+.qr-badge-preview {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  padding: var(--s3) var(--s5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.qr-badge-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.qr-badge-id {
+  font-size: 12px;
+  font-family: monospace;
+}
+
 /* ---- courts */
 .courts-body {
   display: grid;
@@ -493,4 +695,45 @@ a.btn:hover {
 .courts-actions {
   justify-content: flex-end;
   align-items: center;
+}
+
+/* ---- staff */
+.staff-body {
+  display: grid;
+  gap: var(--s4);
+}
+.staff-search {
+  display: flex;
+  gap: var(--s2);
+}
+.staff-search .input {
+  flex: 1;
+}
+.staff-results {
+  display: grid;
+  gap: var(--s2);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.staff-result {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.role-card {
+  display: grid;
+  gap: var(--s3);
+  max-width: 820px;
+}
+.role-perms {
+  display: grid;
+  gap: var(--s1);
+  margin: 0;
+  padding-left: var(--s5);
+  font-size: 13px;
 }
