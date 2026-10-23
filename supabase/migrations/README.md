@@ -30,5 +30,6 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1110_import_reassign.sql`, `1130_import_id_conflicts.sql` | 3.2 | Rows that share a member ID get new numbers from the yearly sequence (never one the file uses); a number held by a different person is not skipped |
 | `1140_my_access_state_profile.sql` | 3.4 | `my_access_state()` also returns the member's own contact details and address codes for the profile form |
 | `1150_profile_details.sql` | 3.4 | Middle name, suffix, gender and emergency contact on `persons`; `update_my_profile` and `my_access_state` carry them (null keeps, empty string clears) |
+| `1160_member_signup.sql`, `1170_fix_signup_create.sql` | 3.3 | `member_review_flags` (possible duplicates, minors), `signup_enabled()`, `signup_allocate_member_no()`, `signup_create()`; consent versions in settings |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

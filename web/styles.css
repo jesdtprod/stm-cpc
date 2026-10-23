@@ -704,3 +704,28 @@ select.input {
   opacity: 0.75;
   cursor: not-allowed;
 }
+
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.check input {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.member-id {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  user-select: all;
+}

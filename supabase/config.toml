@@ -430,3 +430,8 @@ import_map = ""
 enabled = true
 verify_jwt = false
 import_map = ""
+
+[functions.member-signup]
+enabled = true
+verify_jwt = false
+import_map = ""

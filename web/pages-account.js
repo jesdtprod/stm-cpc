@@ -156,6 +156,13 @@ export function createAccountPages(
           { class: "muted small" },
           "First time here? Your first password is the last 5 digits of your member ID followed by your birth date as MMDDYYYY. You will be asked to choose a new one.",
         ),
+        h(
+          "p",
+          { class: "muted small" },
+          "Not a member yet? ",
+          h("a", { href: "#/signup" }, "Create an account"),
+          ".",
+        ),
       ),
     );
   }
@@ -610,6 +617,270 @@ export function createAccountPages(
     );
   }
 
+  // ---------------------------------------------------------------- sign up (new members only)
+  const FIELD_MESSAGES = {
+    first_name: "Enter your first name (letters only).",
+    last_name: "Enter your last name (letters only).",
+    middle_name: "The middle name can contain letters only.",
+    suffix: "Choose an extension from the list.",
+    gender: "Choose male or female, or leave it blank.",
+    date_of_birth: "Enter your date of birth.",
+    mobile: "Enter a valid mobile number, for example 09171234567.",
+    email: "Enter a valid email address, or leave it blank.",
+    password: "Choose a password.",
+    consent_waiver: "Please accept the waiver to continue.",
+    consent_privacy: "Please accept the privacy notice to continue.",
+    captcha_token: "Please complete the security check first.",
+  };
+
+  function checkbox(id, text) {
+    const box = h("input", { type: "checkbox", id, name: id });
+    return {
+      box,
+      node: h("div", { class: "check" }, box, h("label", { for: id }, text)),
+    };
+  }
+
+  function signUpPage() {
+    const state = session.getState();
+    if (state.status === "signed_in") {
+      queueMicrotask(() => go(nextHash(state)));
+      return h("div", { class: "page" });
+    }
+    let token = null;
+    let widget = null;
+    const turnstileBox = h("div", { class: "turnstile-box" });
+    const error = errorBox();
+    renderTurnstile(turnstileBox, {
+      action: "member-signup",
+      onToken: (t) => (token = t),
+      onExpire: () => (token = null),
+      onError: (m) => showError(error, m),
+    }).then((w) => (widget = w)).catch((e) => showError(error, e.message));
+
+    const firstName = field({
+      id: "su-first",
+      label: "First name",
+      required: true,
+    });
+    const lastName = field({
+      id: "su-last",
+      label: "Last name",
+      required: true,
+    });
+    const middleName = field({
+      id: "su-middle",
+      label: "Middle name (optional)",
+    });
+    const suffix = choiceField(
+      "su-suffix",
+      "Extension (optional)",
+      SUFFIXES.map((x) => [x, x]),
+      "",
+      "None",
+    );
+    const gender = choiceField(
+      "su-gender",
+      "Gender (optional)",
+      GENDERS,
+      "",
+      "Prefer not to say",
+    );
+    const birth = field({
+      id: "su-birth",
+      label: "Date of birth",
+      type: "date",
+      required: true,
+    });
+    birth.querySelector("input").setAttribute(
+      "max",
+      new Date().toISOString().slice(0, 10),
+    );
+    birth.querySelector("input").setAttribute("min", "1920-01-01");
+    const mobile = field({
+      id: "su-mobile",
+      label: "Mobile number",
+      required: true,
+      placeholder: "09171234567",
+    });
+    mobile.querySelector("input").setAttribute("inputmode", "tel");
+    mobile.querySelector("input").setAttribute("autocomplete", "tel");
+    const email = field({
+      id: "su-email",
+      label: "Email (optional)",
+      type: "email",
+    });
+    const password = field({
+      id: "su-password",
+      label: "Password",
+      type: "password",
+      required: true,
+      hint: "At least 12 characters. A few unrelated words works well.",
+    });
+    const confirm = field({
+      id: "su-confirm",
+      label: "Repeat the password",
+      type: "password",
+      required: true,
+    });
+    password.querySelector("input").setAttribute(
+      "autocomplete",
+      "new-password",
+    );
+    confirm.querySelector("input").setAttribute("autocomplete", "new-password");
+    for (const f of [firstName, lastName, middleName]) {
+      f.querySelector("input").setAttribute("maxlength", "60");
+    }
+    firstName.querySelector("input").setAttribute("autocomplete", "given-name");
+    lastName.querySelector("input").setAttribute("autocomplete", "family-name");
+
+    const waiver = checkbox(
+      "su-waiver",
+      "I accept the club's waiver and release of liability.",
+    );
+    const privacy = checkbox(
+      "su-privacy",
+      "I agree that the club may collect and use my personal information for membership, bookings and tournaments (Data Privacy Act of 2012).",
+    );
+    // Honeypot: people never see or fill this; automated forms often do.
+    const trap = h(
+      "div",
+      { class: "hp", "aria-hidden": "true" },
+      h("label", { for: "su-website" }, "Leave this field empty"),
+      h("input", {
+        id: "su-website",
+        name: "website",
+        type: "text",
+        tabindex: "-1",
+        autocomplete: "off",
+      }),
+    );
+
+    const submit = button({
+      label: "Create my account",
+      variant: "primary",
+      type: "submit",
+      icon: "check",
+    });
+    const form = h(
+      "form",
+      { class: "stack", novalidate: true, onSubmit: (e) => e.preventDefault() },
+      h("h2", { class: "form-section" }, "About you"),
+      firstName,
+      lastName,
+      middleName,
+      suffix.node,
+      gender.node,
+      birth,
+      h("h2", { class: "form-section" }, "Contact"),
+      mobile,
+      email,
+      h("h2", { class: "form-section" }, "Password"),
+      password,
+      confirm,
+      h("h2", { class: "form-section" }, "Agreements"),
+      waiver.node,
+      privacy.node,
+      trap,
+      turnstileBox,
+      error,
+      h("div", { class: "actions" }, submit),
+    );
+    const card = h("div", { class: "card auth-card" }, form);
+
+    form.addEventListener(
+      "submit",
+      withPending(submit, async () => {
+        showError(error, []);
+        const local = localPasswordProblems(
+          inputValue(password),
+          inputValue(confirm),
+        );
+        if (local.length) return showError(error, local);
+        if (!token) return showError(error, FIELD_MESSAGES.captcha_token);
+        const used = token;
+        token = null;
+        try {
+          const result = await authApi.memberSignup({
+            first_name: inputValue(firstName),
+            last_name: inputValue(lastName),
+            middle_name: inputValue(middleName),
+            suffix: suffix.sel.value,
+            gender: gender.sel.value,
+            date_of_birth: inputValue(birth),
+            mobile: inputValue(mobile),
+            email: inputValue(email),
+            password: inputValue(password),
+            consent_waiver: waiver.box.checked,
+            consent_privacy: privacy.box.checked,
+            website: trap.querySelector("input").value,
+          }, used);
+          password.querySelector("input").value = "";
+          confirm.querySelector("input").value = "";
+          card.replaceChildren(
+            h("h2", {}, "Your account is ready"),
+            h("p", {}, "Your member ID is:"),
+            h(
+              "p",
+              { class: "member-id", tabindex: "0" },
+              result.member_no ?? "",
+            ),
+            h(
+              "p",
+              { class: "muted" },
+              "Write it down: you need it to sign in, together with the password you just chose. The club will review your membership, and you can complete your profile after you sign in.",
+            ),
+            h(
+              "div",
+              { class: "actions" },
+              h(
+                "a",
+                { class: "btn btn-primary", href: "#/signin" },
+                "Go to sign in",
+              ),
+            ),
+          );
+        } catch (e) {
+          if (e.code === "invalid") {
+            showError(
+              error,
+              Object.keys(e.errors ?? {}).map((k) =>
+                FIELD_MESSAGES[k] ?? "Please check your details."
+              ),
+            );
+          } else if (e.code === "weak_password") {
+            showError(error, problemMessages(e.problems));
+          } else {showError(
+              error,
+              e.message || "Sign-up could not be completed.",
+            );}
+        } finally {
+          widget?.reset(); // the token is single use
+        }
+      }),
+    );
+
+    return h(
+      "div",
+      { class: "page auth-page" },
+      pageHeader({
+        icon: "plus",
+        eyebrow: "New members",
+        title: "Create an account",
+        description:
+          "For people who are not members yet. Existing members already have an account: sign in instead.",
+      }),
+      card,
+      h(
+        "p",
+        { class: "muted small" },
+        "Already a member? ",
+        h("a", { href: "#/signin" }, "Sign in"),
+        ". Under 18? A parent or guardian should complete this form, and the club will ask for a signed waiver.",
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------- pending
   function step(done, label) {
     return h(
@@ -688,5 +959,5 @@ export function createAccountPages(
     );
   }
 
-  return { signInPage, passwordPage, profilePage, pendingPage };
+  return { signInPage, signUpPage, passwordPage, profilePage, pendingPage };
 }

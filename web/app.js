@@ -17,7 +17,7 @@ import {
 import { CHANNEL, createSession } from "./lib/session.js";
 import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
-import { changePassword, memberLogin } from "./lib/auth-api.js";
+import { changePassword, memberLogin, memberSignup } from "./lib/auth-api.js";
 import { renderTurnstile } from "./lib/turnstile.js";
 
 const APP_VERSION = "0.1.0";
@@ -107,12 +107,18 @@ if (isLocalDev) {
 const accountPages = createAccountPages({
   session,
   api,
-  authApi: { changePassword },
+  authApi: { changePassword, memberSignup },
   renderTurnstile,
   getAccessToken: async () =>
     (await client.auth.getSession()).data.session?.access_token,
 });
 route("/signin", () => accountPages.signInPage(), "Sign in", "public");
+route(
+  "/signup",
+  () => accountPages.signUpPage(),
+  "Create an account",
+  "public",
+);
 route("/password", () => accountPages.passwordPage(), "Password", "gated");
 route("/profile", () => accountPages.profilePage(), "Profile", "gated");
 route("/pending", () => accountPages.pendingPage(), "Account status", "gated");

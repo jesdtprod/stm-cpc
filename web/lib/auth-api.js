@@ -24,6 +24,9 @@ const MESSAGES = {
   sign_in_again:
     "For your security, please sign in again, then change your password.",
   too_many_attempts: "Too many attempts. Please try again in a few minutes.",
+  closed: "New sign-ups are closed right now. Please ask the club.",
+  existing_member_claim:
+    "Sign-up is for new members only. If you are already a member, sign in with your member ID.",
 };
 
 async function post(path, body, headers, fetchFn) {
@@ -47,7 +50,11 @@ async function post(path, body, headers, fetchFn) {
     code,
     json.message ?? MESSAGES[code] ??
       "Something went wrong. Please try again.",
-    { status: res.status, problems: json.problems ?? [] },
+    {
+      status: res.status,
+      problems: json.problems ?? [],
+      errors: json.errors ?? {},
+    },
   );
 }
 
@@ -79,4 +86,15 @@ export async function changePassword(
   await post("member-password", { new_password: newPassword }, {
     authorization: `Bearer ${accessToken}`,
   }, fetchFn);
+}
+
+/** Public sign-up for new members. Resolves to { member_no }. Rejects with AuthFlowError (.errors, .problems). */
+export async function memberSignup(fields, captchaToken, fetchFn = fetch) {
+  const json = await post(
+    "member-signup",
+    { ...fields, captcha_token: captchaToken },
+    {},
+    fetchFn,
+  );
+  return { member_no: json.member_no ?? null, queued: Boolean(json.queued) };
 }
