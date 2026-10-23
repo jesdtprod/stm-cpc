@@ -15,6 +15,7 @@ import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
 import { createHomePages } from "./pages-home.js";
 import { createCategoriesPages } from "./pages-categories.js";
+import { createCourtsPages } from "./pages-courts.js";
 import { createRanksPages } from "./pages-ranks.js";
 import { createSettingsPages } from "./pages-settings.js";
 import { createShell } from "./shell.js";
@@ -160,6 +161,14 @@ const ranksPages = createRanksPages({
 });
 route("/admin/ranks", () => ranksPages.ranksPage(), "Ranks", {
   permission: "ranks.manage",
+});
+
+const courtsPages = createCourtsPages({
+  api,
+  getOrgId: () => session.getState().profile?.org_id,
+});
+route("/admin/courts", () => courtsPages.courtsPage(), "Courts", {
+  permission: "courts.manage",
 });
 
 const homePages = createHomePages({ session, api });

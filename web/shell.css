@@ -484,3 +484,13 @@ a.btn:hover {
     flex-basis: calc(100% - 100px);
   }
 }
+
+/* ---- courts */
+.courts-body {
+  display: grid;
+  gap: var(--s4);
+}
+.courts-actions {
+  justify-content: flex-end;
+  align-items: center;
+}
