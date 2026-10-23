@@ -14,6 +14,7 @@ import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
 import { createHomePages } from "./pages-home.js";
+import { createSettingsPages } from "./pages-settings.js";
 import { createShell } from "./shell.js";
 import { changePassword, memberLogin, memberSignup } from "./lib/auth-api.js";
 import { renderTurnstile } from "./lib/turnstile.js";
@@ -42,17 +43,31 @@ const idleParam = isLocalDev
   ? Number(new URLSearchParams(location.search).get("idle"))
   : 0;
 
+// The club's idle timeout (setting session.idle_minutes), read after sign-in.
+let idleMinutes = null;
+
 const session = createSession({
   auth: client.auth,
   login,
+  getIdleMs: () =>
+    idleParam > 0
+      ? idleParam * 1000
+      : idleMinutes
+      ? idleMinutes * 60_000
+      : null,
   idleMs: idleParam > 0 ? idleParam * 1000 : undefined,
   warnMs: idleParam > 0 ? Math.min(10_000, idleParam * 500) : undefined,
   loadAccess: async () => {
-    const [grants, me, state] = await Promise.all([
+    const [grants, me, state, idle] = await Promise.all([
       api.rpc("my_permissions"),
       api.rpc("my_profile"),
       api.rpc("my_access_state"),
+      api.read((c) =>
+        c.from("settings").select("value").eq("key", "session.idle_minutes")
+          .is("unit_id", null).is("deleted_at", null).maybeSingle()
+      ).catch(() => null),
     ]);
+    idleMinutes = Number(idle?.value) > 0 ? Number(idle.value) : null;
     return { grants, profile: me?.[0] ?? null, access: state?.[0] ?? null };
   },
   channel: "BroadcastChannel" in globalThis
@@ -117,6 +132,11 @@ route("/pending", () => accountPages.pendingPage(), "Account status", "gated");
 const adminPages = createAdminPages({ client, api });
 route("/admin/members", () => adminPages.membersPage(), "Members", {
   any: ["members.approve", "members.suspend", "members.read"],
+});
+
+const settingsPages = createSettingsPages({ api });
+route("/admin/settings", () => settingsPages.settingsPage(), "Settings", {
+  permission: "settings.manage",
 });
 
 const homePages = createHomePages({ session, api });

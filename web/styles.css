@@ -24,13 +24,13 @@
 /* ===== 1. Design tokens (UI_DESIGN.md section 2) ===== */
 :root {
   color-scheme: dark;
-  --bg: #071510;
-  --surface: #0e2219;
-  --surface-2: #142e22;
-  --surface-3: #1b3b2c;
-  --border: #234836;
+  --bg: #030705;
+  --surface: #08110c;
+  --surface-2: #0e1c15;
+  --surface-3: #14271d;
+  --border: #1a3326;
   --text: #f2f7f4;
-  --text-2: #9db5a7;
+  --text-2: #8da597;
   --primary: #15803d;
   --primary-hover: #16a34a;
   --accent: #f59e0b;
@@ -38,7 +38,7 @@
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #f87171;
-  --danger-bg: #451216;
+  --danger-bg: #380d11;
 
   --s1: 4px;
   --s2: 8px;
@@ -581,13 +581,23 @@ textarea.input {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-control);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.75), 0 0 1px 1px rgba(255, 255, 255,
+    0.08);
   padding: var(--s2);
-  z-index: 50;
-  max-height: 260px;
+  z-index: 1000 !important;
+  max-height: 320px;
   overflow-y: auto;
   display: grid;
   gap: var(--s2);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.searchable-select-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+.searchable-select-dropdown::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
 }
 .searchable-select-options {
   display: grid;
@@ -872,14 +882,15 @@ textarea.input {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  z-index: 100;
+  z-index: 1000 !important;
   width: 310px;
   max-width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-card);
   padding: var(--s3);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 1px 1px rgba(255, 255, 255,
+    0.08);
   backdrop-filter: blur(20px);
   transform-origin: top left;
   animation: calendarPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);

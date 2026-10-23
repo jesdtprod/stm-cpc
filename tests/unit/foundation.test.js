@@ -474,3 +474,24 @@ Deno.test("session: a restored session is not fresh, so sensitive actions prompt
   await s.ensureFreshAuth(() => (prompts++, Promise.resolve({})), "t");
   assert.equal(prompts, 1);
 });
+
+Deno.test("session: the club's idle setting replaces the default, and a bad value falls back to it", async () => {
+  const env = makeEnv({ getIdleMs: () => 5 * 60_000 });
+  const s = env.make(null);
+  await s.signIn({ id: "CPC-2026-00001", password: "x" }, "token");
+  env.clock.advance(4 * 60_000);
+  assert.deepEqual(env.log.warnings, [60], "warns one minute before 5 minutes");
+  env.clock.advance(60_000);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(s.getState().reason, "idle");
+
+  const fallback = makeEnv({ getIdleMs: () => null });
+  const f = fallback.make(null);
+  await f.signIn({ id: "CPC-2026-00001", password: "x" }, "token");
+  fallback.clock.advance(14 * 60_000 - 1);
+  assert.equal(
+    f.getState().status,
+    "signed_in",
+    "no setting: the 15 minute default",
+  );
+});

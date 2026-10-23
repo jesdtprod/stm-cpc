@@ -115,7 +115,7 @@ Each screen has list, create, edit, soft delete, restore, validation, idempotent
 
 | ID | Step | Done when |
 | --- | --- | --- |
-| [ ] 4.1 | **Settings** (payments, booking, members, events, ranks, general) | Changes are validated, audited, and enforced by the server |
+| [x] 4.1 | **Settings** (payments, booking, members, events, ranks, general) | Changes are validated, audited, and enforced by the server *Verified live in a browser with a temporary admin (deleted afterwards): the seven tabs load; a value outside the range is stopped by the page and also refused by the database when the page is bypassed (the function and a direct table update); a saved change shows in the audit log with its reason; time zone and member ID format are read-only. Database tests 42/42; the idle timeout setting is read at sign-in (unit tested).* |
 | [ ] 4.2 | **Categories** (skill levels, ordered) | Categories in use cannot be deleted; codes unique among active |
 | [ ] 4.3 | **Rank ladders, ranks, rank rules** | Rules editable without code; edge cases tested |
 | [ ] 4.4 | **Courts, rates, operating hours, blackouts** | A court with future bookings cannot be archived |

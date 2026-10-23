@@ -12,7 +12,10 @@ const GROUPS = [
   },
   {
     label: "Club",
-    items: [{ path: "/admin/members", label: "Members", icon: "user" }],
+    items: [
+      { path: "/admin/members", label: "Members", icon: "user" },
+      { path: "/admin/settings", label: "Settings", icon: "layers" },
+    ],
   },
   {
     label: "Account",

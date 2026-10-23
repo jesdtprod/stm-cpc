@@ -36,5 +36,7 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1200_member_approval.sql` | 3.5 | `decide_member(action, member, reason, key, ...)`: approve, reject, reconsider, suspend, restore; permissioned, idempotent, audited; rejected members can be reconsidered |
 | `1210_my_dashboard.sql` | 3.6 | `my_dashboard()`: the figures behind the role-aware home; each section appears only when the caller holds the matching permission |
 | `1220_fix_my_dashboard.sql` | 3.6 | Fix to 1210: `events` has no `deleted_at` |
+| `1230_settings_rules.sql` | 4.1 | Per-key setting rules (`setting_valid`) and `update_setting(key, value, reason, idem)`: permissioned, idempotent, audited; timezone and member ID format are read-only from the app |
+| `1240_settings_readonly_prefix.sql` | 4.1 | Member ID prefix is read-only too |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

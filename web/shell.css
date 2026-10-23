@@ -362,3 +362,58 @@ a.btn:hover {
   height: 96px;
   object-fit: contain;
 }
+
+/* ---- settings */
+.settings-body {
+  display: grid;
+  gap: var(--s4);
+}
+.settings-card {
+  display: grid;
+  gap: var(--s4);
+  max-width: 760px;
+}
+.settings-title {
+  margin: 0;
+  font-size: 16px;
+}
+.settings-item {
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--border);
+}
+.settings-methods {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.settings-methods legend {
+  margin-bottom: var(--s2);
+  padding: 0;
+  font-weight: 600;
+}
+.settings-readonly {
+  display: grid;
+  gap: var(--s1);
+}
+.settings-readonly-label {
+  font-weight: 600;
+}
+.settings-readonly-value {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.settings-actions {
+  justify-content: flex-end;
+}
+.settings-card.is-loading .sk-line {
+  display: block;
+  height: 14px;
+  margin-bottom: var(--s3);
+  border-radius: 6px;
+  background: var(--surface-3);
+}
+.settings-card.is-loading .sk-wide {
+  width: 60%;
+}

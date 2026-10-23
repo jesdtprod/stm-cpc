@@ -19,6 +19,7 @@ export function createSession({
   storage = null,
   cacheStorage = null,
   idleMs = 15 * 60_000,
+  getIdleMs = null, // optional: the club's idle setting, read after sign-in
   warnMs = 60_000,
   reauthMs = 5 * 60_000,
   now = () => Date.now(),
@@ -55,11 +56,12 @@ export function createSession({
   function startIdle() {
     stopIdle();
     if (state.status !== "signed_in") return;
+    const idle = Number(getIdleMs?.()) > 0 ? Number(getIdleMs()) : idleMs;
     warnTimer = setTimer(
-      () => onIdleWarning(Math.round(warnMs / 1000)),
-      Math.max(idleMs - warnMs, 0),
+      () => onIdleWarning(Math.round(Math.min(warnMs, idle) / 1000)),
+      Math.max(idle - warnMs, 0),
     );
-    idleTimer = setTimer(() => signOut("idle"), idleMs);
+    idleTimer = setTimer(() => signOut("idle"), idle);
   }
 
   async function clearLocalData() {
