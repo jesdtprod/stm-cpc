@@ -15,6 +15,7 @@ import {
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
+import { formatDateTime } from "./lib/dates.js";
 
 const PAGE_SIZE = 25;
 
@@ -27,10 +28,25 @@ const TABS = [
   { id: "active", label: "Active", statuses: ["active"] },
   { id: "suspended", label: "Suspended", statuses: ["suspended"] },
   { id: "rejected", label: "Rejected", statuses: ["rejected"] },
+  { id: "archived", label: "Archived", statuses: ["archived"] },
   { id: "new", label: "Not signed in yet", statuses: ["imported", "invited"] },
   {
     id: "all",
     label: "All",
+    statuses: [
+      "imported",
+      "invited",
+      "pending_approval",
+      "active",
+      "rejected",
+      "suspended",
+      "archived",
+    ],
+  },
+  {
+    id: "deleted",
+    label: "Deleted",
+    deleted: true,
     statuses: [
       "imported",
       "invited",
@@ -73,7 +89,7 @@ const FLAG_SHORT = {
 };
 
 const SELECT =
-  "id,member_no,status,status_reason,joined_on,created_at,profile_id," +
+  "id,member_no,status,status_reason,joined_on,created_at,profile_id,deleted_at,delete_reason," +
   "persons!inner(display_name,mobile,email,gender,date_of_birth,address_text,emergency_name,emergency_relationship,emergency_phone)," +
   "flags:member_review_flags!member_review_flags_member_id_fkey(kind,resolved_at)";
 
@@ -85,17 +101,18 @@ export function createAdminPages({ client, api }) {
     const { count, error } = await client.from("members").select("id", {
       count: "exact",
       head: true,
-    }).in("status", statuses);
+    }).in("status", statuses).is("deleted_at", null);
     if (error) throw error;
     return count ?? 0;
   }
 
-  async function loadPage({ statuses, term, page }) {
+  async function loadPage({ statuses, term, page, deleted = false }) {
     let q = client.from("members").select(SELECT, { count: "exact" }).in(
       "status",
       statuses,
     ).order("created_at", { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    q = deleted ? q.not("deleted_at", "is", null) : q.is("deleted_at", null);
     const t = cleanTerm(term);
     if (t) {
       q = /^(cpc|\d)/i.test(t)
@@ -133,6 +150,7 @@ export function createAdminPages({ client, api }) {
       destructive = false,
       body,
       extra = () => ({}),
+      call = null,
       reasonRequired,
       onDone,
     },
@@ -158,13 +176,13 @@ export function createAdminPages({ client, api }) {
           return false;
         }
         try {
-          await api.rpc("decide_member", {
+          await (call ? call({ reason, key }) : api.rpc("decide_member", {
             p_action: action,
             p_member_id: row.id,
             p_reason: reason || null,
             p_key: key,
             ...extra(form),
-          });
+          }));
           toast(`${row.persons.display_name}: ${verb.toLowerCase()} done.`, {
             tone: "success",
           });
@@ -172,7 +190,8 @@ export function createAdminPages({ client, api }) {
         } catch (e) {
           // The decision function's own messages (open review flags, wrong state, no permission) are written for
           // people, so they are shown as they are; anything else gets the generic wording.
-          const own = ["22023", "42501", "CP422", "CP409"].includes(e.code) &&
+          const own =
+            ["22023", "42501", "23503", "CP422", "CP409"].includes(e.code) &&
             e.cause?.message;
           error.textContent = own || e.message ||
             "That did not work. Please try again.";
@@ -286,13 +305,42 @@ export function createAdminPages({ client, api }) {
         destructive: false,
         label: "Reason",
       },
+      archive: {
+        title: "Archive this member",
+        verb: "Archive",
+        destructive: true,
+        label: "Reason",
+      },
+      delete: {
+        title: "Delete this member record",
+        verb: "Delete",
+        destructive: true,
+        label: "Reason",
+      },
     }[action];
+    const call = action === "archive"
+      ? ({ reason, key }) =>
+        api.rpc("archive_member", {
+          p_member_id: row.id,
+          p_reason: reason,
+          p_key: key,
+        })
+      : (action === "delete"
+        ? ({ reason, key }) =>
+          api.rpc("soft_delete", {
+            p_table: "members",
+            p_id: row.id,
+            p_reason: reason,
+            p_key: key,
+          })
+        : null);
     decide({
       action,
       row,
       title: copy.title,
       verb: copy.verb,
       destructive: copy.destructive,
+      call,
       reasonRequired: true,
       onDone,
       body: h(
@@ -309,6 +357,8 @@ export function createAdminPages({ client, api }) {
     const line = (label, value) =>
       h("div", { class: "kv" }, h("dt", {}, label), h("dd", {}, value || "—"));
     const flags = row.flags ?? [];
+    const history = h("div", { class: "muted" }, "Loading history…");
+    const rank = h("span", {}, "Loading…");
     openModal({
       title: p.display_name,
       eyebrow: row.member_no,
@@ -346,9 +396,70 @@ export function createAdminPages({ client, api }) {
             ).join("; ")
             : "none",
         ),
+        h(
+          "div",
+          { class: "kv" },
+          h("dt", {}, "Current rank"),
+          h("dd", {}, rank),
+        ),
+        row.deleted_at
+          ? line("Record", `deleted: ${row.delete_reason ?? ""}`)
+          : null,
+        h(
+          "div",
+          { class: "kv kv-wide" },
+          h("dt", {}, "History"),
+          h("dd", {}, history),
+        ),
       ),
       onConfirm: () => {},
     });
+    loadRank(row).then((text) => (rank.textContent = text)).catch(
+      () => (rank.textContent = "—"),
+    );
+    loadHistory(row).then((items) => {
+      history.className = "";
+      history.replaceChildren(
+        ...(items.length
+          ? items.map((e) =>
+            h(
+              "div",
+              {},
+              `${formatDateTime(e.occurred_at)}: ${
+                e.from_status
+                  ? `${STATUS_LABEL[e.from_status] ?? e.from_status} to `
+                  : ""
+              }${STATUS_LABEL[e.to_status] ?? e.to_status}${
+                e.reason ? ` (${e.reason})` : ""
+              }`,
+            )
+          )
+          : ["No changes recorded."]),
+      );
+    }).catch(() => {
+      history.textContent = "The history could not be loaded.";
+    });
+  }
+
+  async function loadRank(row) {
+    const r = await api.read((c) =>
+      c.from("member_ranks").select(
+        "ranks(name,rank_ladders(categories(name)))",
+      ).eq("member_id", row.id).is("deleted_at", null).maybeSingle()
+    );
+    const rk = r?.ranks;
+    return rk
+      ? `${rk.rank_ladders?.categories?.name ?? ""}: ${rk.name}`
+      : "Not ranked yet";
+  }
+
+  async function loadHistory(row) {
+    return await api.read((c) =>
+      c.from("member_status_events").select(
+        "from_status,to_status,reason,occurred_at",
+      ).eq("member_id", row.id).order("occurred_at", { ascending: false })
+        .limit(20)
+    ) ?? [];
   }
 
   // ------------------------------------------------------------------ the page
@@ -396,6 +507,33 @@ export function createAdminPages({ client, api }) {
       ];
       const approve = can("members.approve");
       const suspend = can("members.suspend");
+      const edit = can("members.update");
+      if (row.deleted_at) {
+        if (edit) {
+          buttons.push(iconButton({
+            label: "Restore the record",
+            icon: "refresh",
+            onClick: async () => {
+              try {
+                await api.rpc("restore_row", {
+                  p_table: "members",
+                  p_id: row.id,
+                  p_key: api.newKey(),
+                });
+                toast(`${row.persons.display_name}: record restored.`, {
+                  tone: "success",
+                });
+                await refresh();
+              } catch (e) {
+                toast(e.cause?.message || e.message || "That did not work.", {
+                  tone: "error",
+                });
+              }
+            },
+          }));
+        }
+        return h("div", { class: "row-actions" }, buttons);
+      }
       if (row.status === "pending_approval" && approve) {
         buttons.push(
           iconButton({
@@ -448,6 +586,36 @@ export function createAdminPages({ client, api }) {
           icon: "refresh",
           onClick: () =>
             reasonModal("restore", row, "They get their access back.", refresh),
+        }));
+      }
+      if (suspend && row.status !== "archived") {
+        buttons.push(iconButton({
+          label: "Archive",
+          icon: "inbox",
+          onClick: () =>
+            reasonModal(
+              "archive",
+              row,
+              "Archived is final: they lose access and cannot be brought back to active. Their history is kept.",
+              refresh,
+            ),
+        }));
+      }
+      if (
+        edit &&
+        ["archived", "rejected", "imported", "invited"].includes(row.status)
+      ) {
+        buttons.push(iconButton({
+          label: "Delete the record",
+          icon: "trash",
+          variant: "danger",
+          onClick: () =>
+            reasonModal(
+              "delete",
+              row,
+              "The record is hidden from every list. You can restore it from the Deleted tab.",
+              refresh,
+            ),
         }));
       }
       return h("div", { class: "row-actions" }, buttons);
@@ -584,6 +752,7 @@ export function createAdminPages({ client, api }) {
       try {
         const { rows, total } = await loadPage({
           statuses: TABS.find((t) => t.id === state.tab).statuses,
+          deleted: Boolean(TABS.find((t) => t.id === state.tab).deleted),
           term: state.term,
           page: state.page,
         });

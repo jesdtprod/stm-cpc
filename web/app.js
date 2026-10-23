@@ -16,6 +16,7 @@ import { createAdminPages } from "./pages-admin.js";
 import { createHomePages } from "./pages-home.js";
 import { createCategoriesPages } from "./pages-categories.js";
 import { createCourtsPages } from "./pages-courts.js";
+import { createImportPages } from "./pages-import.js";
 import { createRanksPages } from "./pages-ranks.js";
 import { createSettingsPages } from "./pages-settings.js";
 import { createShell } from "./shell.js";
@@ -169,6 +170,11 @@ const courtsPages = createCourtsPages({
 });
 route("/admin/courts", () => courtsPages.courtsPage(), "Courts", {
   permission: "courts.manage",
+});
+
+const importPages = createImportPages({ api });
+route("/admin/import", () => importPages.importPage(), "Member import", {
+  any: ["members.import", "members.review_import"],
 });
 
 const homePages = createHomePages({ session, api });
