@@ -617,3 +617,16 @@ dialog.modal::backdrop {
     width: 100%;
   }
 }
+
+.dev-log {
+  margin: var(--s4) 0 0;
+  padding: var(--s3);
+  min-height: 120px;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  font: 12px/1.5 ui-monospace, Consolas, monospace;
+}

@@ -15,6 +15,7 @@ import {
   setAuth,
 } from "./lib/permissions.js";
 import { CHANNEL, createSession } from "./lib/session.js";
+import { createDev, isLocalDev } from "./dev.js";
 
 const APP_VERSION = "0.1.0";
 
@@ -36,11 +37,21 @@ document.getElementById("skip").addEventListener("click", () => main.focus());
 const { client, api } = createClients();
 
 // Sign-in goes through the member-login Edge Function (step 3.1).
-const login = () => Promise.reject(new Error("Sign-in is not available yet."));
+let devTools = null;
+const login = (credentials, captchaToken) =>
+  devTools
+    ? devTools.devLogin(credentials, captchaToken)
+    : Promise.reject(new Error("Sign-in is not available yet."));
+// "?idle=20" shortens the idle timeout to 20 seconds, on localhost only, to test the sign-out.
+const idleParam = isLocalDev
+  ? Number(new URLSearchParams(location.search).get("idle"))
+  : 0;
 
 const session = createSession({
   auth: client.auth,
   login,
+  idleMs: idleParam > 0 ? idleParam * 1000 : undefined,
+  warnMs: idleParam > 0 ? Math.min(10_000, idleParam * 500) : undefined,
   loadAccess: async () => {
     const [grants, me] = await Promise.all([
       api.rpc("my_permissions"),
@@ -54,6 +65,7 @@ const session = createSession({
   storage: globalThis.localStorage,
   cacheStorage: globalThis.caches ?? null,
   onChange: (s) => {
+    dispatchEvent(new CustomEvent("cpc:session", { detail: s }));
     if (s.status === "signed_in") {
       setAuth({ signedIn: true, grants: s.grants, gate: s.gate });
     } else {
@@ -81,6 +93,11 @@ installGlobalHandlers(globalThis, {
   reporter,
   notify: (message) => toast(message),
 });
+
+if (isLocalDev) {
+  devTools = createDev({ client, api, session, reporter });
+  route("/dev", () => devTools.page(), "Self-check", "public");
+}
 
 const router = start(main, {
   onChange: drawNav,
