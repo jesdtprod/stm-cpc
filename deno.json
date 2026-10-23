@@ -4,11 +4,13 @@
     "check": "deno run --allow-read=. --allow-run=git scripts/check-secrets.mjs && deno run --allow-read=. --allow-run=git scripts/check-repo.mjs",
     "db:test": "deno run --allow-read=supabase/tests --allow-write=supabase/.temp --allow-run=npx scripts/run-db-tests.mjs",
     "db:advisors": "npx supabase db advisors --linked --type all --level warn --fail-on warn",
+    "db:backup": "deno run --allow-read=. --allow-env=USERPROFILE,HOME \"--allow-write=$USERPROFILE/cpc-backups\" --allow-run=npx,git scripts/backup-db.mjs",
+    "test": "deno test --no-check tests/unit",
     "lint": "deno lint",
     "fmt": "deno fmt --check"
   },
   "fmt": {
-    "include": ["deno.json", "scripts/", "web/", ".github/"],
+    "include": ["deno.json", "scripts/", "web/", "tests/", ".github/"],
     "exclude": ["web/**/*.md", "scripts/**/*.md", ".github/**/*.md"]
   },
   "lint": { "exclude": [".claude/", "supabase/.temp/"] }

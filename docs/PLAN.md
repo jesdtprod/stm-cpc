@@ -1,4 +1,4 @@
-# Production Plan — Capitol Pickleball Club (CPC) Web App
+﻿# Production Plan â€” Capitol Pickleball Club (CPC) Web App
 
 Step-by-step plan from project setup to launch. It starts with the project setup standard, then the shared foundation, then data entry, and ends with the complex features. Read it with the other documents in this folder:
 
@@ -71,7 +71,7 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 | [x] 1.4 | **RBAC:** `roles`, `permissions`, `role_permissions`, `org_members`; `core.current_profile_id()` and `core.has_permission()`; seed the permission catalog (`FEATURES.md` Section 3) and default roles (pending member, member, referee, front desk, manager, admin) | Seed applies; `has_permission` returns the right answer for each role in tests |
 | [x] 1.5 | Operations tables: `audit_log` (insert-only), `idempotency_keys`, `settings`, `counters`, `lookups`, `files`, `notifications`, `client_errors` | Audit and idempotency behavior tests pass (replay returns stored response; changed payload is rejected) |
 | [x] 1.6 | **Access hardening.** Revoke default privileges from `anon` and `authenticated`; RLS policies on every table; block privilege escalation (a user cannot change their own role, unit, or status) | Tests: anonymous access denied; user in one org cannot read another; escalation attempts fail |
-| [ ] 1.7 | Supabase Security and Performance Advisors; enable backups | No unresolved findings; backup setting confirmed |
+| [x] 1.7 | Supabase Security and Performance Advisors; enable backups | No unresolved findings; backup setting confirmed |
 
 ## Stage 1B: Foundation services (before any screen)
 
@@ -82,7 +82,7 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 | [ ] 1B.3 | **Route guards and `can('code')` helper.** Routes are public, signed-in, or permission-based; menu and buttons read permissions | Each role sees only its own menu; direct URL access to a forbidden page is refused |
 | [ ] 1B.4 | **API layer.** One wrapper for `supabase-js` and RPC calls; ULID generated when a form opens and reused on retries; error mapping to clear messages; request ID | Retrying a call with the same ID creates one record; errors show readable messages |
 | [ ] 1B.5 | **Error handling and logging.** Global `error` / `unhandledrejection` handler; rate-limited writes to `client_errors`; no personal data in logs | A forced error appears in `client_errors` once; the user sees a friendly message |
-| [ ] 1B.6 | **Shared utilities.** Client ULID, Asia/Manila date helpers, money formatting, `escapeHtml`, keyset pagination helper, form validation helper | Unit tests pass |
+| [x] 1B.6 | **Shared utilities.** Client ULID, Asia/Manila date helpers, money formatting, `escapeHtml`, keyset pagination helper, form validation helper | Unit tests pass |
 | [ ] 1B.7 | **Test accounts** for each role and a small **fake-data seed** (never real members) | Each role can sign in on the dev project and passes the role tests |
 | [ ] 1B.8 | **Storage buckets** for payment proofs: private, size and type limits, RLS on `storage.objects` | Upload by the owner works; another member cannot read the file; wrong file type is refused |
 
