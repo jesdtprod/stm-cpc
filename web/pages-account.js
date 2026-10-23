@@ -293,6 +293,36 @@ export function createAccountPages(
     );
   }
 
+  const SUFFIXES = ["Jr.", "Sr.", "II", "III", "IV", "V"];
+  const GENDERS = [["male", "Male"], ["female", "Female"]];
+
+  /** A <select> field with a blank first option. `choices` is a list of [value, label]. */
+  function choiceField(id, label, choices, selected, blankLabel) {
+    const sel = h(
+      "select",
+      { class: "input", id, name: id },
+      h("option", { value: "" }, blankLabel),
+      ...choices.map(([v, l]) =>
+        h("option", { value: v, selected: v === selected ? true : null }, l)
+      ),
+    );
+    return {
+      sel,
+      node: h("div", { class: "field" }, h("label", { for: id }, label), sel),
+    };
+  }
+
+  const formatDate = (iso) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+  };
+
   function profilePage() {
     const state = session.getState();
     if (state.gate === "password_change") {
@@ -300,12 +330,64 @@ export function createAccountPages(
       return h("div", { class: "page" });
     }
     const me = state.access ?? {};
-    const name = field({
+
+    // ---- name
+    const lastName = field({
+      id: "pf-last",
+      label: "Last name",
+      value: me.last_name ?? "",
+      required: true,
+    });
+    const firstName = field({
+      id: "pf-first",
+      label: "First name",
+      value: me.first_name ?? "",
+      required: true,
+    });
+    const middleName = field({
+      id: "pf-middle",
+      label: "Middle name (optional)",
+      value: me.middle_name ?? "",
+    });
+    const suffix = choiceField(
+      "pf-suffix",
+      "Extension (optional)",
+      SUFFIXES.map((x) => [x, x]),
+      me.suffix,
+      "None",
+    );
+    const display = field({
       id: "pf-name",
       label: "Display name",
       value: me.display_name ?? "",
       required: true,
+      hint: "How your name appears in the app and on brackets.",
     });
+    const gender = choiceField(
+      "pf-gender",
+      "Gender (optional)",
+      GENDERS,
+      me.gender,
+      "Prefer not to say",
+    );
+    const birth = field({
+      id: "pf-birth",
+      label: "Date of birth",
+      value: formatDate(me.date_of_birth),
+      hint: "To change your date of birth, ask the club.",
+    });
+    birth.querySelector("input").disabled = true;
+    for (const f of [lastName, firstName, middleName]) {
+      f.querySelector("input").setAttribute("maxlength", "60");
+    }
+    firstName.querySelector("input").setAttribute("autocomplete", "given-name");
+    lastName.querySelector("input").setAttribute("autocomplete", "family-name");
+    middleName.querySelector("input").setAttribute(
+      "autocomplete",
+      "additional-name",
+    );
+
+    // ---- contact
     const mobile = field({
       id: "pf-mobile",
       label: "Mobile number",
@@ -323,12 +405,32 @@ export function createAccountPages(
       value: me.email ?? "",
     });
     email.querySelector("input").setAttribute("autocomplete", "email");
+
+    // ---- emergency contact
+    const emName = field({
+      id: "pf-em-name",
+      label: "Emergency contact name (optional)",
+      value: me.emergency_name ?? "",
+    });
+    const emRel = field({
+      id: "pf-em-rel",
+      label: "Relationship (optional)",
+      value: me.emergency_relationship ?? "",
+      placeholder: "Parent, spouse, friend",
+    });
+    const emPhone = field({
+      id: "pf-em-phone",
+      label: "Emergency contact number (optional)",
+      value: me.emergency_phone ?? "",
+    });
+    emPhone.querySelector("input").setAttribute("inputmode", "tel");
+
+    // ---- address
     const street = field({
       id: "pf-street",
       label: "House number and street (optional)",
       value: me.street_line ?? "",
     });
-
     const selectField = (id, label) => {
       const sel = h("select", {
         class: "input",
@@ -360,7 +462,7 @@ export function createAccountPages(
       barangay.sel.replaceChildren(...options([], "Choose a city first"));
       barangay.sel.disabled = true;
       if (!code) return fill(city.sel, [], "Choose a province first");
-      await fill(
+      fill(
         city.sel,
         await areaList("city_muni", code),
         "Choose a city or municipality",
@@ -369,7 +471,7 @@ export function createAccountPages(
     }
     async function loadBarangays(code, selected) {
       if (!code) return fill(barangay.sel, [], "Choose a city first");
-      await fill(
+      fill(
         barangay.sel,
         await areaList("barangay", code),
         "Choose a barangay",
@@ -379,7 +481,7 @@ export function createAccountPages(
     const startProvince = me.province_code ?? me.region_code ?? "";
     (async () => {
       try {
-        await fill(
+        fill(
           province.sel,
           await provinceChoices(),
           "Choose a province",
@@ -422,9 +524,22 @@ export function createAccountPages(
     const form = h(
       "form",
       { class: "stack", novalidate: true, onSubmit: (e) => e.preventDefault() },
-      name,
+      h("h2", { class: "form-section" }, "Name"),
+      lastName,
+      firstName,
+      middleName,
+      suffix.node,
+      display,
+      gender.node,
+      birth,
+      h("h2", { class: "form-section" }, "Contact"),
       mobile,
       email,
+      h("h2", { class: "form-section" }, "Emergency contact"),
+      emName,
+      emRel,
+      emPhone,
+      h("h2", { class: "form-section" }, "Address"),
       street,
       province.node,
       city.node,
@@ -437,11 +552,20 @@ export function createAccountPages(
       withPending(submit, async () => {
         showError(error, []);
         const missing = [];
-        if (inputValue(name).trim().length < 2) {
-          missing.push("Enter your name.");
+        if (!inputValue(lastName).trim()) missing.push("Enter your last name.");
+        if (!inputValue(firstName).trim()) {
+          missing.push("Enter your first name.");
+        }
+        if (inputValue(display).trim().length < 2) {
+          missing.push("Enter the display name you want to use.");
         }
         if (inputValue(mobile).replace(/\D/g, "").length < 10) {
           missing.push("Enter a valid mobile number, for example 09171234567.");
+        }
+        const hasName = inputValue(emName).trim() !== "";
+        const hasPhone = inputValue(emPhone).trim() !== "";
+        if (hasName !== hasPhone) {
+          missing.push("An emergency contact needs both a name and a number.");
         }
         if (!barangay.sel.value) {
           missing.push("Choose your province, city and barangay.");
@@ -449,11 +573,19 @@ export function createAccountPages(
         if (missing.length) return showError(error, missing);
         try {
           await api.rpc("update_my_profile", {
-            p_display_name: inputValue(name),
+            p_display_name: inputValue(display),
             p_mobile: inputValue(mobile),
             p_email: inputValue(email) || null,
             p_street_line: inputValue(street) || null,
             p_barangay_code: barangay.sel.value,
+            p_first_name: inputValue(firstName),
+            p_middle_name: inputValue(middleName),
+            p_last_name: inputValue(lastName),
+            p_suffix: suffix.sel.value,
+            p_gender: gender.sel.value,
+            p_emergency_name: inputValue(emName),
+            p_emergency_relationship: inputValue(emRel),
+            p_emergency_phone: inputValue(emPhone),
           });
           await session.refresh();
           toast("Profile saved.");
@@ -472,7 +604,7 @@ export function createAccountPages(
         eyebrow: "Your account",
         title: "Complete your profile",
         description:
-          "The club needs your contact details and address before it can approve your membership.",
+          "The club needs your details, contact numbers and address before it can approve your membership.",
       }),
       h("div", { class: "card auth-card" }, form),
     );

@@ -38,9 +38,9 @@ insert into public.member_access (org_id, member_id, must_change_password, temp_
 select is((select count(*)::int from unnest(array['public.member_password_changed(text)', 'public.member_password_context(uuid)']) f
   where has_function_privilege('authenticated', f, 'execute') or has_function_privilege('anon', f, 'execute')), 0, 'the password hooks are service-only');
 select is(has_function_privilege('authenticated', 'public.my_access_state()', 'execute'), true, 'a signed-in member can read their own state');
-select is(has_function_privilege('authenticated', 'public.update_my_profile(text,text,text,text,text)', 'execute'), true, 'and edit their own profile');
+select is(has_function_privilege('authenticated', 'public.update_my_profile(text,text,text,text,text,text,text,text,text,text,text,text,text)', 'execute'), true, 'and edit their own profile');
 select is(has_function_privilege('anon', 'public.my_access_state()', 'execute'), false, 'anonymous callers cannot');
-select is(has_function_privilege('anon', 'public.update_my_profile(text,text,text,text,text)', 'execute'), false, 'nor edit');
+select is(has_function_privilege('anon', 'public.update_my_profile(text,text,text,text,text,text,text,text,text,text,text,text,text)', 'execute'), false, 'nor edit');
 
 -- ---- first sign-in: imported -> invited
 select core.member_login_succeeded((select mem1 from fx));

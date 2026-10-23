@@ -692,3 +692,15 @@ select.input {
 .nav-action:hover {
   background: var(--surface-2);
 }
+
+.form-section {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  margin: 8px 0 0;
+}
+.input:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
