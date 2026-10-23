@@ -20,5 +20,7 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1010_categories_ranks.sql` | 2.2 | `categories`, `rank_ladders`, `ranks`, `rank_rules`, `member_ranks`, `rank_history`, rule-condition validator |
 | `1020_courts_bookings.sql` | 2.3 | `courts`, `court_hours`, `court_rates`, `court_blackouts`, `bookings` (exclusion constraint), `booking_participants`, `booking_events`, `court_availability()` |
 | `1030_payments_ledger.sql` | 2.3 | `payment_submissions`, `ledger_accounts`, `ledger_entries` (append-only), `ledger_balances` and `source_payment_totals` views |
+| `1040_events_tournaments.sql` | 2.4 | `events`, `format_templates`, `scoring_rules`, `divisions`, `division_stages`, `registrations`, `entries`, `entry_members`, `entity_events`; foreign keys from the rank tables; event-registration payments |
+| `1050_matches_scores.sql` | 2.4 | `draws`, `matches`, `match_games`, `score_events`, `division_results` |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

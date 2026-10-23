@@ -125,7 +125,12 @@ select throws_ok(format($f$insert into public.member_ranks (org_id, member_id, r
 select throws_ok(format($f$delete from public.ranks where id = %L$f$, (select rk0 from fx)), '42501', null, 'ranks cannot be hard-deleted');
 select lives_ok(format($f$update public.categories set is_active = false where id = %L$f$, (select cat1 from fx)), 'a category in use can be retired with is_active');
 
--- ---- rank_history
+-- ---- rank_history (needs real divisions: 1040 added the foreign keys)
+insert into public.events (id, org_id, name, starts_on, ends_on, payload_hash)
+  values ('01H0000000000000000000EVN1', (select org from fx), 'T Rank Event', '2026-12-05', '2026-12-05', repeat('a', 64));
+insert into public.divisions (id, org_id, event_id, name, category_id, format, format_snapshot, scoring_snapshot, payload_hash) values
+  ('01H0000000000000000000DVN1', (select org from fx), '01H0000000000000000000EVN1', 'T Rank Div 1', (select cat1 from fx), 'singles', '[{"stage_type":"round_robin"}]', '{}', repeat('b', 64)),
+  ('01H0000000000000000000DVN2', (select org from fx), '01H0000000000000000000EVN1', 'T Rank Div 2', (select cat1 from fx), 'singles', '[{"stage_type":"round_robin"}]', '{}', repeat('c', 64));
 insert into public.rank_history (id, org_id, member_id, from_rank_id, to_rank_id, rule_id, division_id, reason)
   values ('01H0000000000000000000RH01', (select org from fx), (select mem1 from fx), (select rk0 from fx), (select rk1 from fx), (select rule1 from fx), '01H0000000000000000000DVN1', 'won H');
 select throws_ok(format($f$insert into public.rank_history (org_id, member_id, from_rank_id, to_rank_id, division_id) values (%L, %L, %L, %L, '01H0000000000000000000DVN1')$f$,
