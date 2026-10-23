@@ -10,6 +10,7 @@ import {
 } from "../../web/lib/password-hints.js";
 import { createSession } from "../../web/lib/session.js";
 import { nextHash } from "../../web/pages-account.js";
+import { suggestNameParts } from "../../web/lib/names.js";
 
 // ---------- auth api
 const fakeFetch = (status, body, calls = []) => (url, init) => {
@@ -210,4 +211,57 @@ Deno.test("session: after the password is changed the member is held as pending 
 Deno.test("session: refresh() does nothing when signed out", async () => {
   const { session } = makeSession(null);
   assert.equal((await session.refresh()).status, "signed_out");
+});
+
+Deno.test("names: a display name is split into a suggested first name, last name and extension", () => {
+  const cases = [
+    ["Kyle Marquez", {
+      first: "Kyle",
+      middle: "",
+      last: "Marquez",
+      suffix: "",
+    }],
+    ["MARIA CRISTINA REYES", {
+      first: "Maria Cristina",
+      middle: "",
+      last: "Reyes",
+      suffix: "",
+    }],
+    ["Juan dela Cruz", {
+      first: "Juan",
+      middle: "",
+      last: "dela Cruz",
+      suffix: "",
+    }],
+    ["Juan De La Cruz Jr.", {
+      first: "Juan",
+      middle: "",
+      last: "De La Cruz",
+      suffix: "Jr.",
+    }],
+    ["Santos, Ana Marie", {
+      first: "Ana Marie",
+      middle: "",
+      last: "Santos",
+      suffix: "",
+    }],
+    ["Pedro Penduko III", {
+      first: "Pedro",
+      middle: "",
+      last: "Penduko",
+      suffix: "III",
+    }],
+    ["Cher", { first: "Cher", middle: "", last: "", suffix: "" }],
+    ["  Ana   Lopez  ", {
+      first: "Ana",
+      middle: "",
+      last: "Lopez",
+      suffix: "",
+    }],
+    ["", { first: "", middle: "", last: "", suffix: "" }],
+    [null, { first: "", middle: "", last: "", suffix: "" }],
+  ];
+  for (const [input, want] of cases) {
+    assert.deepEqual(suggestNameParts(input), want, String(input));
+  }
 });

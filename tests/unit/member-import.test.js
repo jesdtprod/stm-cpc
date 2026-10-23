@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import {
   analyzeFile,
+  cleanDetails,
   initialPassword,
   normalizeEmail,
+  normalizeGender,
   normalizeMemberNo,
   normalizeMobile,
+  normalizeSuffix,
   parseBirthDate,
+  validateEnrichRow,
   validateImportRow,
 } from "../../supabase/functions/_shared/member-import-rules.ts";
 import {
@@ -248,7 +252,7 @@ function world(over = {}) {
   const deps = {
     authorize: () => Promise.resolve("token"),
     now: () => TODAY.getTime(),
-    passwordDays: 30,
+    passwordDays: over.passwordDays ?? 0,
     existingPeople: (nos) =>
       Promise.resolve(
         new Map(
@@ -262,6 +266,20 @@ function world(over = {}) {
             }]),
         ),
       ),
+    findReassigned: (claimed, name) => {
+      const m = s.members.find((x) =>
+        x.claimedNo === claimed && x.display_name === name
+      );
+      return Promise.resolve(m ? m.member_no : null);
+    },
+    enrichPerson: (memberNo, details) => {
+      s.enriched = s.enriched ?? [];
+      const m = s.members.find((x) => x.member_no === memberNo);
+      if (!m || m.details) return Promise.resolve(false);
+      m.details = details;
+      s.enriched.push(memberNo);
+      return Promise.resolve(true);
+    },
     createAuthUser: (email, password) => {
       s.passwords.push(password);
       if (s.users.some((u) => u.email === email)) {
@@ -359,7 +377,8 @@ Deno.test("import: creates the Auth user with the template password, then the me
   assert.equal(s.members[0].authUserId, "uid-1");
   assert.equal(
     s.members[0].passwordExpiresAt,
-    new Date(TODAY.getTime() + 30 * 86_400_000).toISOString(),
+    null,
+    "first passwords do not expire",
   );
   assert.equal(
     JSON.stringify(r.body).includes("0000112212025"),
@@ -779,5 +798,246 @@ Deno.test("import: the allocator is told every ID the file uses, and the list is
       reserved_nos: Array(5001).fill("CPC-2026-00001"),
     })).status,
     400,
+  );
+});
+
+Deno.test("import: an expiry can still be switched on (passwordDays above 0)", async () => {
+  const { deps, s } = world({ passwordDays: 30 });
+  await run(deps, { action: "rows", batch_id: BATCH, rows: [row(1)] });
+  assert.equal(
+    s.members[0].passwordExpiresAt,
+    new Date(TODAY.getTime() + 30 * 86_400_000).toISOString(),
+  );
+});
+
+// ---------- enrich: details from the spreadsheet
+Deno.test("details: suffix and gender are normalized, names are tidied", () => {
+  assert.equal(normalizeSuffix("JR"), "Jr.");
+  assert.equal(normalizeSuffix(" jr. "), "Jr.");
+  assert.equal(normalizeSuffix("Sr"), "Sr.");
+  assert.equal(normalizeSuffix("III"), "III");
+  assert.equal(normalizeSuffix("N/A"), null);
+  assert.equal(normalizeSuffix(""), null);
+  for (
+    const [raw, want] of [
+      ["Male", "male"],
+      ["M", "male"],
+      ["FEMALE", "female"],
+      ["f", "female"],
+      ["", null],
+      ["other", null],
+      [null, null],
+    ]
+  ) {
+    assert.equal(normalizeGender(raw), want, String(raw));
+  }
+});
+
+Deno.test("details: a whole row is cleaned, shouting names are title-cased, a half emergency contact is dropped", () => {
+  const d = cleanDetails({
+    row: 2,
+    id_no: "x",
+    display_name: "x",
+    dob: null,
+    dob_text: null,
+    mobile: null,
+    email: null,
+    rfid: null,
+    last_name: "MARQUEZ",
+    first_name: "Kyle",
+    middle_name: "dela cruz",
+    suffix: "JR",
+    gender: "Male",
+    em_name: "ANA MARQUEZ",
+    em_rel: "Mother",
+    em_phone: "0917 555 0001",
+  });
+  assert.deepEqual(d, {
+    first_name: "Kyle",
+    middle_name: "dela cruz",
+    last_name: "Marquez",
+    suffix: "Jr.",
+    gender: "male",
+    emergency_name: "Ana Marquez",
+    emergency_relationship: "Mother",
+    emergency_phone: "09175550001",
+  });
+  const half = cleanDetails({
+    row: 3,
+    id_no: "x",
+    display_name: "x",
+    dob: null,
+    dob_text: null,
+    mobile: null,
+    email: null,
+    rfid: null,
+    em_name: "Only Name",
+    em_phone: "12",
+  });
+  assert.deepEqual([
+    half.emergency_name,
+    half.emergency_phone,
+    half.emergency_relationship,
+  ], [null, null, null]);
+  const none = cleanDetails({
+    row: 4,
+    id_no: "x",
+    display_name: "x",
+    dob: null,
+    dob_text: null,
+    mobile: null,
+    email: null,
+    rfid: null,
+  });
+  assert.ok(Object.values(none).every((v) => v === null));
+});
+
+Deno.test("details: the whole-file pass carries each row's details", () => {
+  const a = analyzeFile([{
+    ...raw(2),
+    last_name: "Reyes",
+    first_name: "Ana",
+    gender: "F",
+  }], TODAY);
+  assert.equal(a.rows[0].details.last_name, "Reyes");
+  assert.equal(a.rows[0].details.gender, "female");
+});
+
+Deno.test("details: the function re-checks each enrich row", () => {
+  const base = {
+    source_row: 2,
+    member_no: "CPC-2026-00001",
+    display_name: "Fake Person",
+    dob: "1990-01-02",
+  };
+  const ok = validateEnrichRow({
+    ...base,
+    details: {
+      first_name: "Fake",
+      suffix: "Esq",
+      gender: "other",
+      emergency_name: "N",
+      emergency_phone: "12",
+      last_name: " Person ",
+    },
+  });
+  assert.equal(ok.ok, true);
+  assert.deepEqual(ok.row.details, {
+    first_name: "Fake",
+    middle_name: null,
+    last_name: "Person",
+    suffix: null,
+    gender: null,
+    emergency_name: null,
+    emergency_relationship: null,
+    emergency_phone: null,
+  });
+  assert.equal(
+    validateEnrichRow({ ...base, member_no: "bad", details: {} }).ok,
+    false,
+  );
+  assert.equal(
+    validateEnrichRow({ ...base, details: { suffix: "Jr.", gender: "female" } })
+      .row.details.suffix,
+    "Jr.",
+  );
+});
+
+const erow = (n, over = {}) => ({
+  ...row(n),
+  details: { first_name: "Fake", last_name: `Person${n}`, gender: "male" },
+  ...over,
+});
+
+Deno.test("enrich: a matching member is filled in, and a second run changes nothing", async () => {
+  const { deps, s } = world();
+  await run(deps, { action: "rows", batch_id: BATCH, rows: [row(1), row(2)] });
+  const first = await run(deps, { action: "enrich", rows: [erow(1), erow(2)] });
+  assert.equal(first.status, 200);
+  assert.deepEqual(first.body.results.map((r) => r.outcome), [
+    "updated",
+    "updated",
+  ]);
+  assert.equal(s.members[0].details.last_name, "Person1");
+  const again = await run(deps, { action: "enrich", rows: [erow(1), erow(2)] });
+  assert.deepEqual(again.body.results.map((r) => r.outcome), [
+    "unchanged",
+    "unchanged",
+  ]);
+});
+
+Deno.test("enrich: a person who was given a new number is found by the ID they claimed", async () => {
+  const { deps, s } = world();
+  const moved = row(2, {
+    member_no: "CPC-2026-00001",
+    needs_new_id: true,
+    display_name: "Fake Second Person",
+  });
+  await run(deps, { action: "rows", batch_id: BATCH, rows: [row(1), moved] });
+  const r = await run(deps, {
+    action: "enrich",
+    rows: [
+      erow(2, {
+        member_no: "CPC-2026-00001",
+        needs_new_id: true,
+        display_name: "Fake Second Person",
+      }),
+    ],
+  });
+  assert.deepEqual(r.body.results, [{ source_row: 2, outcome: "updated" }]);
+  assert.equal(
+    s.enriched[0],
+    "CPC-2026-90001",
+    "the new number, not the first row's",
+  );
+});
+
+Deno.test("enrich: the first holder of an ID is not enriched with someone else's details", async () => {
+  const { deps, s } = world();
+  await run(deps, {
+    action: "rows",
+    batch_id: BATCH,
+    rows: [row(1, { display_name: "Fake Holder" })],
+  });
+  const r = await run(deps, {
+    action: "enrich",
+    rows: [
+      erow(2, {
+        member_no: "CPC-2026-00001",
+        display_name: "Fake Stranger",
+        dob: "1980-05-05",
+      }),
+    ],
+  });
+  assert.deepEqual(r.body.results, [{ source_row: 2, outcome: "not_found" }]);
+  assert.equal(s.enriched, undefined);
+});
+
+Deno.test("enrich: unknown members are reported, bad rows refused, sizes limited, access required", async () => {
+  const { deps } = world();
+  assert.deepEqual(
+    (await run(deps, { action: "enrich", rows: [erow(9)] })).body.results,
+    [{ source_row: 9, outcome: "not_found" }],
+  );
+  const bad = await run(deps, {
+    action: "enrich",
+    rows: [{ source_row: 3, member_no: "nope" }],
+  });
+  assert.deepEqual(bad.body.results.map((r) => [r.source_row, r.outcome]), [[
+    3,
+    "failed",
+  ]]);
+  assert.equal((await run(deps, { action: "enrich", rows: [] })).status, 400);
+  assert.equal(
+    (await run(deps, {
+      action: "enrich",
+      rows: Array.from({ length: 61 }, (_, i) => erow(i + 1)),
+    })).status,
+    400,
+  );
+  const locked = world({ deps: { authorize: () => Promise.resolve(null) } });
+  assert.equal(
+    (await run(locked.deps, { action: "enrich", rows: [erow(1)] })).status,
+    401,
   );
 });

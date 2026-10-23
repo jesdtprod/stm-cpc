@@ -32,7 +32,7 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 | Member ID | `CPC-YYYY-NNNNN` |
 | Scope | One club: Capitol Pickleball Club |
 | Documents | In the `docs/` folder |
-| Initial member password | Last 5 digits of the member ID followed by the birth date as `MMDDYYYY`; must change at first sign-in; expires (default 30 days); safeguards in `CLUB_SCHEMA.md` section 2.2. Replaces the random temporary password rule |
+| Initial member password | Last 5 digits of the member ID followed by the birth date as `MMDDYYYY`; must change at first sign-in; does not expire (club decision); safeguards in `CLUB_SCHEMA.md` section 2.2. Replaces the random temporary password rule |
 | Existing-member import | Import only ID NO, full name (as display name), birth date, mobile, email and RFID code. Rows without an ID are not imported; rows on duplicated IDs are held back until the club fixes them; a six-digit ID with a leading zero is shortened; duplicated RFID codes are cleared (`CLUB_SCHEMA.md` section 2) |
 
 ## Open decisions

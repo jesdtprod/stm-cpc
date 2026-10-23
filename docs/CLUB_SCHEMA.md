@@ -133,7 +133,7 @@ Standings are **computed on the server** (SQL functions over finalized matches u
 | D2 | Import scope and problem rows | As Section 2 (chosen: six fields; duplicates held back; RFID duplicates cleared) |
 | D3 | Starting rank of imported members | Admin assigns ranks after import in bulk; until then members have no rank |
 | D4 | Imported members' access before approval | `pending_member` role until an admin approves (setting `members.auto_approve_imported`, default off) |
-| D5 | Temporary password expiry | 30 days |
+| D5 | Temporary password expiry | None: first passwords do not expire (club decision, migration 1180) |
 | D6 | Domain for internal Auth emails | `members.cpc.app` (never emailed) |
 | D7 | Minors (found from birth date) | Guardian link and waiver required before approval |
 | D8 | Booking approval and payment requirement defaults | Approval on, payment not required, request expires after 24 hours (all settings) |

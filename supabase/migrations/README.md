@@ -31,5 +31,7 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1140_my_access_state_profile.sql` | 3.4 | `my_access_state()` also returns the member's own contact details and address codes for the profile form |
 | `1150_profile_details.sql` | 3.4 | Middle name, suffix, gender and emergency contact on `persons`; `update_my_profile` and `my_access_state` carry them (null keeps, empty string clears) |
 | `1160_member_signup.sql`, `1170_fix_signup_create.sql` | 3.3 | `member_review_flags` (possible duplicates, minors), `signup_enabled()`, `signup_allocate_member_no()`, `signup_create()`; consent versions in settings |
+| `1180_no_password_expiry.sql` | 3.2 | First passwords do not expire (club decision): cleared existing expiries, setting `members.temp_password_days` = 0 |
+| `1190_import_enrich.sql` | 3.4 | Fills empty name, gender and emergency-contact fields for imported members without overwriting; finds reassigned members |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

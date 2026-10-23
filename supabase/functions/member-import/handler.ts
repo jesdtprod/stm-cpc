@@ -5,9 +5,11 @@
 // stored, not logged and not returned. The only password ever returned is the first admin's random one,
 // once, to the script that writes it to a file outside the repository.
 import {
+  type Details,
   ID_PATTERN,
   type ImportRow,
   initialPassword,
+  validateEnrichRow,
   validateImportRow,
 } from "../_shared/member-import-rules.ts";
 
@@ -82,6 +84,14 @@ export interface Deps {
     memberNo: string | null,
     code: string,
   ) => Promise<void>;
+  /** The member number of a person who was given a new number, found by claimed ID, name and birth date. */
+  findReassigned: (
+    claimedNo: string,
+    displayName: string,
+    dob: string | null,
+  ) => Promise<string | null>;
+  /** Fills the person's empty fields; true when anything changed. */
+  enrichPerson: (memberNo: string, details: Details) => Promise<boolean>;
   createAdmin: (
     memberNo: string,
     displayName: string,
@@ -183,7 +193,8 @@ async function processRow(
     userId = created.id;
   }
   try {
-    const expires = userId
+    // passwordDays = 0 means the first password does not expire (the club's decision).
+    const expires = userId && deps.passwordDays > 0
       ? new Date(deps.now() + deps.passwordDays * 86_400_000).toISOString()
       : null;
     const result = await deps.importMember({
@@ -319,6 +330,68 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
             reserved as string[],
           ),
       );
+      results.push(...done);
+      results.sort((a, b) => a.source_row - b.source_row);
+      return json(200, { ok: true, results });
+    }
+
+    case "enrich": {
+      if (
+        !Array.isArray(body.rows) || body.rows.length < 1 ||
+        body.rows.length > MAX_ROWS_PER_CALL
+      ) {
+        return json(400, { ok: false, code: "bad_request" });
+      }
+      const valid: (ImportRow & { details: Details })[] = [];
+      const results: {
+        source_row: number;
+        outcome: "updated" | "unchanged" | "not_found" | "failed";
+        reason?: string;
+      }[] = [];
+      for (const r of body.rows) {
+        const v = validateEnrichRow(r);
+        if (v.ok) valid.push(v.row);
+        else {results.push({
+            source_row:
+              typeof (r as { source_row?: unknown })?.source_row === "number"
+                ? (r as { source_row: number }).source_row
+                : 0,
+            outcome: "failed",
+            reason: v.reason,
+          });}
+      }
+      const known = await deps.existingPeople(valid.map((r) => r.member_no));
+      const done = await pool(valid, 4, async (row) => {
+        try {
+          let target: string | null = null;
+          if (!row.needs_new_id) {
+            const holder = known.get(row.member_no);
+            if (holder && samePerson(holder, row)) target = row.member_no;
+          }
+          target ??= await deps.findReassigned(
+            row.member_no,
+            row.display_name,
+            row.dob,
+          );
+          if (!target) {
+            return {
+              source_row: row.source_row,
+              outcome: "not_found" as const,
+            };
+          }
+          const changed = await deps.enrichPerson(target, row.details);
+          return {
+            source_row: row.source_row,
+            outcome: changed ? ("updated" as const) : ("unchanged" as const),
+          };
+        } catch {
+          return {
+            source_row: row.source_row,
+            outcome: "failed" as const,
+            reason: "database_error",
+          };
+        }
+      });
       results.push(...done);
       results.sort((a, b) => a.source_row - b.source_row);
       return json(200, { ok: true, results });

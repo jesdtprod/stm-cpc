@@ -5,7 +5,7 @@
 const ACCEPTED = {
   auth_leaked_password_protection:
     "Needs the Pro plan (HaveIBeenPwned check). The club is on the free plan. The first-password rule is predictable by design, so " +
-    "the compensating controls in docs/SECURITY.md section 2 (Turnstile, lockout, forced change, expiry) apply. Revisit if the plan changes.",
+    "the compensating controls in docs/SECURITY.md section 2 (Turnstile, lockout, forced change) apply. Revisit if the plan changes.",
 };
 
 const { code, stdout, stderr } = await new Deno.Command("npx", {

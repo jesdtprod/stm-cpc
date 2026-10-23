@@ -28,6 +28,27 @@ export interface RawRow {
   mobile: string | null;
   email: string | null;
   rfid: string | null;
+  // Read for the enrich step (all optional).
+  last_name?: string | null;
+  first_name?: string | null;
+  middle_name?: string | null;
+  suffix?: string | null;
+  gender?: string | null;
+  em_name?: string | null;
+  em_rel?: string | null;
+  em_phone?: string | null;
+}
+
+/** Details filled in for members who are already imported (never overwriting what is stored). */
+export interface Details {
+  first_name: string | null;
+  middle_name: string | null;
+  last_name: string | null;
+  suffix: string | null;
+  gender: string | null;
+  emergency_name: string | null;
+  emergency_relationship: string | null;
+  emergency_phone: string | null;
 }
 
 export interface ImportRow {
@@ -44,6 +65,7 @@ export interface ImportRow {
    * the club's yearly sequence, assigned by the server. `member_no` then holds the ID the row claimed.
    */
   needs_new_id: boolean;
+  details?: Details;
 }
 
 export interface Issue {
@@ -154,6 +176,109 @@ export function initialPassword(memberNo: string, dobIso: string): string {
   return `${digits.slice(-5)}${m}${d}${y}`;
 }
 
+// ---------------------------------------------------------------- details (enrich)
+const SUFFIX_MAP: Record<string, string> = {
+  JR: "Jr.",
+  SR: "Sr.",
+  II: "II",
+  III: "III",
+  IV: "IV",
+  V: "V",
+};
+
+/** "MARQUEZ" -> "Marquez": only text that is ALL capitals is changed. */
+function titleIfShouting(s: string): string {
+  if (s !== s.toUpperCase() || s === s.toLowerCase()) return s;
+  return s.toLowerCase().replace(
+    /(^|[\s\-'.])(\p{L})/gu,
+    (_m, sep: string, ch: string) => sep + ch.toUpperCase(),
+  );
+}
+
+export function normalizeSuffix(raw: string | null | undefined): string | null {
+  const key = clean(raw)?.toUpperCase().replace(/[.\s,]/g, "");
+  return key ? SUFFIX_MAP[key] ?? null : null;
+}
+
+export function normalizeGender(raw: string | null | undefined): string | null {
+  const g = clean(raw)?.toLowerCase();
+  if (!g) return null;
+  if (g === "f" || g.startsWith("fem") || g === "girl" || g === "woman") {
+    return "female";
+  }
+  if (g === "m" || g.startsWith("mal") || g === "boy" || g === "man") {
+    return "male";
+  }
+  return null;
+}
+
+function namePart(raw: string | null | undefined, max: number): string | null {
+  const s = clean(raw)?.replace(/\s+/g, " ");
+  return s ? titleIfShouting(s).slice(0, max) : null;
+}
+
+/** Cleans the optional spreadsheet columns. An emergency contact needs both a name and a number, or it is dropped. */
+export function cleanDetails(r: RawRow): Details {
+  const phone = normalizeMobile(r.em_phone ?? null);
+  const digits = phone ? phone.replace(/\D/g, "") : "";
+  const emName = namePart(r.em_name, 120);
+  const okPair = Boolean(emName) && digits.length >= 7 && digits.length <= 13;
+  return {
+    first_name: namePart(r.first_name, 60),
+    middle_name: namePart(r.middle_name, 60),
+    last_name: namePart(r.last_name, 60),
+    suffix: normalizeSuffix(r.suffix),
+    gender: normalizeGender(r.gender),
+    emergency_name: okPair ? emName : null,
+    emergency_relationship: okPair ? namePart(r.em_rel, 60) : null,
+    emergency_phone: okPair ? phone : null,
+  };
+}
+
+/** The Edge Function re-checks each enrich row it is sent. */
+export function validateEnrichRow(
+  v: unknown,
+): { ok: true; row: ImportRow & { details: Details } } | {
+  ok: false;
+  reason: string;
+} {
+  const base = validateImportRow(v);
+  if (!base.ok) return base;
+  const d = ((v as Record<string, unknown>).details ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const str = (
+    x: unknown,
+    max: number,
+  ) => (typeof x === "string" && x.trim() ? x.trim().slice(0, max) : null);
+  const suffix = str(d.suffix, 10);
+  const gender = str(d.gender, 10);
+  const phone = str(d.emergency_phone, 32);
+  const phoneDigits = phone ? phone.replace(/\D/g, "") : "";
+  const emName = str(d.emergency_name, 120);
+  const pair = Boolean(emName) && phoneDigits.length >= 7 &&
+    phoneDigits.length <= 13;
+  return {
+    ok: true,
+    row: {
+      ...base.row,
+      details: {
+        first_name: str(d.first_name, 60),
+        middle_name: str(d.middle_name, 60),
+        last_name: str(d.last_name, 60),
+        suffix: suffix && Object.values(SUFFIX_MAP).includes(suffix)
+          ? suffix
+          : null,
+        gender: gender === "male" || gender === "female" ? gender : null,
+        emergency_name: pair ? emName : null,
+        emergency_relationship: pair ? str(d.emergency_relationship, 60) : null,
+        emergency_phone: pair ? phone : null,
+      },
+    },
+  };
+}
+
 /**
  * The whole-file pass: skips, hold-backs, shared IDs and RFID codes, and per-row clean-up.
  * Rows that share an ID are all imported: the first (lowest spreadsheet row) keeps the ID and the others are
@@ -249,6 +374,7 @@ export function analyzeFile(raw: RawRow[], today = new Date()): Analysis {
       email,
       rfid: keepRfid,
       needs_new_id: needsNewId,
+      details: cleanDetails(r),
     });
   }
 

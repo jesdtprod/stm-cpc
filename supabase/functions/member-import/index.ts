@@ -77,7 +77,7 @@ const deps: Deps = {
     return null;
   },
   now: () => Date.now(),
-  passwordDays: 30,
+  passwordDays: 0, // first passwords do not expire
   existingPeople: async (memberNos) => {
     const rows = await rpc<
       {
@@ -161,6 +161,24 @@ const deps: Deps = {
       p_code: code,
     });
   },
+  findReassigned: async (claimedNo, displayName, dob) =>
+    (await rpc<string | null>("import_find_reassigned", {
+      p_claimed_no: claimedNo,
+      p_display_name: displayName,
+      p_dob: dob,
+    })) ?? null,
+  enrichPerson: async (memberNo, d) =>
+    await rpc<boolean>("import_enrich_person", {
+      p_member_no: memberNo,
+      p_first_name: d.first_name,
+      p_middle_name: d.middle_name,
+      p_last_name: d.last_name,
+      p_suffix: d.suffix,
+      p_gender: d.gender,
+      p_emergency_name: d.emergency_name,
+      p_emergency_relationship: d.emergency_relationship,
+      p_emergency_phone: d.emergency_phone,
+    }),
   createAdmin: (memberNo, displayName, authUserId) =>
     rpc<string>("create_admin_member", {
       p_member_no: memberNo,

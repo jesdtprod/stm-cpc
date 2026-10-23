@@ -14,6 +14,7 @@ import {
   localPasswordProblems,
   problemMessages,
 } from "./lib/password-hints.js";
+import { suggestNameParts } from "./lib/names.js";
 
 const NCR_REGION = "130000000";
 
@@ -337,18 +338,26 @@ export function createAccountPages(
       return h("div", { class: "page" });
     }
     const me = state.access ?? {};
+    // Members imported with only a display name get a suggested split to check. It is only saved if they
+    // save the form.
+    const guess = !me.first_name && !me.last_name
+      ? suggestNameParts(me.display_name)
+      : null;
 
     // ---- name
     const lastName = field({
       id: "pf-last",
       label: "Last name",
-      value: me.last_name ?? "",
+      value: me.last_name ?? guess?.last ?? "",
       required: true,
+      hint: guess?.last
+        ? "Suggested from your name: please check it."
+        : undefined,
     });
     const firstName = field({
       id: "pf-first",
       label: "First name",
-      value: me.first_name ?? "",
+      value: me.first_name ?? guess?.first ?? "",
       required: true,
     });
     const middleName = field({
@@ -360,7 +369,7 @@ export function createAccountPages(
       "pf-suffix",
       "Extension (optional)",
       SUFFIXES.map((x) => [x, x]),
-      me.suffix,
+      me.suffix ?? guess?.suffix,
       "None",
     );
     const display = field({

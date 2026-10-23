@@ -18,6 +18,17 @@ COLUMNS = {
     "email": "Email Address",
     "rfid": "RFID CODE",
 }
+# Read for the enrich step; missing columns are simply left out.
+EXTRA = {
+    "last_name": "Lastname",
+    "first_name": "Firstname",
+    "middle_name": "Middlename",
+    "suffix": "Suffix",
+    "gender": "Gender",
+    "em_name": "Emergency Contact Name",
+    "em_rel": "Relationship",
+    "em_phone": "Emergency Contact Number",
+}
 
 
 def text(value):
@@ -39,6 +50,7 @@ def main(path):
     if missing:
         sys.exit("missing columns: " + ", ".join(missing))
     index = {key: header.index(name) for key, name in COLUMNS.items()}
+    extra = {key: header.index(name) for key, name in EXTRA.items() if name in header}
     out = []
     for number, row in enumerate(rows, start=2):
         dob_cell = row[index["dob"]]
@@ -56,6 +68,7 @@ def main(path):
             "mobile": text(row[index["mobile"]]),
             "email": text(row[index["email"]]),
             "rfid": text(row[index["rfid"]]),
+            **{key: text(row[i]) for key, i in extra.items()},
         })
     sys.stdout.reconfigure(encoding="utf-8")
     json.dump(out, sys.stdout, ensure_ascii=False)
