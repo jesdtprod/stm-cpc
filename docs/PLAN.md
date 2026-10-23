@@ -1,4 +1,4 @@
-﻿# Production Plan â€” Capitol Pickleball Club (CPC) Web App
+# Production Plan â€” Capitol Pickleball Club (CPC) Web App
 
 Step-by-step plan from project setup to launch. It starts with the project setup standard, then the shared foundation, then data entry, and ends with the complex features. Read it with the other documents in this folder:
 
