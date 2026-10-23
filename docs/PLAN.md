@@ -65,12 +65,12 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 
 | ID | Step | Done when |
 | --- | --- | --- |
-| [ ] 1.1 | `core.ulid()` and the ULID format check | Generated IDs match the format and sort by time; test passes |
-| [ ] 1.2 | Standard helpers: `attach_standard`, `enable_standard_rls`, immutable-ID, audit-stamp, version, and hard-delete-block triggers | Tests: `id` and `created_*` cannot change; client `DELETE` is refused |
-| [ ] 1.3 | Tenancy and people: `orgs`, `org_units`, `persons`, `person_relations`, `profiles` | Tables exist with standard columns and RLS; migration applies cleanly |
-| [ ] 1.4 | **RBAC:** `roles`, `permissions`, `role_permissions`, `org_members`; `core.current_profile_id()` and `core.has_permission()`; seed the permission catalog (`FEATURES.md` Section 3) and default roles (pending member, member, referee, front desk, manager, admin) | Seed applies; `has_permission` returns the right answer for each role in tests |
-| [ ] 1.5 | Operations tables: `audit_log` (insert-only), `idempotency_keys`, `settings`, `counters`, `lookups`, `files`, `notifications`, `client_errors` | Audit and idempotency behavior tests pass (replay returns stored response; changed payload is rejected) |
-| [ ] 1.6 | **Access hardening.** Revoke default privileges from `anon` and `authenticated`; RLS policies on every table; block privilege escalation (a user cannot change their own role, unit, or status) | Tests: anonymous access denied; user in one org cannot read another; escalation attempts fail |
+| [x] 1.1 | `core.ulid()` and the ULID format check | Generated IDs match the format and sort by time; test passes |
+| [x] 1.2 | Standard helpers: `attach_standard`, `enable_standard_rls`, immutable-ID, audit-stamp, version, and hard-delete-block triggers | Tests: `id` and `created_*` cannot change; client `DELETE` is refused |
+| [x] 1.3 | Tenancy and people: `orgs`, `org_units`, `persons`, `person_relations`, `profiles` | Tables exist with standard columns and RLS; migration applies cleanly |
+| [x] 1.4 | **RBAC:** `roles`, `permissions`, `role_permissions`, `org_members`; `core.current_profile_id()` and `core.has_permission()`; seed the permission catalog (`FEATURES.md` Section 3) and default roles (pending member, member, referee, front desk, manager, admin) | Seed applies; `has_permission` returns the right answer for each role in tests |
+| [x] 1.5 | Operations tables: `audit_log` (insert-only), `idempotency_keys`, `settings`, `counters`, `lookups`, `files`, `notifications`, `client_errors` | Audit and idempotency behavior tests pass (replay returns stored response; changed payload is rejected) |
+| [x] 1.6 | **Access hardening.** Revoke default privileges from `anon` and `authenticated`; RLS policies on every table; block privilege escalation (a user cannot change their own role, unit, or status) | Tests: anonymous access denied; user in one org cannot read another; escalation attempts fail |
 | [ ] 1.7 | Supabase Security and Performance Advisors; enable backups | No unresolved findings; backup setting confirmed |
 
 ## Stage 1B: Foundation services (before any screen)
