@@ -15,6 +15,10 @@ data/private/
 private/
 *.import.csv
 members-import*
+*.xlsx
+*.xls
+*.csv
+!supabase/seed/*.csv
 *-passwords*
 exports/
 dumps/

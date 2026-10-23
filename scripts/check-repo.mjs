@@ -9,6 +9,7 @@ const files = new TextDecoder().decode((await git.output()).stdout).split("\0")
 const forbidden = [
   /(^|\/)\.env(\..*)?$/,
   /members-import/i,
+  /\.(xlsx|xls|csv)$/i,
   /\.(pem|key|p12|dump|backup)$/,
   /(^|\/)supabase\/\.temp\//,
 ];
