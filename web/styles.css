@@ -2339,3 +2339,50 @@ select.input {
   letter-spacing: 0.04em;
   user-select: all;
 }
+
+/* ---- admin members page */
+.row-actions {
+  display: inline-flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.badges {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.details {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.kv {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  font-size: 14px;
+}
+.kv dt {
+  color: var(--text-2);
+}
+.kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.alert-box {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 12px;
+}
+.alert-box ul {
+  margin: 8px 0;
+  padding-left: 18px;
+}
+@media (max-width: 560px) {
+  .kv {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

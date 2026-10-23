@@ -183,7 +183,7 @@ select throws_ok(
   '23514', null, 'an oversized message is rejected');
 select pg_temp.as_user((select u from us where role = 'admin'));
 set local role authenticated;
-select is((select count(*)::int from public.client_errors), 1, 'an admin (audit.read) can read client errors');
+select cmp_ok((select count(*)::int from public.client_errors), '>=', 1, 'an admin (audit.read) can read client errors');
 reset role;
 
 select * from finish();

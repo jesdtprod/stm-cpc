@@ -20,7 +20,7 @@ select is((select value from public.settings where key = 'booking.approval_requi
 select is((select value from public.settings where key = 'payments.required.court_booking' and deleted_at is null), 'false'::jsonb, 'payment for bookings defaults to not required');
 select is((select value from public.settings where key = 'booking.request_expiry_hours' and deleted_at is null), '24'::jsonb, 'booking requests expire after 24 hours');
 select is((select value from public.settings where key = 'members.auto_approve_imported' and deleted_at is null), 'false'::jsonb, 'imported members are approved manually by default');
-select is((select value from public.settings where key = 'members.temp_password_days' and deleted_at is null), '30'::jsonb, 'the first password lasts 30 days');
+select is((select value from public.settings where key = 'members.temp_password_days' and deleted_at is null), '0'::jsonb, 'the first password does not expire (0 days = no expiry)');
 select is((select value from public.settings where key = 'session.idle_minutes' and deleted_at is null), '15'::jsonb, 'the idle timeout is 15 minutes');
 select ok('CPC-2026-00001' ~ ((select value #>> '{}' from public.settings where key = 'members.id_pattern' and deleted_at is null)), 'the member ID pattern accepts CPC-2026-00001');
 select ok('CPC-2026-1' !~ ((select value #>> '{}' from public.settings where key = 'members.id_pattern' and deleted_at is null)), 'and rejects a short number');

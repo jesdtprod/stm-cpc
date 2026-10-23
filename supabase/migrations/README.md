@@ -33,5 +33,6 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1160_member_signup.sql`, `1170_fix_signup_create.sql` | 3.3 | `member_review_flags` (possible duplicates, minors), `signup_enabled()`, `signup_allocate_member_no()`, `signup_create()`; consent versions in settings |
 | `1180_no_password_expiry.sql` | 3.2 | First passwords do not expire (club decision): cleared existing expiries, setting `members.temp_password_days` = 0 |
 | `1190_import_enrich.sql` | 3.4 | Fills empty name, gender and emergency-contact fields for imported members without overwriting; finds reassigned members |
+| `1200_member_approval.sql` | 3.5 | `decide_member(action, member, reason, key, ...)`: approve, reject, reconsider, suspend, restore; permissioned, idempotent, audited; rejected members can be reconsidered |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

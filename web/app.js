@@ -17,6 +17,7 @@ import {
 import { CHANNEL, createSession } from "./lib/session.js";
 import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
+import { createAdminPages } from "./pages-admin.js";
 import { changePassword, memberLogin, memberSignup } from "./lib/auth-api.js";
 import { renderTurnstile } from "./lib/turnstile.js";
 
@@ -26,6 +27,7 @@ const APP_VERSION = "0.1.0";
 const NAV = [
   { path: "/", label: "Home", icon: "home" },
   { path: "/components", label: "Components", icon: "grid" },
+  { path: "/admin/members", label: "Members", icon: "user" },
 ];
 // Where a user held at a gate is sent (the pages arrive in step 3.4).
 const GATE_PAGES = { pending: "#/pending", password_change: "#/password" };
@@ -122,6 +124,11 @@ route(
 route("/password", () => accountPages.passwordPage(), "Password", "gated");
 route("/profile", () => accountPages.profilePage(), "Profile", "gated");
 route("/pending", () => accountPages.pendingPage(), "Account status", "gated");
+
+const adminPages = createAdminPages({ client, api });
+route("/admin/members", () => adminPages.membersPage(), "Members", {
+  any: ["members.approve", "members.suspend", "members.read"],
+});
 
 const router = start(main, {
   onChange: drawNav,
