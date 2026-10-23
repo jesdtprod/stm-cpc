@@ -11,43 +11,41 @@ Plan step 2.1. **Status: draft for approval.** No migration is written until thi
 - Migrations for this design use the project range: `1000_…` and up (DATABASE.md section 16).
 - Names: `snake_case`, plural tables, `_id` foreign keys. Constraint names include the table.
 
-## 2. Existing-member spreadsheet and import rules
+## 2. Existing-member import
 
-The club's file (kept outside the repository, never committed) is a form-responses sheet with 1,815 rows and these columns. Mapping:
+The club's file (kept outside the repository, never committed) is a form-responses sheet with 1,815 rows and 19 columns. **The club decided to import only these fields:**
 
 | Spreadsheet column | Goes to | Notes |
 | --- | --- | --- |
-| ID NO | `members.member_no` | Kept exactly. Pattern `^CPC-\d{4}-\d{5}$` (a setting) |
-| Full Name | `persons.display_name` | `Lastname`, `Firstname`, `Middlename`, `Suffix` columns are empty in the file; they stay nullable in `persons` |
-| Date of Birth | `persons.date_of_birth` | Also used for the initial password (Section 2.2) |
-| Gender | `persons.gender` | New column. Values `male`, `female`, `other`, `unspecified`; the file has 3 distinct values |
-| Complete Address | `persons.address` | New column. Personal data |
-| Mobile Number | `persons.mobile` | Normalized to `09XXXXXXXXX`; original kept only if it cannot be normalized |
-| Email Address | `persons.email` | Optional (about 5% blank) |
-| Emergency Contact Name / Relationship / Number | a second `persons` row (`kind = 'contact'`) linked by `person_relations` (`emergency_contact`) | In 127 rows the "name" holds a phone number; it is stored as the contact's mobile and the name left as "Emergency contact" |
-| Player Category (Singles / Doubles / Both, multi-select) | `members.play_formats text[]` | `Both` becomes `{singles,doubles}` |
-| Playing Level (Beginner / Intermediate / Advanced, multi-select) | `members.declared_levels text[]` | Informational. The starting rank is set by an admin (Section 5, decision D3) |
-| PRINTED | `members.card_printed boolean` | `YES` / `yes` → true |
+| ID NO | `members.member_no` | Pattern `^CPC-\d{4}-\d{5}$` (a setting) |
+| Full Name | `persons.display_name` | Used as the display name; the name-part columns are empty in the file |
+| Date of Birth | `persons.date_of_birth` | Needed for the initial password (Section 2.2) and kept on the person |
+| Mobile Number | `persons.mobile` | Normalized to `09XXXXXXXXX` when possible, otherwise stored as typed |
+| Email Address | `persons.email` | Optional; left empty when it does not look like an email |
 | RFID CODE | `members.rfid_code` | Unique among active members |
-| Photo | not imported | The column is empty |
 
-### 2.1 Import outcomes (decision: import with flags)
+**Not imported:** Gender, Complete Address, Emergency Contact (name, relationship, number), Player Category, Playing Level, PRINTED, Photo, Lastname, Firstname, Middlename, Suffix. They can be added later by members or by another import run.
 
-The import is an Edge Function run by an admin with `members.import`. It is idempotent: re-running changes nothing that already exists. Every outcome is audited and written to a private import report.
+### 2.1 Import outcomes
+
+The import is an Edge Function run by an admin with `members.import`. It is idempotent: re-running creates nothing twice, and rows the club fixes in Excel are picked up on the next run. Every outcome is audited and listed in a private report that holds row numbers and codes, not member data.
 
 | Row condition (in this sheet) | Outcome |
 | --- | --- |
-| No `ID NO` (388 rows) | **Not imported.** Counted in the report only |
-| Clean row | Created: person, member (`imported`), profile, auth account, `org_members` link (pending role), emergency contact |
-| Duplicate `ID NO` (26 IDs on 53 rows) | The **first** row keeps the ID. Later rows are created as members with `member_no` empty and status `needs_review`, no account, and an issue `duplicate_member_no` pointing at the ID. An admin assigns a new ID or merges |
-| `ID NO` not matching the pattern (one has six digits) | Created as `needs_review`, no `member_no`, issue `invalid_member_no` |
-| Birth date unreadable or ambiguous (text dates, impossible years) | Created with a `member_no` but **no auth account**, status `needs_review`, issue `invalid_birth_date`. The admin enters the date, then the account is created |
-| Duplicate RFID code (3) | First keeps the code; later rows get none and an issue `duplicate_rfid` |
-| Member under 18 (about 63) | Imported normally, flagged `minor`; a guardian link and consent are required before approval (FEATURES 4.5) |
+| No `ID NO` (388 rows) | **Not imported**; counted in the report |
+| `ID NO` used on more than one row (26 IDs on 53 rows) | **All rows on that ID are held back** and listed as `duplicate_member_no`. The club fixes the IDs in Excel later; the next run imports them |
+| `ID NO` with six digits and one leading zero (one row) | Shortened to five digits (`CPC-2026-0nnnnn` → `CPC-2026-nnnnn`) if that ID is free; reported as `member_no_normalized` |
+| Any other `ID NO` that does not match the pattern | Held back as `invalid_member_no` |
+| RFID code used by more than one row (3 codes, 6 rows) | The code is **removed from every row that holds it**; reported as `duplicate_rfid_cleared`. The club re-enters the right one later |
+| Birth date missing, unreadable or outside 1920 to this year (15 rows) | Member created **without an account**; reported as `invalid_birth_date`. An admin enters the date, then the account is created |
+| Email that does not look like an email (23 rows) | Imported with no email; reported as `invalid_email` |
+| Everything else | Created: person, member (`imported`), profile, auth account, `org_members` link with the pending role |
+
+Birth dates stored as dates are read as is; text dates are read as month/day/year, the club's format. Expected result for this file: **1,374 members imported** (1,359 with an account, 15 waiting for a birth date), 53 rows held back, 388 not imported.
 
 ### 2.2 Credentials (decision: club rule with safeguards)
 
-- Username: the member ID, trimmed and uppercased. Initial password: the **last 5 digits of the ID followed by the birth date as `MMDDYYYY`**. Example: `CPC-2026-00001` born 12/21/2025 → `0000112212025`. It has 13 characters.
+- Username: the member ID, trimmed and uppercased. Initial password: the **last 5 digits of the ID followed by the birth date as `MMDDYYYY`**. Example: `CPC-2026-00001` born 12/21/2025 → `0000112212025` (13 characters).
 - The password is computed inside the Edge Function and handed straight to the Supabase Admin API. It is never stored in a table, a log, the import report, or the repository.
 - Safeguards, enforced by `member-login` (step 3.1): `must_change_password = true` until the first change; the initial password **expires** after `members.temp_password_days` (default 30) and then only an admin reset works; Turnstile on every attempt; lockout after repeated failures per member ID and per address; generic error messages that do not reveal whether an ID exists.
 - This replaces the "random temporary password" rule in FEATURES 4.2 and SECURITY. Both documents are updated when this design is approved. Known trade-off: anyone who knows a member's ID and birth date can sign in before the member does; the safeguards limit that, they do not remove it.
@@ -57,7 +55,7 @@ The import is an Edge Function run by an admin with `members.import`. It is idem
 
 | Table | Change |
 | --- | --- |
-| `persons` | Add `gender text` (check in `male, female, other, unspecified`, nullable) and `address text` |
+| `persons` | None for now. Gender and address are not imported; columns can be added later by a new migration |
 | `org_members` | None. The pending role (`pending_member`) is the access gate until approval |
 
 ## 4. Tables
@@ -68,11 +66,11 @@ Permission codes are from the seeded catalog; **new codes** are listed in Sectio
 
 | Table | Class | Purpose and key columns |
 | --- | --- | --- |
-| `members` | master | One row per club member. `person_id` (unique), `profile_id` (unique, null until the account exists), `member_no` (unique among active, nullable only for `needs_review`), `status` (`needs_review, imported, invited, pending_approval, active, rejected, suspended, archived`), `status_reason`, `joined_on date`, `card_printed`, `rfid_code` (partial unique), `play_formats text[]`, `declared_levels text[]`, `is_minor` (derived on write from birth date, re-checked by RPC), `import_batch_id`, `import_row int`. Indexes on `status`, `person_id`, `profile_id` |
+| `members` | master | One row per club member. `person_id` (unique), `profile_id` (unique, null until the account exists), `member_no` (not null, unique among active), `status` (`imported, invited, pending_approval, active, rejected, suspended, archived`), `status_reason`, `joined_on date`, `rfid_code` (partial unique), `import_batch_id`, `import_row int`. Indexes on `status`, `person_id`, `profile_id`. Minors are found from `persons.date_of_birth` |
 | `member_access` | master | 1:1 with `members`, service-written only: `must_change_password`, `temp_password_expires_at`, `last_login_at`, `failed_attempts`, `locked_until`. Holds no password and no secret. Not readable by clients except the member's own `must_change_password` through an RPC |
 | `member_status_events` | log | Append-only history: `member_id`, `from_status`, `to_status`, `reason`, `actor`, `occurred_at` |
-| `import_batches` | document | One per import run: `file_sha256`, `row_count`, `created_count`, `skipped_count`, `review_count`, `failed_count`, `status` (`running, completed, failed`), `started_by`. No member data inside |
-| `member_import_issues` | master | `batch_id`, `member_id` (nullable), `source_row`, `issue_code` (`duplicate_member_no, invalid_member_no, invalid_birth_date, duplicate_rfid, minor, missing_contact`), `detail` (no personal data), `resolved_at/by`. Drives the admin review screen |
+| `import_batches` | document | One per import run: `file_sha256`, `row_count`, `created_count`, `skipped_count`, `held_back_count`, `failed_count`, `status` (`running, completed, failed`), `started_by`. No member data inside |
+| `member_import_issues` | master | `batch_id`, `member_id` (null for held-back rows), `source_row`, `member_no_claimed`, `issue_code` (`duplicate_member_no, invalid_member_no, member_no_normalized, invalid_birth_date, duplicate_rfid_cleared, invalid_email`), `detail` (no personal data), `resolved_at/by`. Drives the admin review screen |
 | `consents` | log | Append-only: `person_id`, `kind` (`waiver, privacy`), `version`, `accepted_at`, `accepted_by_person_id` (the guardian for minors) |
 
 Guardians use `person_relations` (`guardian`). RLS: members read only their own `members`, `persons` and consent rows; `members.read` sees all; writes are RPCs (`members.update`, `members.approve`, `members.suspend`).
@@ -131,13 +129,13 @@ Standings are **computed on the server** (SQL functions over finalized matches u
 
 | # | Decision | Default if you say "use defaults" |
 | --- | --- | --- |
-| D1 | Initial password rule | As Section 2.2 (already chosen) |
-| D2 | Import problem rows | As Section 2.1 (already chosen: import with flags) |
-| D3 | Starting rank of imported members. The sheet only has multi-select "Playing Level" | Admin assigns ranks after import in bulk; until then members have no rank. The declared levels are shown to the admin as a hint |
-| D4 | Imported members' access before approval | `pending_member` role until an admin approves, or auto-approve after first login (setting `members.auto_approve_imported`) | Manual approval, as FEATURES 4.3 |
+| D1 | Initial password rule | As Section 2.2 (chosen: your rule, and the birth date is imported for it) |
+| D2 | Import scope and problem rows | As Section 2 (chosen: six fields; duplicates held back; RFID duplicates cleared) |
+| D3 | Starting rank of imported members | Admin assigns ranks after import in bulk; until then members have no rank |
+| D4 | Imported members' access before approval | `pending_member` role until an admin approves (setting `members.auto_approve_imported`, default off) |
 | D5 | Temporary password expiry | 30 days |
 | D6 | Domain for internal Auth emails | `members.cpc.app` (never emailed) |
-| D7 | Minors (about 63) | Import normally; require a guardian link and waiver before approval |
+| D7 | Minors (found from birth date) | Guardian link and waiver required before approval |
 | D8 | Booking approval and payment requirement defaults | Approval on, payment not required, request expires after 24 hours (all settings) |
 | D9 | Open items from FEATURES 15.2 (rank movement for formats other than split, cross-category movement, doubles ranking) | The documented defaults; no rank movement for other formats until defined |
 
@@ -145,7 +143,7 @@ Standings are **computed on the server** (SQL functions over finalized matches u
 
 | Entity | States and transitions |
 | --- | --- |
-| `members.status` | `needs_review → imported → invited → pending_approval → active`; `pending_approval → rejected`; `active ↔ suspended`; any → `archived`. Each change writes `member_status_events` |
+| `members.status` | `imported → invited → pending_approval → active`; `pending_approval → rejected`; `active ↔ suspended`; any → `archived`. Each change writes `member_status_events` |
 | `bookings.status` | `pending_approval → confirmed → checked_in → completed`; `pending_approval → rejected / expired / cancelled`; `confirmed → cancelled / no_show` |
 | `payment_submissions.status` | `submitted → verified / rejected`; `verified → void` (reversing ledger entry) |
 | `events.status` | `draft → registration_open → registration_closed → drawn → in_progress → completed`; any before `completed` → `cancelled` |
