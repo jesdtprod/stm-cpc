@@ -76,7 +76,7 @@ export function createAccountPages(
       id: "signin-id",
       label: "Member ID",
       required: true,
-      placeholder: "CPC-2026-00001",
+      placeholder: "Example: CPC-2026-00001",
     });
     const idInput = memberId.querySelector("input");
     idInput.setAttribute("autocomplete", "username");
