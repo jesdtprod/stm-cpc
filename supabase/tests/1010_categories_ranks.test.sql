@@ -35,9 +35,9 @@ select is((select count(*)::int from pg_class c where c.relnamespace = 'public':
 
 -- ---- categories
 insert into public.categories (id, org_id, code, name, sort_order) values
-  ((select cat1 from fx), (select org from fx), 'novice', 'Novice', 1),
-  ((select cat2 from fx), (select org from fx), 'intermediate', 'Intermediate', 2);
-select throws_ok(format($f$insert into public.categories (org_id, code, name) values (%L, 'novice', 'Again')$f$, (select org from fx)),
+  ((select cat1 from fx), (select org from fx), 't1-novice', 'Novice', 1),
+  ((select cat2 from fx), (select org from fx), 't1-inter', 'Intermediate', 2);
+select throws_ok(format($f$insert into public.categories (org_id, code, name) values (%L, 't1-novice', 'Again')$f$, (select org from fx)),
   '23505', null, 'a category code is unique among active categories');
 select throws_ok(format($f$insert into public.categories (org_id, code, name) values (%L, 'Bad Code', 'x')$f$, (select org from fx)),
   '23514', null, 'a category code is lowercase letters, digits, dash or underscore');
@@ -185,7 +185,7 @@ reset role;
 
 select pg_temp.as_user((select u from us where role = 'manager'));
 set local role authenticated;
-select lives_ok(format($f$insert into public.categories (org_id, code, name) values (%L, 'advanced', 'Advanced')$f$, (select org from fx)), 'a manager creates a category');
+select lives_ok(format($f$insert into public.categories (org_id, code, name) values (%L, 't1-advanced', 'Advanced')$f$, (select org from fx)), 'a manager creates a category');
 select lives_ok(format($f$update public.ranks set name = 'Novice Low (renamed)' where id = %L$f$, (select rk0 from fx)), 'a manager edits a rank');
 select cmp_ok((select count(*)::int from public.rank_rules), '>=', 1, 'a manager reads the rank rules');
 select lives_ok(format($f$insert into public.rank_rules (org_id, name, action, levels) values (%L, 'Mgr rule', 'retain', 0)$f$, (select org from fx)), 'a manager creates a rank rule');

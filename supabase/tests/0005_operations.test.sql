@@ -94,13 +94,13 @@ select pg_temp.as_user((select u from us where role = 'member'));
 set local role authenticated;
 select ok((select count(*)::int from public.settings) >= 1, 'a member can read settings');
 select throws_ok(
-  format($f$insert into public.settings (org_id, key, value) values (%L, 'club.name', '"x"')$f$, (select org from cx)),
+  format($f$insert into public.settings (org_id, key, value) values (%L, 'test.club_name', '"x"')$f$, (select org from cx)),
   '42501', null, 'a member cannot write settings');
 reset role;
 select pg_temp.as_user((select u from us where role = 'manager'));
 set local role authenticated;
 select lives_ok(
-  format($f$insert into public.settings (org_id, key, value) values (%L, 'club.name', '"Capitol Pickleball Club"')$f$, (select org from cx)),
+  format($f$insert into public.settings (org_id, key, value) values (%L, 'test.club_name', '"Capitol Pickleball Club"')$f$, (select org from cx)),
   'a manager (settings.manage) can write org settings');
 reset role;
 select pg_temp.as_user((select u from us where role = 'unit_manager'));

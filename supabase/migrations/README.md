@@ -22,5 +22,6 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1030_payments_ledger.sql` | 2.3 | `payment_submissions`, `ledger_accounts`, `ledger_entries` (append-only), `ledger_balances` and `source_payment_totals` views |
 | `1040_events_tournaments.sql` | 2.4 | `events`, `format_templates`, `scoring_rules`, `divisions`, `division_stages`, `registrations`, `entries`, `entry_members`, `entity_events`; foreign keys from the rank tables; event-registration payments |
 | `1050_matches_scores.sql` | 2.4 | `draws`, `matches`, `match_games`, `score_events`, `division_results` |
+| `1060_seed_defaults.sql` | 2.5 | `core.seed_club_defaults()`: settings, lookup lists, scoring rules, format templates, starter categories and ranks (never overwrites; safe to re-run) |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).
