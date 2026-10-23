@@ -417,3 +417,8 @@ a.btn:hover {
 .settings-card.is-loading .sk-wide {
   width: 60%;
 }
+
+/* icon actions stay on one line; the table gives them a column of their own */
+.row-actions {
+  flex-wrap: nowrap;
+}

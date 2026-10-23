@@ -1023,18 +1023,17 @@ export function dateField(
     onChange,
   },
 ) {
-  return field({
+  return calendarDropdown({
     id,
     label,
-    type: "date",
     value,
+    range: false,
     min,
     max,
     error,
     hint,
     required,
     disabled,
-    iconTrailing: "calendar",
     onChange,
   });
 }
@@ -1107,6 +1106,8 @@ export function calendarDropdown(
     range = false,
     startValue = "",
     endValue = "",
+    min,
+    max,
     onChange,
     hint,
     error,
@@ -1190,6 +1191,30 @@ export function calendarDropdown(
     hidden: true,
   });
 
+  const hiddenInput = h("input", {
+    type: "hidden",
+    id,
+    name: id,
+    value: selectedStart || "",
+  });
+
+  const emitSingleSelect = (dStr) => {
+    selectedStart = dStr;
+    hiddenInput.value = dStr;
+    displayText.textContent = formatDisplay();
+    renderMonth();
+    if (onChange) {
+      const evt = {
+        target: { id, name: id, value: dStr },
+        currentTarget: { id, name: id, value: dStr },
+        value: dStr,
+        toString: () => dStr,
+      };
+      onChange(evt);
+    }
+    setTimeout(() => toggleCalendar(false), 160);
+  };
+
   const renderMonth = () => {
     popover.replaceChildren();
 
@@ -1271,6 +1296,11 @@ export function calendarDropdown(
       const isEnd = dStr === selectedEnd;
       const inRange = range && selectedStart && selectedEnd &&
         dStr > selectedStart && dStr < selectedEnd;
+      const isDateDisabled = Boolean(
+        disabled ||
+        (min && dStr < min) ||
+        (max && dStr > max),
+      );
 
       const classes = [
         "calendar-day",
@@ -1286,6 +1316,7 @@ export function calendarDropdown(
           type: "button",
           class: classes,
           "data-date": dStr,
+          disabled: isDateDisabled,
           onClick: (e) => {
             e.stopPropagation();
             if (range) {
@@ -1298,6 +1329,7 @@ export function calendarDropdown(
               } else {
                 selectedEnd = dStr;
               }
+              hiddenInput.value = selectedStart;
               displayText.textContent = formatDisplay();
               renderMonth();
               onChange?.({ start: selectedStart, end: selectedEnd });
@@ -1305,11 +1337,7 @@ export function calendarDropdown(
                 setTimeout(() => toggleCalendar(false), 220);
               }
             } else {
-              selectedStart = dStr;
-              displayText.textContent = formatDisplay();
-              renderMonth();
-              onChange?.(selectedStart);
-              setTimeout(() => toggleCalendar(false), 160);
+              emitSingleSelect(dStr);
             }
           },
         },
@@ -1334,14 +1362,14 @@ export function calendarDropdown(
             if (range) {
               selectedStart = todayStr;
               selectedEnd = todayStr;
+              hiddenInput.value = todayStr;
+              displayText.textContent = formatDisplay();
+              renderMonth();
               onChange?.({ start: selectedStart, end: selectedEnd });
+              setTimeout(() => toggleCalendar(false), 180);
             } else {
-              selectedStart = todayStr;
-              onChange?.(selectedStart);
+              emitSingleSelect(todayStr);
             }
-            displayText.textContent = formatDisplay();
-            renderMonth();
-            setTimeout(() => toggleCalendar(false), 180);
           },
         },
         "Today",
@@ -1365,14 +1393,14 @@ export function calendarDropdown(
             if (range) {
               selectedStart = first;
               selectedEnd = last;
+              hiddenInput.value = first;
+              displayText.textContent = formatDisplay();
+              renderMonth();
               onChange?.({ start: selectedStart, end: selectedEnd });
+              setTimeout(() => toggleCalendar(false), 180);
             } else {
-              selectedStart = first;
-              onChange?.(selectedStart);
+              emitSingleSelect(first);
             }
-            displayText.textContent = formatDisplay();
-            renderMonth();
-            setTimeout(() => toggleCalendar(false), 180);
           },
         },
         "This Month",
@@ -1386,9 +1414,14 @@ export function calendarDropdown(
             e.stopPropagation();
             selectedStart = "";
             selectedEnd = "";
+            hiddenInput.value = "";
             displayText.textContent = formatDisplay();
             renderMonth();
-            onChange?.(range ? { start: "", end: "" } : "");
+            if (range) {
+              onChange?.({ start: "", end: "" });
+            } else {
+              emitSingleSelect("");
+            }
           },
         },
         "Clear",
@@ -1431,15 +1464,54 @@ export function calendarDropdown(
     popover,
   );
 
-  return h(
+  const errorEl = h(
+    "span",
+    { class: "field-error", role: "alert", hidden: !error },
+    error || "",
+  );
+
+  const wrapper = h(
     "div",
     { class: `field${error ? " field-error-state" : ""}` },
     label ? h("label", { for: id }, label, required ? " *" : "") : null,
     container,
+    hiddenInput,
     hint ? h("span", { class: "field-hint" }, hint) : null,
-    error ? h("span", { class: "field-error", role: "alert" }, error) : null,
+    errorEl,
   );
+
+  wrapper.inputEl = hiddenInput;
+  Object.defineProperty(wrapper, "value", {
+    get: () => selectedStart,
+    set: (v) => {
+      selectedStart = v;
+      hiddenInput.value = v;
+      displayText.textContent = formatDisplay();
+      renderMonth();
+    },
+  });
+
+  wrapper.setError = (errMsg) => {
+    if (errMsg) {
+      errorEl.textContent = errMsg;
+      errorEl.hidden = false;
+      wrapper.classList.add("field-error-state");
+      triggerBtn.classList.add("is-invalid");
+    } else {
+      errorEl.textContent = "";
+      errorEl.hidden = true;
+      wrapper.classList.remove("field-error-state");
+      triggerBtn.classList.remove("is-invalid");
+    }
+  };
+
+  wrapper.setSuccess = (_msg = "") => {
+    wrapper.setError("");
+  };
+
+  return wrapper;
 }
+
 
 export function dateRangePicker(
   {

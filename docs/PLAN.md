@@ -116,7 +116,7 @@ Each screen has list, create, edit, soft delete, restore, validation, idempotent
 | ID | Step | Done when |
 | --- | --- | --- |
 | [x] 4.1 | **Settings** (payments, booking, members, events, ranks, general) | Changes are validated, audited, and enforced by the server *Verified live in a browser with a temporary admin (deleted afterwards): the seven tabs load; a value outside the range is stopped by the page and also refused by the database when the page is bypassed (the function and a direct table update); a saved change shows in the audit log with its reason; time zone and member ID format are read-only. Database tests 42/42; the idle timeout setting is read at sign-in (unit tested).* |
-| [ ] 4.2 | **Categories** (skill levels, ordered) | Categories in use cannot be deleted; codes unique among active |
+| [x] 4.2 | **Categories** (skill levels, ordered) | Categories in use cannot be deleted; codes unique among active *Verified live in a browser with a temporary admin (deleted afterwards): create (code made from the name), a duplicate code refused in plain words, edit (code locked), retire and make active, delete with a reason, restore; a category with a rank ladder has its delete button disabled and the database refuses it. Database tests 19/19 for the new soft delete and restore functions.* |
 | [ ] 4.3 | **Rank ladders, ranks, rank rules** | Rules editable without code; edge cases tested |
 | [ ] 4.4 | **Courts, rates, operating hours, blackouts** | A court with future bookings cannot be archived |
 | [ ] 4.5 | **Members management:** import screen with report, list and search, profile, status changes, starting rank, soft delete and restore | Import of the real member file works on a fake copy first; statuses follow the lifecycle |

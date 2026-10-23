@@ -14,7 +14,12 @@ const GROUPS = [
     label: "Club",
     items: [
       { path: "/admin/members", label: "Members", icon: "user" },
-      { path: "/admin/settings", label: "Settings", icon: "layers" },
+      {
+        path: "/admin/categories",
+        label: "Categories",
+        icon: "layers",
+      },
+      { path: "/admin/settings", label: "Settings", icon: "grid" },
     ],
   },
   {

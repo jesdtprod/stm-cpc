@@ -14,6 +14,7 @@ import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
 import { createHomePages } from "./pages-home.js";
+import { createCategoriesPages } from "./pages-categories.js";
 import { createSettingsPages } from "./pages-settings.js";
 import { createShell } from "./shell.js";
 import { changePassword, memberLogin, memberSignup } from "./lib/auth-api.js";
@@ -138,6 +139,19 @@ const settingsPages = createSettingsPages({ api });
 route("/admin/settings", () => settingsPages.settingsPage(), "Settings", {
   permission: "settings.manage",
 });
+
+const categoriesPages = createCategoriesPages({
+  api,
+  getOrgId: () => session.getState().profile?.org_id,
+});
+route(
+  "/admin/categories",
+  () => categoriesPages.categoriesPage(),
+  "Categories",
+  {
+    permission: "categories.manage",
+  },
+);
 
 const homePages = createHomePages({ session, api });
 route("/", () => homePages.homePage(), "Home", "public");
