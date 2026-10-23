@@ -11,6 +11,7 @@ import {
   toast,
   toolbar,
 } from "./ui.js";
+import { renderTurnstile } from "./lib/turnstile.js";
 
 export function homePage() {
   return h(
@@ -173,6 +174,7 @@ export function componentsPage() {
       ],
     }),
     tableHost,
+    securityCheckCard(),
   );
   draw();
   return host;
@@ -189,4 +191,40 @@ export function notFoundPage() {
     }),
     h("a", { href: "#/" }, "Back to home"),
   );
+}
+
+// Demonstrates the Turnstile widget; the sign-in form (step 1B.2) uses the same helper.
+function securityCheckCard() {
+  const status = h(
+    "p",
+    { class: "muted", role: "status" },
+    "Loading the security check…",
+  );
+  const box = h("div", {});
+  const card = h(
+    "div",
+    { class: "card" },
+    h("h2", {}, "Security check"),
+    h("p", { class: "muted" }, "Cloudflare Turnstile, used on sign-in."),
+    box,
+    status,
+  );
+  setTimeout(() => {
+    renderTurnstile(box, {
+      action: "demo",
+      onToken: (token) => {
+        status.textContent =
+          `Check passed (token received, ${token.length} characters).`;
+      },
+      onExpire: () => {
+        status.textContent = "The check expired. It will refresh.";
+      },
+      onError: (message) => {
+        status.textContent = message;
+      },
+    }).catch((e) => {
+      status.textContent = e.message;
+    });
+  }, 0);
+  return card;
 }
