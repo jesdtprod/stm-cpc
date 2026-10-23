@@ -185,6 +185,13 @@ export function createHomePages({ session, api }) {
       h(
         "div",
         { class: "card home-welcome" },
+        h("img", {
+          class: "home-logo",
+          src: "icons/cpc-logo.png",
+          alt: "",
+          width: "96",
+          height: "96",
+        }),
         h(
           "p",
           {},

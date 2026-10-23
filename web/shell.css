@@ -350,3 +350,15 @@ body:not([data-signed-in]) .menu-btn {
     transition: none;
   }
 }
+
+/* links styled as buttons keep the button look, with no underline */
+a.btn,
+a.btn:hover {
+  text-decoration: none;
+}
+
+.home-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}

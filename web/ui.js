@@ -17,6 +17,8 @@ const ICONS = {
   refresh: "M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4",
   chevl: "M15 6l-6 6 6 6",
   chevr: "M9 6l6 6-6 6",
+  chevronLeft: "M15 6l-6 6 6 6",
+  chevronRight: "M9 6l6 6-6 6",
   chevronDown: "M6 9l6 6 6-6",
   chevronUp: "M18 15l-6-6-6 6",
   info: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5M12 8v.01",
@@ -84,8 +86,17 @@ export function icon(name) {
   return svg;
 }
 
+export function toProperCase(text) {
+  if (typeof text !== "string" || !text) return text;
+  if (text.startsWith("--")) return text;
+  return text
+    .replace(/_/g, " ")
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
 export function badge(text, tone = "info") {
-  return h("span", { class: `badge badge-${tone}` }, text);
+  const properText = typeof text === "string" ? toProperCase(text) : text;
+  return h("span", { class: `badge badge-${tone}` }, properText);
 }
 
 export function button(
@@ -283,14 +294,60 @@ export function field(
     );
   }
 
-  return h(
+  const errId = `${id}-err`;
+  const errorEl = h(
+    "span",
+    {
+      class: "field-error",
+      id: errId,
+      role: "alert",
+      hidden: !error,
+    },
+    error || "",
+  );
+
+  const fieldEl = h(
     "div",
     { class: `field${error ? " field-error-state" : ""}` },
     label ? h("label", { for: id }, label, required ? " *" : "") : null,
     control,
     hint ? h("span", { class: "field-hint", id: `${id}-hint` }, hint) : null,
-    error ? h("span", { class: "field-error", id: `${id}-err` }, error) : null,
+    errorEl,
   );
+
+  fieldEl.setError = (errMsg) => {
+    errorEl.className = "field-error";
+    if (errMsg) {
+      errorEl.textContent = errMsg;
+      errorEl.hidden = false;
+      fieldEl.classList.add("field-error-state");
+      fieldEl.classList.remove("field-success-state");
+      inputEl.setAttribute("aria-invalid", "true");
+      if (hasWrap) control.classList.add("is-invalid");
+    } else {
+      errorEl.textContent = "";
+      errorEl.hidden = true;
+      fieldEl.classList.remove("field-error-state");
+      inputEl.removeAttribute("aria-invalid");
+      if (hasWrap) control.classList.remove("is-invalid");
+    }
+  };
+
+  fieldEl.setSuccess = (msg = "") => {
+    fieldEl.setError("");
+    if (msg) {
+      fieldEl.classList.add("field-success-state");
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+      errorEl.className = "field-success";
+    } else {
+      fieldEl.classList.remove("field-success-state");
+      errorEl.className = "field-error";
+    }
+  };
+
+  fieldEl.inputEl = inputEl;
+  return fieldEl;
 }
 
 export function textareaField(
@@ -1042,6 +1099,348 @@ export function dateTimeField(
   });
 }
 
+export function calendarDropdown(
+  {
+    id = "calendar-drop",
+    label,
+    value = "",
+    range = false,
+    startValue = "",
+    endValue = "",
+    onChange,
+    hint,
+    error,
+    required = false,
+    disabled = false,
+  },
+) {
+  let selectedStart = range ? startValue : value;
+  let selectedEnd = range ? endValue : "";
+  let isOpen = false;
+
+  const initialDate = selectedStart ? new Date(selectedStart) : new Date();
+  let viewYear = isNaN(initialDate.getTime())
+    ? new Date().getFullYear()
+    : initialDate.getFullYear();
+  let viewMonth = isNaN(initialDate.getTime())
+    ? new Date().getMonth()
+    : initialDate.getMonth();
+
+  const MONTH_NAMES = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const DAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+  const formatDisplay = () => {
+    if (range) {
+      if (selectedStart && selectedEnd) {
+        return `${selectedStart} → ${selectedEnd}`;
+      }
+      if (selectedStart) return `${selectedStart} → Select end date`;
+      return "Select date range";
+    }
+    return selectedStart || "Select date";
+  };
+
+  const displayText = h(
+    "span",
+    { class: "calendar-drop-val" },
+    formatDisplay(),
+  );
+  const triggerBtn = h(
+    "button",
+    {
+      type: "button",
+      class: "input calendar-drop-trigger",
+      id,
+      "aria-haspopup": "dialog",
+      "aria-expanded": "false",
+      "aria-controls": `${id}-calendar`,
+      disabled,
+      onClick: (e) => {
+        e.preventDefault();
+        toggleCalendar(!isOpen);
+      },
+    },
+    h(
+      "span",
+      { class: "calendar-drop-trigger-left" },
+      icon("calendar"),
+      displayText,
+    ),
+    icon("chevronDown"),
+  );
+
+  const popover = h("div", {
+    id: `${id}-calendar`,
+    class: "calendar-popover",
+    role: "dialog",
+    "aria-label": label || "Choose date",
+    hidden: true,
+  });
+
+  const renderMonth = () => {
+    popover.replaceChildren();
+
+    const header = h(
+      "div",
+      { class: "calendar-header" },
+      h(
+        "button",
+        {
+          type: "button",
+          class: "calendar-nav-btn",
+          "aria-label": "Previous Month",
+          onClick: (e) => {
+            e.stopPropagation();
+            viewMonth--;
+            if (viewMonth < 0) {
+              viewMonth = 11;
+              viewYear--;
+            }
+            renderMonth();
+          },
+        },
+        icon("chevronLeft"),
+      ),
+      h(
+        "span",
+        { class: "calendar-month-label" },
+        `${MONTH_NAMES[viewMonth]} ${viewYear}`,
+      ),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "calendar-nav-btn",
+          "aria-label": "Next Month",
+          onClick: (e) => {
+            e.stopPropagation();
+            viewMonth++;
+            if (viewMonth > 11) {
+              viewMonth = 0;
+              viewYear++;
+            }
+            renderMonth();
+          },
+        },
+        icon("chevronRight"),
+      ),
+    );
+
+    const weekdaysRow = h(
+      "div",
+      { class: "calendar-weekdays" },
+      ...DAY_NAMES.map((d) => h("span", { class: "calendar-weekday" }, d)),
+    );
+
+    const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    const daysGrid = h("div", { class: "calendar-days" });
+
+    // Previous month filler days
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const prevDay = daysInPrevMonth - i;
+      daysGrid.appendChild(
+        h("span", { class: "calendar-day is-filler" }, `${prevDay}`),
+      );
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    // Current month days
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${
+        String(day).padStart(2, "0")
+      }`;
+      const isToday = dStr === todayStr;
+      const isStart = dStr === selectedStart;
+      const isEnd = dStr === selectedEnd;
+      const inRange = range && selectedStart && selectedEnd &&
+        dStr > selectedStart && dStr < selectedEnd;
+
+      const classes = [
+        "calendar-day",
+        isToday ? "is-today" : "",
+        isStart ? "is-selected is-range-start" : "",
+        isEnd ? "is-selected is-range-end" : "",
+        inRange ? "is-in-range" : "",
+      ].filter(Boolean).join(" ");
+
+      const dayBtn = h(
+        "button",
+        {
+          type: "button",
+          class: classes,
+          "data-date": dStr,
+          onClick: (e) => {
+            e.stopPropagation();
+            if (range) {
+              if (!selectedStart || (selectedStart && selectedEnd)) {
+                selectedStart = dStr;
+                selectedEnd = "";
+              } else if (dStr < selectedStart) {
+                selectedEnd = selectedStart;
+                selectedStart = dStr;
+              } else {
+                selectedEnd = dStr;
+              }
+              displayText.textContent = formatDisplay();
+              renderMonth();
+              onChange?.({ start: selectedStart, end: selectedEnd });
+              if (selectedStart && selectedEnd) {
+                setTimeout(() => toggleCalendar(false), 220);
+              }
+            } else {
+              selectedStart = dStr;
+              displayText.textContent = formatDisplay();
+              renderMonth();
+              onChange?.(selectedStart);
+              setTimeout(() => toggleCalendar(false), 160);
+            }
+          },
+        },
+        `${day}`,
+      );
+      daysGrid.appendChild(dayBtn);
+    }
+
+    const presetsBar = h(
+      "div",
+      { class: "calendar-presets" },
+      h(
+        "button",
+        {
+          type: "button",
+          class: "preset-chip",
+          onClick: (e) => {
+            e.stopPropagation();
+            const now = new Date();
+            viewYear = now.getFullYear();
+            viewMonth = now.getMonth();
+            if (range) {
+              selectedStart = todayStr;
+              selectedEnd = todayStr;
+              onChange?.({ start: selectedStart, end: selectedEnd });
+            } else {
+              selectedStart = todayStr;
+              onChange?.(selectedStart);
+            }
+            displayText.textContent = formatDisplay();
+            renderMonth();
+            setTimeout(() => toggleCalendar(false), 180);
+          },
+        },
+        "Today",
+      ),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "preset-chip",
+          onClick: (e) => {
+            e.stopPropagation();
+            const now = new Date();
+            viewYear = now.getFullYear();
+            viewMonth = now.getMonth();
+            const first = new Date(viewYear, viewMonth, 1).toISOString().slice(
+              0,
+              10,
+            );
+            const last = new Date(viewYear, viewMonth + 1, 0).toISOString()
+              .slice(0, 10);
+            if (range) {
+              selectedStart = first;
+              selectedEnd = last;
+              onChange?.({ start: selectedStart, end: selectedEnd });
+            } else {
+              selectedStart = first;
+              onChange?.(selectedStart);
+            }
+            displayText.textContent = formatDisplay();
+            renderMonth();
+            setTimeout(() => toggleCalendar(false), 180);
+          },
+        },
+        "This Month",
+      ),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "preset-chip",
+          onClick: (e) => {
+            e.stopPropagation();
+            selectedStart = "";
+            selectedEnd = "";
+            displayText.textContent = formatDisplay();
+            renderMonth();
+            onChange?.(range ? { start: "", end: "" } : "");
+          },
+        },
+        "Clear",
+      ),
+    );
+
+    popover.append(header, weekdaysRow, daysGrid, presetsBar);
+  };
+
+  const closeOutside = (event) => {
+    if (!container.contains(event.target)) toggleCalendar(false);
+  };
+  const closeOnEscape = (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    toggleCalendar(false);
+    triggerBtn.focus();
+  };
+  const toggleCalendar = (show) => {
+    isOpen = show;
+    triggerBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    if (isOpen) {
+      renderMonth();
+      popover.hidden = false;
+      requestAnimationFrame(() => popover.classList.add("is-open"));
+      document.addEventListener("pointerdown", closeOutside);
+      document.addEventListener("keydown", closeOnEscape);
+    } else {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+      popover.classList.remove("is-open");
+      popover.hidden = true;
+    }
+  };
+
+  const container = h(
+    "div",
+    { class: "calendar-drop-container" },
+    triggerBtn,
+    popover,
+  );
+
+  return h(
+    "div",
+    { class: `field${error ? " field-error-state" : ""}` },
+    label ? h("label", { for: id }, label, required ? " *" : "") : null,
+    container,
+    hint ? h("span", { class: "field-hint" }, hint) : null,
+    error ? h("span", { class: "field-error", role: "alert" }, error) : null,
+  );
+}
+
 export function dateRangePicker(
   {
     id,
@@ -1271,7 +1670,7 @@ export function fileUploadField(
     multiple,
     disabled,
     required,
-    style: "display: none;",
+    hidden: true,
     onChange: (e) => handleSelectedFiles(Array.from(e.target.files ?? [])),
   });
 
@@ -2100,6 +2499,8 @@ export function progressBar(
   },
 ) {
   const pct = Math.max(0, Math.min(100, Math.round((value / max) * 100)));
+  const fill = h("div", { class: "progress-bar-fill" });
+  if (!indeterminate) fill.style.width = `${pct}%`;
   return h(
     "div",
     { class: "progress-bar-wrap" },
@@ -2125,10 +2526,7 @@ export function progressBar(
         "aria-valuemax": max,
         "aria-label": label ?? "Progress",
       },
-      h("div", {
-        class: "progress-bar-fill",
-        style: indeterminate ? "" : `width: ${pct}%`,
-      }),
+      fill,
     ),
   );
 }
@@ -2163,15 +2561,13 @@ export function skeleton(
 ) {
   const items = [];
   for (let i = 0; i < count; i++) {
-    const styleParts = [];
-    if (width) styleParts.push(`width: ${width}`);
-    if (height) styleParts.push(`height: ${height}`);
-    const style = styleParts.join("; ");
-    items.push(h("span", {
+    const item = h("span", {
       class: `sk sk-${variant} ${className}`.trim(),
-      style: style || null,
       "aria-hidden": "true",
-    }));
+    });
+    if (width) item.style.width = width;
+    if (height) item.style.height = height;
+    items.push(item);
   }
   return items.length === 1
     ? items[0]
@@ -2230,6 +2626,18 @@ export function breadcrumbs({ items = [] }) {
 export function tabs({ tabs: tabList = [], activeId, onChange }) {
   const currentId = activeId ?? tabList[0]?.id;
   const container = h("div", { class: "tabs-nav", role: "tablist" });
+  const select = (id) => {
+    for (const tab of container.querySelectorAll('[role="tab"]')) {
+      const selected = tab.id === `tab-${id}`;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      const count = tab.querySelector(".badge");
+      if (count) {
+        count.className = `badge badge-${selected ? "info" : "neutral"}`;
+      }
+    }
+    onChange?.(id);
+  };
   for (const t of tabList) {
     const isSelected = t.id === currentId;
     const btn = h(
@@ -2241,7 +2649,24 @@ export function tabs({ tabs: tabList = [], activeId, onChange }) {
         id: `tab-${t.id}`,
         "aria-selected": isSelected ? "true" : "false",
         "aria-controls": `panel-${t.id}`,
-        onClick: () => onChange?.(t.id),
+        tabindex: isSelected ? "0" : "-1",
+        onClick: () => select(t.id),
+        onKeydown: (event) => {
+          const index = tabList.indexOf(t);
+          const target = event.key === "Home"
+            ? 0
+            : event.key === "End"
+            ? tabList.length - 1
+            : event.key === "ArrowRight"
+            ? (index + 1) % tabList.length
+            : event.key === "ArrowLeft"
+            ? (index - 1 + tabList.length) % tabList.length
+            : null;
+          if (target === null) return;
+          event.preventDefault();
+          select(tabList[target].id);
+          container.querySelectorAll('[role="tab"]')[target].focus();
+        },
       },
       t.icon ? icon(t.icon) : null,
       t.label,

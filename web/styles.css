@@ -24,20 +24,21 @@
 /* ===== 1. Design tokens (UI_DESIGN.md section 2) ===== */
 :root {
   color-scheme: dark;
-  --bg: #0b1220;
-  --surface: #111a2e;
-  --surface-2: #16213a;
-  --surface-3: #1c2a49;
-  --border: #263757;
-  --text: #e8eefc;
-  --text-2: #a9b6d3;
-  --primary: #2563eb;
-  --primary-hover: #3b76f0;
-  --accent: #22d3ee;
-  --success: #34d399;
-  --warning: #fbbf24;
+  --bg: #071510;
+  --surface: #0e2219;
+  --surface-2: #142e22;
+  --surface-3: #1b3b2c;
+  --border: #234836;
+  --text: #f2f7f4;
+  --text-2: #9db5a7;
+  --primary: #15803d;
+  --primary-hover: #16a34a;
+  --accent: #f59e0b;
+  --accent-hover: #fbbf24;
+  --success: #10b981;
+  --warning: #f59e0b;
   --danger: #f87171;
-  --danger-bg: #5b1f26;
+  --danger-bg: #451216;
 
   --s1: 4px;
   --s2: 8px;
@@ -52,30 +53,31 @@
   --control-h: 42px;
   --control-h-sm: 32px;
   --control-h-lg: 48px;
-  --shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
   --font: "Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 :root[data-theme="light"],
 [data-theme="light"] {
   color-scheme: light;
-  --bg: #f8fafc;
+  --bg: #f5f8f6;
   --surface: #ffffff;
-  --surface-2: #f1f5f9;
-  --surface-3: #e2e8f0;
-  --border: #cbd5e1;
-  --text: #0f172a;
-  --text-2: #475569;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --accent: #0284c7;
+  --surface-2: #eaf1ed;
+  --surface-3: #d9e6de;
+  --border: #bed1c6;
+  --text: #092114;
+  --text-2: #415e4f;
+  --primary: #0d6b38;
+  --primary-hover: #0a542b;
+  --accent: #d97706;
+  --accent-hover: #b45309;
   --success: #059669;
   --warning: #d97706;
   --danger: #dc2626;
   --danger-bg: #fee2e2;
-  --shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.16);
+  --shadow: 0 6px 20px rgba(9, 33, 20, 0.08);
+  --shadow-lg: 0 12px 32px rgba(9, 33, 20, 0.16);
 }
 
 /* ===== 2. Base ===== */
@@ -156,10 +158,20 @@ main[aria-busy="true"] {
   border-bottom: 1px solid var(--border);
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
   color: var(--text);
   font-weight: 700;
   text-decoration: none;
   font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .app-nav {
   display: flex;
@@ -471,7 +483,20 @@ main[aria-busy="true"] {
   padding-left: 40px;
 }
 .input-wrap:has(.prefix-text) .input {
-  padding-left: 36px;
+  padding-left: 44px;
+}
+.field-success-state .input,
+.field-success-state .input-wrap {
+  border-color: var(--success) !important;
+}
+.field-success {
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: fadeIn 0.2s ease;
 }
 .input-wrap .icon-trailing {
   right: var(--s3);
@@ -810,6 +835,169 @@ textarea.input {
   cursor: pointer;
 }
 
+/* Smooth Dropdown Calendar */
+.calendar-drop-container {
+  position: relative;
+  width: 100%;
+}
+.calendar-drop-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.calendar-drop-trigger:hover {
+  border-color: var(--accent);
+}
+.calendar-drop-trigger-left {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.calendar-drop-val {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calendar-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  width: 310px;
+  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: var(--s3);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(20px);
+  transform-origin: top left;
+  animation: calendarPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes calendarPop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.calendar-month-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.calendar-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.calendar-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.calendar-weekday {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-2);
+  padding: 4px 0;
+}
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.calendar-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.12s;
+  padding: 0;
+}
+.calendar-day:hover:not(.is-filler) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.calendar-day.is-filler {
+  color: rgba(255, 255, 255, 0.2);
+  cursor: default;
+}
+.calendar-day.is-today {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+.calendar-day.is-selected {
+  background: var(--primary) !important;
+  color: #fff !important;
+  font-weight: 700;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+.calendar-day.is-in-range {
+  background: rgba(37, 99, 235, 0.2);
+  border-radius: 0;
+  color: #93c5fd;
+}
+.calendar-day.is-range-start {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.calendar-day.is-range-end {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.calendar-presets {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 /* Date Range Picker */
 .date-range-picker {
   display: grid;
@@ -817,6 +1005,7 @@ textarea.input {
 }
 .date-range-inputs {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--s2);
 }
@@ -838,7 +1027,7 @@ textarea.input {
   border: 1px solid var(--border);
   color: var(--text-2);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .preset-chip:hover {
   background: var(--surface-3);
@@ -897,39 +1086,49 @@ textarea.input {
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--s1);
+  gap: 6px;
   height: 24px;
-  padding: 0 var(--s2);
+  padding: 0 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
   border: 1px solid var(--border);
   background: var(--surface-3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  line-height: 1;
 }
 .badge-success {
-  color: var(--success);
-  border-color: var(--success);
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.32);
 }
 .badge-warning {
-  color: var(--warning);
-  border-color: var(--warning);
+  color: #facc15;
+  background: rgba(234, 179, 8, 0.14);
+  border-color: rgba(234, 179, 8, 0.32);
 }
 .badge-danger {
-  color: var(--danger);
-  border-color: var(--danger);
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.32);
 }
 .badge-info {
-  color: var(--accent);
-  border-color: var(--accent);
+  color: #38bdf8;
+  background: rgba(34, 211, 238, 0.14);
+  border-color: rgba(34, 211, 238, 0.32);
 }
 .badge-primary {
-  color: #fff;
-  background: var(--primary);
-  border-color: var(--primary);
+  color: #bfdbfe;
+  background: rgba(37, 99, 235, 0.22);
+  border-color: rgba(37, 99, 235, 0.45);
 }
 .badge-neutral {
   color: var(--text-2);
-  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 /* ===== 6. Toolbar ===== */
@@ -1176,7 +1375,7 @@ dialog.drawer::backdrop {
 .popover-wrap,
 .dropdown-wrap {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
 }
 .popover-content {
   position: absolute;
@@ -1200,17 +1399,23 @@ dialog.drawer::backdrop {
 }
 .dropdown-menu-list {
   position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
+  top: calc(100% + 6px);
+  left: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-control);
-  box-shadow: var(--shadow-lg);
-  padding: var(--s1);
-  z-index: 55;
-  min-width: 190px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0,
+    0.5);
+  padding: 6px;
+  z-index: 100;
+  min-width: 200px;
   display: grid;
   gap: 2px;
+}
+[hidden],
+.popover-content[hidden],
+.dropdown-menu-list[hidden] {
+  display: none !important;
 }
 .dropdown-item {
   display: flex;
@@ -1256,16 +1461,19 @@ dialog.drawer::backdrop {
   pointer-events: auto;
   display: flex;
   gap: var(--s3);
-  align-items: flex-start;
+  align-items: center; /* VERTICALLY CENTERED TO CONTAINER */
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--r-card);
-  padding: var(--s3) var(--s4);
-  box-shadow: var(--shadow-lg);
-  min-width: 280px;
-  max-width: 420px;
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0,
+    0.35);
+  min-width: 300px;
+  max-width: 440px;
+  min-height: 50px;
   animation: toastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   color: var(--text);
+  backdrop-filter: blur(16px);
 }
 @keyframes toastIn {
   from {
@@ -1278,21 +1486,31 @@ dialog.drawer::backdrop {
   }
 }
 .toast-icon {
-  margin-top: 2px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  width: 24px;
+  height: 24px;
 }
 .toast-body {
   flex: 1;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   gap: 2px;
+  min-width: 0;
 }
 .toast-title {
   font-weight: 700;
   font-size: 13px;
+  line-height: 1.25;
 }
 .toast-msg {
   font-size: 13px;
   color: var(--text-2);
+  line-height: 1.35;
 }
 .toast-close-btn {
   background: transparent;
@@ -1303,10 +1521,13 @@ dialog.drawer::backdrop {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  align-self: center; /* VERTICALLY CENTERED */
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
-  border-radius: 4px;
+  border-radius: 6px;
+  margin: 0;
+  transition: all 0.15s ease;
 }
 .toast-close-btn:hover {
   color: var(--text);
@@ -1970,34 +2191,29 @@ dialog.drawer::backdrop {
 
 /* ===== Component Playground Specific Layout ===== */
 .playground-nav {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  padding: var(--s2) 0;
-  margin: 0 calc(-1 * var(--s5));
-  padding-left: var(--s5);
-  padding-right: var(--s5);
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  overflow-x: auto;
+  display: grid;
+  gap: var(--s4);
+  padding: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  min-width: 0;
 }
 .playground-nav-pills {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--s1);
-  flex-shrink: 0;
 }
 .playground-pill {
-  padding: 6px 14px;
+  min-height: var(--control-h);
+  padding: var(--s2) var(--s3);
+  font-family: inherit;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-2);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--r-control);
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
@@ -2015,60 +2231,133 @@ dialog.drawer::backdrop {
   border-color: var(--accent);
 }
 .playground-search-wrap {
-  margin-left: auto;
-  min-width: 200px;
+  display: grid;
+  gap: var(--s2);
+  max-width: 480px;
+  min-width: 0;
+}
+.playground-search-wrap .input {
+  width: 100%;
+}
+.playground-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.components-playground,
+.component-section,
+.component-grid,
+.component-demo > * {
+  min-width: 0;
+}
+.components-playground [hidden] {
+  display: none !important;
 }
 .component-section {
   display: grid;
-  gap: var(--s4);
-  padding-top: var(--s4);
+  gap: var(--s5);
+  scroll-margin-top: 72px;
+  padding-top: var(--s2);
 }
 .component-section-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s3);
   border-bottom: 1px solid var(--border);
-  padding-bottom: var(--s2);
-  margin-bottom: var(--s2);
+  padding-bottom: var(--s3);
+}
+.component-section-head h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 .component-grid {
   display: grid;
-  gap: var(--s4);
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--s5);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
 }
 .component-card {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-card);
   padding: var(--s4);
-  gap: var(--s3);
+  gap: var(--s4);
+}
+.component-card-wide,
+.component-card-last {
+  grid-column: 1 / -1;
+}
+@supports (grid-template-rows: subgrid) {
+  .component-grid > .component-card {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: span 2;
+  }
+}
+@media (max-width: 960px) {
+  .component-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .component-card {
+    padding: var(--s4);
+  }
 }
 .component-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  display: grid;
+  gap: var(--s3);
+}
+.component-card-head > .badge {
+  justify-self: start;
+  height: auto;
+  white-space: normal;
 }
 .component-title {
   font-size: 15px;
   font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  line-height: 1.35;
 }
 .component-guidance {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-2);
+  line-height: 1.5;
+  margin-top: 4px;
 }
 .component-demo {
-  display: grid;
-  gap: var(--s3);
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--s4);
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--r-control);
   padding: var(--s4);
+  min-height: 96px;
+}
+.component-demo > .btn {
+  align-self: flex-start;
+}
+.component-demo .token-table {
+  table-layout: fixed;
+  overflow-wrap: anywhere;
+}
+.component-demo .tbl {
+  overflow-x: auto;
 }
 .swatch-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
   gap: var(--s2);
 }
 .swatch-card {
@@ -2132,14 +2421,21 @@ dialog.drawer::backdrop {
   border: 1px solid var(--border);
   border-radius: var(--r-control);
   font-size: 11px;
+  font-family: inherit;
   color: var(--text-2);
   cursor: pointer;
+  overflow-wrap: anywhere;
+  min-width: 0;
   transition: all 0.15s;
 }
 .icon-card:hover {
   color: var(--text);
   border-color: var(--accent);
   background: var(--surface-3);
+}
+.icon-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .spacing-scale-bars {
   display: grid;
@@ -2161,6 +2457,204 @@ dialog.drawer::backdrop {
   background: var(--accent);
   opacity: 0.75;
   border-radius: 4px;
+}
+
+/* Component demo layouts live here so they work with style-src self. */
+.demo-result-count {
+  font-size: 12px;
+}
+.demo-reset-margin {
+  margin: 0;
+}
+.demo-semibold {
+  font-weight: 600;
+}
+.demo-stack-sm {
+  display: grid;
+  gap: var(--s2);
+}
+.demo-stack {
+  display: grid;
+  gap: var(--s3);
+}
+.demo-row-sm {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+.demo-row-sm-center {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.demo-row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.demo-caption {
+  font-size: 12px;
+  font-weight: 600;
+}
+.demo-row {
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.demo-row-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.demo-stack-lg {
+  display: grid;
+  gap: var(--s4);
+}
+.demo-stack-divider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+.demo-row-divider-sm {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-top: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+.demo-row-top {
+  display: flex;
+  gap: var(--s2);
+  margin-top: var(--s2);
+  flex-wrap: wrap;
+}
+.demo-row-lg {
+  display: flex;
+  gap: var(--s5);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.demo-row-bottom {
+  display: flex;
+  gap: var(--s3);
+  align-items: center;
+  margin-bottom: var(--s3);
+  flex-wrap: wrap;
+}
+.demo-flex-stack {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: var(--s2);
+}
+.demo-flex-fill {
+  flex: 1;
+  min-width: 0;
+}
+.demo-small-title {
+  margin: 0;
+  font-size: 15px;
+}
+.demo-body-title {
+  margin: 0;
+  font-size: 14px;
+}
+.demo-metric-grid {
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+.demo-row-medium {
+  display: flex;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.demo-form-grid {
+  display: grid;
+  gap: var(--s4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+}
+.demo-block-space {
+  margin: var(--s3) 0;
+}
+.demo-block-bottom {
+  margin-bottom: var(--s4);
+}
+.demo-row-end {
+  display: flex;
+  gap: var(--s3);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.swatch-primary {
+  background: var(--primary);
+}
+.swatch-primary-hover {
+  background: var(--primary-hover);
+}
+.swatch-accent {
+  background: var(--accent);
+}
+.swatch-bg {
+  background: var(--bg);
+}
+.swatch-surface {
+  background: var(--surface);
+}
+.swatch-surface-2 {
+  background: var(--surface-2);
+}
+.swatch-surface-3 {
+  background: var(--surface-3);
+}
+.swatch-border {
+  background: var(--border);
+}
+.swatch-text {
+  background: var(--text);
+}
+.swatch-text-2 {
+  background: var(--text-2);
+}
+.swatch-success {
+  background: var(--success);
+}
+.swatch-warning {
+  background: var(--warning);
+}
+.swatch-danger {
+  background: var(--danger);
+}
+.swatch-danger-bg {
+  background: var(--danger-bg);
+}
+.spacing-4 {
+  width: 24px;
+}
+.spacing-8 {
+  width: 48px;
+}
+.spacing-12 {
+  width: 72px;
+}
+.spacing-16 {
+  width: 96px;
+}
+.spacing-24 {
+  width: 144px;
+}
+.spacing-32 {
+  width: 192px;
 }
 
 /* ===== 10. Animation and responsive ===== */
