@@ -166,7 +166,7 @@ Because the repository is public, treat it as a published document.
 ## 10. Supply chain and dependencies
 
 - Pin every library to an exact version. Never use `latest` or floating majors.
-- Prefer **self-hosting** `supabase-js`, `jsPDF`, `jspdf-autotable`, `html2pdf.js`, and the Plus Jakarta Sans font files. If loaded from a CDN, add `integrity` (SRI) and `crossorigin="anonymous"`.
+- Prefer **self-hosting** `supabase-js`, `jsPDF`, `jspdf-autotable`, `html2pdf.js`, and the Inter font files (already self-hosted). If loaded from a CDN, add `integrity` (SRI) and `crossorigin="anonymous"`.
 - Keep a dependency inventory (name, version, source, date last reviewed) and review for known vulnerabilities monthly.
 - Enable Dependabot (or equivalent) for tooling and GitHub Actions.
 - Pin GitHub Actions to a full commit SHA; set workflow `permissions` to read-only by default.

@@ -26,7 +26,7 @@ STM-CPC is the web app of the Capitol Pickleball Club (CPC), a single club: memb
 | Backend (legacy) | Google Apps Script + Google Sheets | Phase 1 only; no longer loaded by the frontend |
 | Runtime / tooling | Deno (strict mode) | Runs the project and the Edge Functions |
 | Checks | Node-style `.mjs` scripts | `scripts/check-*.mjs` |
-| Typography | Plus Jakarta Sans | Google Fonts |
+| Typography | Inter | Self-hosted |
 | Design rules | See `UI_DESIGN.md` | Mandatory for all UI work |
 | Database design | See `DATABASE.md` | General core kit; ULID primary keys, soft delete, idempotency |
 | Authentication | Supabase Auth with member-ID login | Via the `member-login` Edge Function; public sign-ups disabled |
@@ -54,7 +54,7 @@ STM-CPC is the web app of the Capitol Pickleball Club (CPC), a single club: memb
 | `supabase-js` v2 | Database queries, auth, calling Edge Functions |
 | `html2pdf.js` | Converting rendered HTML (receipts, reports) to PDF |
 | `jsPDF` + `jspdf-autotable` | Programmatic PDF receipts and tabular reports |
-| Plus Jakarta Sans (Google Fonts) | UI typeface; the only font family in the app |
+| Inter (self-hosted variable woff2 in `web/fonts/`, SIL OFL) | UI typeface; the only font family in the app |
 
 **CDN rules**
 - Pin an exact version in every URL; never use `latest` or a floating major.
