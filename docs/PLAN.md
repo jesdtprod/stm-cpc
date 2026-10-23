@@ -27,7 +27,7 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 | --- | --- |
 | Frontend | Plain HTML, CSS, vanilla JavaScript, PWA; hosted on GitHub Pages; hash-based routing |
 | Backend | Supabase (database, Auth, Edge Functions, Storage) |
-| Supabase dev project | `https://ehclozdhfmacetkrcyct.supabase.co`; used as **development** until a production project is created |
+| Supabase dev project | `https://iohrwwrkhdkmzxntstuu.supabase.co`; used as **development** until a production project is created |
 | CAPTCHA | Cloudflare Turnstile |
 | Member ID | `CPC-YYYY-NNNNN` |
 | Scope | One club: Capitol Pickleball Club |
@@ -55,8 +55,8 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 | ID | Step | Done when |
 | --- | --- | --- |
 | [ ] 0.1 | **Repository hygiene.** `.gitignore` (env files, dumps, exports, member import file, local Supabase files), project `README.md`, remove any leftover legacy code from the public repository. Turn on GitHub secret scanning and push protection, branch protection on `main`, and 2FA | Settings confirmed; a test secret in a branch is blocked or flagged; `git status` shows no ignored files tracked |
-| [ ] 0.2 | **Folder structure.** `docs/` (these documents), `web/` (everything published to Pages), `supabase/` (config, migrations, functions, tests), `scripts/`, `.github/workflows/` | Tree matches; each folder has a short note on its purpose |
-| [ ] 0.3 | **Supabase dev project.** Confirm it is empty (list non-system tables, `auth.users` count, extensions); install and log in to the CLI; `supabase init`; link to project `ehclozdhfmacetkrcyct`; create `supabase-config.js` with URL and anon key only | SQL results pasted; `supabase --version` and `supabase link` succeed; config file contains no secret |
+| [x] 0.2 | **Folder structure.** `docs/` (these documents), `web/` (everything published to Pages), `supabase/` (config, migrations, functions, tests), `scripts/`, `.github/workflows/` | Tree matches; each folder has a short note on its purpose |
+| [x] 0.3 | **Supabase dev project.** Confirm it is empty (list non-system tables, `auth.users` count, extensions); install and log in to the CLI; `supabase init`; link to project `iohrwwrkhdkmzxntstuu`; create `supabase-config.js` with URL and anon key only | SQL results pasted; `supabase --version` and `supabase link` succeed; config file contains no secret |
 | [ ] 0.4 | **Tooling and checks.** `deno.json` tasks (lint, format, check); review `check-pos.mjs` and `check-branch-registration.mjs` and rename or replace them; database test setup (pgTAP); GitHub Actions workflow for checks and secret scan | Tasks run locally; workflow is green on a test pull request |
 | [ ] 0.5 | **Frontend foundation.** Design tokens and base CSS from `UI_DESIGN.md`; app shell with hash router; shared components (table, modal, toolbar, empty state, skeleton, pagination, form fields, badges); meta CSP including Turnstile; PWA manifest and service worker (app shell only) | Shell loads on desktop and mobile; an injected inline script is blocked by CSP; offline shell opens; no authenticated data in the cache |
 | [ ] 0.6 | **Deployment.** GitHub Pages workflow that publishes only `web/`; HTTPS enforced | Live URL loads; the published files contain nothing from `supabase/`, `scripts/`, or `docs/` |

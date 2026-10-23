@@ -10,7 +10,7 @@ Use this instead of loading the whole documents. Open a `docs/` section only whe
 ## Stack and structure
 - Plain HTML/CSS/vanilla JS PWA on GitHub Pages, hash routing (`#/path`). Supabase (Postgres, Auth, Edge Functions, Storage). Deno tooling. Cloudflare Turnstile CAPTCHA. Public repository.
 - Folders: `docs/`, `web/` (published), `supabase/` (config, migrations, functions, tests), `scripts/`, `templates/`, `agent-skills/`.
-- Supabase dev project: `https://ehclozdhfmacetkrcyct.supabase.co`. Only URL + anon key are public. Never handle `service_role`, DB password, Turnstile secret, temp passwords.
+- Supabase dev project: `https://iohrwwrkhdkmzxntstuu.supabase.co`. Only URL + anon key are public. Never handle `service_role`, DB password, Turnstile secret, temp passwords.
 - Libraries pinned; self-host where possible; CDN scripts need exact versions and SRI. Turnstile script loads from Cloudflare.
 
 ## Database rules (docs/DATABASE.md §4–8, 11)

@@ -1,0 +1,13 @@
+{
+  "compilerOptions": { "strict": true },
+  "tasks": {
+    "check": "deno run --allow-read=. --allow-run=git scripts/check-secrets.mjs && deno run --allow-read=. --allow-run=git scripts/check-repo.mjs",
+    "lint": "deno lint",
+    "fmt": "deno fmt --check"
+  },
+  "fmt": {
+    "include": ["deno.json", "scripts/", "web/", ".github/"],
+    "exclude": ["web/**/*.md", "scripts/**/*.md", ".github/**/*.md"]
+  },
+  "lint": { "exclude": [".claude/", "supabase/.temp/"] }
+}

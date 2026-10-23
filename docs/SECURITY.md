@@ -102,7 +102,7 @@ GitHub Pages cannot send security headers. Use these controls in every HTML file
   - `font-src 'self' https://fonts.gstatic.com`
   - `frame-src https://challenges.cloudflare.com`
   - `img-src 'self' data: blob:`
-  - `connect-src 'self' https://ehclozdhfmacetkrcyct.supabase.co wss://ehclozdhfmacetkrcyct.supabase.co`
+  - `connect-src 'self' https://iohrwwrkhdkmzxntstuu.supabase.co wss://iohrwwrkhdkmzxntstuu.supabase.co`
   - `object-src 'none'`; `base-uri 'self'`; `form-action 'self'`
   - Do not use `'unsafe-inline'` or `'unsafe-eval'` for scripts.
 - `<meta name="referrer" content="strict-origin-when-cross-origin">`.

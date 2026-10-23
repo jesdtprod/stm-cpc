@@ -425,13 +425,13 @@ Each phase ends with a verification list. Run the checks, record the outputs, an
 
 ### 12.1 Phase 1 setup (development project)
 
-- Supabase project: `https://ehclozdhfmacetkrcyct.supabase.co` (project ref `ehclozdhfmacetkrcyct`). It is treated as the **development** project until a separate production project is created; the same migrations are then applied to production.
+- Supabase project: `https://iohrwwrkhdkmzxntstuu.supabase.co` (project ref `iohrwwrkhdkmzxntstuu`). It is treated as the **development** project until a separate production project is created; the same migrations are then applied to production.
 - The project URL and anon key are public by design. The `service_role` key and database password are never pasted into chat or committed.
 
 | Step | Action | Verification (record the output) |
 | --- | --- | --- |
 | 1 | Confirm the project is empty. In the SQL Editor run: list non-system tables (`information_schema.tables` excluding system schemas), `select count(*) from auth.users`, and `select extname from pg_extension` | No unexpected tables; `auth.users` count is 0; extensions listed |
-| 2 | In the `stm-cpc` folder run `npx supabase --version`, `npx supabase login`, `npx supabase init`, `npx supabase link --project-ref ehclozdhfmacetkrcyct` | Version printed; `supabase/config.toml` exists; link succeeds (the database password is typed in the terminal only) |
+| 2 | In the `stm-cpc` folder run `npx supabase --version`, `npx supabase login`, `npx supabase init`, `npx supabase link --project-ref iohrwwrkhdkmzxntstuu` | Version printed; `supabase/config.toml` exists; link succeeds (the database password is typed in the terminal only) |
 | 3 | Review, then apply the first migration: `core.ulid()` and the standard helpers | Migration applies; ULID format test passes |
 | 4 | Remaining core kit migrations and the portable test suite | All tests pass; Supabase Security and Performance Advisors show no findings |
 

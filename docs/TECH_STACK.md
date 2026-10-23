@@ -85,7 +85,7 @@ STM-CPC is the web app of the Capitol Pickleball Club (CPC), a single club: memb
 
 ### 3.1 Supabase (current)
 
-Project URL: `https://ehclozdhfmacetkrcyct.supabase.co` (project ref `ehclozdhfmacetkrcyct`). The URL and the anon key are public by design; the `service_role` key and database password are not, and never go in the repository or in chat. Until a separate production project exists, treat this project as **development**.
+Project URL: `https://iohrwwrkhdkmzxntstuu.supabase.co` (project ref `iohrwwrkhdkmzxntstuu`). The URL and the anon key are public by design; the `service_role` key and database password are not, and never go in the repository or in chat. Until a separate production project exists, treat this project as **development**.
 
 All backend code lives under `supabase/`.
 
