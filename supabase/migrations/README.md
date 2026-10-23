@@ -28,5 +28,6 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1090_import_issue_dedupe.sql` | 3.2 | A re-run does not copy open issues |
 | `1100_member_account_flow.sql`, `1120_fix_update_my_profile.sql` | 3.4 | `my_access_state()`, `update_my_profile()`, first sign-in -> invited, password-changed hook; pending approval once the password is changed and the profile is complete |
 | `1110_import_reassign.sql`, `1130_import_id_conflicts.sql` | 3.2 | Rows that share a member ID get new numbers from the yearly sequence (never one the file uses); a number held by a different person is not skipped |
+| `1140_my_access_state_profile.sql` | 3.4 | `my_access_state()` also returns the member's own contact details and address codes for the profile form |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

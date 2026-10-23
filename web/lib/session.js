@@ -2,15 +2,19 @@
 // Everything it touches is injected, so idle timeout and cross-tab sign-out are unit-testable.
 //
 // Sign-in goes through the `member-login` Edge Function (step 3.1): login(credentials, captchaToken)
-// must resolve to { access_token, refresh_token }. loadAccess() resolves to { grants, profile }. Gates other than "pending" (forced password
-// change, suspended) are decided by resolveGate once the member data exists (stage 3).
+// must resolve to { access_token, refresh_token }. loadAccess() resolves to { grants, profile, access }, where
+// `access` is the member's own state from my_access_state() (status, must_change_password, profile_complete).
+// resolveGate(grants, access) decides which gate holds the user: "password_change" first, then "pending".
 const CHANNEL = "cpc-session";
 
 export function createSession({
   auth,
   login,
   loadAccess,
-  resolveGate = (grants) => (grants.length === 0 ? "pending" : null),
+  resolveGate = (grants, access) =>
+    access?.must_change_password
+      ? "password_change"
+      : (grants.length === 0 ? "pending" : null),
   channel = null,
   storage = null,
   cacheStorage = null,
@@ -28,6 +32,7 @@ export function createSession({
     gate: null,
     grants: [],
     profile: null,
+    access: null,
     reason: null,
   };
   let lastAuthAt = -Infinity;
@@ -80,6 +85,7 @@ export function createSession({
       gate: null,
       grants: [],
       profile: null,
+      access: null,
       reason,
     });
   }
@@ -87,17 +93,26 @@ export function createSession({
   async function establish(session) {
     const { error } = await auth.setSession(session);
     if (error) throw error;
-    const { grants, profile } = await loadAccess();
+    const { grants, profile, access = null } = await loadAccess();
     lastAuthAt = now();
     lastActivity = now();
     emit({
       status: "signed_in",
       grants,
       profile,
-      gate: resolveGate(grants),
+      access,
+      gate: resolveGate(grants, access),
       reason: null,
     });
     startIdle();
+  }
+
+  /** Reloads grants and the member's own state (after a password change or a profile save). */
+  async function refresh() {
+    if (state.status !== "signed_in") return state;
+    const { grants, profile, access = null } = await loadAccess();
+    emit({ grants, profile, access, gate: resolveGate(grants, access) });
+    return state;
   }
 
   async function signIn(credentials, captchaToken) {
@@ -157,14 +172,15 @@ export function createSession({
     });
     const { data } = await auth.getSession();
     if (data?.session) {
-      const { grants, profile } = await loadAccess();
+      const { grants, profile, access = null } = await loadAccess();
       lastAuthAt = -Infinity; // a restored session is not "fresh": sensitive actions ask for the password again
       lastActivity = now();
       emit({
         status: "signed_in",
         grants,
         profile,
-        gate: resolveGate(grants),
+        access,
+        gate: resolveGate(grants, access),
         reason: null,
       });
       startIdle();
@@ -176,6 +192,7 @@ export function createSession({
     start,
     signIn,
     signOut,
+    refresh,
     activity,
     ensureFreshAuth,
     getState: () => state,

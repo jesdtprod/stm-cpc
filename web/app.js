@@ -16,6 +16,9 @@ import {
 } from "./lib/permissions.js";
 import { CHANNEL, createSession } from "./lib/session.js";
 import { createDev, isLocalDev } from "./dev.js";
+import { createAccountPages } from "./pages-account.js";
+import { changePassword, memberLogin } from "./lib/auth-api.js";
+import { renderTurnstile } from "./lib/turnstile.js";
 
 const APP_VERSION = "0.1.0";
 
@@ -36,12 +39,13 @@ document.getElementById("skip").addEventListener("click", () => main.focus());
 
 const { client, api } = createClients();
 
-// Sign-in goes through the member-login Edge Function (step 3.1).
+// Sign-in goes through the member-login Edge Function (step 3.1). On localhost the self-check page can also
+// sign in with an email address (credentials.email), which is not available anywhere else.
 let devTools = null;
 const login = (credentials, captchaToken) =>
-  devTools
+  credentials.email && devTools
     ? devTools.devLogin(credentials, captchaToken)
-    : Promise.reject(new Error("Sign-in is not available yet."));
+    : memberLogin(credentials, captchaToken);
 // "?idle=20" shortens the idle timeout to 20 seconds, on localhost only, to test the sign-out.
 const idleParam = isLocalDev
   ? Number(new URLSearchParams(location.search).get("idle"))
@@ -53,11 +57,12 @@ const session = createSession({
   idleMs: idleParam > 0 ? idleParam * 1000 : undefined,
   warnMs: idleParam > 0 ? Math.min(10_000, idleParam * 500) : undefined,
   loadAccess: async () => {
-    const [grants, me] = await Promise.all([
+    const [grants, me, state] = await Promise.all([
       api.rpc("my_permissions"),
       api.rpc("my_profile"),
+      api.rpc("my_access_state"),
     ]);
-    return { grants, profile: me?.[0] ?? null };
+    return { grants, profile: me?.[0] ?? null, access: state?.[0] ?? null };
   },
   channel: "BroadcastChannel" in globalThis
     ? new BroadcastChannel(CHANNEL)
@@ -99,6 +104,19 @@ if (isLocalDev) {
   route("/dev", () => devTools.page(), "Self-check", "public");
 }
 
+const accountPages = createAccountPages({
+  session,
+  api,
+  authApi: { changePassword },
+  renderTurnstile,
+  getAccessToken: async () =>
+    (await client.auth.getSession()).data.session?.access_token,
+});
+route("/signin", () => accountPages.signInPage(), "Sign in", "public");
+route("/password", () => accountPages.passwordPage(), "Password", "gated");
+route("/profile", () => accountPages.profilePage(), "Profile", "gated");
+route("/pending", () => accountPages.pendingPage(), "Account status", "gated");
+
 const router = start(main, {
   onChange: drawNav,
   notFound: notFoundPage,
@@ -110,16 +128,38 @@ function drawNav(path = currentPath()) {
   const visible = NAV.filter((n) =>
     checkAccess(routeAccess(n.path), GATE_PAGES).allow
   );
-  nav.replaceChildren(
-    ...visible.map((n) =>
+  const state = session.getState();
+  const links = visible.map((n) =>
+    h(
+      "a",
+      { href: `#${n.path}`, "aria-current": n.path === path ? "page" : null },
+      icon(n.icon),
+      n.label,
+    )
+  );
+  if (state.status === "signed_in") {
+    links.push(
+      h("span", { class: "nav-user" }, state.access?.member_no ?? ""),
+      h("button", {
+        class: "nav-action",
+        type: "button",
+        onClick: () => session.signOut("manual"),
+      }, "Sign out"),
+    );
+  } else {
+    links.push(
       h(
         "a",
-        { href: `#${n.path}`, "aria-current": n.path === path ? "page" : null },
-        icon(n.icon),
-        n.label,
-      )
-    ),
-  );
+        {
+          href: "#/signin",
+          "aria-current": path === "/signin" ? "page" : null,
+        },
+        icon("check"),
+        "Sign in",
+      ),
+    );
+  }
+  nav.replaceChildren(...links);
 }
 
 // Sign-in or sign-out changes what the user may see: redraw the menu and re-check the page.

@@ -67,11 +67,11 @@ select throws_ok($$select core.idem_begin('01H00000000000000000000000', null, 's
 reset role;
 
 -- counters
-select is(core.next_number((select org from cx), null, 'member-2026'), 1::bigint, 'counter starts at 1');
-select is(core.next_number((select org from cx), null, 'member-2026'), 2::bigint, 'counter increments');
+select is(core.next_number((select org from cx), null, 'testmember-2026'), 1::bigint, 'counter starts at 1');
+select is(core.next_number((select org from cx), null, 'testmember-2026'), 2::bigint, 'counter increments');
 select is(core.next_number((select org from cx), null, 'testseries-2026'), 1::bigint, 'series are independent');
-select is(core.next_number((select org from cx), (select unit1 from cx), 'member-2026'), 1::bigint, 'units are independent');
-select is(core.next_number((select org from cx), null, 'member-2026'), 3::bigint, 'the org series continues');
+select is(core.next_number((select org from cx), (select unit1 from cx), 'testmember-2026'), 1::bigint, 'units are independent');
+select is(core.next_number((select org from cx), null, 'testmember-2026'), 3::bigint, 'the org series continues');
 
 -- settings: validation and uniqueness
 select is((select value from public.settings where key = 'timezone' and org_id = (select org from cx) and unit_id is null), '"Asia/Manila"'::jsonb, 'timezone seeded as Asia/Manila');
