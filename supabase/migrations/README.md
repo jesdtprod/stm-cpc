@@ -39,5 +39,6 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1230_settings_rules.sql` | 4.1 | Per-key setting rules (`setting_valid`) and `update_setting(key, value, reason, idem)`: permissioned, idempotent, audited; timezone and member ID format are read-only from the app |
 | `1240_settings_readonly_prefix.sql` | 4.1 | Member ID prefix is read-only too |
 | `1250_soft_delete_restore.sql` | 4.2 | `soft_delete(table, id, reason, key)` and `restore_row(table, id, key)` for the master tables listed in `core.soft_delete_targets` (permissioned, idempotent, audited) |
+| `1260_rank_ladder_functions.sql` | 4.3 | `reorder_ranks(ladder, ids, key)` and `set_starting_rank(rank, key)` (whole-ladder changes in one step) and the club's four split-bracket rank rules, seeded once |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

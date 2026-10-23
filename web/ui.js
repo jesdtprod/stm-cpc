@@ -1298,8 +1298,8 @@ export function calendarDropdown(
         dStr > selectedStart && dStr < selectedEnd;
       const isDateDisabled = Boolean(
         disabled ||
-        (min && dStr < min) ||
-        (max && dStr > max),
+          (min && dStr < min) ||
+          (max && dStr > max),
       );
 
       const classes = [
@@ -1511,7 +1511,6 @@ export function calendarDropdown(
 
   return wrapper;
 }
-
 
 export function dateRangePicker(
   {

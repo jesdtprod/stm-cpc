@@ -24,13 +24,13 @@
 /* ===== 1. Design tokens (UI_DESIGN.md section 2) ===== */
 :root {
   color-scheme: dark;
-  --bg: #030705;
-  --surface: #08110c;
-  --surface-2: #0e1c15;
-  --surface-3: #14271d;
-  --border: #1a3326;
+  --bg: #020604;
+  --surface: #070f0a;
+  --surface-2: #0d1812;
+  --surface-3: #132219;
+  --border: #1a2e22;
   --text: #f2f7f4;
-  --text-2: #8da597;
+  --text-2: #8da598;
   --primary: #15803d;
   --primary-hover: #16a34a;
   --accent: #f59e0b;
@@ -38,7 +38,7 @@
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #f87171;
-  --danger-bg: #380d11;
+  --danger-bg: #29080b;
 
   --s1: 4px;
   --s2: 8px;
@@ -85,6 +85,22 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-2);
 }
 html {
   -webkit-text-size-adjust: 100%;
@@ -581,27 +597,33 @@ textarea.input {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-control);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.75), 0 0 1px 1px rgba(255, 255, 255,
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85), 0 0 1px 1px rgba(255, 255, 255,
     0.08);
   padding: var(--s2);
   z-index: 1000 !important;
-  max-height: 320px;
-  overflow-y: auto;
-  display: grid;
+  max-height: 340px;
+  display: flex;
+  flex-direction: column;
   gap: var(--s2);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-.searchable-select-dropdown::-webkit-scrollbar {
-  width: 6px;
-}
-.searchable-select-dropdown::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 999px;
+  overflow: hidden;
 }
 .searchable-select-options {
   display: grid;
   gap: 2px;
+  overflow-y: auto;
+  max-height: 250px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.searchable-select-options::-webkit-scrollbar {
+  width: 6px;
+}
+.searchable-select-options::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+.searchable-select-options::-webkit-scrollbar-thumb:hover {
+  background: var(--text-2);
 }
 .searchable-select-item {
   display: flex;
@@ -986,12 +1008,12 @@ textarea.input {
   color: #fff !important;
   font-weight: 700;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.5);
 }
 .calendar-day.is-in-range {
-  background: rgba(37, 99, 235, 0.2);
+  background: rgba(21, 128, 61, 0.25);
   border-radius: 0;
-  color: #93c5fd;
+  color: #86efac;
 }
 .calendar-day.is-range-start {
   border-top-right-radius: 0;
@@ -1849,6 +1871,11 @@ dialog.drawer::backdrop {
   gap: var(--s1);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.tabs-nav::-webkit-scrollbar {
+  display: none;
 }
 .tab-btn {
   display: inline-flex;
@@ -1877,7 +1904,12 @@ dialog.drawer::backdrop {
   justify-content: space-between;
   width: 100%;
   overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: var(--s2) 0;
+}
+.stepper::-webkit-scrollbar {
+  display: none;
 }
 .step-item {
   display: flex;

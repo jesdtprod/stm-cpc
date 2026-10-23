@@ -19,6 +19,7 @@ const GROUPS = [
         label: "Categories",
         icon: "layers",
       },
+      { path: "/admin/ranks", label: "Ranks", icon: "layers" },
       { path: "/admin/settings", label: "Settings", icon: "grid" },
     ],
   },

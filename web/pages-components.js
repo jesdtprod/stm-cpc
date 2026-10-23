@@ -269,32 +269,32 @@ export function componentsPage() {
       },
       {
         token: "--bg",
-        label: "Deep Pine Dark",
-        val: "#071510",
+        label: "Obsidian Deep Base",
+        val: "#020604",
         bg: "var(--bg)",
       },
       {
         token: "--surface",
-        label: "Card Forest Surface",
-        val: "#0e2219",
+        label: "Obsidian Card Surface",
+        val: "#070f0a",
         bg: "var(--surface)",
       },
       {
         token: "--surface-2",
-        label: "Raised Pine Surface",
-        val: "#142e22",
+        label: "Raised Panel Surface",
+        val: "#0d1812",
         bg: "var(--surface-2)",
       },
       {
         token: "--surface-3",
-        label: "High Pine Surface",
-        val: "#1b3b2c",
+        label: "Active / High Surface",
+        val: "#132219",
         bg: "var(--surface-3)",
       },
       {
         token: "--border",
-        label: "Pine Subtle Border",
-        val: "#234836",
+        label: "Subtle Pine Border",
+        val: "#1a2e22",
         bg: "var(--border)",
       },
       {
@@ -306,7 +306,7 @@ export function componentsPage() {
       {
         token: "--text-2",
         label: "Sage Muted Text",
-        val: "#9db5a7",
+        val: "#8da598",
         bg: "var(--text-2)",
       },
       {

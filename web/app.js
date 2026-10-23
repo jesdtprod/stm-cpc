@@ -15,6 +15,7 @@ import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
 import { createHomePages } from "./pages-home.js";
 import { createCategoriesPages } from "./pages-categories.js";
+import { createRanksPages } from "./pages-ranks.js";
 import { createSettingsPages } from "./pages-settings.js";
 import { createShell } from "./shell.js";
 import { changePassword, memberLogin, memberSignup } from "./lib/auth-api.js";
@@ -152,6 +153,14 @@ route(
     permission: "categories.manage",
   },
 );
+
+const ranksPages = createRanksPages({
+  api,
+  getOrgId: () => session.getState().profile?.org_id,
+});
+route("/admin/ranks", () => ranksPages.ranksPage(), "Ranks", {
+  permission: "ranks.manage",
+});
 
 const homePages = createHomePages({ session, api });
 route("/", () => homePages.homePage(), "Home", "public");
