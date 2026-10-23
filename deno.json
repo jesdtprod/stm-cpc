@@ -11,7 +11,12 @@
   },
   "fmt": {
     "include": ["deno.json", "scripts/", "web/", "tests/", ".github/"],
-    "exclude": ["web/**/*.md", "scripts/**/*.md", ".github/**/*.md"]
+    "exclude": [
+      "web/**/*.md",
+      "scripts/**/*.md",
+      ".github/**/*.md",
+      "web/vendor/"
+    ]
   },
-  "lint": { "exclude": [".claude/", "supabase/.temp/"] }
+  "lint": { "exclude": [".claude/", "supabase/.temp/", "web/vendor/"] }
 }

@@ -1,4 +1,4 @@
-# Tech Stack — STM-CPC
+# Tech Stack â€” STM-CPC
 
 Single source of truth for what this project is built with, how the pieces fit, and the rules for changing them. Update this file whenever a technology is added, replaced, or removed.
 
@@ -51,7 +51,7 @@ STM-CPC is the web app of the Capitol Pickleball Club (CPC), a single club: memb
 
 | Library | Used for |
 | --- | --- |
-| `supabase-js` v2 | Database queries, auth, calling Edge Functions |
+| `supabase-js` 2.118.0 (self-hosted in `web/vendor/`, MIT) | Database queries, auth, calling Edge Functions |
 | `html2pdf.js` | Converting rendered HTML (receipts, reports) to PDF |
 | `jsPDF` + `jspdf-autotable` | Programmatic PDF receipts and tabular reports |
 | Inter (self-hosted variable woff2 in `web/fonts/`, SIL OFL) | UI typeface; the only font family in the app |
@@ -157,18 +157,18 @@ Planned project checks: database test suite (pgTAP: RLS, idempotency, soft delet
 
 ```
 Browser (PWA)
- ├─ index.html / report.html
- ├─ styles.css            ← tokens + shared components
- ├─ app.js                ← state, rendering, events
- ├─ service-worker.js     ← offline shell cache
- └─ supabase-config.js    ← URL + anon key
-        │  HTTPS
-        ▼
+ â”œâ”€ index.html / report.html
+ â”œâ”€ styles.css            â† tokens + shared components
+ â”œâ”€ app.js                â† state, rendering, events
+ â”œâ”€ service-worker.js     â† offline shell cache
+ â””â”€ supabase-config.js    â† URL + anon key
+        â”‚  HTTPS
+        â–¼
 Supabase
- ├─ Auth                  ← sessions, JWT
- ├─ Postgres + RLS        ← data, policies, RPC functions
- ├─ Edge Functions (Deno) ← member-login, import, privileged server logic
- └─ Storage (private)     ← payment proofs, signed URLs
+ â”œâ”€ Auth                  â† sessions, JWT
+ â”œâ”€ Postgres + RLS        â† data, policies, RPC functions
+ â”œâ”€ Edge Functions (Deno) â† member-login, import, privileged server logic
+ â””â”€ Storage (private)     â† payment proofs, signed URLs
 ```
 
 PDF generation (receipts, schedules, brackets, and reports) happens in the browser using `html2pdf.js` and `jsPDF` + `jspdf-autotable`; printed and exported figures must match the on-screen data and active filters.

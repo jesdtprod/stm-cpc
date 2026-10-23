@@ -1,4 +1,4 @@
-# Production Plan Ã¢â‚¬â€ Capitol Pickleball Club (CPC) Web App
+# Production Plan ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Capitol Pickleball Club (CPC) Web App
 
 Step-by-step plan from project setup to launch. It starts with the project setup standard, then the shared foundation, then data entry, and ends with the complex features. Read it with the other documents in this folder:
 
@@ -79,7 +79,7 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 | --- | --- | --- |
 | [x] 1B.1 | **Cloudflare Turnstile.** Create the widget (site key public, secret key private); enable CAPTCHA protection in Supabase Auth with the secret key | Auth requests without a valid token are refused |
 | [ ] 1B.2 | **Session module** (one file for the whole app): sign-in through `member-login`, token refresh, auth-state events, idle timeout (default 15 minutes), sign-out synced across tabs, logout clears caches and offline queue, gates for forced password change / pending approval / suspended, re-authentication prompt for sensitive actions | Manual and automated checks: idle sign-out works; second tab signs out; gated users reach only allowed pages |
-| [ ] 1B.3 | **Route guards and `can('code')` helper.** Routes are public, signed-in, or permission-based; menu and buttons read permissions | Each role sees only its own menu; direct URL access to a forbidden page is refused |
+| [x] 1B.3 | **Route guards and `can('code')` helper.** Routes are public, signed-in, or permission-based; menu and buttons read permissions | Each role sees only its own menu; direct URL access to a forbidden page is refused |
 | [ ] 1B.4 | **API layer.** One wrapper for `supabase-js` and RPC calls; ULID generated when a form opens and reused on retries; error mapping to clear messages; request ID | Retrying a call with the same ID creates one record; errors show readable messages |
 | [ ] 1B.5 | **Error handling and logging.** Global `error` / `unhandledrejection` handler; rate-limited writes to `client_errors`; no personal data in logs | A forced error appears in `client_errors` once; the user sees a friendly message |
 | [x] 1B.6 | **Shared utilities.** Client ULID, Asia/Manila date helpers, money formatting, `escapeHtml`, keyset pagination helper, form validation helper | Unit tests pass |

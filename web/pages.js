@@ -228,3 +228,16 @@ function securityCheckCard() {
   }, 0);
   return card;
 }
+
+export function forbiddenPage() {
+  return h(
+    "div",
+    { class: "page" },
+    pageHeader({
+      icon: "alert",
+      title: "No access",
+      description: "Your account does not have permission to open this page.",
+    }),
+    h("a", { href: "#/" }, "Back to home"),
+  );
+}
