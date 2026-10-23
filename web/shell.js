@@ -11,9 +11,18 @@ const GROUPS = [
     items: [{ path: "/", label: "Home", icon: "home", gated: true }],
   },
   {
+    label: "Play",
+    items: [
+      { path: "/book", label: "Book a court", icon: "calendar" },
+      { path: "/bookings", label: "My bookings", icon: "clock" },
+    ],
+  },
+  {
     label: "Club",
     items: [
       { path: "/admin/members", label: "Members", icon: "user" },
+      { path: "/admin/bookings", label: "Bookings", icon: "calendar" },
+      { path: "/admin/payments", label: "Payments", icon: "currency" },
       {
         path: "/admin/categories",
         label: "Categories",
@@ -74,6 +83,20 @@ export function createShell(
   const scrim = el("scrim");
   const account = el("account");
   const mobileNav = el("mobile-bottom-nav");
+  const centerNav = el("header-center-nav");
+
+  if (centerNav) {
+    centerNav.addEventListener("click", (e) => {
+      const link = e.target.closest("a[data-anchor]");
+      if (!link) return;
+      const anchor = link.dataset.anchor;
+      const target = document.getElementById(anchor);
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: "smooth" });
+      }
+    });
+  }
 
   function openQrScanModal() {
     const state = session.getState();
@@ -260,6 +283,21 @@ export function createShell(
     document.body.dataset.adminView = String(!isMemberView);
 
     drawAccount(state);
+
+    // Center header navigation active state
+    if (centerNav) {
+      for (const link of centerNav.querySelectorAll(".header-nav-link")) {
+        const route = link.dataset.route;
+        if (route) {
+          const isActive = route === "/"
+            ? (path === "/" || path === "")
+            : path.startsWith(route);
+          link.classList.toggle("is-active", isActive);
+          if (isActive) link.setAttribute("aria-current", "page");
+          else link.removeAttribute("aria-current");
+        }
+      }
+    }
 
     // Render mobile floating bottom navbar
     if (mobileNav) {

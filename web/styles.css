@@ -172,11 +172,13 @@ main[aria-busy="true"] {
 .app-header {
   display: flex;
   align-items: center;
-  gap: var(--s5);
-  flex-wrap: wrap;
-  padding: var(--s3) var(--s5);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  justify-content: space-between;
+  padding: 0 var(--s5);
+  min-height: 68px;
+  background: rgba(11, 18, 16, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(44, 64, 52, 0.45);
 }
 .brand {
   display: inline-flex;

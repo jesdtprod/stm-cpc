@@ -1,4 +1,10 @@
-import { componentsPage, forbiddenPage, notFoundPage } from "./pages.js";
+import {
+  bookingPage,
+  componentsPage,
+  eventsPage,
+  forbiddenPage,
+  notFoundPage,
+} from "./pages.js";
 import { currentPath, route, routeAccess, start } from "./router.js";
 import { toast } from "./ui.js";
 import { createClients } from "./lib/supabase.js";
@@ -14,6 +20,8 @@ import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
 import { createHomePages } from "./pages-home.js";
+import { createBookingPages } from "./pages-booking.js";
+import { createBookingAdminPages } from "./pages-bookings-admin.js";
 import { createCategoriesPages } from "./pages-categories.js";
 import { createCourtsPages } from "./pages-courts.js";
 import { createImportPages } from "./pages-import.js";
@@ -183,8 +191,25 @@ route("/admin/staff", () => staffPages.staffPage(), "Staff and roles", {
   permission: "roles.manage",
 });
 
+const bookingPages = createBookingPages({ api, client, session });
+route("/book", () => bookingPages.bookPage(), "Book a court", {
+  permission: "bookings.create",
+});
+route("/bookings", () => bookingPages.myBookingsPage(), "My bookings", {
+  permission: "bookings.create",
+});
+const bookingAdminPages = createBookingAdminPages({ api, client });
+route("/admin/bookings", () => bookingAdminPages.bookingsPage(), "Bookings", {
+  any: ["bookings.approve", "bookings.read_all", "bookings.checkin"],
+});
+route("/admin/payments", () => bookingAdminPages.paymentsPage(), "Payments", {
+  any: ["payments.verify", "payments.void"],
+});
+
 const homePages = createHomePages({ session, api });
 route("/", () => homePages.homePage(), "Home", "public");
+route("/booking", () => bookingPage(), "Court Booking", "public");
+route("/events", () => eventsPage(), "Events", "public");
 
 const shell = createShell({
   session,

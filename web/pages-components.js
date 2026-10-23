@@ -2442,6 +2442,73 @@ export function componentsPage() {
     };
     renderPager();
 
+    // Mobile Floating Bottom Navbar Demo
+    let activeBottomTab = "Home";
+    const bottomNavPreview = h("nav", {
+      class: "mobile-bottom-nav-preview",
+      "aria-label": "Preview mobile bottom navigation",
+    });
+
+    const renderBottomNavDemo = () => {
+      const items = [
+        { label: "Home", iconName: "home" },
+        { label: "Booking", iconName: "calendar" },
+        { label: "QR Scan", iconName: "qrScan", isQr: true },
+        { label: "Events", iconName: "trophy" },
+        { label: "Account", iconName: "user" },
+      ];
+
+      bottomNavPreview.replaceChildren(
+        ...items.map((item) => {
+          if (item.isQr) {
+            return h(
+              "button",
+              {
+                class: `bottom-nav-item bottom-nav-qr${
+                  activeBottomTab === item.label ? " is-active" : ""
+                }`,
+                type: "button",
+                "aria-label": item.label,
+                title: item.label,
+                onClick: () => {
+                  activeBottomTab = item.label;
+                  renderBottomNavDemo();
+                  toast("QR Scan opened (Member QR & check-in)", {
+                    tone: "warning",
+                  });
+                },
+              },
+              icon(item.iconName),
+            );
+          }
+          const isActive = activeBottomTab === item.label;
+          return h(
+            "button",
+            {
+              class: `bottom-nav-item${isActive ? " is-active" : ""}`,
+              type: "button",
+              "aria-label": item.label,
+              title: item.label,
+              "aria-current": isActive ? "page" : null,
+              onClick: () => {
+                activeBottomTab = item.label;
+                renderBottomNavDemo();
+                toast(`Active tab: ${item.label}`, { tone: "info" });
+              },
+            },
+            icon(item.iconName),
+          );
+        }),
+      );
+    };
+    renderBottomNavDemo();
+
+    const bottomNavDemoContainer = h(
+      "div",
+      { class: "demo-bottom-nav-container" },
+      bottomNavPreview,
+    );
+
     const section = h(
       "section",
       { class: "component-section", id: "sec-navigation" },
@@ -2449,11 +2516,27 @@ export function componentsPage() {
         "div",
         { class: "component-section-head" },
         h("h2", {}, "6. Navigation"),
-        badge("Breadcrumbs, Tabs, Steppers", "info"),
+        badge("Breadcrumbs, Bottom Nav, Tabs, Steppers", "info"),
       ),
       h(
         "div",
         { class: "component-grid" },
+        registerComponentCard({
+          name: "Mobile Floating Bottom Navbar",
+          keywords: [
+            "bottom nav",
+            "mobile",
+            "navigation",
+            "floating navbar",
+            "qr scan",
+            "amber",
+            "forest green",
+          ],
+          guidance:
+            "Member mobile navigation bar (5 icons in exact order: Home, Booking, QR Scan, Events, Account). Active icon highlighted with #4ADE80 and elevated amber gold (#F59E0B) center QR Scan touch target.",
+          variants: "Floating Member Nav (5 Icons)",
+          demoEl: bottomNavDemoContainer,
+        }),
         registerComponentCard({
           name: "Breadcrumbs",
           keywords: ["breadcrumbs", "navigation", "trail", "path"],

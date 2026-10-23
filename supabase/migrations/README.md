@@ -43,5 +43,9 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1270_courts_admin.sql` | 4.4 | Courts, hours, rates and blackouts join `soft_delete` / `restore_row`; a court with upcoming bookings cannot be deleted |
 | `1280_members_admin.sql` | 4.5 | `archive_member`, `resolve_import_issue`; members join `soft_delete` / `restore_row` (only archived, rejected or never-signed-in members with nothing upcoming) |
 | `1290_staff_roles.sql` | 4.6 | `assign_role`, `staff_directory`, `role_catalog` (roles.manage): nobody changes their own role, the last admin cannot be demoted, audited with old and new role |
+| `1300_booking_requests.sql` | 5.1, 5.3 | `request_booking`, `decide_booking` (approve, reject, check in, no-show, complete), `cancel_booking`, `expire_bookings`; hours, price, ledger charge, late and no-show fees |
+| `1310_booking_payments.sql` | 5.2 | `submit_payment`, `decide_payment` (verify, reject), `void_payment` (refund): proof file, methods, no overpaying, ledger credit and reversal |
+| `1311_payment_proof_checks.sql` | 5.2 | Clearer refusals for a reused reference number or proof file |
+| `1320_booking_helpers.sql` | 5.1, 5.4 | `find_players`, `quote_booking`, and the 5-minute expiry job (pg_cron) |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

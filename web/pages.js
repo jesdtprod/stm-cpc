@@ -1,4 +1,4 @@
-import { h, kpiCard, pageHeader } from "./ui.js";
+import { emptyState, h, kpiCard, pageHeader } from "./ui.js";
 
 export { componentsPage } from "./pages-components.js";
 
@@ -20,6 +20,46 @@ export function homePage() {
       kpiCard("Bookings today", "—"),
       kpiCard("Open events", "—"),
     ),
+  );
+}
+
+export function bookingPage() {
+  return h(
+    "div",
+    { class: "page" },
+    pageHeader({
+      icon: "calendar",
+      eyebrow: "Courts",
+      title: "Court Booking",
+      description:
+        "Reserve court times, view available slots, and manage reservations.",
+    }),
+    emptyState({
+      icon: "calendar",
+      title: "Court booking opening soon",
+      description:
+        "Member court reservations will be available once court schedules are published.",
+    }),
+  );
+}
+
+export function eventsPage() {
+  return h(
+    "div",
+    { class: "page" },
+    pageHeader({
+      icon: "trophy",
+      eyebrow: "Competition",
+      title: "Club Events & Tournaments",
+      description:
+        "Upcoming round robin pools, brackets, and club tournament schedules.",
+    }),
+    emptyState({
+      icon: "trophy",
+      title: "No active tournaments",
+      description:
+        "Club tournament registration opens prior to each scheduled tournament weekend.",
+    }),
   );
 }
 
