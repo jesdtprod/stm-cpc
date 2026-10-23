@@ -93,7 +93,7 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 | ID | Step | Done when |
 | --- | --- | --- |
 | [x] 2.1 | **Club database design document** (`docs/CLUB_SCHEMA.md`): tables, columns, classes (master, document, ledger), state machines, indexes. **Needs your approval before migrating** | Document approved |
-| [ ] 2.2 | Migrate members, categories, rank ladders, ranks, rank rules, member ranks, rank history | Migration applies; tests for uniqueness, soft delete, restore, guards |
+| [x] 2.2 | Migrate members, categories, rank ladders, ranks, rank rules, member ranks, rank history | Migration applies; tests for uniqueness, soft delete, restore, guards |
 | [ ] 2.3 | Migrate courts, rate rules, operating hours, blackouts, reservations (with the no-overlap constraint), payment submissions, ledger | Concurrent booking test yields exactly one success; ledger is append-only |
 | [ ] 2.4 | Migrate events, divisions, registrations, stage and format templates, scoring rules, draws, matches, games, score events | Migration applies; constraints and state-machine tests pass |
 | [ ] 2.5 | Seed settings defaults and lookup lists (fake data only) | Seed is idempotent; advisors show no findings |
