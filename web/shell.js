@@ -203,9 +203,10 @@ export function createShell(
     if (state.status !== "signed_in") {
       toggle = panel = null;
       account.replaceChildren(
-        path === "/signin"
-          ? h("a", { class: "btn btn-primary", href: "#/" }, "Home")
-          : h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In"),
+        // the sign-in page needs no Sign In button (and the menu has Home)
+        ...(path === "/signin" ? [] : [
+          h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In"),
+        ]),
         h("a", { class: "btn btn-accent", href: "#/signup" }, "Join the club"),
       );
       return;

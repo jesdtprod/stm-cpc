@@ -102,7 +102,6 @@ export function createAccountPages(
       label: "Sign in",
       variant: "primary",
       type: "submit",
-      icon: "check",
     });
     const form = h(
       "form",
@@ -197,6 +196,26 @@ export function createAccountPages(
               }),
               flank("right", "ball", "paddle"),
             ),
+            // Desktop only, at the top of the text: two crossed paddles with the ball beside them.
+            h(
+              "div",
+              { class: "auth-showcase", "aria-hidden": "true" },
+              h("img", {
+                class: "auth-showcase-paddle auth-showcase-paddle-a",
+                src: "icons/paddle.png",
+                alt: "",
+              }),
+              h("img", {
+                class: "auth-showcase-paddle auth-showcase-paddle-b",
+                src: "icons/paddle.png",
+                alt: "",
+              }),
+              h("img", {
+                class: "auth-showcase-ball",
+                src: "icons/ball.png",
+                alt: "",
+              }),
+            ),
             h(
               "div",
               { class: "cpc-hero-badge" },
@@ -218,25 +237,6 @@ export function createAccountPages(
               { class: "cpc-hero-subtitle" },
               "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
             ),
-            // Desktop only: one paddle with the ball in front of it, in the empty space under the text.
-            h(
-              "div",
-              { class: "auth-showcase", "aria-hidden": "true" },
-              h(
-                "div",
-                { class: "auth-showcase-group" },
-                h("img", {
-                  class: "auth-showcase-paddle",
-                  src: "icons/paddle.png",
-                  alt: "",
-                }),
-                h("img", {
-                  class: "auth-showcase-ball",
-                  src: "icons/ball.png",
-                  alt: "",
-                }),
-              ),
-            ),
           ),
           h(
             "div",
@@ -244,6 +244,26 @@ export function createAccountPages(
             h(
               "div",
               { class: "card auth-card" },
+              h(
+                "div",
+                { class: "auth-card-head" },
+                h(
+                  "span",
+                  { class: "badge-icon", "aria-hidden": "true" },
+                  icon("user"),
+                ),
+                h(
+                  "div",
+                  { class: "auth-card-head-copy" },
+                  h("div", { class: "eyebrow" }, "Member Access"),
+                  h("h2", { class: "card-title" }, "Sign In"),
+                  h(
+                    "p",
+                    { class: "card-subtitle muted" },
+                    "Enter your member ID or email to access your account.",
+                  ),
+                ),
+              ),
               form,
               h(
                 "div",
