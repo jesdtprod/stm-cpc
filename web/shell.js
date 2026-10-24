@@ -91,6 +91,8 @@ export function createShell(
   const nav = el("nav");
   const scrim = el("scrim");
   const account = el("account");
+  const header = document.querySelector(".app-header");
+  const adminMenuBtn = el("admin-menu-btn");
   const mobileNav = el("mobile-bottom-nav");
   const centerNav = el("header-center-nav");
   let closeAssistiveMenu = null;
@@ -170,14 +172,23 @@ export function createShell(
     scrim.hidden = !open;
     menuBtn.setAttribute("aria-expanded", String(open));
     menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    adminMenuBtn?.setAttribute("aria-expanded", String(open));
+    adminMenuBtn?.setAttribute("aria-label", open ? "Close menu" : "Open menu");
     if (open) side.querySelector("a")?.focus();
-    else if (side.contains(document.activeElement)) menuBtn.focus();
+    else if (side.contains(document.activeElement)) {
+      (document.body.dataset.adminView === "true" ? adminMenuBtn : menuBtn)
+        ?.focus();
+    }
   }
   menuBtn.addEventListener(
     "click",
     () => setDrawer(!side.hasAttribute("data-open")),
   );
   scrim.addEventListener("click", () => setDrawer(false));
+  adminMenuBtn?.addEventListener(
+    "click",
+    () => setDrawer(!side.hasAttribute("data-open")),
+  );
   side.addEventListener("click", (e) => {
     if (e.target.closest("a")) setDrawer(false);
   });
@@ -285,8 +296,11 @@ export function createShell(
   // ---- side panel
   // The member side (home, play, account) and the admin side (dashboard, club pages) have their own menus.
   // The administrator account has no member side at all: only the admin console.
+  let lastView = "member";
   const viewOf = (path) =>
-    isAdminAccount() || path === "/admin" || path.startsWith("/admin/")
+    isAdminAccount() || path === "/admin" || path.startsWith("/admin/") ||
+      (["/profile", "/password", "/pending"].includes(path) &&
+        lastView === "admin")
       ? "admin"
       : "member";
   const canOpenAdmin = () =>
@@ -300,6 +314,9 @@ export function createShell(
       .map((g) => ({
         label: g.label,
         items: g.items.filter((n) => {
+          if (view === "admin" && ["/profile", "/password"].includes(n.path)) {
+            return false;
+          }
           if (n.onlyGate && n.onlyGate !== gate) return false;
           if (gate && !n.gated) return false;
           return checkAccess(routeAccess(n.path), gatePages).allow;
@@ -325,17 +342,18 @@ export function createShell(
     document.documentElement.dataset.authPage = String(isAuthPage);
     document.documentElement.dataset.landing = String(isLanding);
 
-    // Member view vs Admin view: admin paths are under /admin
-    // On phones every page has the same shell: no top header, and the floating logo that opens the quick menu.
-    // The admin pages get the same logo in the same place; their pages are in its menu.
-    const isMemberView = true;
-    const isAdminPath = path.startsWith("/admin");
+    // Account pages retain the view they were opened from.
+    const isAdminPath = signedIn && viewOf(path) === "admin";
+    const isMemberView = !isAdminPath;
+    lastView = isAdminPath ? "admin" : "member";
     document.body.dataset.memberView = String(isMemberView);
     document.body.dataset.adminView = String(isAdminPath);
 
     updateHeaderScroll();
 
     drawAccount(state);
+    // Keep one account menu and move it into the admin side panel below.
+    header.append(account);
 
     // Center header navigation active state
     if (centerNav) {
@@ -762,6 +780,7 @@ export function createShell(
         ),
       ),
     );
+    if (isAdminPath) nav.querySelector(".side-foot").replaceChildren(account);
   }
 
   return { draw };

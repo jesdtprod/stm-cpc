@@ -47,6 +47,11 @@
     </header>
     <div class="app-shell">
       <aside class="side" id="side" aria-label="Side panel">
+        <a class="admin-brand" href="#/admin"
+          aria-label="Capitol Pickleball Club dashboard">
+          <img src="icons/cpc-logo.png" alt="" width="40" height="40" />
+          <span>Capitol Pickleball Club<small>Administration</small></span>
+        </a>
         <nav class="side-nav" id="nav" aria-label="Main"></nav>
       </aside>
       <div class="scrim" id="scrim" hidden></div>
@@ -54,6 +59,9 @@
     </div>
     <nav class="mobile-bottom-nav" id="mobile-bottom-nav"
       aria-label="Mobile navigation"></nav>
+    <button type="button" class="btn btn-secondary admin-menu-trigger"
+      id="admin-menu-btn" aria-label="Open menu" aria-expanded="false"
+      aria-controls="side">Menu</button>
     <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
     <noscript>This app needs JavaScript.</noscript>
     <script src="vendor/supabase-js-2.118.0.umd.js"></script>

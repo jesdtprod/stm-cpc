@@ -56,6 +56,8 @@ Use comfortable spacing, not excessive empty areas or compressed controls. Allow
 
 ## 4. Page composition
 
+- Admin pages use a plain sidebar and content layout, without the public top header or Home/Courts/Events links. The sidebar has no internal scroll area; long navigation uses document scrolling. My profile, Change password, and Sign out live in the sidebar account menu. On mobile, the Menu button opens the same sidebar. The dashboard separates approval requests from club activity; existing control styles and colors are retained.
+
 Use this order when the section is applicable:
 
 1. Page header: icon, optional eyebrow, title, short description, necessary actions.

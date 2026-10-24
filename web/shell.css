@@ -5084,6 +5084,133 @@ body[data-landing="true"] .header-account .btn:active:not(:disabled) {
 }
 
 /* ---- Member / Admin switch at the top of the side panel */
+.admin-brand,
+.admin-menu-trigger {
+  display: none;
+}
+body[data-admin-view="true"] .app-header,
+body[data-admin-view="true"] .mobile-bottom-nav {
+  display: none;
+}
+body[data-admin-view="true"] .app-shell {
+  grid-template-columns: 248px minmax(0, 1fr);
+}
+body[data-admin-view="true"] .side {
+  position: relative;
+  top: 0;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+  padding: 16px 14px;
+  background: var(--surface);
+}
+body[data-admin-view="true"] .admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px 20px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.admin-brand small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 400;
+}
+body[data-admin-view="true"] .nav-heading {
+  margin: 12px 12px 4px;
+}
+body[data-admin-view="true"] .nav-link {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+body[data-admin-view="true"] .side-foot {
+  position: relative;
+  bottom: auto;
+  margin: auto 0 0;
+  padding: 16px 0 0;
+  background: transparent;
+}
+body[data-admin-view="true"] .header-account,
+body[data-admin-view="true"] .account-btn {
+  width: 100%;
+}
+body[data-admin-view="true"] .account-text {
+  display: grid;
+  min-width: 0;
+  text-align: left;
+}
+body[data-admin-view="true"] .account-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-admin-view="true"] .account-menu {
+  top: auto;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 100%;
+  z-index: 60;
+}
+body[data-admin-view="true"] main {
+  max-width: none;
+  padding: 32px;
+}
+.admin-dashboard {
+  max-width: none;
+  border: 0 !important;
+  padding: 0;
+  gap: 32px;
+}
+.admin-dashboard .dash-hero {
+  padding: 0 0 24px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.admin-dashboard .dash-hero-title {
+  font-size: 26px;
+}
+.admin-dashboard .home-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 1100px) {
+  .admin-dashboard .home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  body[data-admin-view="true"] .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body[data-admin-view="true"] .side {
+    position: absolute;
+  }
+  body[data-admin-view="true"] main {
+    padding: 80px 16px 24px;
+  }
+  body[data-admin-view="true"] .admin-menu-trigger {
+    display: inline-flex;
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 41;
+  }
+}
+@media (max-width: 560px) {
+  .admin-dashboard .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .view-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;

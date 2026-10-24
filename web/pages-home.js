@@ -142,23 +142,36 @@ function section(title, description, cards) {
 function dashboardView(data, mode = "member") {
   const parts = [];
   if (mode === "admin") {
-    const staff = STAFF_CARDS.filter((c) => data[c.key] != null).map((c) =>
-      statCard({
-        label: c.label,
-        value: data[c.key],
-        hint: c.hint(Number(data[c.key])),
-        iconName: c.icon,
-        href: c.href,
-        attention: c.key !== "todays_bookings" && c.key !== "active_events" &&
-          Number(data[c.key]) > 0,
-      })
-    );
-    if (staff.length) {
+    const available = STAFF_CARDS.filter((c) => data[c.key] != null);
+    const cards = (items) =>
+      items.map((c) =>
+        statCard({
+          label: c.label,
+          value: data[c.key],
+          hint: c.hint(Number(data[c.key])),
+          iconName: c.icon,
+          href: c.href,
+          attention: c.key !== "todays_bookings" && c.key !== "active_events" &&
+            Number(data[c.key]) > 0,
+        })
+      );
+    const approvals = available.filter((c) => c.key.startsWith("pending_"));
+    const activity = available.filter((c) => !c.key.startsWith("pending_"));
+    if (approvals.length) {
       parts.push(
         section(
-          "Needs your attention",
-          "What the club is waiting on today.",
-          staff,
+          "Approval queue",
+          "Membership, booking and payment requests.",
+          cards(approvals),
+        ),
+      );
+    }
+    if (activity.length) {
+      parts.push(
+        section(
+          "Club activity",
+          "Today's bookings and events in progress.",
+          cards(activity),
         ),
       );
     }
@@ -1167,7 +1180,12 @@ export function createHomePages({ session, api }) {
       memberNo: state.access?.member_no ?? "",
       role: mode === "admin" ? "Admin console" : "Member",
     });
-    const page = h("div", { class: "page dash-page" }, header, host);
+    const page = h(
+      "div",
+      { class: `page dash-page${mode === "admin" ? " admin-dashboard" : ""}` },
+      header,
+      host,
+    );
 
     async function load() {
       host.replaceChildren(loadingView());
