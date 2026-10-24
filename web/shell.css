@@ -4137,3 +4137,21 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
   width: 18px;
   height: 18px;
 }
+
+/* Sign-in page: the pattern runs to the very bottom (no padding strip under it) and the scrollbar is hidden */
+body[data-auth-page="true"] main {
+  padding-bottom: 0 !important;
+}
+html[data-auth-page="true"],
+body[data-auth-page="true"],
+body[data-auth-page="true"] .app-shell,
+body[data-auth-page="true"] main {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html[data-auth-page="true"]::-webkit-scrollbar,
+body[data-auth-page="true"]::-webkit-scrollbar,
+body[data-auth-page="true"] .app-shell::-webkit-scrollbar,
+body[data-auth-page="true"] main::-webkit-scrollbar {
+  display: none;
+}
