@@ -23,6 +23,7 @@ const GROUPS = [
     items: [
       { path: "/book", label: "Book a court", icon: "calendar" },
       { path: "/bookings", label: "My bookings", icon: "clock" },
+      { path: "/events", label: "Events", icon: "trophy" },
     ],
   },
   {
@@ -41,6 +42,7 @@ const GROUPS = [
       { path: "/admin/import", label: "Member import", icon: "upload" },
       { path: "/admin/ranks", label: "Ranks", icon: "layers" },
       { path: "/admin/courts", label: "Courts", icon: "grid" },
+      { path: "/admin/events", label: "Events", icon: "trophy" },
       { path: "/admin/settings", label: "Settings", icon: "filter" },
     ],
   },

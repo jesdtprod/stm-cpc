@@ -10,6 +10,7 @@ import { toast } from "./ui.js";
 import { createClients } from "./lib/supabase.js";
 import { createErrorReporter, installGlobalHandlers } from "./lib/errors.js";
 import {
+  can,
   checkAccess,
   clearAuth,
   onAuthChange,
@@ -24,6 +25,8 @@ import { createBookingPages } from "./pages-booking.js";
 import { createBookingAdminPages } from "./pages-bookings-admin.js";
 import { createCategoriesPages } from "./pages-categories.js";
 import { createCourtsPages } from "./pages-courts.js";
+import { createEventsPages } from "./pages-events.js";
+import { createMemberEventsPages } from "./pages-events-member.js";
 import { createImportPages } from "./pages-import.js";
 import { createRanksPages } from "./pages-ranks.js";
 import { createStaffPages } from "./pages-staff.js";
@@ -181,6 +184,13 @@ route("/admin/courts", () => courtsPages.courtsPage(), "Courts", {
   permission: "courts.manage",
 });
 
+const eventsPages = createEventsPages({ api });
+route("/admin/events", () => eventsPages.eventsPage(), "Events", {
+  permission: "events.manage",
+});
+
+const memberEventsPages = createMemberEventsPages({ api, client, session });
+
 const importPages = createImportPages({ api });
 route("/admin/import", () => importPages.importPage(), "Member import", {
   any: ["members.import", "members.review_import"],
@@ -212,7 +222,13 @@ route("/admin", () => homePages.adminHomePage(), "Admin dashboard", {
   any: ADMIN_CODES,
 });
 route("/booking", () => bookingPage(), "Court Booking", "public");
-route("/events", () => eventsPage(), "Events", "public");
+// Members who may register see the registration page; everyone else sees the public placeholder.
+route(
+  "/events",
+  () => can("events.register") ? memberEventsPages.eventsPage() : eventsPage(),
+  "Events",
+  "public",
+);
 
 const shell = createShell({
   session,
