@@ -270,12 +270,6 @@ export function createAccountPages(
                   ".",
                 ),
               ),
-              h(
-                "a",
-                { href: "#/", class: "auth-back-link" },
-                icon("arrowLeft"),
-                "Back to home",
-              ),
             ),
           ),
         ),
