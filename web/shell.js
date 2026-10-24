@@ -2,6 +2,7 @@
 // user's permissions. The menu is a convenience only; every page and every call is checked again
 // by the router and the database.
 import { button, h, icon, openModal } from "./ui.js";
+import { isAdminAccount } from "./lib/permissions.js";
 
 // Each entry uses the access rule of its own route, so a user sees exactly the pages they can open.
 // `gated: true` entries stay visible while a user is held at a gate (password change, waiting for approval).
@@ -283,8 +284,11 @@ export function createShell(
 
   // ---- side panel
   // The member side (home, play, account) and the admin side (dashboard, club pages) have their own menus.
+  // The administrator account has no member side at all: only the admin console.
   const viewOf = (path) =>
-    path === "/admin" || path.startsWith("/admin/") ? "admin" : "member";
+    isAdminAccount() || path === "/admin" || path.startsWith("/admin/")
+      ? "admin"
+      : "member";
   const canOpenAdmin = () =>
     checkAccess(routeAccess("/admin"), gatePages).allow;
 
@@ -427,7 +431,7 @@ export function createShell(
           onClick: () => setMenuOpen(false),
         });
         // The pages this person may open (members, bookings, settings ...), grouped as in the side panel on a computer.
-        const shown = new Set(["/", "/profile"]);
+        const shown = new Set(["/", "/profile", "/admin"]);
         const extraTabs = signedIn
           ? visibleGroups(state, viewOf(path)).flatMap((g) =>
             g.items.filter((n) => !shown.has(n.path)).map((n) =>
@@ -441,7 +445,8 @@ export function createShell(
             )
           )
           : [];
-        const switchTab = signedIn && !state.gate && canOpenAdmin()
+        const switchTab = signedIn && !state.gate && canOpenAdmin() &&
+            !isAdminAccount()
           ? tab({
             label: viewOf(path) === "admin" ? "Member view" : "Admin console",
             detail: viewOf(path) === "admin"
@@ -508,35 +513,37 @@ export function createShell(
             { class: "assistive-nav-menu-items" },
             tab({
               label: "Home",
-              detail: "Club overview",
+              detail: isAdminAccount() ? "Admin dashboard" : "Club overview",
               iconName: "home",
-              active: isHome,
-              href: "#/",
+              active: isAdminAccount() ? path === "/admin" : isHome,
+              href: isAdminAccount() ? "#/admin" : "#/",
             }),
-            tab({
-              label: "Courts",
-              detail: "Book court time",
-              iconName: "calendar",
-              active: isBooking,
-              href: "#/booking",
-            }),
-            tab({
-              label: "QR pass",
-              detail: "Open your member pass",
-              iconName: "qrScan",
-              active: isQr,
-              onClick: (e) => {
-                e.preventDefault();
-                openQrScanModal();
-              },
-            }),
-            tab({
-              label: "Events",
-              detail: "Club events and play",
-              iconName: "trophy",
-              active: isEvents,
-              href: "#/events",
-            }),
+            ...(isAdminAccount() ? [] : [
+              tab({
+                label: "Courts",
+                detail: "Book court time",
+                iconName: "calendar",
+                active: isBooking,
+                href: "#/booking",
+              }),
+              tab({
+                label: "QR pass",
+                detail: "Open your member pass",
+                iconName: "qrScan",
+                active: isQr,
+                onClick: (e) => {
+                  e.preventDefault();
+                  openQrScanModal();
+                },
+              }),
+              tab({
+                label: "Events",
+                detail: "Club events and play",
+                iconName: "trophy",
+                active: isEvents,
+                href: "#/events",
+              }),
+            ]),
             tab({
               label: "Profile",
               detail: signedIn ? "Your club account" : "Sign in / Register",
@@ -678,7 +685,7 @@ export function createShell(
     const view = viewOf(path);
     const groups = visibleGroups(state, view);
     // Staff can move between their own member home and the admin console.
-    const viewSwitch = !state.gate && canOpenAdmin()
+    const viewSwitch = !state.gate && canOpenAdmin() && !isAdminAccount()
       ? h(
         "div",
         { class: "view-switch", role: "group", "aria-label": "Switch view" },

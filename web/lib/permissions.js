@@ -33,6 +33,9 @@ export function can(code, { unitId = null } = {}) {
   );
 }
 
+/** The club administrator account: it works in the admin console only (roles.manage is held by the admin role alone). */
+export const isAdminAccount = () => can("roles.manage");
+
 export const canAny = (codes, options) => codes.some((c) => can(c, options));
 
 /**

@@ -3,7 +3,7 @@
 //   member : own rank, upcoming bookings, event registrations, unread notices
 //   staff  : approvals, payment proofs, bookings to approve, today's bookings, events in progress
 import { h, icon } from "./ui.js";
-import { can, canAny } from "./lib/permissions.js";
+import { can, canAny, isAdminAccount } from "./lib/permissions.js";
 
 // Anyone holding one of these may open the admin console.
 export const ADMIN_CODES = [
@@ -222,7 +222,9 @@ function heroView({ name, memberNo, role, mode = "member" }) {
       can("payments.verify")
         ? link("btn-secondary", "#/admin/payments", "file", "Verify payments")
         : null,
-      link("btn-secondary", "#/", "home", "Member view"),
+      isAdminAccount()
+        ? null
+        : link("btn-secondary", "#/", "home", "Member view"),
     ]
     : [
       can("bookings.create")
@@ -1197,7 +1199,20 @@ export function createHomePages({ session, api }) {
     return page;
   }
 
-  const homePage = () => dashboardPage("member");
+  // The administrator account has no member home: it goes straight to the admin dashboard.
+  const homePage = () => {
+    const state = session.getState();
+    if (
+      state.status === "signed_in" && !state.gate && isAdminAccount() &&
+      location.hash !== "#/admin"
+    ) {
+      queueMicrotask(() => {
+        location.hash = "#/admin";
+      });
+      return h("div", { class: "page" });
+    }
+    return dashboardPage("member");
+  };
   const adminHomePage = () => dashboardPage("admin");
 
   return { homePage, adminHomePage };
