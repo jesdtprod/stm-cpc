@@ -3822,16 +3822,16 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
   position: relative;
   width: 100%;
   max-width: 460px;
-  height: 215px;
+  height: 290px;
   margin-bottom: var(--s3);
   pointer-events: none;
   user-select: none;
 }
 .auth-showcase-paddle {
   position: absolute;
-  left: 24px;
+  left: 40px;
   top: 0;
-  width: 150px;
+  width: 200px;
   height: auto;
   transform-origin: 50% 72%;
   filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.7));
@@ -3844,13 +3844,13 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
   transform: scaleX(-1) rotate(34deg);
   animation: authShowcaseB 8.5s ease-in-out infinite 1.2s;
 }
-/* the ball sits beside the crossed paddles */
+/* the ball sits in front, at the centre where the paddles cross */
 .auth-showcase-ball {
   position: absolute;
-  left: 205px;
-  bottom: 38px;
-  width: 68px;
-  height: 68px;
+  left: 98px;
+  top: 88px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
   filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.75));
   animation: authShowcaseBall 7s ease-in-out infinite;
