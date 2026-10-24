@@ -652,146 +652,104 @@ a.btn:hover {
   }
 }
 
-/* ---- Floating Bottom Navbar (Image 2 Curved Dock Structure) */
+/* ---- Bottom tab bar (Facebook style): flat bar, icons only, the current tab in blue with a bar on top.
+   Colours are the Facebook palette on purpose: dark by default like the app, light with data-theme="light". */
 .mobile-bottom-nav {
+  --tab-bg: #242526;
+  --tab-line: #3e4042;
+  --tab-icon: #b0b3b8;
+  --tab-active: #2d88ff;
+  --tab-press: rgba(255, 255, 255, 0.1);
   display: none;
   position: fixed;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 28px);
-  max-width: 410px;
-  height: 66px;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 100;
-  pointer-events: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--tab-bg);
+  border-top: 1px solid var(--tab-line);
+}
+:root[data-theme="light"] .mobile-bottom-nav,
+[data-theme="light"] .mobile-bottom-nav {
+  --tab-bg: #ffffff;
+  --tab-line: #ced0d4;
+  --tab-icon: #65676b;
+  --tab-active: #1877f2;
+  --tab-press: rgba(0, 0, 0, 0.06);
 }
 
-.bottom-nav-bg-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.45)) drop-shadow(0 2px 8px
-    rgba(0, 0, 0, 0.25));
-}
-
-.bottom-nav-items-grid {
-  position: relative;
-  z-index: 1;
+.bottom-nav-items-grid,
+.mobile-bottom-nav-preview {
   display: grid;
-  grid-template-columns: 1fr 1fr 74px 1fr 1fr;
-  align-items: center;
-  height: 100%;
-  width: 100%;
-  padding: 0 4px;
+  grid-template-columns: repeat(5, 1fr);
+  height: 52px;
 }
 
 .bottom-nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
+  position: relative;
+  display: grid;
+  place-items: center;
   height: 100%;
-  color: #64748B;
+  margin: 0;
+  padding: 0;
+  color: var(--tab-icon, #65676b);
   text-decoration: none;
   background: transparent;
-  border: none;
+  border: 0;
+  border-radius: 8px;
   cursor: pointer;
-  transition: color 0.15s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
-
 .bottom-nav-item .icon {
-  width: 22px;
-  height: 22px;
-  color: #64748B;
-  transition: color 0.15s ease, transform 0.15s ease;
+  width: 26px;
+  height: 26px;
+  color: inherit;
+  stroke-width: 2;
 }
-
-.bottom-nav-item:hover,
+.bottom-nav-item:active {
+  background: var(--tab-press, rgba(0, 0, 0, 0.06));
+}
+.bottom-nav-item:focus-visible {
+  outline: 2px solid var(--tab-active, #1877f2);
+  outline-offset: -4px;
+}
 .bottom-nav-item.is-active,
 .bottom-nav-item[aria-current="page"] {
-  color: #0F172A;
+  color: var(--tab-active, #1877f2);
 }
-
-.bottom-nav-item.is-active .icon,
-.bottom-nav-item[aria-current="page"] .icon {
-  color: #0F172A;
-  transform: scale(1.08);
-}
-
-.bottom-nav-label {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.01em;
-}
-
-/* Center Elevated Button in the Scoop Notch */
-.bottom-nav-elevated-wrap {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  padding-bottom: 7px;
-}
-
-.bottom-nav-elevated-btn {
+.bottom-nav-item.is-active::before,
+.bottom-nav-item[aria-current="page"]::before {
+  content: "";
   position: absolute;
-  top: -16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #FFFFFF;
-  border: 2px solid #E2E8F0;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #0F172A;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s
-    ease;
-  z-index: 2;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--tab-active, #1877f2);
 }
 
-.bottom-nav-elevated-btn:active {
-  transform: translateX(-50%) scale(0.94);
-}
-
-.bottom-nav-elevated-btn .icon {
-  width: 24px;
-  height: 24px;
-  color: #0F172A;
-}
-
-.bottom-nav-elevated-btn.is-active {
-  border-color: #15803D;
-  box-shadow: 0 8px 24px rgba(21, 128, 61, 0.3);
-}
-
-.bottom-nav-center-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #0F172A;
-  line-height: 1;
-}
-
-/* Preview container for components design system */
+/* Preview container for components design system: the same bar, with the same colours */
 .demo-bottom-nav-container {
-  display: flex;
-  justify-content: center;
-  padding: var(--s4) var(--s2);
-  background: var(--bg);
-  border: 1px solid var(--border);
+  --tab-bg: #242526;
+  --tab-line: #3e4042;
+  --tab-icon: #b0b3b8;
+  --tab-active: #2d88ff;
+  --tab-press: rgba(255, 255, 255, 0.1);
+  max-width: 420px;
+  overflow: hidden;
+  background: var(--tab-bg);
+  border: 1px solid var(--tab-line);
   border-radius: var(--r-control);
+}
+[data-theme="light"] .demo-bottom-nav-container {
+  --tab-bg: #ffffff;
+  --tab-line: #ced0d4;
+  --tab-icon: #65676b;
+  --tab-active: #1877f2;
+  --tab-press: rgba(0, 0, 0, 0.06);
 }
 
 @media (max-width: 900px) {
@@ -804,14 +762,14 @@ a.btn:hover {
     padding-top: 0;
   }
 
-  /* Floating bottom navbar for mobile member view */
+  /* Bottom tab bar for the mobile member view */
   body[data-member-view="true"] .mobile-bottom-nav {
     display: block;
   }
 
-  /* Content bottom padding to prevent overlap with floating navbar */
+  /* Content bottom padding to prevent overlap with the tab bar */
   body[data-member-view="true"] main {
-    padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 

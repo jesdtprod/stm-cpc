@@ -3,19 +3,6 @@
 // by the router and the database.
 import { button, h, icon, openModal } from "./ui.js";
 
-function svgEl(name, attrs = {}, ...children) {
-  const el = document.createElementNS("http://www.w3.org/2000/svg", name);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v != null) el.setAttribute(k, String(v));
-  }
-  for (const c of children) {
-    if (c) {
-      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
-    }
-  }
-  return el;
-}
-
 // Each entry uses the access rule of its own route, so a user sees exactly the pages they can open.
 // `gated: true` entries stay visible while a user is held at a gate (password change, waiting for approval).
 const GROUPS = [
@@ -339,92 +326,54 @@ export function createShell(
         const isAccount = path === "/profile" || path === "/password" ||
           path === "/pending";
 
-        const bgSvg = svgEl(
-          "svg",
-          {
-            class: "bottom-nav-bg-svg",
-            viewBox: "0 0 390 66",
-            preserveAspectRatio: "none",
-            "aria-hidden": "true",
-          },
-          svgEl("path", {
-            d: "M 0 24 C 0 10 10 0 24 0 L 146 0 C 162 0 168 28 195 28 C 222 28 228 0 244 0 L 366 0 C 380 0 390 10 390 24 L 390 66 L 0 66 Z",
-            fill: "#FFFFFF",
-          }),
-        );
-
+        // Facebook-style tab bar: icons only (the name is the accessible label and the tooltip), the current tab
+        // in blue with a bar on top.
+        const tab = ({ label, iconName, active, href, onClick }) =>
+          h(
+            href ? "a" : "button",
+            {
+              class: `bottom-nav-item${active ? " is-active" : ""}`,
+              ...(href ? { href } : { type: "button", onClick }),
+              "aria-label": label,
+              title: label,
+              "aria-current": active && href ? "page" : null,
+            },
+            icon(iconName),
+          );
         const itemsWrap = h(
           "div",
           { class: "bottom-nav-items-grid" },
-          h(
-            "a",
-            {
-              class: `bottom-nav-item${isHome ? " is-active" : ""}`,
-              href: "#/",
-              "aria-label": "Home",
-              "aria-current": isHome ? "page" : null,
+          tab({ label: "Home", iconName: "home", active: isHome, href: "#/" }),
+          tab({
+            label: "Courts",
+            iconName: "calendar",
+            active: isBooking,
+            href: "#/booking",
+          }),
+          tab({
+            label: "QR pass",
+            iconName: "qrScan",
+            active: isQr,
+            onClick: (e) => {
+              e.preventDefault();
+              openQrScanModal();
             },
-            icon("home"),
-            h("span", { class: "bottom-nav-label" }, "Home"),
-          ),
-          h(
-            "a",
-            {
-              class: `bottom-nav-item${isBooking ? " is-active" : ""}`,
-              href: "#/booking",
-              "aria-label": "Courts",
-              "aria-current": isBooking ? "page" : null,
-            },
-            icon("calendar"),
-            h("span", { class: "bottom-nav-label" }, "Courts"),
-          ),
-          h(
-            "div",
-            { class: "bottom-nav-elevated-wrap" },
-            h(
-              "button",
-              {
-                class: `bottom-nav-elevated-btn${isQr ? " is-active" : ""}`,
-                type: "button",
-                "aria-label": "Explore / QR Pass",
-                onClick: (e) => {
-                  e.preventDefault();
-                  openQrScanModal();
-                },
-              },
-              icon("qrScan"),
-            ),
-            h(
-              "span",
-              { class: "bottom-nav-label bottom-nav-center-label" },
-              "Explore",
-            ),
-          ),
-          h(
-            "a",
-            {
-              class: `bottom-nav-item${isEvents ? " is-active" : ""}`,
-              href: "#/events",
-              "aria-label": "Events",
-              "aria-current": isEvents ? "page" : null,
-            },
-            icon("trophy"),
-            h("span", { class: "bottom-nav-label" }, "Events"),
-          ),
-          h(
-            "a",
-            {
-              class: `bottom-nav-item${isAccount ? " is-active" : ""}`,
-              href: signedIn ? "#/profile" : "#/signin",
-              "aria-label": "Profile",
-              "aria-current": isAccount ? "page" : null,
-            },
-            icon("user"),
-            h("span", { class: "bottom-nav-label" }, "Profile"),
-          ),
+          }),
+          tab({
+            label: "Events",
+            iconName: "trophy",
+            active: isEvents,
+            href: "#/events",
+          }),
+          tab({
+            label: "Profile",
+            iconName: "user",
+            active: isAccount,
+            href: signedIn ? "#/profile" : "#/signin",
+          }),
         );
 
-        mobileNav.replaceChildren(bgSvg, itemsWrap);
+        mobileNav.replaceChildren(itemsWrap);
       } else {
         mobileNav.hidden = true;
         mobileNav.replaceChildren();

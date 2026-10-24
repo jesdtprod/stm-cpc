@@ -2429,7 +2429,7 @@ export function componentsPage() {
     };
     renderPager();
 
-    // Mobile Floating Bottom Navbar Demo
+    // Mobile bottom tab bar demo
     let activeBottomTab = "Home";
     const bottomNavPreview = h("nav", {
       class: "mobile-bottom-nav-preview",
@@ -2509,7 +2509,7 @@ export function componentsPage() {
         "div",
         { class: "component-grid" },
         registerComponentCard({
-          name: "Mobile Floating Bottom Navbar",
+          name: "Mobile Bottom Tab Bar (icons only)",
           keywords: [
             "bottom nav",
             "mobile",
