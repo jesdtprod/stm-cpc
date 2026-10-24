@@ -152,6 +152,24 @@ export function createAccountPages(
     });
     const watermarkEl = createCourtWatermarkSvg();
 
+    const flank = (side, first, second) =>
+      h(
+        "div",
+        { class: `cpc-top-flank cpc-top-flank-${side}` },
+        h("img", {
+          src: `icons/${first}.png`,
+          alt: "",
+          class: `cpc-top-${first} cpc-top-${first}-${side}`,
+        }),
+        h("img", {
+          src: `icons/${second}.png`,
+          alt: "",
+          class: `cpc-top-${second} cpc-top-${second}-${side}`,
+        }),
+      );
+
+    // The same structure and classes as the home page hero (and so the same fonts and sizes): the text on the left,
+    // where the home page has its headline, and the sign-in form on the right, where the home page has the phone.
     const containerEl = h(
       "div",
       { class: "auth-page-container cpc-hero" },
@@ -160,91 +178,104 @@ export function createAccountPages(
       h(
         "div",
         { class: "cpc-landing-container" },
-        // The same two-column structure as the home page's hero: the form on the left, the brand on the right.
-        // The brand stays first in the page order (the heading comes first for screen readers) and moves right with CSS.
         h(
           "div",
           { class: "cpc-hero-grid auth-split" },
           h(
             "div",
-            { class: "auth-brand-col" },
-            // The logo alone: no paddle and ball beside it on the sign-in page.
+            { class: "cpc-hero-content" },
             h(
               "div",
-              { class: "auth-brand-top" },
+              { class: "cpc-hero-brand-top" },
+              flank("left", "paddle", "ball"),
               h("img", {
-                class: "auth-brand-logo",
+                class: "cpc-hero-logo cpc-top-logo",
                 src: "icons/cpc-logo.png",
                 alt: "Capitol Pickleball Club",
-                width: "68",
-                height: "68",
+                width: "72",
+                height: "72",
               }),
+              flank("right", "ball", "paddle"),
             ),
             h(
               "div",
-              { class: "auth-hero-badge" },
+              { class: "cpc-hero-badge" },
               icon("trophy"),
               "Province of Sultan Kudarat’s Pickleball Court",
             ),
             h(
-              "div",
-              { class: "auth-title-wrap" },
+              "h1",
+              { class: "cpc-hero-title", id: "page-title", tabindex: "-1" },
+              "Sign In to ",
               h(
-                "h1",
-                { class: "auth-page-title", id: "page-title", tabindex: "-1" },
-                "Sign In to ",
-                h(
-                  "span",
-                  { class: "auth-title-accent" },
-                  "Capitol Pickleball Club",
-                ),
+                "span",
+                { class: "cpc-hero-title-accent" },
+                "Capitol Pickleball Club",
               ),
-              h(
-                "p",
-                { class: "auth-page-subtitle" },
-                "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
-              ),
+            ),
+            h(
+              "p",
+              { class: "cpc-hero-subtitle" },
+              "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
             ),
           ),
           h(
             "div",
-            { class: "auth-form-col" },
-            h(
-              "div",
-              { class: "card auth-card" },
-              form,
-              h(
-                "div",
-                { class: "auth-first-time-box" },
-                icon("info"),
-                h(
-                  "span",
-                  {},
-                  h(
-                    "strong",
-                    { class: "auth-first-time-strong" },
-                    "First time here? ",
-                  ),
-                  "Your initial password is the last 5 digits of your member ID followed by your birth date as MMDDYYYY (e.g. 0000112212025). You will be prompted to choose a new password upon first sign-in.",
-                ),
-              ),
-              h(
-                "div",
-                { class: "auth-card-footer" },
-                "Not a member yet? ",
-                h(
-                  "a",
-                  { href: "#/signup", class: "auth-signup-link" },
-                  "Create an account / Join the club",
-                ),
-                ".",
-              ),
+            { class: "auth-form-stage" },
+            // The same floating paddles and balls the home page puts around its phone (hidden on phones).
+            ...[
+              ["cpc-paddle cpc-paddle-left", "paddle"],
+              ["cpc-ball cpc-ball-left", "ball"],
+              ["cpc-paddle cpc-paddle-right", "paddle"],
+              ["cpc-ball cpc-ball-right", "ball"],
+            ].map(([cls, file]) =>
+              h("img", {
+                class: cls,
+                src: `icons/${file}.png`,
+                alt: "",
+                "aria-hidden": "true",
+              })
             ),
             h(
-              "a",
-              { href: "#/", class: "auth-back-link" },
-              icon("arrowLeft"),
-              "Back to home",
+              "div",
+              { class: "auth-form-col" },
+              h(
+                "div",
+                { class: "card auth-card" },
+                form,
+                h(
+                  "div",
+                  { class: "auth-first-time-box" },
+                  icon("info"),
+                  h(
+                    "span",
+                    {},
+                    h(
+                      "strong",
+                      { class: "auth-first-time-strong" },
+                      "First time here? ",
+                    ),
+                    "Your initial password is the last 5 digits of your member ID followed by your birth date as MMDDYYYY (e.g. 0000112212025). You will be prompted to choose a new password upon first sign-in.",
+                  ),
+                ),
+                h(
+                  "div",
+                  { class: "auth-card-footer" },
+                  "Not a member yet? ",
+                  h(
+                    "a",
+                    { href: "#/signup", class: "auth-signup-link" },
+                    "Create an account / Join the club",
+                  ),
+                  ".",
+                ),
+              ),
+              h(
+                "a",
+                { href: "#/", class: "auth-back-link" },
+                icon("arrowLeft"),
+                "Back to home",
+              ),
             ),
           ),
         ),

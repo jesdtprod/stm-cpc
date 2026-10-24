@@ -3470,11 +3470,8 @@ body:not([data-landing="true"]) .app-shell > main:has(.auth-page) {
   }
 }
 
-/* ---- Sign-in page: no header; the content always starts at the top and the page scrolls when it does not fit.
-   The home page locks itself to one screen on phones; the sign-in page must not inherit that lock. ---- */
-body[data-auth-page="true"] .app-header {
-  display: none !important;
-}
+/* ---- Sign-in page: the home page's hero. Text on the left, the form on the right (where the home page has the phone).
+   It scrolls when it does not fit, always from the top, and does not inherit the home page's one-screen phone lock. ---- */
 html[data-auth-page="true"],
 body[data-auth-page="true"],
 body[data-auth-page="true"] .app-shell,
@@ -3491,21 +3488,27 @@ body[data-auth-page="true"] .auth-page-container.cpc-hero {
   max-height: none !important;
   overflow: visible !important;
   justify-content: flex-start !important;
-  padding: clamp(20px, 5vh, 48px) var(--s4) clamp(24px, 5vh, 48px);
+  padding: 96px var(--s4) var(--s5);
 }
-/* margin auto centres the card when it is shorter than the screen and never pushes it above the top */
-body[data-auth-page="true"] .auth-page-container .auth-page {
+/* margin auto centres the content when it is shorter than the screen and never pushes it above the top */
+body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
+  position: relative;
+  z-index: 2;
   margin-block: auto;
 }
-
-/* ---- Sign-in page: the home page's two-column hero. Form on the left, brand on the right; one column on phones. ---- */
-.auth-split {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: center;
-  gap: var(--s6);
+.auth-form-stage {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
+}
+.auth-form-stage > .cpc-paddle,
+.auth-form-stage > .cpc-ball {
+  pointer-events: none;
 }
 .auth-split .auth-form-col {
-  order: 1;
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3514,45 +3517,31 @@ body[data-auth-page="true"] .auth-page-container .auth-page {
   max-width: 460px;
   justify-self: center;
 }
-.auth-split .auth-brand-col {
-  order: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--s3);
-  min-width: 0;
-}
-.auth-page-container .cpc-landing-container {
-  position: relative;
-  z-index: 2;
-}
-body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
-  margin-block: auto;
-}
 @media (max-width: 900px) {
-  .auth-split {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--s4);
+  .auth-form-stage > .cpc-paddle,
+  .auth-form-stage > .cpc-ball {
+    display: none !important;
   }
-  .auth-split .auth-brand-col {
-    order: 1;
+  /* on phones the sign-in page has no top header, like the home page */
+  body[data-auth-page="true"] .app-header {
+    display: none !important;
   }
-  .auth-split .auth-form-col {
-    order: 2;
-    max-width: 440px;
+  body[data-auth-page="true"] .auth-page-container.cpc-hero {
+    padding-top: clamp(20px, 5vh, 48px);
+    padding-bottom: clamp(24px, 5vh, 48px);
   }
 }
 
 /* ---- Sign-in logo: the same size as the home page logo at each phone width ---- */
 @media (max-width: 860px) {
-  .auth-brand-logo {
+  .auth-brand-logo,
+  .auth-page-container .cpc-top-logo {
     width: 60px;
     height: 60px;
   }
 }
 @media (max-width: 600px) {
-  .auth-brand-logo {
+  .auth-page-container .cpc-top-logo {
     width: 96px;
     height: 96px;
   }
