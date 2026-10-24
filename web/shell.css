@@ -3543,3 +3543,17 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
     max-width: 440px;
   }
 }
+
+/* ---- Sign-in logo: the same size as the home page logo at each phone width ---- */
+@media (max-width: 860px) {
+  .auth-brand-logo {
+    width: 60px;
+    height: 60px;
+  }
+}
+@media (max-width: 600px) {
+  .auth-brand-logo {
+    width: 96px;
+    height: 96px;
+  }
+}
