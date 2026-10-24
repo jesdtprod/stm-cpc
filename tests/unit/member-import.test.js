@@ -348,6 +348,12 @@ function world(over = {}) {
       s.resets.push(no);
       return Promise.resolve();
     },
+    memberResetTarget: (no) =>
+      Promise.resolve(no === "CPC-2026-00001" ? "member-uid" : null),
+    memberResetDone: (no) => {
+      s.resets.push(no);
+      return Promise.resolve();
+    },
     randomPassword: () => "Adm1nPassw0rdFake",
     log: (e) => s.logs.push(e),
     ...(over.deps ?? {}),
@@ -1109,4 +1115,30 @@ Deno.test("import: if Auth refuses the new password, nothing is marked and no pa
   assert.equal(r.status, 502);
   assert.equal(JSON.stringify(r.body).includes("Adm1n"), false);
   assert.deepEqual(s.resets, []);
+});
+
+Deno.test("import: a member who forgot the password gets a new random one, once, and must change it at sign-in", async () => {
+  const { deps, s } = world();
+  const r = await run(deps, {
+    action: "reset_member_password",
+    member_no: "CPC-2026-00001",
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.member_no, "CPC-2026-00001");
+  assert.deepEqual(s.passwordSets, [{
+    uid: "member-uid",
+    pw: "Adm1nPassw0rdFake",
+  }]);
+  assert.deepEqual(s.resets, ["CPC-2026-00001"]);
+  assert.equal(JSON.stringify(s.logs).includes("Adm1n"), false);
+  const none = await run(deps, {
+    action: "reset_member_password",
+    member_no: "CPC-2026-00777",
+  });
+  assert.equal(none.status, 404);
+  assert.equal(
+    s.passwordSets.length,
+    1,
+    "nothing changed for an unknown member",
+  );
 });

@@ -199,6 +199,14 @@ const deps: Deps = {
   adminResetDone: async (memberNo) => {
     await rpc("admin_reset_done", { p_member_no: memberNo });
   },
+  memberResetTarget: async (memberNo) =>
+    (await rpc<string | null>("member_reset_target", {
+      p_member_no: memberNo,
+    })) ??
+      null,
+  memberResetDone: async (memberNo) => {
+    await rpc("member_reset_done", { p_member_no: memberNo });
+  },
   randomPassword,
   // Events carry no names, IDs, dates or passwords.
   log: (event, fields) => console.log(JSON.stringify({ event, ...fields })),

@@ -6,13 +6,14 @@
 // The file must be outside the repository; the script refuses a path inside it.
 import { SUPABASE_URL } from "../web/supabase-config.js";
 
-const reset = Deno.args.includes("--reset");
+const resetMember = Deno.args.includes("--reset-member");
+const reset = Deno.args.includes("--reset") || resetMember;
 const args = Object.fromEntries(
   Deno.args.flatMap((
     a,
     i,
     all,
-  ) => (a.startsWith("--") && a !== "--reset"
+  ) => (a.startsWith("--") && a !== "--reset" && a !== "--reset-member"
     ? [[a.slice(2), all[i + 1]]]
     : [])
   ),
@@ -46,7 +47,10 @@ const res = await fetch(`${SUPABASE_URL}/functions/v1/member-import`, {
   headers: { "content-type": "application/json", "x-import-token": token },
   body: JSON.stringify(
     reset
-      ? { action: "reset_admin_password", member_no: memberNo }
+      ? {
+        action: resetMember ? "reset_member_password" : "reset_admin_password",
+        member_no: memberNo,
+      }
       : { action: "create_admin", member_no: memberNo, display_name: name },
   ),
 });
@@ -62,7 +66,11 @@ if (!res.ok || !json.ok) {
 await Deno.writeTextFile(
   passwordFile,
   `Capitol Pickleball Club - ${
-    reset ? "administrator password reset" : "first administrator"
+    resetMember
+      ? "member password reset"
+      : reset
+      ? "administrator password reset"
+      : "first administrator"
   }\nMember ID: ${json.member_no}\nFirst password: ${json.password}\n` +
     `Change this password the first time you sign in, then delete this file.\n`,
   { mode: 0o600 },

@@ -50,6 +50,7 @@ without its Windows binary; stay on 2.118.0 until fixed).
 | `1320_booking_helpers.sql`                                        | 5.1, 5.4  | `find_players`, `quote_booking`, and the 5-minute expiry job (pg_cron)                                                                                                                                      |
 | `1340_login_by_email.sql`                                         | 3.1       | `member_no_for_email`: lets sign-in accept the profile email (only when exactly one member uses it; service role only)                                                                                      |
 | `1360_admin_password_reset.sql`                                   | 3.2       | `admin_reset_target` and `admin_reset_done` (service role): the database half of the secure admin password reset                                                                                            |
+| `1370_member_password_reset.sql`                                  | 3.2       | `member_reset_target` and `member_reset_done` (service role): a new password for an ordinary active member who forgot theirs; the member must choose their own at the next sign-in |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in,
 linked CLI; no Docker).

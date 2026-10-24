@@ -101,6 +101,8 @@ export interface Deps {
   adminResetTarget: (memberNo: string) => Promise<string | null>;
   setAuthPassword: (authUserId: string, password: string) => Promise<boolean>;
   adminResetDone: (memberNo: string) => Promise<void>;
+  memberResetTarget: (memberNo: string) => Promise<string | null>;
+  memberResetDone: (memberNo: string) => Promise<void>;
   randomPassword: () => string;
   log: (event: string, fields?: Record<string, string | number>) => void;
 }
@@ -491,6 +493,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
       await deps.adminResetDone(memberNo);
       deps.log("admin.password_reset");
+      return json(200, { ok: true, member_no: memberNo, password });
+    }
+
+    case "reset_member_password": {
+      // A forgotten password for an ordinary active member. Same handling as the administrator reset.
+      const memberNo = body.member_no;
+      if (typeof memberNo !== "string" || !ID_PATTERN.test(memberNo)) {
+        return json(400, { ok: false, code: "bad_request" });
+      }
+      const target = await deps.memberResetTarget(memberNo);
+      if (!target) return json(404, { ok: false, code: "not_found" });
+      const password = deps.randomPassword();
+      if (!(await deps.setAuthPassword(target, password))) {
+        return json(502, { ok: false, code: "auth_failed" });
+      }
+      await deps.memberResetDone(memberNo);
+      deps.log("member.password_reset");
       return json(200, { ok: true, member_no: memberNo, password });
     }
 
