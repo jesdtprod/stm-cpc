@@ -176,7 +176,32 @@ function loadingView() {
 }
 
 export function createHomePages({ session, api }) {
-  async function loadClubMemberCount(target) {
+  function renderMemberBadges(target, badges, fallbackInitials) {
+    const initials = Array.isArray(badges)
+      ? badges
+        .slice(0, 15)
+        .map((badge) =>
+          String(badge?.initials ?? "")
+            .replace(/[^a-z]/gi, "")
+            .slice(0, 2)
+            .toUpperCase()
+        )
+        .filter(Boolean)
+      : [];
+    const visibleInitials = initials.length ? initials : [
+      String(fallbackInitials ?? "C").replace(/[^a-z]/gi, "").slice(0, 2)
+        .toUpperCase() || "C",
+    ];
+
+    target.replaceChildren(
+      ...visibleInitials.map((initial) =>
+        h("span", { class: "cpc-member-account" }, initial)
+      ),
+    );
+    target.hidden = false;
+  }
+
+  async function loadClubMemberCount(target, accountIndicators) {
     try {
       const stats = await api.rpc("club_home_stats");
       const count = Number(stats?.active_members);
@@ -186,6 +211,11 @@ export function createHomePages({ session, api }) {
       target.textContent = `${
         new Intl.NumberFormat("en-PH").format(count)
       } Active Club Member${count === 1 ? "" : "s"}`;
+      const initials = String(stats?.member_initials ?? "C")
+        .replace(/[^a-z]/gi, "")
+        .slice(0, 2)
+        .toUpperCase();
+      renderMemberBadges(accountIndicators, stats?.member_badges, initials);
     } catch {
       if (target.isConnected) target.textContent = "Active club members";
     }
@@ -617,6 +647,11 @@ export function createHomePages({ session, api }) {
       { class: "cpc-social-count", "aria-live": "polite" },
       "Active club members",
     );
+    const memberAccounts = h(
+      "div",
+      { class: "cpc-member-accounts", "aria-hidden": "true" },
+      h("span", { class: "cpc-member-account" }, "C"),
+    );
     const heroSection = h(
       "section",
       { class: "cpc-hero", "aria-label": "Welcome to Capitol Pickleball Club" },
@@ -632,6 +667,45 @@ export function createHomePages({ session, api }) {
           h(
             "div",
             { class: "cpc-hero-content" },
+            h(
+              "div",
+              { class: "cpc-hero-brand-top" },
+              h(
+                "div",
+                { class: "cpc-top-flank cpc-top-flank-left" },
+                h("img", {
+                  src: "icons/paddle.png",
+                  alt: "Tournament Pickleball Paddle Left",
+                  class: "cpc-top-paddle cpc-top-paddle-left",
+                }),
+                h("img", {
+                  src: "icons/ball.png",
+                  alt: "Tournament Pickleball Left",
+                  class: "cpc-top-ball cpc-top-ball-left",
+                }),
+              ),
+              h("img", {
+                class: "cpc-hero-logo cpc-top-logo",
+                src: "icons/cpc-logo.png",
+                alt: "Capitol Pickleball Club",
+                width: "72",
+                height: "72",
+              }),
+              h(
+                "div",
+                { class: "cpc-top-flank cpc-top-flank-right" },
+                h("img", {
+                  src: "icons/ball.png",
+                  alt: "Tournament Pickleball Right",
+                  class: "cpc-top-ball cpc-top-ball-right",
+                }),
+                h("img", {
+                  src: "icons/paddle.png",
+                  alt: "Tournament Pickleball Paddle Right",
+                  class: "cpc-top-paddle cpc-top-paddle-right",
+                }),
+              ),
+            ),
             h(
               "div",
               { class: "cpc-hero-badge" },
@@ -651,7 +725,7 @@ export function createHomePages({ session, api }) {
             h(
               "p",
               { class: "cpc-hero-subtitle" },
-              "Experience championship covered courts, instant court reservations with GCash verification, custom club categories and ranks, and digital member QR passes.",
+              "Apply for membership, book court time, submit payment proof when needed, track your category and rank, and register for club events and tournaments.",
             ),
             h(
               "div",
@@ -678,14 +752,7 @@ export function createHomePages({ session, api }) {
             h(
               "div",
               { class: "cpc-hero-social" },
-              h(
-                "div",
-                { class: "cpc-avatars" },
-                h("span", { class: "cpc-avatar-pill cpc-avatar-1" }, "CK"),
-                h("span", { class: "cpc-avatar-pill cpc-avatar-2" }, "MR"),
-                h("span", { class: "cpc-avatar-pill cpc-avatar-3" }, "AS"),
-                h("span", { class: "cpc-avatar-pill cpc-avatar-4" }, "GT"),
-              ),
+              memberAccounts,
               h(
                 "div",
                 { class: "cpc-social-text" },
@@ -702,29 +769,17 @@ export function createHomePages({ session, api }) {
           h(
             "div",
             { class: "cpc-hero-mockup-wrap" },
-            // Left Paddle (Opposite Side)
             h("img", {
-              src: "icons/paddle.png",
-              alt: "Capitol Tournament Paddle Left",
               class: "cpc-paddle cpc-paddle-left",
-            }),
-            // Left Pickleball (Opposite Side)
-            h("img", {
-              src: "icons/ball.png",
-              alt: "Tournament Pickleball Left",
-              class: "cpc-ball cpc-ball-left",
-            }),
-            // Right Paddle (Original Side)
-            h("img", {
               src: "icons/paddle.png",
-              alt: "Capitol Tournament Paddle Right",
-              class: "cpc-paddle cpc-paddle-right",
+              alt: "",
+              "aria-hidden": "true",
             }),
-            // Right Pickleball (Original Side)
             h("img", {
+              class: "cpc-ball cpc-ball-left",
               src: "icons/ball.png",
-              alt: "Tournament Pickleball Right",
-              class: "cpc-ball cpc-ball-right",
+              alt: "",
+              "aria-hidden": "true",
             }),
             // Luxury Mobile Showcase Phone (Full Details)
             h(
@@ -838,12 +893,12 @@ export function createHomePages({ session, api }) {
                       "span",
                       { class: "cpc-phone-badge" },
                       icon("checkCircle"),
-                      "GCash Paid ₱600 (#8921)",
+                      "Booking Confirmed",
                     ),
                     h(
                       "span",
                       { class: "cpc-phone-pill-sub" },
-                      "Gate Pass: Ready",
+                      "Court access ready",
                     ),
                   ),
                 ),
@@ -1063,6 +1118,18 @@ export function createHomePages({ session, api }) {
                 // Home Indicator Bar
                 h("div", { class: "cpc-phone-home-bar" }),
               ),
+              h("img", {
+                class: "cpc-ball cpc-ball-right",
+                src: "icons/ball.png",
+                alt: "",
+                "aria-hidden": "true",
+              }),
+              h("img", {
+                class: "cpc-paddle cpc-paddle-right",
+                src: "icons/paddle.png",
+                alt: "",
+                "aria-hidden": "true",
+              }),
             ),
           ),
         ),
@@ -1076,7 +1143,7 @@ export function createHomePages({ session, api }) {
     );
 
     setupConvexPatternCanvas(canvasEl, landingEl, watermarkEl);
-    loadClubMemberCount(memberCount);
+    loadClubMemberCount(memberCount, memberAccounts);
 
     return landingEl;
   }

@@ -8,6 +8,7 @@ import {
   h,
   icon,
   pageHeader,
+  setupConvexPatternCanvas,
   toast,
   withPending,
 } from "./ui.js";
@@ -78,7 +79,7 @@ export function createAccountPages(
       id: "signin-id",
       label: "Member ID or email",
       required: true,
-      placeholder: "Example: CPC-2026-00001 or name@email.com",
+      placeholder: "CPC-2026-00001 or your email",
       iconLeading: "user",
     });
     const idInput = memberId.querySelector("input");
@@ -144,11 +145,17 @@ export function createAccountPages(
       }),
     );
 
-    const watermarkEl = createCourtWatermarkSvg("auth-court-watermark");
+    // The same background as the home page: the court pattern canvas that follows the pointer, and the court blueprint.
+    const canvasEl = h("canvas", {
+      class: "cpc-hero-canvas",
+      "aria-hidden": "true",
+    });
+    const watermarkEl = createCourtWatermarkSvg();
 
     const containerEl = h(
       "div",
-      { class: "auth-page-container" },
+      { class: "auth-page-container cpc-hero" },
+      canvasEl,
       watermarkEl,
       h(
         "div",
@@ -215,7 +222,7 @@ export function createAccountPages(
           h(
             "p",
             { class: "auth-page-subtitle" },
-            "Use your member ID and password to manage court bookings, ranks, and event registrations.",
+            "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
           ),
         ),
         h(
@@ -258,6 +265,7 @@ export function createAccountPages(
       ),
     );
 
+    setupConvexPatternCanvas(canvasEl, containerEl, watermarkEl);
     return containerEl;
   }
 

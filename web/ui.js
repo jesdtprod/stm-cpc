@@ -55,6 +55,9 @@ const ICONS = {
     "M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2m-10 0H5a2 2 0 0 1-2-2v-2M7 12h10M12 7v10",
   trophy:
     "M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2m12 6h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2M6 3h12v7a6 6 0 0 1-12 0V3zm3 14h6m-3-3v7m-4 0h8",
+  lock:
+    "M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zm-12 0V7a5 5 0 0 1 10 0v4",
+  arrowLeft: "M19 12H5m7 7-7-7 7-7",
 };
 
 /** Create an element. Event handlers must be functions; string `on*` attributes are ignored. */
@@ -3004,4 +3007,413 @@ export function divider({ label, orientation = "horizontal" }) {
     { class: "divider", role: "separator" },
     label ? h("span", { class: "divider-label" }, label) : null,
   );
+}
+
+export function svgEl(tag, props = {}, ...children) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [key, val] of Object.entries(props)) {
+    if (key === "href" || key === "xlink:href") {
+      el.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", val);
+      el.setAttribute("href", val);
+    } else {
+      el.setAttribute(key, val);
+    }
+  }
+  for (const child of children.flat()) {
+    if (child instanceof Node) el.append(child);
+  }
+  return el;
+}
+
+export function createCourtWatermarkSvg(
+  customClass = "cpc-hero-court-watermark",
+) {
+  return svgEl(
+    "svg",
+    {
+      class: customClass,
+      viewBox: "0 0 900 420",
+      fill: "none",
+      "aria-hidden": "true",
+    },
+    svgEl("rect", {
+      x: "30",
+      y: "30",
+      width: "840",
+      height: "360",
+      rx: "8",
+      stroke: "#163827",
+      "stroke-width": "1.5",
+      "stroke-opacity": "0.45",
+    }),
+    svgEl("line", {
+      x1: "450",
+      y1: "15",
+      x2: "450",
+      y2: "405",
+      stroke: "#DFB756",
+      "stroke-width": "1.5",
+      "stroke-opacity": "0.35",
+      "stroke-dasharray": "6 4",
+    }),
+    svgEl("line", {
+      x1: "316",
+      y1: "30",
+      x2: "316",
+      y2: "390",
+      stroke: "#234735",
+      "stroke-width": "1.2",
+      "stroke-opacity": "0.45",
+    }),
+    svgEl("line", {
+      x1: "584",
+      y1: "30",
+      x2: "584",
+      y2: "390",
+      stroke: "#234735",
+      "stroke-width": "1.2",
+      "stroke-opacity": "0.45",
+    }),
+    svgEl("line", {
+      x1: "30",
+      y1: "210",
+      x2: "316",
+      y2: "210",
+      stroke: "#163827",
+      "stroke-width": "1.2",
+      "stroke-opacity": "0.45",
+    }),
+    svgEl("line", {
+      x1: "584",
+      y1: "210",
+      x2: "870",
+      y2: "210",
+      stroke: "#163827",
+      "stroke-width": "1.2",
+      "stroke-opacity": "0.45",
+    }),
+    svgEl("circle", {
+      cx: "30",
+      cy: "30",
+      r: "3",
+      fill: "#DFB756",
+      "fill-opacity": "0.3",
+    }),
+    svgEl("circle", {
+      cx: "870",
+      cy: "30",
+      r: "3",
+      fill: "#DFB756",
+      "fill-opacity": "0.3",
+    }),
+    svgEl("circle", {
+      cx: "30",
+      cy: "390",
+      r: "3",
+      fill: "#DFB756",
+      "fill-opacity": "0.3",
+    }),
+    svgEl("circle", {
+      cx: "870",
+      cy: "390",
+      r: "3",
+      fill: "#DFB756",
+      "fill-opacity": "0.3",
+    }),
+  );
+}
+
+export function setupConvexPatternCanvas(canvas, containerEl, watermarkEl) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return () => {};
+
+  const STEP = 60;
+  const RADIUS = 180;
+  const RADIUS_SQ = RADIUS * RADIUS;
+  const EASE = 0.08;
+
+  let width = 0;
+  let height = 0;
+  let targetX = -9999;
+  let targetY = -9999;
+  let currentX = -9999;
+  let currentY = -9999;
+  let targetStrength = 0;
+  let currentStrength = 0;
+  let animId = null;
+  let hasConnected = false;
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    width = rect.width;
+    height = rect.height;
+    if (width === 0 || height === 0) return;
+    const dpr = globalThis.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function warp(x, y) {
+    const dx = x - currentX;
+    const dy = y - currentY;
+    const distSq = dx * dx + dy * dy;
+    if (distSq >= RADIUS_SQ || currentStrength <= 0.0005) {
+      return [x, y];
+    }
+    const dist = Math.sqrt(distSq);
+    if (dist < 0.0001) return [x, y];
+    const r = dist / RADIUS;
+    const factor = 0.44 * (1 - r * r) * (1 - r * r) * currentStrength;
+    return [x + dx * factor, y + dy * factor];
+  }
+
+  function draw() {
+    if (width === 0 || height === 0) return;
+    ctx.clearRect(0, 0, width, height);
+
+    const hasConvex = currentStrength > 0.0005;
+    const xMin = hasConvex ? currentX - RADIUS : -9999;
+    const xMax = hasConvex ? currentX + RADIUS : -9999;
+    const yMin = hasConvex ? currentY - RADIUS : -9999;
+    const yMax = hasConvex ? currentY + RADIUS : -9999;
+
+    // 1. Diagonal Court Net Pattern (dashed)
+    ctx.beginPath();
+    ctx.setLineDash([3, 5]);
+    ctx.strokeStyle = "rgba(17, 41, 28, 0.35)";
+    ctx.lineWidth = 0.75;
+    for (let gx = 0; gx < width + STEP; gx += STEP) {
+      for (let gy = 0; gy < height + STEP; gy += STEP) {
+        const x1 = gx;
+        const y1 = gy + STEP;
+        const x2 = gx + STEP;
+        const y2 = gy;
+        const inLens = hasConvex &&
+          x2 >= xMin && x1 <= xMax &&
+          y1 >= yMin && y2 <= yMax;
+        if (!inLens) {
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+        } else {
+          const [wx1, wy1] = warp(x1, y1);
+          ctx.moveTo(wx1, wy1);
+          for (let t = 0.15; t <= 1; t += 0.15) {
+            const [wx, wy] = warp(
+              x1 + (x2 - x1) * t,
+              y1 + (y2 - y1) * t,
+            );
+            ctx.lineTo(wx, wy);
+          }
+        }
+      }
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 2. Regulation Court Grid Lines (vertical & horizontal)
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(22, 56, 39, 0.45)";
+    ctx.lineWidth = 1;
+
+    for (let gx = 0; gx <= width + STEP; gx += STEP) {
+      if (!hasConvex || gx < xMin || gx > xMax) {
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, height);
+      } else {
+        ctx.moveTo(gx, 0);
+        const yEnter = Math.max(0, yMin);
+        const yExit = Math.min(height, yMax);
+        if (yEnter > 0) ctx.lineTo(gx, yEnter);
+        for (let gy = yEnter; gy <= yExit; gy += 6) {
+          const [wx, wy] = warp(gx, gy);
+          ctx.lineTo(wx, wy);
+        }
+        if (yExit < height) ctx.lineTo(gx, height);
+      }
+    }
+
+    for (let gy = 0; gy <= height + STEP; gy += STEP) {
+      if (!hasConvex || gy < yMin || gy > yMax) {
+        ctx.moveTo(0, gy);
+        ctx.lineTo(width, gy);
+      } else {
+        ctx.moveTo(0, gy);
+        const xEnter = Math.max(0, xMin);
+        const xExit = Math.min(width, xMax);
+        if (xEnter > 0) ctx.lineTo(xEnter, gy);
+        for (let gx = xEnter; gx <= xExit; gx += 6) {
+          const [wx, wy] = warp(gx, gy);
+          ctx.lineTo(wx, wy);
+        }
+        if (xExit < width) ctx.lineTo(width, gy);
+      }
+    }
+    ctx.stroke();
+
+    // 3. Regulation Center Crosses
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(35, 71, 53, 0.65)";
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = "round";
+    for (let gx = 0; gx < width + STEP; gx += STEP) {
+      for (let gy = 0; gy < height + STEP; gy += STEP) {
+        const cx = gx + STEP / 2;
+        const cy = gy + STEP / 2;
+        const inLens = hasConvex &&
+          cx >= xMin && cx <= xMax &&
+          cy >= yMin && cy <= yMax;
+        const [wcx, wcy] = inLens ? warp(cx, cy) : [cx, cy];
+        const crossSize = inLens ? 6.5 : 5.5;
+        ctx.moveTo(wcx, wcy - crossSize);
+        ctx.lineTo(wcx, wcy + crossSize);
+        ctx.moveTo(wcx - crossSize, wcy);
+        ctx.lineTo(wcx + crossSize, wcy);
+      }
+    }
+    ctx.stroke();
+    ctx.lineCap = "butt";
+
+    // 4. Pickleball Perforation Accents (Gold corner dots, Emerald center dots)
+    ctx.fillStyle = "rgba(223, 183, 86, 0.16)";
+    for (let gx = 0; gx <= width + STEP; gx += STEP) {
+      for (let gy = 0; gy <= height + STEP; gy += STEP) {
+        const inLens = hasConvex &&
+          gx >= xMin && gx <= xMax &&
+          gy >= yMin && gy <= yMax;
+        const [wgx, wgy] = inLens ? warp(gx, gy) : [gx, gy];
+        const dotR = inLens ? 2.2 : 1.8;
+        ctx.beginPath();
+        ctx.arc(wgx, wgy, dotR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    ctx.fillStyle = "rgba(74, 222, 128, 0.18)";
+    for (let gx = 0; gx < width + STEP; gx += STEP) {
+      for (let gy = 0; gy < height + STEP; gy += STEP) {
+        const cx = gx + STEP / 2;
+        const cy = gy + STEP / 2;
+        const inLens = hasConvex &&
+          cx >= xMin && cx <= xMax &&
+          cy >= yMin && cy <= yMax;
+        const [wcx, wcy] = inLens ? warp(cx, cy) : [cx, cy];
+        const dotR = inLens ? 2.2 : 1.8;
+        ctx.beginPath();
+        ctx.arc(wcx, wcy, dotR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  function cleanup() {
+    if (animId) {
+      cancelAnimationFrame(animId);
+      animId = null;
+    }
+    globalThis.removeEventListener("mousemove", handleMouseMove);
+    globalThis.removeEventListener("mouseleave", handleMouseLeave);
+    globalThis.removeEventListener("touchstart", handleTouch);
+    globalThis.removeEventListener("touchmove", handleTouch);
+    globalThis.removeEventListener("touchend", handleTouchEnd);
+    globalThis.removeEventListener("touchcancel", handleTouchEnd);
+    globalThis.removeEventListener("resize", resize);
+  }
+
+  function step() {
+    if (containerEl && containerEl.isConnected) {
+      hasConnected = true;
+      if (width === 0 || height === 0) resize();
+    } else if (hasConnected) {
+      cleanup();
+      return;
+    }
+
+    currentX += (targetX - currentX) * EASE;
+    currentY += (targetY - currentY) * EASE;
+    currentStrength += (targetStrength - currentStrength) * EASE;
+
+    draw();
+
+    if (watermarkEl) {
+      const halfW = width / 2 || 1;
+      const halfH = height / 2 || 1;
+      const normX = ((currentX - halfW) / halfW) * -16 * currentStrength;
+      const normY = ((currentY - halfH) / halfH) * -12 * currentStrength;
+      watermarkEl.style.transform = `translate(calc(-50% + ${
+        normX.toFixed(2)
+      }px), calc(-50% + ${normY.toFixed(2)}px)) rotate(${
+        (-4 + normX * 0.04).toFixed(2)
+      }deg)`;
+    }
+
+    if (
+      targetStrength === 0 &&
+      currentStrength <= 0.0005 &&
+      Math.abs(targetX - currentX) < 0.1 &&
+      Math.abs(targetY - currentY) < 0.1
+    ) {
+      currentStrength = 0;
+      draw();
+      animId = null;
+      return;
+    }
+
+    animId = requestAnimationFrame(step);
+  }
+
+  function handleMouseMove(e) {
+    if (width === 0 || height === 0) resize();
+    const rect = canvas.getBoundingClientRect();
+    targetX = e.clientX - rect.left;
+    targetY = e.clientY - rect.top;
+    if (currentX === -9999) {
+      currentX = targetX;
+      currentY = targetY;
+    }
+    targetStrength = 1;
+    if (!animId) animId = requestAnimationFrame(step);
+  }
+
+  function handleTouch(e) {
+    if (!e.touches || !e.touches[0]) return;
+    if (width === 0 || height === 0) resize();
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    targetX = t.clientX - rect.left;
+    targetY = t.clientY - rect.top;
+    if (currentX === -9999) {
+      currentX = targetX;
+      currentY = targetY;
+    }
+    targetStrength = 1;
+    if (!animId) animId = requestAnimationFrame(step);
+  }
+
+  function handleTouchEnd() {
+    targetStrength = 0;
+    if (!animId) animId = requestAnimationFrame(step);
+  }
+
+  function handleMouseLeave() {
+    targetStrength = 0;
+    if (!animId) animId = requestAnimationFrame(step);
+  }
+
+  globalThis.addEventListener("mousemove", handleMouseMove, { passive: true });
+  globalThis.addEventListener("mouseleave", handleMouseLeave, {
+    passive: true,
+  });
+  globalThis.addEventListener("touchstart", handleTouch, { passive: true });
+  globalThis.addEventListener("touchmove", handleTouch, { passive: true });
+  globalThis.addEventListener("touchend", handleTouchEnd, { passive: true });
+  globalThis.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+  globalThis.addEventListener("resize", resize, { passive: true });
+
+  requestAnimationFrame(() => {
+    resize();
+  });
+
+  return cleanup;
 }

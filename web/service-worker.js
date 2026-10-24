@@ -1,7 +1,7 @@
 // App shell cache only. Bump CACHE on every release so activate removes the old one.
 // Only same-origin shell files are cached. Supabase and every other request
 // goes straight to the network, so no authenticated data ever reaches the cache.
-const CACHE = "cpc-shell-v49";
+const CACHE = "cpc-shell-v73";
 const SHELL = [
   "./",
   "index.html",
@@ -58,6 +58,7 @@ const SHELL = [
 const SHELL_URLS = new Set(SHELL.map((p) => new URL(p, self.location).href));
 
 self.addEventListener("install", (event) => {
+  self.skipWaiting();
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
 });
 

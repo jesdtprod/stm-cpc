@@ -84,6 +84,11 @@ export function createShell(
   const account = el("account");
   const mobileNav = el("mobile-bottom-nav");
   const centerNav = el("header-center-nav");
+  let closeAssistiveMenu = null;
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!mobileNav?.contains(event.target)) closeAssistiveMenu?.();
+  });
 
   if (centerNav) {
     centerNav.addEventListener("click", (e) => {
@@ -195,7 +200,7 @@ export function createShell(
     if (state.status !== "signed_in") {
       toggle = panel = null;
       account.replaceChildren(
-        h("a", { class: "btn btn-outline", href: "#/signin" }, "Sign In"),
+        h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In"),
         h("a", { class: "btn btn-accent", href: "#/signup" }, "Join the club"),
       );
       return;
@@ -287,7 +292,9 @@ export function createShell(
     document.body.dataset.signedIn = String(signedIn);
 
     // Landing page: root path when not signed in
-    const isLanding = (path === "/" || path === "") && !signedIn;
+    // The home page and the sign-in page share one look: the full-screen hero, the pattern, the transparent header.
+    const isLanding = (path === "/" || path === "" || path === "/signin") &&
+      !signedIn;
     document.body.dataset.landing = String(isLanding);
     document.documentElement.dataset.landing = String(isLanding);
 
@@ -326,55 +333,195 @@ export function createShell(
         const isAccount = path === "/profile" || path === "/password" ||
           path === "/pending";
 
-        // Facebook-style tab bar: icons only (the name is the accessible label and the tooltip), the current tab
-        // in blue with a bar on top.
-        const tab = ({ label, iconName, active, href, onClick }) =>
+        // Floating assistive navigation: the draggable logo opens a compact quick menu.
+        const tab = ({ label, detail, iconName, active, href, onClick }) =>
           h(
             href ? "a" : "button",
             {
-              class: `bottom-nav-item${active ? " is-active" : ""}`,
+              class: `assistive-nav-item${active ? " is-active" : ""}`,
               ...(href ? { href } : { type: "button", onClick }),
               "aria-label": label,
               title: label,
               "aria-current": active && href ? "page" : null,
             },
-            icon(iconName),
+            h("span", {
+              class: "assistive-nav-item-icon",
+              "aria-hidden": "true",
+            }, icon(iconName)),
+            h(
+              "span",
+              { class: "assistive-nav-item-copy" },
+              h("span", { class: "assistive-nav-item-title" }, label),
+              h("span", { class: "assistive-nav-item-detail" }, detail),
+            ),
           );
         const itemsWrap = h(
           "div",
-          { class: "bottom-nav-items-grid" },
-          tab({ label: "Home", iconName: "home", active: isHome, href: "#/" }),
-          tab({
-            label: "Courts",
-            iconName: "calendar",
-            active: isBooking,
-            href: "#/booking",
-          }),
-          tab({
-            label: "QR pass",
-            iconName: "qrScan",
-            active: isQr,
-            onClick: (e) => {
-              e.preventDefault();
-              openQrScanModal();
+          { class: "assistive-nav-menu", hidden: true },
+          h(
+            "div",
+            { class: "assistive-nav-menu-heading" },
+            h("strong", {}, "Quick menu"),
+            h("span", {}, "Choose where to go"),
+          ),
+          h(
+            "div",
+            { class: "assistive-nav-menu-items" },
+            tab({
+              label: "Home",
+              detail: "Club overview",
+              iconName: "home",
+              active: isHome,
+              href: "#/",
+            }),
+            tab({
+              label: "Courts",
+              detail: "Book court time",
+              iconName: "calendar",
+              active: isBooking,
+              href: "#/booking",
+            }),
+            tab({
+              label: "QR pass",
+              detail: "Open your member pass",
+              iconName: "qrScan",
+              active: isQr,
+              onClick: (e) => {
+                e.preventDefault();
+                openQrScanModal();
+              },
+            }),
+            tab({
+              label: "Events",
+              detail: "Club events and play",
+              iconName: "trophy",
+              active: isEvents,
+              href: "#/events",
+            }),
+            tab({
+              label: "Profile",
+              detail: "Your club account",
+              iconName: "user",
+              active: isAccount,
+              href: signedIn ? "#/profile" : "#/signin",
+            }),
+          ),
+        );
+        let dragState = null;
+        let dragConsumed = false;
+        const setMenuOpen = (open) => {
+          itemsWrap.hidden = !open;
+          toggle.setAttribute("aria-expanded", String(open));
+          toggle.setAttribute(
+            "aria-label",
+            open ? "Close navigation menu" : "Open navigation menu",
+          );
+        };
+        const placeAssistiveNav = (left, top) => {
+          const margin = 12;
+          const width = globalThis.innerWidth ||
+            document.documentElement.clientWidth;
+          const height = globalThis.innerHeight ||
+            document.documentElement.clientHeight;
+          const maxLeft = Math.max(margin, width - 56 - margin);
+          const maxTop = Math.max(margin, height - 56 - margin);
+          mobileNav.style.left = `${
+            Math.min(Math.max(left, margin), maxLeft)
+          }px`;
+          mobileNav.style.top = `${Math.min(Math.max(top, margin), maxTop)}px`;
+          mobileNav.style.right = "auto";
+          mobileNav.style.bottom = "auto";
+        };
+        const toggle = h(
+          "button",
+          {
+            class: "assistive-nav-toggle",
+            type: "button",
+            "aria-label": "Open navigation menu",
+            "aria-expanded": "false",
+            "aria-controls": "assistive-nav-menu",
+            title: "Navigation",
+            onPointerDown: (event) => {
+              if (event.button != null && event.button !== 0) return;
+              const rect = mobileNav.getBoundingClientRect();
+              dragState = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                left: rect.left,
+                top: rect.top,
+                moved: false,
+              };
+              toggle.setPointerCapture?.(event.pointerId);
             },
-          }),
-          tab({
-            label: "Events",
-            iconName: "trophy",
-            active: isEvents,
-            href: "#/events",
-          }),
-          tab({
-            label: "Profile",
-            iconName: "user",
-            active: isAccount,
-            href: signedIn ? "#/profile" : "#/signin",
+            onPointerMove: (event) => {
+              if (!dragState || dragState.pointerId !== event.pointerId) return;
+              event.preventDefault();
+              const dx = event.clientX - dragState.startX;
+              const dy = event.clientY - dragState.startY;
+              if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragState.moved = true;
+              if (dragState.moved) {
+                placeAssistiveNav(dragState.left + dx, dragState.top + dy);
+              }
+            },
+            onPointerUp: (event) => {
+              if (!dragState || dragState.pointerId !== event.pointerId) return;
+              toggle.releasePointerCapture?.(event.pointerId);
+              if (dragState.moved) {
+                dragConsumed = true;
+                try {
+                  localStorage.setItem(
+                    "cpc-assistive-nav-position",
+                    JSON.stringify({
+                      left: mobileNav.style.left,
+                      top: mobileNav.style.top,
+                    }),
+                  );
+                } catch {
+                  // Position persistence is optional.
+                }
+              }
+              dragState = null;
+            },
+            onPointerCancel: () => {
+              dragState = null;
+            },
+            onClick: () => {
+              if (dragConsumed) {
+                dragConsumed = false;
+                return;
+              }
+              setMenuOpen(itemsWrap.hidden);
+            },
+          },
+          h("img", {
+            class: "assistive-nav-logo",
+            src: "icons/cpc-logo.png",
+            alt: "",
+            "aria-hidden": "true",
           }),
         );
-
-        mobileNav.replaceChildren(itemsWrap);
+        itemsWrap.id = "assistive-nav-menu";
+        mobileNav.replaceChildren(itemsWrap, toggle);
+        closeAssistiveMenu = () => setMenuOpen(false);
+        try {
+          const saved = JSON.parse(
+            localStorage.getItem("cpc-assistive-nav-position"),
+          );
+          if (
+            Number.parseFloat(saved?.left) >= 0 &&
+            Number.parseFloat(saved?.top) >= 0
+          ) {
+            placeAssistiveNav(
+              Number.parseFloat(saved.left),
+              Number.parseFloat(saved.top),
+            );
+          }
+        } catch {
+          // A first visit or restricted storage uses the CSS default position.
+        }
       } else {
+        closeAssistiveMenu = null;
         mobileNav.hidden = true;
         mobileNav.replaceChildren();
       }

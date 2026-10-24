@@ -244,14 +244,10 @@ for (const type of ["pointerdown", "keydown", "scroll", "visibilitychange"]) {
   addEventListener(type, () => session.activity(), { passive: true });
 }
 
-// Service worker: app shell only. A waiting worker is announced, never applied silently.
+// Service worker: app shell only. A waiting worker stays quiet and is applied on a later reload.
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js").then((reg) => {
-    const announce = (worker) =>
-      toast("A new version is ready.", {
-        actionLabel: "Reload",
-        onAction: () => worker.postMessage({ type: "SKIP_WAITING" }),
-      });
+    const announce = () => {};
     if (reg.waiting && navigator.serviceWorker.controller) {
       announce(reg.waiting);
     }
