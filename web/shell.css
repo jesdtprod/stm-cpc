@@ -4155,3 +4155,10 @@ body[data-auth-page="true"] .app-shell::-webkit-scrollbar,
 body[data-auth-page="true"] main::-webkit-scrollbar {
   display: none;
 }
+
+/* the CAPTCHA fills the width of the card */
+.auth-card .turnstile-box,
+.auth-card .turnstile-box > div,
+.auth-card .turnstile-box iframe {
+  width: 100% !important;
+}

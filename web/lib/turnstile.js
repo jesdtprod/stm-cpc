@@ -40,6 +40,7 @@ export async function renderTurnstile(
     sitekey: siteKey,
     action,
     theme: "dark",
+    size: "flexible",
     callback: (token) => onToken?.(token),
     "expired-callback": () => onExpire?.(),
     "error-callback": (code) =>
