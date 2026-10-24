@@ -296,11 +296,12 @@ export function createShell(
 
     // Landing page: root path when not signed in
     // The home page and the sign-in page share one look: the full-screen hero, the pattern, the transparent header.
-    const isLanding = (path === "/" || path === "" || path === "/signin") &&
+    const isAuthRoute = path === "/signin" || path === "/signup";
+    const isLanding = (path === "/" || path === "" || isAuthRoute) &&
       !signedIn;
     document.body.dataset.landing = String(isLanding);
     // The sign-in page has no top header: only the sign-in card.
-    const isAuthPage = path === "/signin" && !signedIn;
+    const isAuthPage = isAuthRoute && !signedIn;
     document.body.dataset.authPage = String(isAuthPage);
     document.documentElement.dataset.authPage = String(isAuthPage);
     document.documentElement.dataset.landing = String(isLanding);

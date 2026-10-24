@@ -4192,3 +4192,73 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
     padding: 18px 16px !important;
   }
 }
+
+/* ---- Sign-up page: same look as sign-in, with a wider card and two-column rows ---- */
+.auth-wide .auth-split .auth-form-col {
+  max-width: 600px;
+}
+.auth-signup-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.auth-signup-form .form-section {
+  margin: 4px 0 -4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.auth-signup-form .form-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.auth-split .auth-card .field select,
+.auth-split .auth-card .field .input {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .auth-signup-form .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+/* on a long form the page scrolls from the top instead of centring */
+.auth-wide .cpc-hero-content {
+  align-self: start;
+}
+
+/* plain (no icon) fields get the same look as the sign-in input boxes */
+.auth-signup-form .form-row {
+  align-items: start;
+}
+.auth-signup-form .field > .input,
+.auth-signup-form .field > select,
+.auth-signup-form .field > .select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--text);
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.auth-signup-form .field > .input:hover,
+.auth-signup-form .field > select:hover {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.auth-signup-form .field > .input:focus,
+.auth-signup-form .field > select:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(223, 183, 86, 0.18);
+}
+.auth-signup-form .field > select option {
+  background: #0e2218;
+  color: #fff;
+}

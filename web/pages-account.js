@@ -57,6 +57,116 @@ export function createAccountPages(
     if (location.hash !== hash) location.hash = hash;
   };
 
+  // The page both sign-in and sign-up use: the home hero look, text on the left and the form card on the right.
+  function authShell({ titleLead, subtitle, card, wide = false }) {
+    // The same background as the home page: the court pattern canvas that follows the pointer, and the court blueprint.
+    const canvasEl = h("canvas", {
+      class: "cpc-hero-canvas",
+      "aria-hidden": "true",
+    });
+    const watermarkEl = createCourtWatermarkSvg();
+
+    const flank = (side, first, second) =>
+      h(
+        "div",
+        { class: `cpc-top-flank cpc-top-flank-${side}` },
+        h("img", {
+          src: `icons/${first}.png`,
+          alt: "",
+          class: `cpc-top-${first} cpc-top-${first}-${side}`,
+        }),
+        h("img", {
+          src: `icons/${second}.png`,
+          alt: "",
+          class: `cpc-top-${second} cpc-top-${second}-${side}`,
+        }),
+      );
+
+    // The same structure and classes as the home page hero (and so the same fonts and sizes): the text on the left,
+    // where the home page has its headline, and the sign-in form on the right, where the home page has the phone.
+    const containerEl = h(
+      "div",
+      { class: `auth-page-container cpc-hero${wide ? " auth-wide" : ""}` },
+      canvasEl,
+      watermarkEl,
+      h(
+        "div",
+        { class: "cpc-landing-container" },
+        h(
+          "div",
+          { class: "cpc-hero-grid auth-split" },
+          h(
+            "div",
+            { class: "cpc-hero-content" },
+            h(
+              "div",
+              { class: "cpc-hero-brand-top" },
+              flank("left", "paddle", "ball"),
+              h("img", {
+                class: "cpc-hero-logo cpc-top-logo",
+                src: "icons/cpc-logo.png",
+                alt: "Capitol Pickleball Club",
+                width: "72",
+                height: "72",
+              }),
+              flank("right", "ball", "paddle"),
+            ),
+            // Desktop only, at the top of the text: two crossed paddles, each with its own ball.
+            h(
+              "div",
+              { class: "auth-showcase", "aria-hidden": "true" },
+              ...["a", "b"].map((side) =>
+                h(
+                  "div",
+                  { class: `auth-showcase-unit auth-showcase-unit-${side}` },
+                  h("img", {
+                    class: "auth-showcase-paddle",
+                    src: "icons/paddle.png",
+                    alt: "",
+                  }),
+                  h("img", {
+                    class: "auth-showcase-ball",
+                    src: "icons/ball.png",
+                    alt: "",
+                  }),
+                )
+              ),
+            ),
+            h(
+              "div",
+              { class: "cpc-hero-badge" },
+              icon("trophy"),
+              "Province of Sultan Kudarat’s Pickleball Court",
+            ),
+            h(
+              "h1",
+              { class: "cpc-hero-title", id: "page-title", tabindex: "-1" },
+              titleLead,
+              h(
+                "span",
+                { class: "cpc-hero-title-accent" },
+                "Capitol Pickleball Club",
+              ),
+            ),
+            h(
+              "p",
+              { class: "cpc-hero-subtitle" },
+              subtitle,
+            ),
+          ),
+          h(
+            "div",
+            { class: "auth-form-col" },
+            card,
+          ),
+        ),
+      ),
+    );
+
+    setupConvexPatternCanvas(canvasEl, containerEl, watermarkEl);
+    return containerEl;
+  }
+
   // ---------------------------------------------------------------- sign in
   function signInPage() {
     const state = session.getState();
@@ -144,147 +254,47 @@ export function createAccountPages(
       }),
     );
 
-    // The same background as the home page: the court pattern canvas that follows the pointer, and the court blueprint.
-    const canvasEl = h("canvas", {
-      class: "cpc-hero-canvas",
-      "aria-hidden": "true",
-    });
-    const watermarkEl = createCourtWatermarkSvg();
-
-    const flank = (side, first, second) =>
-      h(
+    return authShell({
+      titleLead: "Sign In to ",
+      subtitle:
+        "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
+      card: h(
         "div",
-        { class: `cpc-top-flank cpc-top-flank-${side}` },
-        h("img", {
-          src: `icons/${first}.png`,
-          alt: "",
-          class: `cpc-top-${first} cpc-top-${first}-${side}`,
-        }),
-        h("img", {
-          src: `icons/${second}.png`,
-          alt: "",
-          class: `cpc-top-${second} cpc-top-${second}-${side}`,
-        }),
-      );
-
-    // The same structure and classes as the home page hero (and so the same fonts and sizes): the text on the left,
-    // where the home page has its headline, and the sign-in form on the right, where the home page has the phone.
-    const containerEl = h(
-      "div",
-      { class: "auth-page-container cpc-hero" },
-      canvasEl,
-      watermarkEl,
-      h(
-        "div",
-        { class: "cpc-landing-container" },
+        { class: "card auth-card" },
         h(
           "div",
-          { class: "cpc-hero-grid auth-split" },
+          { class: "auth-card-head" },
           h(
-            "div",
-            { class: "cpc-hero-content" },
-            h(
-              "div",
-              { class: "cpc-hero-brand-top" },
-              flank("left", "paddle", "ball"),
-              h("img", {
-                class: "cpc-hero-logo cpc-top-logo",
-                src: "icons/cpc-logo.png",
-                alt: "Capitol Pickleball Club",
-                width: "72",
-                height: "72",
-              }),
-              flank("right", "ball", "paddle"),
-            ),
-            // Desktop only, at the top of the text: two crossed paddles, each with its own ball.
-            h(
-              "div",
-              { class: "auth-showcase", "aria-hidden": "true" },
-              ...["a", "b"].map((side) =>
-                h(
-                  "div",
-                  { class: `auth-showcase-unit auth-showcase-unit-${side}` },
-                  h("img", {
-                    class: "auth-showcase-paddle",
-                    src: "icons/paddle.png",
-                    alt: "",
-                  }),
-                  h("img", {
-                    class: "auth-showcase-ball",
-                    src: "icons/ball.png",
-                    alt: "",
-                  }),
-                )
-              ),
-            ),
-            h(
-              "div",
-              { class: "cpc-hero-badge" },
-              icon("trophy"),
-              "Province of Sultan Kudarat’s Pickleball Court",
-            ),
-            h(
-              "h1",
-              { class: "cpc-hero-title", id: "page-title", tabindex: "-1" },
-              "Sign In to ",
-              h(
-                "span",
-                { class: "cpc-hero-title-accent" },
-                "Capitol Pickleball Club",
-              ),
-            ),
-            h(
-              "p",
-              { class: "cpc-hero-subtitle" },
-              "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
-            ),
+            "span",
+            { class: "badge-icon", "aria-hidden": "true" },
+            icon("logIn"),
           ),
           h(
             "div",
-            { class: "auth-form-col" },
+            { class: "auth-card-head-copy" },
+            h("div", { class: "eyebrow" }, "Member Access"),
+            h("h2", { class: "card-title" }, "Sign In"),
             h(
-              "div",
-              { class: "card auth-card" },
-              h(
-                "div",
-                { class: "auth-card-head" },
-                h(
-                  "span",
-                  { class: "badge-icon", "aria-hidden": "true" },
-                  icon("logIn"),
-                ),
-                h(
-                  "div",
-                  { class: "auth-card-head-copy" },
-                  h("div", { class: "eyebrow" }, "Member Access"),
-                  h("h2", { class: "card-title" }, "Sign In"),
-                  h(
-                    "p",
-                    { class: "card-subtitle muted" },
-                    "Enter your member ID or email to access your account.",
-                  ),
-                ),
-              ),
-              form,
-              h(
-                "div",
-                { class: "auth-card-footer" },
-                "Not a member yet? ",
-                h(
-                  "a",
-                  { href: "#/signup", class: "auth-signup-link" },
-                  "Create an account / Join the club",
-                ),
-                ".",
-              ),
+              "p",
+              { class: "card-subtitle muted" },
+              "Enter your member ID or email to access your account.",
             ),
           ),
         ),
+        form,
+        h(
+          "div",
+          { class: "auth-card-footer" },
+          "Not a member yet? ",
+          h(
+            "a",
+            { href: "#/signup", class: "auth-signup-link" },
+            "Create an account / Join the club",
+          ),
+          ".",
+        ),
       ),
-    );
-
-    setupConvexPatternCanvas(canvasEl, containerEl, watermarkEl);
-    return containerEl;
+    });
   }
 
   // ---------------------------------------------------------------- password
@@ -892,21 +902,20 @@ export function createAccountPages(
     });
     const form = h(
       "form",
-      { class: "stack", novalidate: true, onSubmit: (e) => e.preventDefault() },
-      h("h2", { class: "form-section" }, "About you"),
-      firstName,
-      lastName,
-      middleName,
-      suffix.node,
-      gender.node,
-      birth,
-      h("h2", { class: "form-section" }, "Contact"),
-      mobile,
-      email,
-      h("h2", { class: "form-section" }, "Password"),
-      password,
-      confirm,
-      h("h2", { class: "form-section" }, "Agreements"),
+      {
+        class: "stack auth-signup-form",
+        novalidate: true,
+        onSubmit: (e) => e.preventDefault(),
+      },
+      h("h3", { class: "form-section" }, "About you"),
+      h("div", { class: "form-row" }, firstName, lastName),
+      h("div", { class: "form-row" }, middleName, suffix.node),
+      h("div", { class: "form-row" }, gender.node, birth),
+      h("h3", { class: "form-section" }, "Contact"),
+      h("div", { class: "form-row" }, mobile, email),
+      h("h3", { class: "form-section" }, "Password"),
+      h("div", { class: "form-row" }, password, confirm),
+      h("h3", { class: "form-section" }, "Agreements"),
       waiver.node,
       privacy.node,
       trap,
@@ -914,7 +923,38 @@ export function createAccountPages(
       error,
       h("div", { class: "actions" }, submit),
     );
-    const card = h("div", { class: "card auth-card" }, form);
+    const card = h(
+      "div",
+      { class: "card auth-card" },
+      h(
+        "div",
+        { class: "auth-card-head" },
+        h(
+          "span",
+          { class: "badge-icon", "aria-hidden": "true" },
+          icon("userPlus"),
+        ),
+        h(
+          "div",
+          { class: "auth-card-head-copy" },
+          h("div", { class: "eyebrow" }, "New members"),
+          h("h2", { class: "card-title" }, "Create an account"),
+          h(
+            "p",
+            { class: "card-subtitle muted" },
+            "It takes about two minutes. The club reviews every membership.",
+          ),
+        ),
+      ),
+      form,
+      h(
+        "div",
+        { class: "auth-card-footer" },
+        "Already a member? ",
+        h("a", { href: "#/signin", class: "auth-signup-link" }, "Sign in"),
+        ". Under 18? A parent or guardian should complete this form.",
+      ),
+    );
 
     form.addEventListener(
       "submit",
@@ -988,25 +1028,13 @@ export function createAccountPages(
       }),
     );
 
-    return h(
-      "div",
-      { class: "page auth-page" },
-      pageHeader({
-        icon: "plus",
-        eyebrow: "New members",
-        title: "Create an account",
-        description:
-          "For people who are not members yet. Existing members already have an account: sign in instead.",
-      }),
+    return authShell({
+      titleLead: "Join ",
+      subtitle:
+        "Create your member account to book courts, track your rank and register for club events. Existing members already have an account: sign in instead.",
       card,
-      h(
-        "p",
-        { class: "muted small" },
-        "Already a member? ",
-        h("a", { href: "#/signin" }, "Sign in"),
-        ". Under 18? A parent or guardian should complete this form, and the club will ask for a signed waiver.",
-      ),
-    );
+      wide: true,
+    });
   }
 
   // ---------------------------------------------------------------- pending
