@@ -4162,3 +4162,20 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
 .auth-card .turnstile-box iframe {
   width: 100% !important;
 }
+
+/* Phones: the sign-in column never grows past the screen, so left and right margins are equal */
+@media (max-width: 900px) {
+  body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
+    padding-inline: 4px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .auth-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .auth-split .auth-form-col,
+  .auth-split .auth-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
