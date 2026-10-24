@@ -8,10 +8,17 @@ import { button, h, icon, openModal } from "./ui.js";
 const GROUPS = [
   {
     label: "Overview",
+    view: "member",
     items: [{ path: "/", label: "Home", icon: "home", gated: true }],
   },
   {
+    label: "Overview",
+    view: "admin",
+    items: [{ path: "/admin", label: "Dashboard", icon: "grid" }],
+  },
+  {
     label: "Play",
+    view: "member",
     items: [
       { path: "/book", label: "Book a court", icon: "calendar" },
       { path: "/bookings", label: "My bookings", icon: "clock" },
@@ -19,6 +26,7 @@ const GROUPS = [
   },
   {
     label: "Club",
+    view: "admin",
     items: [
       { path: "/admin/members", label: "Members", icon: "user" },
       { path: "/admin/bookings", label: "Bookings", icon: "calendar" },
@@ -274,10 +282,17 @@ export function createShell(
   }
 
   // ---- side panel
-  function visibleGroups(state) {
+  // The member side (home, play, account) and the admin side (dashboard, club pages) have their own menus.
+  const viewOf = (path) =>
+    path === "/admin" || path.startsWith("/admin/") ? "admin" : "member";
+  const canOpenAdmin = () =>
+    checkAccess(routeAccess("/admin"), gatePages).allow;
+
+  function visibleGroups(state, view = "member") {
     const gate = state.gate ?? null;
     return GROUPS
       .filter((g) => !g.dev || isDev)
+      .filter((g) => !g.view || g.view === view)
       .map((g) => ({
         label: g.label,
         items: g.items.filter((n) => {
@@ -388,6 +403,7 @@ export function createShell(
               "aria-label": label,
               title: label,
               "aria-current": active && href ? "page" : null,
+              "data-nav": iconName,
             },
             h("span", {
               class: "assistive-nav-item-icon",
@@ -413,7 +429,7 @@ export function createShell(
         // The pages this person may open (members, bookings, settings ...), grouped as in the side panel on a computer.
         const shown = new Set(["/", "/profile"]);
         const extraTabs = signedIn
-          ? visibleGroups(state).flatMap((g) =>
+          ? visibleGroups(state, viewOf(path)).flatMap((g) =>
             g.items.filter((n) => !shown.has(n.path)).map((n) =>
               tab({
                 label: n.label,
@@ -425,6 +441,16 @@ export function createShell(
             )
           )
           : [];
+        const switchTab = signedIn && !state.gate && canOpenAdmin()
+          ? tab({
+            label: viewOf(path) === "admin" ? "Member view" : "Admin console",
+            detail: viewOf(path) === "admin"
+              ? "Back to your own home"
+              : "Dashboard and club pages",
+            iconName: viewOf(path) === "admin" ? "home" : "grid",
+            href: viewOf(path) === "admin" ? "#/" : "#/admin",
+          })
+          : null;
         const signOutTab = signedIn
           ? tab({
             label: "Sign out",
@@ -518,6 +544,7 @@ export function createShell(
               active: isAccount,
               href: signedIn ? "#/profile" : "#/signin",
             }),
+            switchTab,
             ...extraTabs,
             signOutTab,
           ),
@@ -648,8 +675,37 @@ export function createShell(
       nav.replaceChildren();
       return;
     }
-    const groups = visibleGroups(state);
+    const view = viewOf(path);
+    const groups = visibleGroups(state, view);
+    // Staff can move between their own member home and the admin console.
+    const viewSwitch = !state.gate && canOpenAdmin()
+      ? h(
+        "div",
+        { class: "view-switch", role: "group", "aria-label": "Switch view" },
+        h(
+          "a",
+          {
+            class: `view-switch-btn${view === "member" ? " is-active" : ""}`,
+            href: "#/",
+            "aria-current": view === "member" ? "true" : null,
+          },
+          icon("user"),
+          "Member",
+        ),
+        h(
+          "a",
+          {
+            class: `view-switch-btn${view === "admin" ? " is-active" : ""}`,
+            href: "#/admin",
+            "aria-current": view === "admin" ? "true" : null,
+          },
+          icon("grid"),
+          "Admin",
+        ),
+      )
+      : null;
     nav.replaceChildren(
+      viewSwitch,
       ...groups.flatMap((g) => [
         h("div", { class: "nav-heading" }, g.label),
         ...g.items.map((n) =>

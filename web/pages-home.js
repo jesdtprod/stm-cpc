@@ -3,7 +3,25 @@
 //   member : own rank, upcoming bookings, event registrations, unread notices
 //   staff  : approvals, payment proofs, bookings to approve, today's bookings, events in progress
 import { h, icon } from "./ui.js";
-import { can } from "./lib/permissions.js";
+import { can, canAny } from "./lib/permissions.js";
+
+// Anyone holding one of these may open the admin console.
+export const ADMIN_CODES = [
+  "members.approve",
+  "members.suspend",
+  "members.read",
+  "members.import",
+  "bookings.approve",
+  "bookings.read_all",
+  "bookings.checkin",
+  "payments.verify",
+  "payments.void",
+  "categories.manage",
+  "ranks.manage",
+  "courts.manage",
+  "settings.manage",
+  "roles.manage",
+];
 import { formatDateTime } from "./lib/dates.js";
 
 // href is only set where the page already exists; the rest are plain figures until their steps arrive.
@@ -120,29 +138,31 @@ function section(title, description, cards) {
   );
 }
 
-function dashboardView(data) {
+/** mode "member": the member's own figures. mode "admin": what the club is waiting on. */
+function dashboardView(data, mode = "member") {
   const parts = [];
-  const staff = STAFF_CARDS.filter((c) => data[c.key] != null).map((c) =>
-    statCard({
-      label: c.label,
-      value: data[c.key],
-      hint: c.hint(Number(data[c.key])),
-      iconName: c.icon,
-      href: c.href,
-      attention: c.key !== "todays_bookings" && c.key !== "active_events" &&
-        Number(data[c.key]) > 0,
-    })
-  );
-  if (staff.length) {
-    parts.push(
-      section(
-        "Needs your attention",
-        "What the club is waiting on today.",
-        staff,
-      ),
+  if (mode === "admin") {
+    const staff = STAFF_CARDS.filter((c) => data[c.key] != null).map((c) =>
+      statCard({
+        label: c.label,
+        value: data[c.key],
+        hint: c.hint(Number(data[c.key])),
+        iconName: c.icon,
+        href: c.href,
+        attention: c.key !== "todays_bookings" && c.key !== "active_events" &&
+          Number(data[c.key]) > 0,
+      })
     );
-  }
-  if (data.member) {
+    if (staff.length) {
+      parts.push(
+        section(
+          "Needs your attention",
+          "What the club is waiting on today.",
+          staff,
+        ),
+      );
+    }
+  } else if (data.member) {
     parts.push(
       section(
         "Your club",
@@ -182,30 +202,38 @@ const greeting = () => {
     : "Good evening";
 };
 
-/** The welcome banner: who you are, and the three things members do most. Same button design as the home and sign-in pages. */
-function heroView({ name, memberNo, role }) {
-  const actions = [
-    can("bookings.create")
-      ? h(
-        "a",
-        { class: "btn btn-accent", href: "#/book" },
-        icon("calendar"),
-        "Book a court",
-      )
-      : null,
-    h(
-      "a",
-      { class: "btn btn-primary", href: "#/bookings" },
-      icon("clock"),
-      "My bookings",
-    ),
-    h(
-      "a",
-      { class: "btn btn-secondary", href: "#/profile" },
-      icon("user"),
-      "My profile",
-    ),
-  ];
+/** The welcome banner: who you are, and the actions that matter most for this view. Same button design as the home and sign-in pages. */
+function heroView({ name, memberNo, role, mode = "member" }) {
+  const link = (cls, href, iconName, label) =>
+    h("a", { class: `btn ${cls}`, href }, icon(iconName), label);
+  const actions = mode === "admin"
+    ? [
+      can("members.approve")
+        ? link("btn-accent", "#/admin/members", "user", "Review members")
+        : null,
+      can("bookings.approve")
+        ? link(
+          "btn-primary",
+          "#/admin/bookings",
+          "calendar",
+          "Approve bookings",
+        )
+        : null,
+      can("payments.verify")
+        ? link("btn-secondary", "#/admin/payments", "file", "Verify payments")
+        : null,
+      link("btn-secondary", "#/", "home", "Member view"),
+    ]
+    : [
+      can("bookings.create")
+        ? link("btn-accent", "#/book", "calendar", "Book a court")
+        : null,
+      link("btn-primary", "#/bookings", "clock", "My bookings"),
+      link("btn-secondary", "#/profile", "user", "My profile"),
+      canAny(ADMIN_CODES)
+        ? link("btn-secondary", "#/admin", "grid", "Admin console")
+        : null,
+    ];
   return h(
     "section",
     { class: "dash-hero", "aria-label": "Welcome" },
@@ -223,16 +251,24 @@ function heroView({ name, memberNo, role }) {
       h(
         "h1",
         { class: "dash-hero-title", id: "page-title", tabindex: "-1" },
-        `${greeting()}${name ? ", " : ""}`,
-        name ? h("span", { class: "dash-hero-name" }, name) : null,
+        mode === "admin"
+          ? "Admin dashboard"
+          : `${greeting()}${name ? ", " : ""}`,
+        mode === "admin"
+          ? null
+          : name
+          ? h("span", { class: "dash-hero-name" }, name)
+          : null,
       ),
       h(
         "p",
         { class: "dash-hero-sub" },
-        "Here is what is happening at Capitol Pickleball Club today.",
+        mode === "admin"
+          ? "Approvals, payments and bookings waiting on the club."
+          : "Here is what is happening at Capitol Pickleball Club today.",
       ),
     ),
-    h("div", { class: "dash-hero-actions" }, ...actions),
+    h("div", { class: "dash-hero-actions" }, ...actions.filter(Boolean)),
   );
 }
 
@@ -1116,7 +1152,7 @@ export function createHomePages({ session, api }) {
     );
   }
 
-  function homePage() {
+  function dashboardPage(mode) {
     const state = session.getState();
     if (state.status !== "signed_in") return welcomePage();
     if (state.gate) return gatePage(state.gate);
@@ -1125,8 +1161,9 @@ export function createHomePages({ session, api }) {
     const host = h("div", { class: "home-body" }, loadingView());
     const header = heroView({
       name,
+      mode,
       memberNo: state.access?.member_no ?? "",
-      role: "Member",
+      role: mode === "admin" ? "Admin console" : "Member",
     });
     const page = h("div", { class: "page dash-page" }, header, host);
 
@@ -1135,7 +1172,7 @@ export function createHomePages({ session, api }) {
       try {
         const data = await api.rpc("my_dashboard");
         if (!page.isConnected && !host.isConnected) return;
-        host.replaceChildren(...dashboardView(data ?? {}));
+        host.replaceChildren(...dashboardView(data ?? {}, mode));
         const role = header.querySelector(".dash-chip.is-role");
         if (role && data?.role_name) {
           role.replaceChildren(icon("medal"), data.role_name);
@@ -1160,5 +1197,8 @@ export function createHomePages({ session, api }) {
     return page;
   }
 
-  return { homePage };
+  const homePage = () => dashboardPage("member");
+  const adminHomePage = () => dashboardPage("admin");
+
+  return { homePage, adminHomePage };
 }

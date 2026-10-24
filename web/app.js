@@ -19,7 +19,7 @@ import { CHANNEL, createSession } from "./lib/session.js";
 import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
-import { createHomePages } from "./pages-home.js";
+import { ADMIN_CODES, createHomePages } from "./pages-home.js";
 import { createBookingPages } from "./pages-booking.js";
 import { createBookingAdminPages } from "./pages-bookings-admin.js";
 import { createCategoriesPages } from "./pages-categories.js";
@@ -208,6 +208,9 @@ route("/admin/payments", () => bookingAdminPages.paymentsPage(), "Payments", {
 
 const homePages = createHomePages({ session, api });
 route("/", () => homePages.homePage(), "Home", "public");
+route("/admin", () => homePages.adminHomePage(), "Admin dashboard", {
+  any: ADMIN_CODES,
+});
 route("/booking", () => bookingPage(), "Court Booking", "public");
 route("/events", () => eventsPage(), "Events", "public");
 
