@@ -308,9 +308,12 @@ export function createShell(
     document.documentElement.dataset.landing = String(isLanding);
 
     // Member view vs Admin view: admin paths are under /admin
-    const isMemberView = !path.startsWith("/admin");
+    // On phones every page has the same shell: no top header, and the floating logo that opens the quick menu.
+    // The admin pages get the same logo in the same place; their pages are in its menu.
+    const isMemberView = true;
+    const isAdminPath = path.startsWith("/admin");
     document.body.dataset.memberView = String(isMemberView);
-    document.body.dataset.adminView = String(!isMemberView);
+    document.body.dataset.adminView = String(isAdminPath);
 
     updateHeaderScroll();
 
@@ -408,6 +411,29 @@ export function createShell(
           "aria-hidden": "true",
           onClick: () => setMenuOpen(false),
         });
+        // The pages this person may open (members, bookings, settings ...), grouped as in the side panel on a computer.
+        const shown = new Set(["/", "/profile"]);
+        const extraTabs = signedIn
+          ? visibleGroups(state).flatMap((g) =>
+            g.items.filter((n) => !shown.has(n.path)).map((n) =>
+              tab({
+                label: n.label,
+                detail: g.label,
+                iconName: n.icon,
+                active: path === n.path,
+                href: `#${n.path}`,
+              })
+            )
+          )
+          : [];
+        const signOutTab = signedIn
+          ? tab({
+            label: "Sign out",
+            detail: "Leave this device",
+            iconName: "x",
+            onClick: () => session.signOut("manual"),
+          })
+          : null;
         const itemsWrap = h(
           "div",
           {
@@ -493,6 +519,8 @@ export function createShell(
               active: isAccount,
               href: signedIn ? "#/profile" : "#/signin",
             }),
+            ...extraTabs,
+            signOutTab,
           ),
           h(
             "div",
