@@ -857,83 +857,94 @@ export function createHomePages({ session, api }) {
                       class: "cpc-phone-head-btn",
                       "aria-hidden": "true",
                     },
-                    icon("qrScan"),
+                    icon("qrCode"),
                   ),
                 ),
                 // Three calm cards: the next booking, the member's standing, the next match
                 h(
                   "div",
-                  { class: "cpc-phone-card cpc-phone-card-hero" },
+                  { class: "cpc-phone-body" },
                   h(
                     "div",
-                    { class: "cpc-phone-card-top" },
+                    { class: "cpc-phone-card cpc-phone-card-hero" },
                     h(
-                      "span",
-                      { class: "cpc-phone-card-tag" },
-                      icon("calendar"),
-                      "Next booking",
-                    ),
-                    h("span", { class: "cpc-phone-court-badge" }, "Court 1"),
-                  ),
-                  h("div", { class: "cpc-phone-court-name" }, "Today, 5:00 PM"),
-                  h(
-                    "div",
-                    { class: "cpc-phone-time" },
-                    icon("clock"),
-                    "2 hours · Confirmed",
-                  ),
-                ),
-                h(
-                  "div",
-                  { class: "cpc-phone-card" },
-                  h(
-                    "div",
-                    { class: "cpc-phone-card-top" },
-                    h(
-                      "span",
-                      { class: "cpc-phone-card-tag" },
-                      icon("trophy"),
-                      "Your standing",
-                    ),
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-metrics-grid" },
-                    ...[["19", "Wins"], ["#12", "Club rank"], ["High", "Level"]]
-                      .map(([value, label]) =>
-                        h(
-                          "div",
-                          { class: "cpc-phone-metric" },
-                          h("div", { class: "cpc-phone-metric-val" }, value),
-                          h("div", { class: "cpc-phone-metric-lbl" }, label),
-                        )
+                      "div",
+                      { class: "cpc-phone-card-top" },
+                      h(
+                        "span",
+                        { class: "cpc-phone-card-tag" },
+                        icon("calendarCheck"),
+                        "Next booking",
                       ),
-                  ),
-                ),
-                h(
-                  "div",
-                  { class: "cpc-phone-card" },
-                  h(
-                    "div",
-                    { class: "cpc-phone-card-top" },
-                    h(
-                      "span",
-                      { class: "cpc-phone-card-tag" },
-                      icon("trophy"),
-                      "Summer Open",
+                      h("span", { class: "cpc-phone-court-badge" }, "Court 1"),
                     ),
-                    h("span", { class: "cpc-phone-live-dot" }, "● Live"),
+                    h(
+                      "div",
+                      { class: "cpc-phone-court-name" },
+                      "Today, 5:00 PM",
+                    ),
+                    h(
+                      "div",
+                      { class: "cpc-phone-time" },
+                      icon("clock"),
+                      "2 hours · Confirmed",
+                    ),
                   ),
                   h(
                     "div",
-                    { class: "cpc-phone-match-title" },
-                    "Reyes / Tan vs. Santos / Lim",
+                    { class: "cpc-phone-card" },
+                    h(
+                      "div",
+                      { class: "cpc-phone-card-top" },
+                      h(
+                        "span",
+                        { class: "cpc-phone-card-tag" },
+                        icon("medal"),
+                        "Your standing",
+                      ),
+                    ),
+                    h(
+                      "div",
+                      { class: "cpc-phone-metrics-grid" },
+                      ...[["19", "Wins"], ["#12", "Club rank"], [
+                        "High",
+                        "Level",
+                      ]]
+                        .map(([value, label]) =>
+                          h(
+                            "div",
+                            { class: "cpc-phone-metric" },
+                            h("div", { class: "cpc-phone-metric-val" }, value),
+                            h("div", { class: "cpc-phone-metric-lbl" }, label),
+                          )
+                        ),
+                    ),
                   ),
                   h(
                     "div",
-                    { class: "cpc-phone-time" },
-                    icon("clock"),
-                    "Next match 7:30 PM · Court 3",
+                    { class: "cpc-phone-card" },
+                    h(
+                      "div",
+                      { class: "cpc-phone-card-top" },
+                      h(
+                        "span",
+                        { class: "cpc-phone-card-tag" },
+                        icon("trophy"),
+                        "Summer Open",
+                      ),
+                      h("span", { class: "cpc-phone-live-dot" }, "● Live"),
+                    ),
+                    h(
+                      "div",
+                      { class: "cpc-phone-match-title" },
+                      "Reyes / Tan vs. Santos / Lim",
+                    ),
+                    h(
+                      "div",
+                      { class: "cpc-phone-time" },
+                      icon("clock"),
+                      "Next match 7:30 PM · Court 3",
+                    ),
                   ),
                 ),
                 // Bottom navigation
