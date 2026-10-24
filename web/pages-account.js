@@ -218,57 +218,49 @@ export function createAccountPages(
               { class: "cpc-hero-subtitle" },
               "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
             ),
+            // Desktop only: the paddles and balls fill the empty space under the text, fully visible.
+            h(
+              "div",
+              { class: "auth-showcase", "aria-hidden": "true" },
+              h("img", {
+                class: "auth-showcase-paddle auth-showcase-paddle-left",
+                src: "icons/paddle.png",
+                alt: "",
+              }),
+              h("img", {
+                class: "auth-showcase-ball auth-showcase-ball-left",
+                src: "icons/ball.png",
+                alt: "",
+              }),
+              h("img", {
+                class: "auth-showcase-paddle auth-showcase-paddle-right",
+                src: "icons/paddle.png",
+                alt: "",
+              }),
+              h("img", {
+                class: "auth-showcase-ball auth-showcase-ball-right",
+                src: "icons/ball.png",
+                alt: "",
+              }),
+            ),
           ),
           h(
             "div",
-            { class: "auth-form-stage" },
-            // The same floating paddles and balls the home page puts around its phone (hidden on phones).
-            ...[
-              ["cpc-paddle cpc-paddle-left", "paddle"],
-              ["cpc-ball cpc-ball-left", "ball"],
-              ["cpc-paddle cpc-paddle-right", "paddle"],
-              ["cpc-ball cpc-ball-right", "ball"],
-            ].map(([cls, file]) =>
-              h("img", {
-                class: cls,
-                src: `icons/${file}.png`,
-                alt: "",
-                "aria-hidden": "true",
-              })
-            ),
+            { class: "auth-form-col" },
             h(
               "div",
-              { class: "auth-form-col" },
+              { class: "card auth-card" },
+              form,
               h(
                 "div",
-                { class: "card auth-card" },
-                form,
+                { class: "auth-card-footer" },
+                "Not a member yet? ",
                 h(
-                  "div",
-                  { class: "auth-first-time-box" },
-                  icon("info"),
-                  h(
-                    "span",
-                    {},
-                    h(
-                      "strong",
-                      { class: "auth-first-time-strong" },
-                      "First time here? ",
-                    ),
-                    "Your initial password is the last 5 digits of your member ID followed by your birth date as MMDDYYYY (e.g. 0000112212025). You will be prompted to choose a new password upon first sign-in.",
-                  ),
+                  "a",
+                  { href: "#/signup", class: "auth-signup-link" },
+                  "Create an account / Join the club",
                 ),
-                h(
-                  "div",
-                  { class: "auth-card-footer" },
-                  "Not a member yet? ",
-                  h(
-                    "a",
-                    { href: "#/signup", class: "auth-signup-link" },
-                    "Create an account / Join the club",
-                  ),
-                  ".",
-                ),
+                ".",
               ),
             ),
           ),

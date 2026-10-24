@@ -89,6 +89,9 @@ export function createShell(
   document.addEventListener("pointerdown", (event) => {
     if (!mobileNav?.contains(event.target)) closeAssistiveMenu?.();
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAssistiveMenu?.();
+  });
 
   if (centerNav) {
     centerNav.addEventListener("click", (e) => {
@@ -195,12 +198,14 @@ export function createShell(
     else if (side.hasAttribute("data-open")) setDrawer(false);
   });
 
-  function drawAccount(state) {
+  function drawAccount(state, path = "") {
     menuOpen = false;
     if (state.status !== "signed_in") {
       toggle = panel = null;
       account.replaceChildren(
-        h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In"),
+        path === "/signin"
+          ? h("a", { class: "btn btn-primary", href: "#/" }, "Home")
+          : h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In"),
         h("a", { class: "btn btn-accent", href: "#/signup" }, "Join the club"),
       );
       return;
@@ -309,7 +314,7 @@ export function createShell(
 
     updateHeaderScroll();
 
-    drawAccount(state);
+    drawAccount(state, path);
 
     // Center header navigation active state
     if (centerNav) {
@@ -337,13 +342,47 @@ export function createShell(
         const isAccount = path === "/profile" || path === "/password" ||
           path === "/pending";
 
-        // Floating assistive navigation: the draggable logo opens a compact quick menu.
+        // Floating assistive navigation: the draggable logo opens a centered quick menu modal.
+        const closeBtn = h(
+          "button",
+          {
+            class: "assistive-nav-menu-close",
+            type: "button",
+            "aria-label": "Close navigation menu",
+            title: "Close menu",
+            onClick: () => setMenuOpen(false),
+          },
+          icon("x"),
+        );
+        const setMenuOpen = (open) => {
+          itemsWrap.hidden = !open;
+          scrim.hidden = !open;
+          toggle.setAttribute("aria-expanded", String(open));
+          toggle.setAttribute(
+            "aria-label",
+            open ? "Close navigation menu" : "Open navigation menu",
+          );
+          if (open) {
+            closeBtn.focus?.();
+          }
+        };
         const tab = ({ label, detail, iconName, active, href, onClick }) =>
           h(
             href ? "a" : "button",
             {
               class: `assistive-nav-item${active ? " is-active" : ""}`,
-              ...(href ? { href } : { type: "button", onClick }),
+              ...(href
+                ? {
+                  href,
+                  onClick: () => setMenuOpen(false),
+                }
+                : {
+                  type: "button",
+                  onClick: (e) => {
+                    setMenuOpen(false);
+                    onClick?.(e);
+                  },
+                }),
               "aria-label": label,
               title: label,
               "aria-current": active && href ? "page" : null,
@@ -358,15 +397,60 @@ export function createShell(
               h("span", { class: "assistive-nav-item-title" }, label),
               h("span", { class: "assistive-nav-item-detail" }, detail),
             ),
+            h("span", {
+              class: "assistive-nav-item-chevron",
+              "aria-hidden": "true",
+            }, icon("chevr")),
           );
+        const scrim = h("div", {
+          class: "assistive-nav-scrim",
+          hidden: true,
+          "aria-hidden": "true",
+          onClick: () => setMenuOpen(false),
+        });
         const itemsWrap = h(
           "div",
-          { class: "assistive-nav-menu", hidden: true },
+          {
+            class: "assistive-nav-menu",
+            hidden: true,
+            role: "dialog",
+            "aria-modal": "true",
+            "aria-labelledby": "assistive-nav-title",
+          },
           h(
             "div",
-            { class: "assistive-nav-menu-heading" },
-            h("strong", {}, "Quick menu"),
-            h("span", {}, "Choose where to go"),
+            { class: "assistive-nav-menu-header" },
+            h(
+              "div",
+              { class: "assistive-nav-menu-brand" },
+              h(
+                "div",
+                { class: "assistive-nav-menu-crest", "aria-hidden": "true" },
+                h("img", {
+                  src: "icons/cpc-logo.png",
+                  alt: "",
+                  class: "assistive-nav-menu-crest-img",
+                }),
+              ),
+              h(
+                "div",
+                { class: "assistive-nav-menu-headings" },
+                h(
+                  "span",
+                  { class: "assistive-nav-menu-eyebrow" },
+                  "Capitol Pickleball",
+                ),
+                h(
+                  "h2",
+                  {
+                    id: "assistive-nav-title",
+                    class: "assistive-nav-menu-title",
+                  },
+                  "Quick Menu",
+                ),
+              ),
+            ),
+            closeBtn,
           ),
           h(
             "div",
@@ -404,23 +488,24 @@ export function createShell(
             }),
             tab({
               label: "Profile",
-              detail: "Your club account",
+              detail: signedIn ? "Your club account" : "Sign in / Register",
               iconName: "user",
               active: isAccount,
               href: signedIn ? "#/profile" : "#/signin",
             }),
           ),
+          h(
+            "div",
+            { class: "assistive-nav-menu-footer" },
+            h(
+              "span",
+              { class: "assistive-nav-footer-hint" },
+              "Tap anywhere outside to close",
+            ),
+          ),
         );
         let dragState = null;
         let dragConsumed = false;
-        const setMenuOpen = (open) => {
-          itemsWrap.hidden = !open;
-          toggle.setAttribute("aria-expanded", String(open));
-          toggle.setAttribute(
-            "aria-label",
-            open ? "Close navigation menu" : "Open navigation menu",
-          );
-        };
         const placeAssistiveNav = (left, top) => {
           const margin = 12;
           const width = globalThis.innerWidth ||
@@ -506,7 +591,7 @@ export function createShell(
           }),
         );
         itemsWrap.id = "assistive-nav-menu";
-        mobileNav.replaceChildren(itemsWrap, toggle);
+        mobileNav.replaceChildren(scrim, itemsWrap, toggle);
         closeAssistiveMenu = () => setMenuOpen(false);
         try {
           const saved = JSON.parse(
