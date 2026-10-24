@@ -4262,3 +4262,46 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
   background: #0e2218;
   color: #fff;
 }
+
+/* the date box (and every field) shrinks to its column instead of spilling out of the card */
+.auth-signup-form .form-row > *,
+.auth-signup-form .field {
+  min-width: 0;
+  max-width: 100%;
+}
+.auth-signup-form input[type="date"] {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.auth-signup-form input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+}
+.auth-signup-form input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+}
+
+/* very narrow phones: the CAPTCHA (never narrower than 300px) is scaled down so it cannot widen the form */
+.auth-card .turnstile-box {
+  overflow: hidden;
+  min-width: 0;
+}
+@media (max-width: 359px) {
+  .auth-card .turnstile-box {
+    min-height: 56px;
+    height: 56px;
+    justify-content: flex-start;
+  }
+  .auth-card .turnstile-box > div {
+    width: 300px !important;
+    transform: scale(0.84);
+    transform-origin: left top;
+  }
+  .auth-card .turnstile-box iframe {
+    width: 300px !important;
+  }
+}
