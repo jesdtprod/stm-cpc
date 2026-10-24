@@ -760,7 +760,7 @@ export function createHomePages({ session, api }) {
                 h(
                   "span",
                   { class: "cpc-social-stars" },
-                  "Custom club ranks · Court reservations",
+                  "A welcoming community for players of every skill level",
                 ),
               ),
             ),
