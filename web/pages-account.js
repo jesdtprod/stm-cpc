@@ -3,11 +3,13 @@
 import {
   badge,
   button,
+  calendarDropdown,
   createCourtWatermarkSvg,
   field,
   h,
   icon,
   pageHeader,
+  searchableSelect,
   setupConvexPatternCanvas,
   toast,
   withPending,
@@ -433,20 +435,21 @@ export function createAccountPages(
   const SUFFIXES = ["Jr.", "Sr.", "II", "III", "IV", "V"];
   const GENDERS = [["male", "Male"], ["female", "Female"]];
 
-  /** A <select> field with a blank first option. `choices` is a list of [value, label]. */
+  /** A dropdown field (the shared list component) with a blank first choice. `choices` is a list of [value, label]. */
   function choiceField(id, label, choices, selected, blankLabel) {
-    const sel = h(
-      "select",
-      { class: "input", id, name: id },
-      h("option", { value: "" }, blankLabel),
-      ...choices.map(([v, l]) =>
-        h("option", { value: v, selected: v === selected ? true : null }, l)
-      ),
-    );
-    return {
-      sel,
-      node: h("div", { class: "field" }, h("label", { for: id }, label), sel),
-    };
+    const node = searchableSelect({
+      id,
+      label,
+      placeholder: blankLabel,
+      value: selected ?? "",
+      searchable: false,
+      options: [
+        { value: "", label: blankLabel },
+        ...choices.map(([value, text]) => ({ value, label: text })),
+      ],
+    });
+    // `sel.value` keeps working for the code that reads the chosen value
+    return { sel: node, node };
   }
 
   const formatDate = (iso) => {
@@ -824,17 +827,14 @@ export function createAccountPages(
       "",
       "Prefer not to say",
     );
-    const birth = field({
+    const birth = calendarDropdown({
       id: "su-birth",
       label: "Date of birth",
-      type: "date",
       required: true,
+      min: "1920-01-01",
+      max: new Date().toISOString().slice(0, 10),
+      defaultView: "2000-01",
     });
-    birth.querySelector("input").setAttribute(
-      "max",
-      new Date().toISOString().slice(0, 10),
-    );
-    birth.querySelector("input").setAttribute("min", "1920-01-01");
     const mobile = field({
       id: "su-mobile",
       label: "Mobile number",
@@ -975,7 +975,7 @@ export function createAccountPages(
             middle_name: inputValue(middleName),
             suffix: suffix.sel.value,
             gender: gender.sel.value,
-            date_of_birth: inputValue(birth),
+            date_of_birth: birth.value,
             mobile: inputValue(mobile),
             email: inputValue(email),
             password: inputValue(password),

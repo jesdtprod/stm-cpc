@@ -409,6 +409,7 @@ export function searchableSelect(
     required,
     disabled,
     onSelect,
+    searchable = true,
   },
 ) {
   let selected =
@@ -445,7 +446,7 @@ export function searchableSelect(
   const dropdown = h(
     "div",
     { class: "searchable-select-dropdown", hidden: true },
-    searchInput,
+    searchable ? searchInput : null,
     listEl,
   );
 
@@ -495,7 +496,7 @@ export function searchableSelect(
     triggerBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
     if (isOpen) {
       renderList();
-      setTimeout(() => searchInput.focus(), 10);
+      if (searchable) setTimeout(() => searchInput.focus(), 10);
     }
   };
 
@@ -525,7 +526,7 @@ export function searchableSelect(
     if (!wrap.contains(e.target) && isOpen) toggle(false);
   });
 
-  return h(
+  const fieldEl = h(
     "div",
     { class: `field${error ? " field-error-state" : ""}` },
     label ? h("label", { for: id }, label, required ? " *" : "") : null,
@@ -533,6 +534,16 @@ export function searchableSelect(
     hint ? h("span", { class: "field-hint", id: `${id}-hint` }, hint) : null,
     error ? h("span", { class: "field-error", id: `${id}-err` }, error) : null,
   );
+  // the chosen value, so a form can read it without a native <select>
+  Object.defineProperty(fieldEl, "value", {
+    get: () =>
+      selected == null
+        ? ""
+        : typeof selected === "object"
+        ? selected.value
+        : selected,
+  });
+  return fieldEl;
 }
 
 export function multiSelect(
@@ -1069,6 +1080,7 @@ export function calendarDropdown(
     error,
     required = false,
     disabled = false,
+    defaultView = "",
   },
 ) {
   let selectedStart = range ? startValue : value;
@@ -1082,6 +1094,12 @@ export function calendarDropdown(
   let viewMonth = isNaN(initialDate.getTime())
     ? new Date().getMonth()
     : initialDate.getMonth();
+  // "YYYY-MM": where the calendar opens when nothing is chosen yet (a birth date opens decades back)
+  if (!selectedStart && /^\d{4}-\d{2}$/.test(defaultView)) {
+    viewYear = Number(defaultView.slice(0, 4));
+    viewMonth = Number(defaultView.slice(5, 7)) - 1;
+  }
+  let pickMode = "days"; // "days" | "months" | "years"
 
   const MONTH_NAMES = [
     "January",
@@ -1196,9 +1214,21 @@ export function calendarDropdown(
         icon("chevronLeft"),
       ),
       h(
-        "span",
-        { class: "calendar-month-label" },
-        `${MONTH_NAMES[viewMonth]} ${viewYear}`,
+        "button",
+        {
+          type: "button",
+          class: "calendar-month-label calendar-month-btn",
+          "aria-label": "Choose month and year",
+          onClick: (e) => {
+            e.stopPropagation();
+            pickMode = pickMode === "days" ? "years" : "days";
+            renderMonth();
+          },
+        },
+        pickMode === "years"
+          ? `${viewYear}`
+          : `${MONTH_NAMES[viewMonth]} ${viewYear}`,
+        icon("chevronDown"),
       ),
       h(
         "button",
@@ -1384,6 +1414,59 @@ export function calendarDropdown(
       ),
     );
 
+    if (pickMode === "years") {
+      const minYear = min ? Number(min.slice(0, 4)) : viewYear - 100;
+      const maxYear = max ? Number(max.slice(0, 4)) : viewYear + 20;
+      const yearGrid = h("div", { class: "calendar-year-grid" });
+      for (let y = maxYear; y >= minYear; y--) {
+        yearGrid.append(
+          h(
+            "button",
+            {
+              type: "button",
+              class: `calendar-year${y === viewYear ? " is-selected" : ""}`,
+              onClick: (e) => {
+                e.stopPropagation();
+                viewYear = y;
+                pickMode = "months";
+                renderMonth();
+              },
+            },
+            `${y}`,
+          ),
+        );
+      }
+      popover.append(header, yearGrid);
+      requestAnimationFrame(() =>
+        yearGrid.querySelector(".is-selected")?.scrollIntoView({
+          block: "center",
+        })
+      );
+      return;
+    }
+    if (pickMode === "months") {
+      const monthGrid = h("div", { class: "calendar-month-grid" });
+      MONTH_NAMES.forEach((name, i) => {
+        monthGrid.append(
+          h(
+            "button",
+            {
+              type: "button",
+              class: `calendar-year${i === viewMonth ? " is-selected" : ""}`,
+              onClick: (e) => {
+                e.stopPropagation();
+                viewMonth = i;
+                pickMode = "days";
+                renderMonth();
+              },
+            },
+            name.slice(0, 3),
+          ),
+        );
+      });
+      popover.append(header, monthGrid);
+      return;
+    }
     popover.append(header, weekdaysRow, daysGrid, presetsBar);
   };
 
@@ -1400,6 +1483,7 @@ export function calendarDropdown(
     isOpen = show;
     triggerBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
     if (isOpen) {
+      pickMode = "days";
       renderMonth();
       popover.hidden = false;
       requestAnimationFrame(() => popover.classList.add("is-open"));

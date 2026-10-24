@@ -4305,3 +4305,117 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
     width: 300px !important;
   }
 }
+
+/* ---- Dropdown lists and the calendar: the shared components, dressed for the sign-up card ---- */
+.auth-split .auth-card .searchable-select-trigger,
+.auth-split .auth-card .calendar-drop-trigger {
+  box-sizing: border-box;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--text);
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.auth-split .auth-card .searchable-select-trigger:hover,
+.auth-split .auth-card .calendar-drop-trigger:hover {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.auth-split .auth-card .searchable-select-trigger[aria-expanded="true"],
+.auth-split .auth-card .calendar-drop-trigger[aria-expanded="true"],
+.auth-split .auth-card .searchable-select-trigger:focus-visible,
+.auth-split .auth-card .calendar-drop-trigger:focus-visible {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(223, 183, 86, 0.18);
+}
+.auth-split .auth-card .searchable-select-trigger .icon,
+.auth-split .auth-card .calendar-drop-trigger .icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
+  color: var(--text-2);
+}
+.auth-split .auth-card .searchable-select-trigger[aria-expanded="true"] > .icon:last-child,
+.auth-split .auth-card .calendar-drop-trigger[aria-expanded="true"] > .icon:last-child {
+  transform: rotate(180deg);
+}
+.auth-split .auth-card .searchable-select-dropdown,
+.auth-split .auth-card .calendar-popover {
+  background: #0e2218;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
+}
+.auth-split .auth-card .searchable-select-dropdown {
+  padding: 6px;
+}
+.auth-split .auth-card .searchable-select-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.auth-split .auth-card .searchable-select-item.is-selected {
+  background: rgba(223, 183, 86, 0.14);
+  color: var(--accent);
+}
+.auth-split .auth-card .calendar-popover {
+  width: 100%;
+  min-width: 260px;
+  padding: 14px;
+}
+.calendar-month-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+}
+.calendar-month-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.calendar-month-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+.calendar-year-grid,
+.calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.calendar-year-grid {
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 2px;
+}
+.calendar-year {
+  padding: 9px 0;
+  font: 500 13px var(--font);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.calendar-year:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.calendar-year.is-selected {
+  background: rgba(223, 183, 86, 0.16);
+  border-color: rgba(223, 183, 86, 0.5);
+  color: var(--accent);
+  font-weight: 700;
+}
+/* the card must not clip the open list or calendar */
+.auth-split .auth-card {
+  overflow: visible;
+}
