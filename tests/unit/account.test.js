@@ -38,7 +38,10 @@ Deno.test("auth api: a sign-in sends the ID, password and CAPTCHA token to membe
     refresh_token: "R",
     must_change_password: true,
   });
-  assert.match(calls[0].url, /\/functions\/v1\/member-login$/);
+  assert.match(
+    calls[0].url,
+    /\/functions\/v1\/member-login\?forceFunctionRegion=ap-southeast-2$/,
+  );
   assert.deepEqual(JSON.parse(calls[0].init.body), {
     identifier: "CPC-2026-00001",
     password: "pw",

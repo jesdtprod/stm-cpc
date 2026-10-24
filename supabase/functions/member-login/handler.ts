@@ -312,8 +312,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     );
   }
 
-  for (const key of identityKeys) await deps.clearFailures(key);
-  await deps.loginSucceeded(state.member_id);
+  // Independent writes: run them together instead of one round trip after another.
+  await Promise.all([
+    ...identityKeys.map((key) => deps.clearFailures(key)),
+    deps.loginSucceeded(state.member_id),
+  ]);
   return json(
     200,
     {

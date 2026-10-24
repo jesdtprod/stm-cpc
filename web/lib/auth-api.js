@@ -3,6 +3,9 @@
 import { SUPABASE_URL } from "../supabase-config.js";
 
 const FUNCTIONS = `${SUPABASE_URL}/functions/v1`;
+// Run the functions in the same region as the database (this project: Sydney). Otherwise every database call inside
+// a function crosses regions, which made sign-in take 2 to 3 seconds instead of under one.
+const FUNCTION_REGION = "ap-southeast-2";
 
 export class AuthFlowError extends Error {
   constructor(code, message, extra = {}) {
@@ -32,11 +35,16 @@ const MESSAGES = {
 async function post(path, body, headers, fetchFn) {
   let res;
   try {
-    res = await fetchFn(`${FUNCTIONS}/${path}`, {
-      method: "POST",
-      headers: { "content-type": "application/json", ...headers },
-      body: JSON.stringify(body),
-    });
+    res = await fetchFn(
+      `${FUNCTIONS}/${path}?forceFunctionRegion=${FUNCTION_REGION}`,
+      {
+        method: "POST",
+        // text/plain with no custom headers is a "simple" request: the browser skips the extra preflight round trip.
+        // The functions read the body as text and parse the JSON themselves, and still check the Origin.
+        headers: { "content-type": "text/plain;charset=UTF-8", ...headers },
+        body: JSON.stringify(body),
+      },
+    );
   } catch {
     throw new AuthFlowError(
       "network",
