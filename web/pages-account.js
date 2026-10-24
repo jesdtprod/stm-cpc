@@ -435,14 +435,13 @@ export function createAccountPages(
   const SUFFIXES = ["Jr.", "Sr.", "II", "III", "IV", "V"];
   const GENDERS = [["male", "Male"], ["female", "Female"]];
 
-  /** A dropdown field (the shared list component) with a blank first choice. `choices` is a list of [value, label]. */
+  /** A dropdown field (the shared list component, with search) with a blank first choice. `choices` is a list of [value, label]. */
   function choiceField(id, label, choices, selected, blankLabel) {
     const node = searchableSelect({
       id,
       label,
       placeholder: blankLabel,
       value: selected ?? "",
-      searchable: false,
       options: [
         { value: "", label: blankLabel },
         ...choices.map(([value, text]) => ({ value, label: text })),
