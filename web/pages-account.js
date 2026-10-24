@@ -160,24 +160,10 @@ export function createAccountPages(
       h(
         "div",
         { class: "auth-page" },
-        // Landing page style brand header: Logo flanked side-by-side by paddle and ball
+        // The logo alone: no paddle and ball beside it on the sign-in page.
         h(
           "div",
           { class: "auth-brand-top" },
-          h(
-            "div",
-            { class: "auth-brand-flank auth-brand-flank-left" },
-            h("img", {
-              src: "icons/paddle.png",
-              alt: "Tournament Pickleball Paddle Left",
-              class: "auth-top-paddle auth-top-paddle-left",
-            }),
-            h("img", {
-              src: "icons/ball.png",
-              alt: "Tournament Pickleball Left",
-              class: "auth-top-ball auth-top-ball-left",
-            }),
-          ),
           h("img", {
             class: "auth-brand-logo",
             src: "icons/cpc-logo.png",
@@ -185,20 +171,6 @@ export function createAccountPages(
             width: "68",
             height: "68",
           }),
-          h(
-            "div",
-            { class: "auth-brand-flank auth-brand-flank-right" },
-            h("img", {
-              src: "icons/ball.png",
-              alt: "Tournament Pickleball Right",
-              class: "auth-top-ball auth-top-ball-right",
-            }),
-            h("img", {
-              src: "icons/paddle.png",
-              alt: "Tournament Pickleball Paddle Right",
-              class: "auth-top-paddle auth-top-paddle-right",
-            }),
-          ),
         ),
         h(
           "div",

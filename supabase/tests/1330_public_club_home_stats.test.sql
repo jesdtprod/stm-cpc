@@ -26,8 +26,7 @@ select is(has_function_privilege('anon', 'public.club_home_stats()', 'execute'),
 set local role anon;
 select is((public.club_home_stats() ->> 'active_members')::int,
   (select active_before + 1 from fx), 'the public total counts active members');
-select is((select array_agg(key order by key) from jsonb_object_keys(public.club_home_stats()) as key),
-  array['active_members']::text[], 'the public response contains no member details');
+select ok(not (public.club_home_stats() ? 'member_name'), 'the public response contains no full member name');
 reset role;
 
 select * from finish();

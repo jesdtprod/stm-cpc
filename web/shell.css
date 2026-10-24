@@ -3469,3 +3469,31 @@ body:not([data-landing="true"]) .app-shell > main:has(.auth-page) {
     z-index: 3;
   }
 }
+
+/* ---- Sign-in page: no header; the content always starts at the top and the page scrolls when it does not fit.
+   The home page locks itself to one screen on phones; the sign-in page must not inherit that lock. ---- */
+body[data-auth-page="true"] .app-header {
+  display: none !important;
+}
+html[data-auth-page="true"],
+body[data-auth-page="true"],
+body[data-auth-page="true"] .app-shell,
+body[data-auth-page="true"] main {
+  height: auto !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+body[data-auth-page="true"] .auth-page-container.cpc-hero {
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  max-height: none !important;
+  overflow: visible !important;
+  justify-content: flex-start !important;
+  padding: clamp(20px, 5vh, 48px) var(--s4) clamp(24px, 5vh, 48px);
+}
+/* margin auto centres the card when it is shorter than the screen and never pushes it above the top */
+body[data-auth-page="true"] .auth-page-container .auth-page {
+  margin-block: auto;
+}

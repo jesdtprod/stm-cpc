@@ -296,6 +296,10 @@ export function createShell(
     const isLanding = (path === "/" || path === "" || path === "/signin") &&
       !signedIn;
     document.body.dataset.landing = String(isLanding);
+    // The sign-in page has no top header: only the sign-in card.
+    const isAuthPage = path === "/signin" && !signedIn;
+    document.body.dataset.authPage = String(isAuthPage);
+    document.documentElement.dataset.authPage = String(isAuthPage);
     document.documentElement.dataset.landing = String(isLanding);
 
     // Member view vs Admin view: admin paths are under /admin
