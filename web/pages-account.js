@@ -766,7 +766,7 @@ export function createAccountPages(
     gender: "Choose male or female, or leave it blank.",
     date_of_birth: "Enter your date of birth.",
     mobile: "Enter a valid mobile number, for example 09171234567.",
-    email: "Enter a valid email address, or leave it blank.",
+    email: "Enter a valid email address.",
     password: "Choose a password.",
     consent_waiver: "Please accept the waiver to continue.",
     consent_privacy: "Please accept the privacy notice to continue.",
@@ -844,9 +844,12 @@ export function createAccountPages(
     mobile.querySelector("input").setAttribute("autocomplete", "tel");
     const email = field({
       id: "su-email",
-      label: "Email (optional)",
+      label: "Email",
       type: "email",
+      required: true,
+      placeholder: "you@example.com",
     });
+    email.querySelector("input").setAttribute("autocomplete", "email");
     const password = field({
       id: "su-password",
       label: "Password",
@@ -959,6 +962,9 @@ export function createAccountPages(
       "submit",
       withPending(submit, async () => {
         showError(error, []);
+        if (!inputValue(email).trim()) {
+          return showError(error, "Enter your email address.");
+        }
         const local = localPasswordProblems(
           inputValue(password),
           inputValue(confirm),

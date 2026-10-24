@@ -45,21 +45,22 @@ Deno.test("signup rules: a good form is cleaned", () => {
   });
 });
 
-Deno.test("signup rules: optional fields may be empty", () => {
+Deno.test("signup rules: optional fields may be empty, the email may not", () => {
   const r = validateSignup({
     ...GOOD,
     middle_name: "",
     suffix: "",
     gender: "",
-    email: "",
   }, TODAY);
   assert.equal(r.ok, true);
   assert.deepEqual([
     r.data.middle_name,
     r.data.suffix,
     r.data.gender,
-    r.data.email,
-  ], [null, null, null, null]);
+  ], [null, null, null]);
+  const noEmail = validateSignup({ ...GOOD, email: "" }, TODAY);
+  assert.equal(noEmail.ok, false);
+  assert.equal(noEmail.errors.email, "required");
 });
 
 Deno.test("signup rules: each required field and bad value is reported by name", () => {

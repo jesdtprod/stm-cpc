@@ -210,7 +210,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (await deps.isLocked([...identityKeys, ipKey])) {
     deps.log("login.locked_out");
-    return generic(origin, deps);
+    // Said plainly so a member who has just been locked out knows to wait. An ID that does not exist locks in exactly
+    // the same way, so this reveals nothing about which IDs are real.
+    return json(
+      429,
+      {
+        ok: false,
+        code: "too_many_attempts",
+        message:
+          "Too many sign-in attempts. Please wait 15 minutes and try again.",
+      },
+      origin,
+      deps,
+    );
   }
 
   // A malformed ID or an unknown email still goes through Auth (with an address no member has), so the cost is the same.

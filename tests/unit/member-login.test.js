@@ -174,7 +174,7 @@ Deno.test("login: every attempt, even a malformed ID, goes through Auth (same co
   assert.equal(state.signIns[1].email, "cpc-2026-99999@members.cpc.app");
 });
 
-Deno.test("login: five failures lock an ID, and the lock looks like any other failure", async () => {
+Deno.test("login: five failures lock an ID, and the lock says to wait", async () => {
   const { deps, state } = world();
   for (let i = 0; i < LIMITS.idMaxFailures; i++) {
     const r = await read(
@@ -185,16 +185,12 @@ Deno.test("login: five failures lock an ID, and the lock looks like any other fa
     );
     assert.equal(r.status, 401);
   }
-  // Even the right password is refused now, with the same generic answer.
+  // Even the right password is refused now, with a plain "wait a while" answer.
   const locked = await read(
     await handle(request(good, { ip: "198.51.100.200" }), deps),
   );
-  assert.equal(locked.status, 401);
-  assert.deepEqual(locked.body, {
-    ok: false,
-    code: "invalid_credentials",
-    message: GENERIC_MESSAGE,
-  });
+  assert.equal(locked.status, 429);
+  assert.equal(locked.body.code, "too_many_attempts");
   assert.equal(
     state.signIns.length,
     LIMITS.idMaxFailures,
@@ -233,7 +229,7 @@ Deno.test("login: thirty failures from one address lock the address for every ID
   const r = await read(
     await handle(request(good, { ip: "203.0.113.99" }), deps),
   );
-  assert.equal(r.status, 401);
+  assert.equal(r.status, 429);
   const other = await read(
     await handle(request(good, { ip: "203.0.113.100" }), deps),
   );
@@ -474,10 +470,10 @@ Deno.test("login by email: failures by email and by member ID count against the 
   const { status, body } = await read(res);
   assert.equal(
     status,
-    401,
+    429,
     "the correct ID and password are refused while the member is locked",
   );
-  assert.equal(body.code, "invalid_credentials");
+  assert.equal(body.code, "too_many_attempts");
 });
 
 Deno.test("login by email: the response and the log never contain the email", async () => {

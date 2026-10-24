@@ -76,7 +76,8 @@ export function validateSignup(
 
   const emailRaw = clean(body.email);
   const email = emailRaw ? normalizeEmail(emailRaw) : null;
-  if (emailRaw && !email) errors.email = "invalid";
+  if (!emailRaw) errors.email = "required";
+  else if (!email) errors.email = "invalid";
 
   const password = typeof body.password === "string" ? body.password : "";
   if (!password) errors.password = "required";
