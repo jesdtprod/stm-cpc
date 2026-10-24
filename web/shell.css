@@ -4419,3 +4419,58 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
 .auth-split .auth-card {
   overflow: visible;
 }
+
+/* ---- Home page buttons: the same shape and finish as the Sign in / Create my account buttons; each keeps its own colour ---- */
+.cpc-hero .cpc-hero-actions .btn,
+body[data-landing="true"] .header-account .btn {
+  border-radius: 12px;
+  letter-spacing: 0.01em;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255,
+    255, 255, 0) 60%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255,
+    0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color
+    0.15s ease;
+}
+.cpc-hero .cpc-hero-actions .btn {
+  min-height: 46px;
+  height: 46px;
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+}
+body[data-landing="true"] .header-account .btn {
+  min-height: 42px;
+  height: 42px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+.cpc-hero .cpc-hero-actions .btn .icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
+}
+/* colour-matched glow under each button */
+.cpc-hero .cpc-hero-actions .btn-primary,
+body[data-landing="true"] .header-account .btn-primary {
+  box-shadow: 0 8px 20px rgba(21, 128, 61, 0.35), inset 0 1px 0 rgba(255, 255,
+    255, 0.18);
+}
+.cpc-hero .cpc-hero-actions .btn-accent,
+body[data-landing="true"] .header-account .btn-accent {
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(223, 183, 86, 0.28), inset 0 1px 0 rgba(255, 255,
+    255, 0.3);
+}
+.cpc-hero .cpc-hero-actions .btn-secondary {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.cpc-hero .cpc-hero-actions .btn:hover:not(:disabled),
+body[data-landing="true"] .header-account .btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.cpc-hero .cpc-hero-actions .btn:active:not(:disabled),
+body[data-landing="true"] .header-account .btn:active:not(:disabled) {
+  transform: translateY(0);
+}
