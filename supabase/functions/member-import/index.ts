@@ -185,6 +185,20 @@ const deps: Deps = {
       p_display_name: displayName,
       p_auth_user_id: authUserId,
     }),
+  adminResetTarget: async (memberNo) =>
+    (await rpc<string | null>("admin_reset_target", {
+      p_member_no: memberNo,
+    })) ??
+      null,
+  setAuthPassword: async (authUserId, password) => {
+    const { error } = await service.auth.admin.updateUserById(authUserId, {
+      password,
+    });
+    return !error;
+  },
+  adminResetDone: async (memberNo) => {
+    await rpc("admin_reset_done", { p_member_no: memberNo });
+  },
   randomPassword,
   // Events carry no names, IDs, dates or passwords.
   log: (event, fields) => console.log(JSON.stringify({ event, ...fields })),

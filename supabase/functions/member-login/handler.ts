@@ -216,7 +216,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // A malformed ID or an unknown email still goes through Auth (with an address no member has), so the cost is the same.
   const email = wellFormed
     ? internalEmail(memberNo)
-    : `invalid-${(await deps.sha256(raw.toLowerCase())).slice(0, 24)}@${EMAIL_DOMAIN}`;
+    : `invalid-${
+      (await deps.sha256(raw.toLowerCase())).slice(0, 24)
+    }@${EMAIL_DOMAIN}`;
   const result = await deps.signIn(email, input.password, input.captchaToken);
 
   if (!result.ok) {

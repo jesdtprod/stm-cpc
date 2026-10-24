@@ -247,6 +247,9 @@ function world(over = {}) {
     begun: [],
     finished: [],
     admins: [],
+    passwordSets: [],
+    resets: [],
+    logs: [],
     passwords: [],
   };
   const deps = {
@@ -335,8 +338,18 @@ function world(over = {}) {
       s.admins.push({ no, name, uid });
       return Promise.resolve("MEMID");
     },
+    adminResetTarget: (no) =>
+      Promise.resolve(no === "CPC-2026-00000" ? "admin-uid" : null),
+    setAuthPassword: (uid, pw) => {
+      s.passwordSets.push({ uid, pw });
+      return Promise.resolve(!over.authFails);
+    },
+    adminResetDone: (no) => {
+      s.resets.push(no);
+      return Promise.resolve();
+    },
     randomPassword: () => "Adm1nPassw0rdFake",
-    log: () => {},
+    log: (e) => s.logs.push(e),
     ...(over.deps ?? {}),
   };
   return { deps, s };
@@ -1040,4 +1053,60 @@ Deno.test("enrich: unknown members are reported, bad rows refused, sizes limited
     (await run(locked.deps, { action: "enrich", rows: [erow(1)] })).status,
     401,
   );
+});
+
+Deno.test("import: an admin who forgot the password gets a new random one, once, and must change it at sign-in", async () => {
+  const { deps, s } = world();
+  const r = await run(deps, {
+    action: "reset_admin_password",
+    member_no: "CPC-2026-00000",
+  });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body, {
+    ok: true,
+    member_no: "CPC-2026-00000",
+    password: "Adm1nPassw0rdFake",
+  });
+  assert.deepEqual(s.passwordSets, [{
+    uid: "admin-uid",
+    pw: "Adm1nPassw0rdFake",
+  }]);
+  assert.deepEqual(
+    s.resets,
+    ["CPC-2026-00000"],
+    "marked for a forced change and audited",
+  );
+  assert.equal(r.headers.get("cache-control"), "no-store");
+  assert.equal(
+    JSON.stringify(s.logs).includes("Adm1n"),
+    false,
+    "the log never holds the password",
+  );
+});
+
+Deno.test("import: the reset works only for an admin, and nothing is changed for anyone else", async () => {
+  const { deps, s } = world();
+  const r = await run(deps, {
+    action: "reset_admin_password",
+    member_no: "CPC-2026-00001",
+  });
+  assert.equal(r.status, 404);
+  assert.equal(JSON.stringify(r.body).includes("Adm1n"), false);
+  assert.deepEqual(s.passwordSets, []);
+  const bad = await run(deps, {
+    action: "reset_admin_password",
+    member_no: "nope",
+  });
+  assert.equal(bad.status, 400);
+});
+
+Deno.test("import: if Auth refuses the new password, nothing is marked and no password is returned", async () => {
+  const { deps, s } = world({ authFails: true });
+  const r = await run(deps, {
+    action: "reset_admin_password",
+    member_no: "CPC-2026-00000",
+  });
+  assert.equal(r.status, 502);
+  assert.equal(JSON.stringify(r.body).includes("Adm1n"), false);
+  assert.deepEqual(s.resets, []);
 });

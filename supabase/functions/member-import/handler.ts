@@ -97,6 +97,10 @@ export interface Deps {
     displayName: string,
     authUserId: string,
   ) => Promise<string>;
+  /** The Auth user of an active admin with this member number; null for anyone else. */
+  adminResetTarget: (memberNo: string) => Promise<string | null>;
+  setAuthPassword: (authUserId: string, password: string) => Promise<boolean>;
+  adminResetDone: (memberNo: string) => Promise<void>;
   randomPassword: () => string;
   log: (event: string, fields?: Record<string, string | number>) => void;
 }
@@ -469,6 +473,24 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
       deps.log("admin.created");
       // The one place a password leaves this function: once, to the script that files it away.
+      return json(200, { ok: true, member_no: memberNo, password });
+    }
+
+    case "reset_admin_password": {
+      // Only for an administrator who forgot the password. The new password is random, set in Auth, and returned once
+      // to the script that files it away; the account must choose its own password at the next sign-in.
+      const memberNo = body.member_no;
+      if (typeof memberNo !== "string" || !ID_PATTERN.test(memberNo)) {
+        return json(400, { ok: false, code: "bad_request" });
+      }
+      const target = await deps.adminResetTarget(memberNo);
+      if (!target) return json(404, { ok: false, code: "not_found" });
+      const password = deps.randomPassword();
+      if (!(await deps.setAuthPassword(target, password))) {
+        return json(502, { ok: false, code: "auth_failed" });
+      }
+      await deps.adminResetDone(memberNo);
+      deps.log("admin.password_reset");
       return json(200, { ok: true, member_no: memberNo, password });
     }
 
