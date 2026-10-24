@@ -4019,3 +4019,102 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
     padding: 20px !important;
   }
 }
+
+/* ---- Home phone preview: fewer cards, more air, calmer colours ---- */
+.cpc-phone-screen {
+  gap: 10px;
+}
+.cpc-phone-head {
+  padding: 2px 2px 6px;
+}
+.cpc-phone-avatar-wrap,
+.cpc-phone-avatar {
+  width: 32px;
+  height: 32px;
+}
+.cpc-phone-greeting {
+  font-size: 13px;
+}
+.cpc-phone-status {
+  font-size: 10px;
+  color: #9DB8A6;
+}
+.cpc-phone-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px 14px;
+  gap: 8px;
+}
+.cpc-phone-card-hero {
+  background: linear-gradient(150deg, rgba(34, 110, 70, 0.4), rgba(255, 255,
+    255, 0.04));
+  border-color: rgba(223, 183, 86, 0.28);
+}
+.cpc-phone-card-tag {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: #9DB8A6;
+  gap: 5px;
+}
+.cpc-phone-card-tag .icon {
+  width: 12px;
+  height: 12px;
+}
+.cpc-phone-court-name {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.cpc-phone-time {
+  font-size: 11px;
+  gap: 5px;
+}
+.cpc-phone-time .icon {
+  width: 12px;
+  height: 12px;
+}
+.cpc-phone-match-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+}
+.cpc-phone-metrics-grid {
+  background: transparent;
+  padding: 2px 0 0;
+  gap: 8px;
+}
+.cpc-phone-metric {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 8px 4px;
+}
+.cpc-phone-metric-val {
+  font-size: 18px;
+}
+.cpc-phone-metric-lbl {
+  font-size: 9.5px;
+  margin-top: 3px;
+}
+.cpc-phone-nav {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 6px 6px;
+}
+.cpc-phone-nav-item {
+  gap: 4px;
+  font-size: 9.5px;
+  padding: 6px 12px;
+  border-radius: 12px;
+}
+.cpc-phone-nav-item .icon {
+  width: 18px;
+  height: 18px;
+}
+.cpc-phone-nav-item.is-active {
+  background: rgba(223, 183, 86, 0.14);
+}
+.cpc-phone-court-badge,
+.cpc-phone-live-dot {
+  font-size: 9.5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+}

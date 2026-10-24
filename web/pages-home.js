@@ -760,7 +760,7 @@ export function createHomePages({ session, api }) {
                 h(
                   "span",
                   { class: "cpc-social-stars" },
-                  "Custom club ranks ? Court reservations",
+                  "Custom club ranks · Court reservations",
                 ),
               ),
             ),
@@ -847,7 +847,7 @@ export function createHomePages({ session, api }) {
                       h(
                         "div",
                         { class: "cpc-phone-status" },
-                        "Sample member · Intermediate",
+                        "Sample member",
                       ),
                     ),
                   ),
@@ -860,7 +860,7 @@ export function createHomePages({ session, api }) {
                     icon("qrScan"),
                   ),
                 ),
-                // Card 1: Active Court Reservation (Hero Card)
+                // Three calm cards: the next booking, the member's standing, the next match
                 h(
                   "div",
                   { class: "cpc-phone-card cpc-phone-card-hero" },
@@ -871,248 +871,91 @@ export function createHomePages({ session, api }) {
                       "span",
                       { class: "cpc-phone-card-tag" },
                       icon("calendar"),
-                      "Upcoming Booking",
+                      "Next booking",
                     ),
                     h("span", { class: "cpc-phone-court-badge" }, "Court 1"),
                   ),
+                  h("div", { class: "cpc-phone-court-name" }, "Today, 5:00 PM"),
                   h(
                     "div",
-                    { class: "cpc-phone-court-name" },
-                    "Your next court session",
+                    { class: "cpc-phone-time" },
+                    icon("clock"),
+                    "2 hours · Confirmed",
+                  ),
+                ),
+                h(
+                  "div",
+                  { class: "cpc-phone-card" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-card-top" },
+                    h(
+                      "span",
+                      { class: "cpc-phone-card-tag" },
+                      icon("trophy"),
+                      "Your standing",
+                    ),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-metrics-grid" },
+                    ...[["19", "Wins"], ["#12", "Club rank"], ["High", "Level"]]
+                      .map(([value, label]) =>
+                        h(
+                          "div",
+                          { class: "cpc-phone-metric" },
+                          h("div", { class: "cpc-phone-metric-val" }, value),
+                          h("div", { class: "cpc-phone-metric-lbl" }, label),
+                        )
+                      ),
+                  ),
+                ),
+                h(
+                  "div",
+                  { class: "cpc-phone-card" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-card-top" },
+                    h(
+                      "span",
+                      { class: "cpc-phone-card-tag" },
+                      icon("trophy"),
+                      "Summer Open",
+                    ),
+                    h("span", { class: "cpc-phone-live-dot" }, "● Live"),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-match-title" },
+                    "Reyes / Tan vs. Santos / Lim",
                   ),
                   h(
                     "div",
                     { class: "cpc-phone-time" },
                     icon("clock"),
-                    "Today · 5:00 PM – 7:00 PM (2 hrs)",
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-card-meta" },
-                    h(
-                      "span",
-                      { class: "cpc-phone-badge" },
-                      icon("checkCircle"),
-                      "Booking Confirmed",
-                    ),
-                    h(
-                      "span",
-                      { class: "cpc-phone-pill-sub" },
-                      "Court access ready",
-                    ),
+                    "Next match 7:30 PM · Court 3",
                   ),
                 ),
-                // Card 2: Custom club standing and season record
-                h(
-                  "div",
-                  { class: "cpc-phone-card" },
-                  h(
-                    "div",
-                    { class: "cpc-phone-card-top" },
-                    h(
-                      "span",
-                      { class: "cpc-phone-card-tag" },
-                      icon("trophy"),
-                      "Official Standing",
-                    ),
-                    h("span", { class: "cpc-phone-rank-badge" }, "Club ladder"),
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-metrics-grid" },
-                    h(
-                      "div",
-                      { class: "cpc-phone-metric" },
-                      h("div", { class: "cpc-phone-metric-val" }, "19"),
-                      h(
-                        "div",
-                        { class: "cpc-phone-metric-lbl" },
-                        "Matches won",
-                      ),
-                    ),
-                    h(
-                      "div",
-                      { class: "cpc-phone-metric" },
-                      h("div", { class: "cpc-phone-metric-val" }, "#12"),
-                      h(
-                        "div",
-                        { class: "cpc-phone-metric-lbl" },
-                        "Club Rank (of 86)",
-                      ),
-                    ),
-                    h(
-                      "div",
-                      { class: "cpc-phone-metric" },
-                      h("div", { class: "cpc-phone-metric-val" }, "High"),
-                      h(
-                        "div",
-                        { class: "cpc-phone-metric-lbl" },
-                        "Club rank",
-                      ),
-                    ),
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-progress-wrap" },
-                    h(
-                      "div",
-                      { class: "cpc-phone-progress-labels" },
-                      h("span", {}, "Season win rate: 83%"),
-                      h("span", {}, "19-4 Win Record"),
-                    ),
-                    h(
-                      "div",
-                      { class: "cpc-phone-progress-bar" },
-                      h("div", { class: "cpc-phone-progress-fill" }),
-                    ),
-                  ),
-                ),
-                // Card 3: Live Tournament Bracket
-                h(
-                  "div",
-                  { class: "cpc-phone-card" },
-                  h(
-                    "div",
-                    { class: "cpc-phone-card-top" },
-                    h(
-                      "span",
-                      { class: "cpc-phone-card-tag" },
-                      icon("trophy"),
-                      "Summer Open 2026",
-                    ),
-                    h("span", { class: "cpc-phone-live-dot" }, "● LIVE"),
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-match-row" },
-                    h(
-                      "div",
-                      {},
-                      h(
-                        "div",
-                        { class: "cpc-phone-match-title" },
-                        "Pool A · Reyes / Tan vs. Santos / Lim",
-                      ),
-                      h(
-                        "div",
-                        { class: "cpc-phone-time" },
-                        icon("clock"),
-                        "Next Match @ 7:30 PM (Court 3)",
-                      ),
-                    ),
-                    h("span", { class: "cpc-phone-badge" }, "On Deck"),
-                  ),
-                ),
-                // Card 4: Digital Member Pass & Privileges
-                h(
-                  "div",
-                  { class: "cpc-phone-card" },
-                  h(
-                    "div",
-                    { class: "cpc-phone-card-top" },
-                    h(
-                      "span",
-                      { class: "cpc-phone-card-tag" },
-                      icon("user"),
-                      "Digital Member Pass",
-                    ),
-                    h("span", { class: "cpc-phone-badge" }, "Verified 2026"),
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-pass-card-row" },
-                    h(
-                      "div",
-                      { class: "cpc-phone-pass-left" },
-                      h(
-                        "div",
-                        { class: "cpc-phone-pass-icon" },
-                        icon("qrScan"),
-                      ),
-                      h(
-                        "div",
-                        {},
-                        h(
-                          "div",
-                          { class: "cpc-phone-pass-title" },
-                          "Pass #0042 · Active QR",
-                        ),
-                        h(
-                          "div",
-                          { class: "cpc-phone-pass-sub" },
-                          "Covered Courts · Priority Booking",
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                // A compact activity feed fills the remaining dashboard space.
-                h(
-                  "div",
-                  { class: "cpc-phone-card cpc-phone-activity" },
-                  h(
-                    "div",
-                    { class: "cpc-phone-card-top" },
-                    h(
-                      "span",
-                      { class: "cpc-phone-card-tag" },
-                      icon("clock"),
-                      "Recent activity",
-                    ),
-                    h("span", { class: "cpc-phone-pill-sub" }, "Today"),
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-activity-row" },
-                    h(
-                      "span",
-                      { class: "cpc-phone-activity-icon" },
-                      icon("layers"),
-                    ),
-                    h(
-                      "div",
-                      {},
-                      h(
-                        "div",
-                        { class: "cpc-phone-activity-title" },
-                        "Tournament draw published",
-                      ),
-                      h(
-                        "div",
-                        { class: "cpc-phone-pass-sub" },
-                        "Summer Open · Pool A · Court 3",
-                      ),
-                    ),
-                  ),
-                ),
-                // Bottom Navigation Bar
+                // Bottom navigation
                 h(
                   "div",
                   { class: "cpc-phone-nav" },
-                  h(
-                    "div",
-                    { class: "cpc-phone-nav-item is-active" },
-                    icon("home"),
-                    h("span", {}, "Home"),
-                    h("span", { class: "cpc-phone-nav-dot" }),
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-nav-item" },
-                    icon("calendar"),
-                    h("span", {}, "Courts"),
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-nav-item" },
-                    icon("trophy"),
-                    h("span", {}, "Events"),
-                  ),
-                  h(
-                    "div",
-                    { class: "cpc-phone-nav-item" },
-                    icon("user"),
-                    h("span", {}, "Pass"),
+                  ...[
+                    ["home", "Home", true],
+                    ["calendar", "Courts", false],
+                    ["trophy", "Events", false],
+                    ["user", "Profile", false],
+                  ].map(([name, label, active]) =>
+                    h(
+                      "div",
+                      {
+                        class: `cpc-phone-nav-item${
+                          active ? " is-active" : ""
+                        }`,
+                      },
+                      icon(name),
+                      h("span", {}, label),
+                    )
                   ),
                 ),
                 // Home Indicator Bar
