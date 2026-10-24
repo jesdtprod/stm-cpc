@@ -4179,3 +4179,16 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
     max-width: 100%;
   }
 }
+
+/* Phones: the sign-in form uses nearly the whole screen width */
+@media (max-width: 900px) {
+  body[data-auth-page="true"] .auth-page-container.cpc-hero {
+    padding-inline: 8px;
+  }
+  body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
+    padding-inline: 0;
+  }
+  .auth-split .auth-card {
+    padding: 18px 16px !important;
+  }
+}
