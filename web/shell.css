@@ -3915,3 +3915,13 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
   margin-top: var(--s3);
   padding-top: var(--s2);
 }
+
+/* Sign-in card: the footer sits close under the Sign in button */
+.auth-split .auth-card .actions {
+  margin-bottom: 0;
+}
+/* the form's own gap already separates it, so pull the footer up */
+.auth-split .auth-card-footer {
+  margin-top: calc(var(--s2) * -1);
+  padding-top: var(--s2);
+}
