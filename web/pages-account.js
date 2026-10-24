@@ -159,80 +159,94 @@ export function createAccountPages(
       watermarkEl,
       h(
         "div",
-        { class: "auth-page" },
-        // The logo alone: no paddle and ball beside it on the sign-in page.
+        { class: "cpc-landing-container" },
+        // The same two-column structure as the home page's hero: the form on the left, the brand on the right.
+        // The brand stays first in the page order (the heading comes first for screen readers) and moves right with CSS.
         h(
           "div",
-          { class: "auth-brand-top" },
-          h("img", {
-            class: "auth-brand-logo",
-            src: "icons/cpc-logo.png",
-            alt: "Capitol Pickleball Club",
-            width: "68",
-            height: "68",
-          }),
-        ),
-        h(
-          "div",
-          { class: "auth-hero-badge" },
-          icon("trophy"),
-          "Province of Sultan Kudarat’s Pickleball Court",
-        ),
-        h(
-          "div",
-          { class: "auth-title-wrap" },
-          h(
-            "h1",
-            { class: "auth-page-title", id: "page-title", tabindex: "-1" },
-            "Sign In to ",
-            h(
-              "span",
-              { class: "auth-title-accent" },
-              "Capitol Pickleball Club",
-            ),
-          ),
-          h(
-            "p",
-            { class: "auth-page-subtitle" },
-            "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
-          ),
-        ),
-        h(
-          "div",
-          { class: "card auth-card" },
-          form,
+          { class: "cpc-hero-grid auth-split" },
           h(
             "div",
-            { class: "auth-first-time-box" },
-            icon("info"),
+            { class: "auth-brand-col" },
+            // The logo alone: no paddle and ball beside it on the sign-in page.
             h(
-              "span",
-              {},
+              "div",
+              { class: "auth-brand-top" },
+              h("img", {
+                class: "auth-brand-logo",
+                src: "icons/cpc-logo.png",
+                alt: "Capitol Pickleball Club",
+                width: "68",
+                height: "68",
+              }),
+            ),
+            h(
+              "div",
+              { class: "auth-hero-badge" },
+              icon("trophy"),
+              "Province of Sultan Kudarat’s Pickleball Court",
+            ),
+            h(
+              "div",
+              { class: "auth-title-wrap" },
               h(
-                "strong",
-                { class: "auth-first-time-strong" },
-                "First time here? ",
+                "h1",
+                { class: "auth-page-title", id: "page-title", tabindex: "-1" },
+                "Sign In to ",
+                h(
+                  "span",
+                  { class: "auth-title-accent" },
+                  "Capitol Pickleball Club",
+                ),
               ),
-              "Your initial password is the last 5 digits of your member ID followed by your birth date as MMDDYYYY (e.g. 0000112212025). You will be prompted to choose a new password upon first sign-in.",
+              h(
+                "p",
+                { class: "auth-page-subtitle" },
+                "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
+              ),
             ),
           ),
           h(
             "div",
-            { class: "auth-card-footer" },
-            "Not a member yet? ",
+            { class: "auth-form-col" },
+            h(
+              "div",
+              { class: "card auth-card" },
+              form,
+              h(
+                "div",
+                { class: "auth-first-time-box" },
+                icon("info"),
+                h(
+                  "span",
+                  {},
+                  h(
+                    "strong",
+                    { class: "auth-first-time-strong" },
+                    "First time here? ",
+                  ),
+                  "Your initial password is the last 5 digits of your member ID followed by your birth date as MMDDYYYY (e.g. 0000112212025). You will be prompted to choose a new password upon first sign-in.",
+                ),
+              ),
+              h(
+                "div",
+                { class: "auth-card-footer" },
+                "Not a member yet? ",
+                h(
+                  "a",
+                  { href: "#/signup", class: "auth-signup-link" },
+                  "Create an account / Join the club",
+                ),
+                ".",
+              ),
+            ),
             h(
               "a",
-              { href: "#/signup", class: "auth-signup-link" },
-              "Create an account / Join the club",
+              { href: "#/", class: "auth-back-link" },
+              icon("arrowLeft"),
+              "Back to home",
             ),
-            ".",
           ),
-        ),
-        h(
-          "a",
-          { href: "#/", class: "auth-back-link" },
-          icon("arrowLeft"),
-          "Back to home",
         ),
       ),
     );

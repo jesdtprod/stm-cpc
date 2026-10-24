@@ -3497,3 +3497,49 @@ body[data-auth-page="true"] .auth-page-container.cpc-hero {
 body[data-auth-page="true"] .auth-page-container .auth-page {
   margin-block: auto;
 }
+
+/* ---- Sign-in page: the home page's two-column hero. Form on the left, brand on the right; one column on phones. ---- */
+.auth-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s6);
+}
+.auth-split .auth-form-col {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
+}
+.auth-split .auth-brand-col {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--s3);
+  min-width: 0;
+}
+.auth-page-container .cpc-landing-container {
+  position: relative;
+  z-index: 2;
+}
+body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
+  margin-block: auto;
+}
+@media (max-width: 900px) {
+  .auth-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s4);
+  }
+  .auth-split .auth-brand-col {
+    order: 1;
+  }
+  .auth-split .auth-form-col {
+    order: 2;
+    max-width: 440px;
+  }
+}
