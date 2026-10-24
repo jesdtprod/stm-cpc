@@ -77,6 +77,9 @@ const deps: Deps = {
     });
     return rows?.[0] ?? null;
   },
+  memberNoForEmail: async (email) =>
+    (await rpc<string | null>("member_no_for_email", { p_email: email })) ??
+      null,
   loginSucceeded: async (memberId) => {
     await rpc("member_login_succeeded", { p_member_id: memberId });
   },

@@ -47,5 +47,6 @@ One file per change, never edited after it is applied. Kit migrations use number
 | `1310_booking_payments.sql` | 5.2 | `submit_payment`, `decide_payment` (verify, reject), `void_payment` (refund): proof file, methods, no overpaying, ledger credit and reversal |
 | `1311_payment_proof_checks.sql` | 5.2 | Clearer refusals for a reused reference number or proof file |
 | `1320_booking_helpers.sql` | 5.1, 5.4 | `find_players`, `quote_booking`, and the 5-minute expiry job (pg_cron) |
+| `1340_login_by_email.sql` | 3.1 | `member_no_for_email`: lets sign-in accept the profile email (only when exactly one member uses it; service role only) |
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in, linked CLI; no Docker).

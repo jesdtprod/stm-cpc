@@ -40,7 +40,7 @@ Deno.test("auth api: a sign-in sends the ID, password and CAPTCHA token to membe
   });
   assert.match(calls[0].url, /\/functions\/v1\/member-login$/);
   assert.deepEqual(JSON.parse(calls[0].init.body), {
-    member_id: "CPC-2026-00001",
+    identifier: "CPC-2026-00001",
     password: "pw",
     captcha_token: "tok",
   });

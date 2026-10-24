@@ -70,6 +70,10 @@ function world(overrides = {}) {
     },
     memberState: () =>
       Promise.resolve({ ...member, ...(overrides.member ?? {}) }),
+    memberNoForEmail: (e) =>
+      Promise.resolve(
+        e === "member@example.test" ? "CPC-2026-00001" : null,
+      ),
     loginSucceeded: (id) => {
       state.succeeded.push(id);
       return Promise.resolve();
@@ -403,4 +407,89 @@ Deno.test("login: no response or log line contains the ID, the password or the a
       assert.equal(String(text).includes(s), false, `${s} leaked`);
     }
   }
+});
+
+Deno.test("login by email: the address on the profile finds the member, then it is the same sign-in", async () => {
+  const { deps, state } = world();
+  const res = await handle(
+    request({
+      identifier: "  Member@Example.TEST ",
+      password: "0000112212025",
+      captcha_token: "tok",
+    }),
+    deps,
+  );
+  const { status, body } = await read(res);
+  assert.equal(status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(
+    state.signIns[0].email,
+    "cpc-2026-00001@members.cpc.app",
+    "Auth is called with the internal address of the member, never with the email typed",
+  );
+  assert.deepEqual(state.succeeded, ["01H0000000000000000000MEM1"]);
+});
+
+Deno.test("login by email: an unknown email, a shared email, a malformed email and a wrong password all look the same", async () => {
+  const bodies = [];
+  for (
+    const identifier of [
+      "nobody@example.test", // no member
+      "shared@example.test", // two members use it (the database returns none)
+      "not-an-email@", // malformed
+      "member@example.test", // known, but the password below is wrong
+    ]
+  ) {
+    const { deps, state } = world();
+    const res = await handle(
+      request({ identifier, password: "wrong-password", captcha_token: "tok" }),
+      deps,
+    );
+    bodies.push(await read(res));
+    assert.equal(state.signIns.length, 1, "every attempt goes through Auth");
+  }
+  for (const b of bodies) {
+    assert.equal(b.status, 401);
+    assert.deepEqual(b.body, {
+      ok: false,
+      code: "invalid_credentials",
+      message: GENERIC_MESSAGE,
+    });
+  }
+});
+
+Deno.test("login by email: failures by email and by member ID count against the same member", async () => {
+  const { deps } = world();
+  for (let i = 0; i < LIMITS.idMaxFailures; i++) {
+    await handle(
+      request({
+        identifier: "member@example.test",
+        password: "wrong",
+        captcha_token: "tok",
+      }, { ip: `203.0.113.${i + 10}` }),
+      deps,
+    );
+  }
+  const res = await handle(request(good, { ip: "198.51.100.9" }), deps);
+  const { status, body } = await read(res);
+  assert.equal(
+    status,
+    401,
+    "the correct ID and password are refused while the member is locked",
+  );
+  assert.equal(body.code, "invalid_credentials");
+});
+
+Deno.test("login by email: the response and the log never contain the email", async () => {
+  const { deps, state } = world();
+  const res = await handle(
+    request({
+      identifier: "member@example.test",
+      password: "wrong",
+      captcha_token: "tok",
+    }),
+    deps,
+  );
+  const text = JSON.stringify(await res.json()) + JSON.stringify(state.logs);
+  assert.ok(!text.includes("member@example.test"));
 });

@@ -3,6 +3,7 @@
 import {
   badge,
   button,
+  createCourtWatermarkSvg,
   field,
   h,
   icon,
@@ -75,24 +76,25 @@ export function createAccountPages(
 
     const memberId = field({
       id: "signin-id",
-      label: "Member ID",
+      label: "Member ID or email",
       required: true,
-      placeholder: "Example: CPC-2026-00001",
+      placeholder: "Example: CPC-2026-00001 or name@email.com",
+      iconLeading: "user",
     });
     const idInput = memberId.querySelector("input");
     idInput.setAttribute("autocomplete", "username");
-    idInput.setAttribute("autocapitalize", "characters");
+    idInput.setAttribute("autocapitalize", "none");
     idInput.setAttribute("spellcheck", "false");
     const password = field({
       id: "signin-password",
       label: "Password",
       type: "password",
       required: true,
+      placeholder: "••••••••••••",
+      iconLeading: "lock",
     });
-    password.querySelector("input").setAttribute(
-      "autocomplete",
-      "current-password",
-    );
+    const pwInput = password.querySelector("input");
+    pwInput.setAttribute("autocomplete", "current-password");
     const error = errorBox();
 
     const submit = button({
@@ -117,7 +119,10 @@ export function createAccountPages(
         const id = inputValue(memberId).trim();
         const pw = inputValue(password);
         if (!id || !pw) {
-          return showError(error, "Enter your member ID and password.");
+          return showError(
+            error,
+            "Enter your member ID or email and your password.",
+          );
         }
         if (!token) {
           return showError(error, "Please complete the security check first.");
@@ -126,7 +131,7 @@ export function createAccountPages(
         token = null;
         try {
           await session.signIn({ memberId: id, password: pw }, used);
-          password.querySelector("input").value = "";
+          pwInput.value = "";
           go(nextHash(session.getState()));
         } catch (e) {
           showError(
@@ -139,33 +144,121 @@ export function createAccountPages(
       }),
     );
 
-    return h(
+    const watermarkEl = createCourtWatermarkSvg("auth-court-watermark");
+
+    const containerEl = h(
       "div",
-      { class: "page auth-page" },
-      pageHeader({
-        icon: "check",
-        eyebrow: "Members",
-        title: "Sign in",
-        description: "Use your member ID and password.",
-      }),
+      { class: "auth-page-container" },
+      watermarkEl,
       h(
         "div",
-        { class: "card auth-card" },
-        form,
+        { class: "auth-page" },
+        // Landing page style brand header: Logo flanked side-by-side by paddle and ball
         h(
-          "p",
-          { class: "muted small" },
-          "First time here? Your first password is the last 5 digits of your member ID followed by your birth date as MMDDYYYY. You will be asked to choose a new one.",
+          "div",
+          { class: "auth-brand-top" },
+          h(
+            "div",
+            { class: "auth-brand-flank auth-brand-flank-left" },
+            h("img", {
+              src: "icons/paddle.png",
+              alt: "Tournament Pickleball Paddle Left",
+              class: "auth-top-paddle auth-top-paddle-left",
+            }),
+            h("img", {
+              src: "icons/ball.png",
+              alt: "Tournament Pickleball Left",
+              class: "auth-top-ball auth-top-ball-left",
+            }),
+          ),
+          h("img", {
+            class: "auth-brand-logo",
+            src: "icons/cpc-logo.png",
+            alt: "Capitol Pickleball Club",
+            width: "68",
+            height: "68",
+          }),
+          h(
+            "div",
+            { class: "auth-brand-flank auth-brand-flank-right" },
+            h("img", {
+              src: "icons/ball.png",
+              alt: "Tournament Pickleball Right",
+              class: "auth-top-ball auth-top-ball-right",
+            }),
+            h("img", {
+              src: "icons/paddle.png",
+              alt: "Tournament Pickleball Paddle Right",
+              class: "auth-top-paddle auth-top-paddle-right",
+            }),
+          ),
         ),
         h(
-          "p",
-          { class: "muted small" },
-          "Not a member yet? ",
-          h("a", { href: "#/signup" }, "Create an account"),
-          ".",
+          "div",
+          { class: "auth-hero-badge" },
+          icon("trophy"),
+          "Province of Sultan Kudarat’s Pickleball Court",
+        ),
+        h(
+          "div",
+          { class: "auth-title-wrap" },
+          h(
+            "h1",
+            { class: "auth-page-title", id: "page-title", tabindex: "-1" },
+            "Sign In to ",
+            h(
+              "span",
+              { class: "auth-title-accent" },
+              "Capitol Pickleball Club",
+            ),
+          ),
+          h(
+            "p",
+            { class: "auth-page-subtitle" },
+            "Use your member ID and password to manage court bookings, ranks, and event registrations.",
+          ),
+        ),
+        h(
+          "div",
+          { class: "card auth-card" },
+          form,
+          h(
+            "div",
+            { class: "auth-first-time-box" },
+            icon("info"),
+            h(
+              "span",
+              {},
+              h(
+                "strong",
+                { class: "auth-first-time-strong" },
+                "First time here? ",
+              ),
+              "Your initial password is the last 5 digits of your member ID followed by your birth date as MMDDYYYY (e.g. 0000112212025). You will be prompted to choose a new password upon first sign-in.",
+            ),
+          ),
+          h(
+            "div",
+            { class: "auth-card-footer" },
+            "Not a member yet? ",
+            h(
+              "a",
+              { href: "#/signup", class: "auth-signup-link" },
+              "Create an account / Join the club",
+            ),
+            ".",
+          ),
+        ),
+        h(
+          "a",
+          { href: "#/", class: "auth-back-link" },
+          icon("arrowLeft"),
+          "Back to home",
         ),
       ),
     );
+
+    return containerEl;
   }
 
   // ---------------------------------------------------------------- password

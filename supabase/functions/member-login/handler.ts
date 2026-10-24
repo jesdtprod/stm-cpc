@@ -1,19 +1,23 @@
-// member-login: member ID + password sign-in (PLAN 3.1; docs/SECURITY.md section 2).
+// member-login: sign-in with a member ID or the email address on the profile, plus a password
+// (PLAN 3.1; docs/SECURITY.md section 2).
 // The handler holds all the rules and receives everything it touches through `Deps`, so the rules are
 // unit-tested without a network. index.ts wires the real Supabase clients.
 //
 // Rules:
-//  * One generic answer ("invalid_credentials") for an unknown ID, a wrong password, a malformed ID and a
-//    locked ID or address. The Auth call is made for every attempt, so the paths cost about the same.
+//  * One generic answer ("invalid_credentials") for an unknown ID or email, an email shared by two members,
+//    a wrong password, a malformed ID and a locked ID, email or address. The Auth call is made for every attempt, so the paths cost about the same.
 //  * Cloudflare Turnstile is verified by Supabase Auth itself: the token is passed through, and a missing
 //    or bad token is refused by Auth (reported as captcha_failed, which says nothing about any member).
-//  * Lockout: 5 failures per member ID or 30 per address inside 15 minutes lock that key for 15 minutes.
+//  * An email is turned into its member ID by the database only when exactly one member with an account uses it;
+//    after that it is the same sign-in as with the ID (the failures of both ways count against the same member).
+//  * Lockout: 5 failures per member ID or email or 30 per address inside 15 minutes lock that key for 15 minutes.
 //    The counters hold SHA-256 hashes, never the ID or the address.
 //  * Only after the credentials are proven correct may the answer say more (account disabled, first
 //    password expired). No session is returned in those cases, and the Auth session is revoked.
 
 export const GENERIC_MESSAGE =
-  "Sign-in failed. Check your member ID and password, or try again later.";
+  "Sign-in failed. Check your member ID or email and your password, or try again later.";
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const ID_PATTERN = /^CPC-\d{4}-\d{5}$/;
 export const EMAIL_DOMAIN = "members.cpc.app";
 export const LIMITS = {
@@ -65,6 +69,8 @@ export interface Deps {
   revoke: (accessToken: string) => Promise<void>;
   memberState: (userId: string) => Promise<MemberState | null>;
   loginSucceeded: (memberId: string) => Promise<void>;
+  /** The member ID that uses this email, or null when none or more than one does. */
+  memberNoForEmail: (email: string) => Promise<string | null>;
   log: (event: string, fields?: Record<string, string | number>) => void;
 }
 
@@ -127,7 +133,7 @@ function clientAddress(req: Request): string {
 }
 
 interface Input {
-  memberId: string;
+  identifier: string;
   password: string;
   captchaToken: string;
 }
@@ -135,17 +141,17 @@ interface Input {
 function parseInput(value: unknown): Input | null {
   if (typeof value !== "object" || value === null) return null;
   const v = value as Record<string, unknown>;
-  const id = v.member_id;
+  const id = v.identifier ?? v.member_id;
   const pw = v.password;
   const token = v.captcha_token;
-  if (typeof id !== "string" || id.trim().length < 3 || id.length > 40) {
+  if (typeof id !== "string" || id.trim().length < 3 || id.length > 254) {
     return null;
   }
   if (typeof pw !== "string" || pw.length < 1 || pw.length > 128) return null;
   if (typeof token !== "string" || token.length < 1 || token.length > 4096) {
     return null;
   }
-  return { memberId: id, password: pw, captchaToken: token };
+  return { identifier: id, password: pw, captchaToken: token };
 }
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -180,20 +186,37 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json(400, { ok: false, code: "bad_request" }, origin, deps);
   }
 
-  const memberNo = normalizeMemberId(input.memberId);
-  const wellFormed = ID_PATTERN.test(memberNo);
-  const idKey = `id:${await deps.sha256(`v1|${memberNo}`)}`;
+  const raw = input.identifier.trim();
+  const byEmail = raw.includes("@");
+  const emailText = raw.toLowerCase();
   const ipKey = `ip:${await deps.sha256(`v1|${clientAddress(req)}`)}`;
+  const idKeyOf = async (no: string) => `id:${await deps.sha256(`v1|${no}`)}`;
 
-  if (await deps.isLocked([idKey, ipKey])) {
+  // An email becomes a member ID only when exactly one member uses it. Anything else keeps an empty ID, which can
+  // never match, so the answer is the same generic failure.
+  let memberNo = "";
+  let identityKeys: string[];
+  if (byEmail) {
+    if (EMAIL_PATTERN.test(emailText) && emailText.length <= 254) {
+      memberNo = (await deps.memberNoForEmail(emailText)) ?? "";
+    }
+    identityKeys = [`em:${await deps.sha256(`v1|email|${emailText}`)}`];
+    if (memberNo) identityKeys.push(await idKeyOf(memberNo));
+  } else {
+    memberNo = normalizeMemberId(raw);
+    identityKeys = [await idKeyOf(memberNo)];
+  }
+  const wellFormed = ID_PATTERN.test(memberNo);
+
+  if (await deps.isLocked([...identityKeys, ipKey])) {
     deps.log("login.locked_out");
     return generic(origin, deps);
   }
 
-  // A malformed ID still goes through Auth (with an address no member has), so the cost is the same.
+  // A malformed ID or an unknown email still goes through Auth (with an address no member has), so the cost is the same.
   const email = wellFormed
     ? internalEmail(memberNo)
-    : `invalid-${(await deps.sha256(memberNo)).slice(0, 24)}@${EMAIL_DOMAIN}`;
+    : `invalid-${(await deps.sha256(raw.toLowerCase())).slice(0, 24)}@${EMAIL_DOMAIN}`;
   const result = await deps.signIn(email, input.password, input.captchaToken);
 
   if (!result.ok) {
@@ -229,12 +252,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         deps,
       );
     }
-    const idLocked = await deps.recordFailure(
-      idKey,
-      LIMITS.idMaxFailures,
-      LIMITS.windowSeconds,
-      LIMITS.lockSeconds,
-    );
+    let idLocked = false;
+    for (const key of identityKeys) {
+      if (
+        await deps.recordFailure(
+          key,
+          LIMITS.idMaxFailures,
+          LIMITS.windowSeconds,
+          LIMITS.lockSeconds,
+        )
+      ) idLocked = true;
+    }
     const ipLocked = await deps.recordFailure(
       ipKey,
       LIMITS.ipMaxFailures,
@@ -282,7 +310,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     );
   }
 
-  await deps.clearFailures(idKey);
+  for (const key of identityKeys) await deps.clearFailures(key);
   await deps.loginSucceeded(state.member_id);
   return json(
     200,

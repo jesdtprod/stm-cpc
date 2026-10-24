@@ -15,7 +15,7 @@ export class AuthFlowError extends Error {
 
 const MESSAGES = {
   invalid_credentials:
-    "Sign-in failed. Check your member ID and password, or try again later.",
+    "Sign-in failed. Check your member ID or email and your password, or try again later.",
   captcha_failed: "Please complete the security check and try again.",
   account_disabled: "This account cannot sign in. Please contact the club.",
   password_expired:
@@ -58,7 +58,7 @@ async function post(path, body, headers, fetchFn) {
   );
 }
 
-/** Signs in with member ID + password. Resolves to { access_token, refresh_token, must_change_password }. */
+/** Signs in with a member ID or the email on the profile, plus the password. Resolves to { access_token, refresh_token, must_change_password }. */
 export async function memberLogin(
   { memberId, password },
   captchaToken,
@@ -67,7 +67,7 @@ export async function memberLogin(
   const json = await post(
     "member-login",
     {
-      member_id: memberId,
+      identifier: memberId,
       password,
       captcha_token: captchaToken,
     },
