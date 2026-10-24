@@ -47,7 +47,8 @@ export function start(main, { onChange, notFound, forbidden, check }) {
     main.setAttribute("aria-busy", "false");
     document.title = `${entry.title} · Capitol Pickleball Club`;
     onChange?.(path);
-    (main.querySelector("#page-title") ?? main).focus({ preventScroll: false });
+    globalThis.scrollTo(0, 0);
+    (main.querySelector("#page-title") ?? main).focus({ preventScroll: true });
   };
   addEventListener("hashchange", run);
   run();
