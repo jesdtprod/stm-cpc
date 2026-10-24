@@ -198,7 +198,7 @@ export function createShell(
     else if (side.hasAttribute("data-open")) setDrawer(false);
   });
 
-  function drawAccount(state, path = "") {
+  function drawAccount(state) {
     menuOpen = false;
     if (state.status !== "signed_in") {
       toggle = panel = null;
@@ -315,7 +315,7 @@ export function createShell(
 
     updateHeaderScroll();
 
-    drawAccount(state, path);
+    drawAccount(state);
 
     // Center header navigation active state
     if (centerNav) {

@@ -1,64 +1,9 @@
+import { LUCIDE } from "./lib/lucide.js";
+
 // Shared UI components. Every dynamic value goes through textContent / text nodes,
 // never innerHTML, so output is escaped by construction.
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-
-const ICONS = {
-  home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
-  grid: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
-  search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3",
-  x: "M6 6l12 12M18 6 6 18",
-  plus: "M12 5v14M5 12h14",
-  edit: "M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z",
-  trash: "M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5",
-  check: "M5 12.5l4.5 4.5L19 7.5",
-  alert: "M12 3 2 20h20zM12 10v4M12 17.5v.01",
-  inbox: "M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5",
-  refresh: "M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4",
-  chevl: "M15 6l-6 6 6 6",
-  chevr: "M9 6l6 6-6 6",
-  chevronLeft: "M15 6l-6 6 6 6",
-  chevronRight: "M9 6l6 6-6 6",
-  chevronDown: "M6 9l6 6 6-6",
-  chevronUp: "M18 15l-6-6-6 6",
-  info: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5M12 8v.01",
-  eye:
-    "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
-  eyeOff:
-    "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22",
-  calendar:
-    "M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 2v4M8 2v4M3 10h18",
-  clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2",
-  upload: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12",
-  download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
-  copy:
-    "M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.653 2H10a2 2 0 0 0-2 2zM4 16H3a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2h7a1 1 0 0 1 1 1v1",
-  user:
-    "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-  mail:
-    "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6",
-  phone:
-    "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z",
-  link:
-    "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71",
-  checkCircle: "M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3",
-  alertCircle: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 8v4M12 16h.01",
-  alertTriangle:
-    "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01",
-  sun:
-    "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z",
-  moon: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z",
-  filter: "M22 3H2l8 9.46V19l4 2v-8.54L22 3z",
-  layers: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
-  file: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6",
-  qrScan:
-    "M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2m-10 0H5a2 2 0 0 1-2-2v-2M7 12h10M12 7v10",
-  trophy:
-    "M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2m12 6h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2M6 3h12v7a6 6 0 0 1-12 0V3zm3 14h6m-3-3v7m-4 0h8",
-  lock:
-    "M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zm-12 0V7a5 5 0 0 1 10 0v4",
-  arrowLeft: "M19 12H5m7 7-7-7 7-7",
-};
 
 /** Create an element. Event handlers must be functions; string `on*` attributes are ignored. */
 export function h(tag, props = {}, ...children) {
@@ -87,9 +32,13 @@ export function icon(name) {
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("class", "icon");
   svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(SVG_NS, "path");
-  path.setAttribute("d", ICONS[name] ?? ICONS.info);
-  svg.append(path);
+  for (const [tag, attrs] of LUCIDE[name] ?? LUCIDE.info) {
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      node.setAttribute(key, value);
+    }
+    svg.append(node);
+  }
   return svg;
 }
 
@@ -3319,6 +3268,7 @@ export function setupConvexPatternCanvas(canvas, containerEl, watermarkEl) {
     globalThis.removeEventListener("touchend", handleTouchEnd);
     globalThis.removeEventListener("touchcancel", handleTouchEnd);
     globalThis.removeEventListener("resize", resize);
+    sizeWatcher?.disconnect();
   }
 
   function step() {
@@ -3410,6 +3360,11 @@ export function setupConvexPatternCanvas(canvas, containerEl, watermarkEl) {
   globalThis.addEventListener("touchend", handleTouchEnd, { passive: true });
   globalThis.addEventListener("touchcancel", handleTouchEnd, { passive: true });
   globalThis.addEventListener("resize", resize, { passive: true });
+  // the page can grow after the first draw (fonts, CAPTCHA); redraw so the pattern covers all of it
+  const sizeWatcher = typeof ResizeObserver === "function"
+    ? new ResizeObserver(() => resize())
+    : null;
+  sizeWatcher?.observe(canvas);
 
   requestAnimationFrame(() => {
     resize();

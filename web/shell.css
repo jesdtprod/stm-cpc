@@ -3820,8 +3820,8 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
 /* ---- Sign-in page (desktop): two crossed paddles with the ball beside them, at the top of the text ---- */
 .auth-showcase {
   position: relative;
-  width: 100%;
-  max-width: 460px;
+  width: 330px; /* as wide as the badge below, so the group is centred over it */
+  max-width: 100%;
   height: 200px;
   margin-bottom: var(--s2);
   pointer-events: none;
@@ -3829,7 +3829,7 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
 }
 .auth-showcase-unit {
   position: absolute;
-  left: 40px;
+  left: calc(50% - 100px);
   top: 0;
   width: 200px;
   transform-origin: 50% 72%;
@@ -3948,9 +3948,11 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
 .auth-split .auth-card {
   padding: 28px !important;
   border-radius: 20px !important;
-  background: linear-gradient(180deg, rgba(20, 44, 32, 0.92), rgba(11, 28, 20, 0.96)) !important;
+  background: linear-gradient(180deg, rgba(20, 44, 32, 0.92), rgba(11, 28, 20,
+    0.96)) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255,
+    0.06) !important;
   backdrop-filter: blur(10px);
 }
 .auth-split .auth-card-head {
@@ -4002,7 +4004,8 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
   font-size: 15px;
   background: linear-gradient(180deg, #1c9a4d, #15803d);
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 20px rgba(21, 128, 61, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 20px rgba(21, 128, 61, 0.35), inset 0 1px 0 rgba(255, 255,
+    255, 0.18);
 }
 .auth-split .auth-card .actions .btn:hover:not(:disabled) {
   background: linear-gradient(180deg, #22a957, #178a42);
