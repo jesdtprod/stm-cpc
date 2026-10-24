@@ -3852,8 +3852,8 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
 .auth-showcase-ball {
   position: absolute;
   left: 50%;
-  top: 25%;
-  width: 40%;
+  top: 27%;
+  width: 30%;
   height: auto;
   transform: translateX(-50%);
   border-radius: 50%;
@@ -3924,4 +3924,22 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
 .auth-split .auth-card-footer {
   margin-top: calc(var(--s2) * -1);
   padding-top: var(--s2);
+}
+
+/* Sign-in card: every vertical gap is 16px (the form's own gap) */
+.auth-split .auth-card-head {
+  margin-bottom: 0;
+}
+.auth-split .auth-card form.stack {
+  gap: 16px;
+}
+.auth-split .auth-card .field,
+.auth-split .auth-card .turnstile-box,
+.auth-split .auth-card .actions {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.auth-split .auth-card-footer {
+  margin-top: 0;
+  padding-top: 16px;
 }
