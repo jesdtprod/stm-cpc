@@ -1,0 +1,31 @@
+<svg width="80" height="80" viewBox="0 0 80 80"
+  xmlns="http://www.w3.org/2000/svg">
+  <!-- Subtle Court Boundary Grid Lines -->
+  <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#163827" stroke-width="1"
+    stroke-opacity="0.45" />
+
+  <!-- Subtle Pickleball Court Net / Mesh Diagonal Texture -->
+  <line x1="0" y1="80" x2="80" y2="0" stroke="#11291C" stroke-width="0.75"
+    stroke-opacity="0.35" stroke-dasharray="3 5" />
+
+  <!-- Regulation Court Center Line Cross -->
+  <path d="M 40 33 L 40 47 M 33 40 L 47 40" stroke="#234735" stroke-width="1.2"
+    stroke-opacity="0.6" stroke-linecap="round" />
+
+  <!-- Signature Aerodynamic Pickleball Perforation Accents -->
+  <circle cx="40" cy="40" r="2" fill="#4ADE80" fill-opacity="0.12" />
+  <circle cx="0" cy="0" r="2" fill="#DFB756" fill-opacity="0.1" />
+  <circle cx="80" cy="0" r="2" fill="#DFB756" fill-opacity="0.1" />
+  <circle cx="0" cy="80" r="2" fill="#DFB756" fill-opacity="0.1" />
+  <circle cx="80" cy="80" r="2" fill="#DFB756" fill-opacity="0.1" />
+
+  <!-- Micro Corner Court Brackets -->
+  <path d="M 6 1 L 1 1 1 6" fill="none" stroke="#2D5A42" stroke-width="1"
+    stroke-opacity="0.4" />
+  <path d="M 74 1 L 79 1 79 6" fill="none" stroke="#2D5A42" stroke-width="1"
+    stroke-opacity="0.4" />
+  <path d="M 1 74 L 1 79 6 79" fill="none" stroke="#2D5A42" stroke-width="1"
+    stroke-opacity="0.4" />
+  <path d="M 79 74 L 79 79 74 79" fill="none" stroke="#2D5A42" stroke-width="1"
+    stroke-opacity="0.4" />
+</svg>

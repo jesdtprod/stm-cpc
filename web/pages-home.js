@@ -176,6 +176,21 @@ function loadingView() {
 }
 
 export function createHomePages({ session, api }) {
+  async function loadClubMemberCount(target) {
+    try {
+      const stats = await api.rpc("club_home_stats");
+      const count = Number(stats?.active_members);
+      if (!target.isConnected || !Number.isSafeInteger(count) || count < 0) {
+        return;
+      }
+      target.textContent = `${
+        new Intl.NumberFormat("en-PH").format(count)
+      } Active Club Member${count === 1 ? "" : "s"}`;
+    } catch {
+      if (target.isConnected) target.textContent = "Active club members";
+    }
+  }
+
   function svgEl(tag, props = {}, ...children) {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
     for (const [key, val] of Object.entries(props)) {
@@ -192,349 +207,878 @@ export function createHomePages({ session, api }) {
     return el;
   }
 
-  // Vector equipment follows the green honeycomb faces and gold rims of the CPC crest.
-  function createEquipmentScene() {
-    const gradient = (id, stops) => svgEl("linearGradient", {
-      id, x1: "0", y1: "0", x2: "1", y2: "1",
-    }, ...stops.map(([offset, color]) => svgEl("stop", { offset, "stop-color": color })));
-    const face = "M42 0H98Q140 0 140 44V139Q140 169 110 185L91 196H49L30 185Q0 169 0 139V44Q0 0 42 0Z";
-    const defs = svgEl("defs", {},
-      gradient("cpc-paddle-green", [["0%", "#245942"], ["48%", "#103b2c"], ["100%", "#061d17"]]),
-      gradient("cpc-paddle-gold", [["0%", "#f6e8b0"], ["35%", "#c4a15e"], ["65%", "#f1d58d"], ["100%", "#8d6c32"]]),
-      svgEl("radialGradient", { id: "cpc-ball-gold", cx: "32%", cy: "25%", r: "75%" },
-        svgEl("stop", { offset: "0%", "stop-color": "#fff2a3" }),
-        svgEl("stop", { offset: "55%", "stop-color": "#edcb42" }),
-        svgEl("stop", { offset: "100%", "stop-color": "#aa7e13" })),
-      svgEl("pattern", { id: "cpc-honeycomb", width: "22", height: "38", patternUnits: "userSpaceOnUse" },
-        svgEl("path", { d: "M11 0 22 6.3V19L11 25.3 0 19V6.3ZM0 19 11 25.3V38M22 19 11 25.3", fill: "none", stroke: "#b8cb9a", "stroke-width": "1", opacity: ".28" })),
-      svgEl("clipPath", { id: "cpc-paddle-face" }, svgEl("path", { d: face })));
-    const paddle = (n, transform) => svgEl("g", { class: `cpc-racket cpc-racket-${n}` },
-      svgEl("g", { transform },
-        svgEl("rect", { x: "52", y: "182", width: "36", height: "100", rx: "12", fill: "#0a1915", stroke: "url(#cpc-paddle-gold)", "stroke-width": "3" }),
-        ...[206, 218, 230, 242, 254, 266].map(y => svgEl("path", { d: `M55 ${y} 85 ${y - 8}`, stroke: "#536258", "stroke-width": "3" })),
-        svgEl("path", { d: face, fill: "url(#cpc-paddle-green)", stroke: "#e8eadb", "stroke-width": "10" }),
-        svgEl("path", { d: face, fill: "none", stroke: "url(#cpc-paddle-gold)", "stroke-width": "5" }),
-        svgEl("path", { d: face, fill: "url(#cpc-honeycomb)", "clip-path": "url(#cpc-paddle-face)" }),
-        svgEl("path", { d: "M18 54Q18 18 53 18H94", fill: "none", stroke: "#ffffff", opacity: ".2", "stroke-width": "3" }),
-        svgEl("path", { d: "M55 159 70 144 85 159 70 174Z", fill: "none", stroke: "#dbc48a", "stroke-width": "2" })));
-    const ball = (n, transform) => svgEl("g", { class: `cpc-ball cpc-ball-${n}` },
-      svgEl("g", { transform },
-        svgEl("circle", { r: "36", fill: "url(#cpc-ball-gold)", stroke: "#efdc83", "stroke-width": "1" }),
-        ...[[0, 0, 6, 8], [-18, -14, 5, 7], [13, -22, 6, 4], [20, 12, 5, 7], [-13, 23, 6, 4], [-30, 5, 3, 7], [31, -9, 2, 6]].map(([cx, cy, rx, ry]) =>
-          svgEl("ellipse", { cx, cy, rx, ry, fill: "#3e461b", stroke: "#d0a72d", "stroke-width": "1.5" }))));
-    const art = svgEl("svg", { viewBox: "0 0 620 620", class: "cpc-equipment-art", "aria-hidden": "true", focusable: "false" },
-      defs,
-      svgEl("circle", { cx: "310", cy: "290", r: "240", class: "cpc-art-orbit" }),
-      svgEl("circle", { cx: "310", cy: "290", r: "190", class: "cpc-art-orbit cpc-art-orbit-inner" }),
-      svgEl("ellipse", { cx: "320", cy: "535", rx: "180", ry: "18", fill: "#000", opacity: ".16" }),
-      paddle(1, "translate(83 184) rotate(-27 70 140) scale(1.04)"),
-      paddle(3, "translate(365 151) rotate(28 70 140) scale(.83)"),
-      ball(2, "translate(128 120) scale(.48)"),
-      paddle(2, "translate(251 202) rotate(13 70 140) scale(1.13)"),
-      ball(1, "translate(440 423) scale(1.1)"),
-      ball(3, "translate(488 163) scale(.56)"));
-    return h("div", { class: "cpc-equipment-scene" }, art);
+  function createCourtWatermarkSvg() {
+    return svgEl(
+      "svg",
+      {
+        class: "cpc-hero-court-watermark",
+        viewBox: "0 0 900 420",
+        fill: "none",
+        "aria-hidden": "true",
+      },
+      svgEl("rect", {
+        x: "30",
+        y: "30",
+        width: "840",
+        height: "360",
+        rx: "8",
+        stroke: "#163827",
+        "stroke-width": "1.5",
+        "stroke-opacity": "0.45",
+      }),
+      svgEl("line", {
+        x1: "450",
+        y1: "15",
+        x2: "450",
+        y2: "405",
+        stroke: "#DFB756",
+        "stroke-width": "1.5",
+        "stroke-opacity": "0.35",
+        "stroke-dasharray": "6 4",
+      }),
+      svgEl("line", {
+        x1: "316",
+        y1: "30",
+        x2: "316",
+        y2: "390",
+        stroke: "#234735",
+        "stroke-width": "1.2",
+        "stroke-opacity": "0.45",
+      }),
+      svgEl("line", {
+        x1: "584",
+        y1: "30",
+        x2: "584",
+        y2: "390",
+        stroke: "#234735",
+        "stroke-width": "1.2",
+        "stroke-opacity": "0.45",
+      }),
+      svgEl("line", {
+        x1: "30",
+        y1: "210",
+        x2: "316",
+        y2: "210",
+        stroke: "#163827",
+        "stroke-width": "1.2",
+        "stroke-opacity": "0.45",
+      }),
+      svgEl("line", {
+        x1: "584",
+        y1: "210",
+        x2: "870",
+        y2: "210",
+        stroke: "#163827",
+        "stroke-width": "1.2",
+        "stroke-opacity": "0.45",
+      }),
+      svgEl("circle", {
+        cx: "30",
+        cy: "30",
+        r: "3",
+        fill: "#DFB756",
+        "fill-opacity": "0.3",
+      }),
+      svgEl("circle", {
+        cx: "870",
+        cy: "30",
+        r: "3",
+        fill: "#DFB756",
+        "fill-opacity": "0.3",
+      }),
+      svgEl("circle", {
+        cx: "30",
+        cy: "390",
+        r: "3",
+        fill: "#DFB756",
+        "fill-opacity": "0.3",
+      }),
+      svgEl("circle", {
+        cx: "870",
+        cy: "390",
+        r: "3",
+        fill: "#DFB756",
+        "fill-opacity": "0.3",
+      }),
+    );
+  }
+
+  function setupConvexPatternCanvas(canvas, landingEl, watermarkEl) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const STEP = 60;
+    const RADIUS = 180;
+    const RADIUS_SQ = RADIUS * RADIUS;
+    const EASE = 0.08;
+
+    let width = 0;
+    let height = 0;
+    let targetX = -9999;
+    let targetY = -9999;
+    let currentX = -9999;
+    let currentY = -9999;
+    let targetStrength = 0;
+    let currentStrength = 0;
+    let animId = null;
+    let hasConnected = false;
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      if (width === 0 || height === 0) return;
+      const dpr = globalThis.devicePixelRatio || 1;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function warp(x, y) {
+      const dx = x - currentX;
+      const dy = y - currentY;
+      const distSq = dx * dx + dy * dy;
+      if (distSq >= RADIUS_SQ || currentStrength <= 0.0005) {
+        return [x, y];
+      }
+      const dist = Math.sqrt(distSq);
+      if (dist < 0.0001) return [x, y];
+      const r = dist / RADIUS; // 0 <= r < 1
+      // Convex lens formula: C1 smooth at boundary
+      const factor = 0.44 * (1 - r * r) * (1 - r * r) * currentStrength;
+      return [x + dx * factor, y + dy * factor];
+    }
+
+    function draw() {
+      if (width === 0 || height === 0) return;
+      ctx.clearRect(0, 0, width, height);
+
+      const hasConvex = currentStrength > 0.0005;
+      const xMin = hasConvex ? currentX - RADIUS : -9999;
+      const xMax = hasConvex ? currentX + RADIUS : -9999;
+      const yMin = hasConvex ? currentY - RADIUS : -9999;
+      const yMax = hasConvex ? currentY + RADIUS : -9999;
+
+      // 1. Diagonal Court Net Pattern (dashed)
+      ctx.beginPath();
+      ctx.setLineDash([3, 5]);
+      ctx.strokeStyle = "rgba(17, 41, 28, 0.35)";
+      ctx.lineWidth = 0.75;
+      for (let gx = 0; gx < width + STEP; gx += STEP) {
+        for (let gy = 0; gy < height + STEP; gy += STEP) {
+          const x1 = gx;
+          const y1 = gy + STEP;
+          const x2 = gx + STEP;
+          const y2 = gy;
+          const inLens = hasConvex &&
+            x2 >= xMin && x1 <= xMax &&
+            y1 >= yMin && y2 <= yMax;
+          if (!inLens) {
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+          } else {
+            const [wx1, wy1] = warp(x1, y1);
+            ctx.moveTo(wx1, wy1);
+            for (let t = 0.15; t <= 1; t += 0.15) {
+              const [wx, wy] = warp(
+                x1 + (x2 - x1) * t,
+                y1 + (y2 - y1) * t,
+              );
+              ctx.lineTo(wx, wy);
+            }
+          }
+        }
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 2. Regulation Court Grid Lines (vertical & horizontal)
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(22, 56, 39, 0.45)";
+      ctx.lineWidth = 1;
+
+      // Vertical lines
+      for (let gx = 0; gx <= width + STEP; gx += STEP) {
+        if (!hasConvex || gx < xMin || gx > xMax) {
+          ctx.moveTo(gx, 0);
+          ctx.lineTo(gx, height);
+        } else {
+          ctx.moveTo(gx, 0);
+          const yEnter = Math.max(0, yMin);
+          const yExit = Math.min(height, yMax);
+          if (yEnter > 0) ctx.lineTo(gx, yEnter);
+          for (let gy = yEnter; gy <= yExit; gy += 6) {
+            const [wx, wy] = warp(gx, gy);
+            ctx.lineTo(wx, wy);
+          }
+          if (yExit < height) ctx.lineTo(gx, height);
+        }
+      }
+
+      // Horizontal lines
+      for (let gy = 0; gy <= height + STEP; gy += STEP) {
+        if (!hasConvex || gy < yMin || gy > yMax) {
+          ctx.moveTo(0, gy);
+          ctx.lineTo(width, gy);
+        } else {
+          ctx.moveTo(0, gy);
+          const xEnter = Math.max(0, xMin);
+          const xExit = Math.min(width, xMax);
+          if (xEnter > 0) ctx.lineTo(xEnter, gy);
+          for (let gx = xEnter; gx <= xExit; gx += 6) {
+            const [wx, wy] = warp(gx, gy);
+            ctx.lineTo(wx, wy);
+          }
+          if (xExit < width) ctx.lineTo(width, gy);
+        }
+      }
+      ctx.stroke();
+
+      // 3. Regulation Center Crosses
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(35, 71, 53, 0.65)";
+      ctx.lineWidth = 1.2;
+      ctx.lineCap = "round";
+      for (let gx = 0; gx < width + STEP; gx += STEP) {
+        for (let gy = 0; gy < height + STEP; gy += STEP) {
+          const cx = gx + STEP / 2;
+          const cy = gy + STEP / 2;
+          const inLens = hasConvex &&
+            cx >= xMin && cx <= xMax &&
+            cy >= yMin && cy <= yMax;
+          const [wcx, wcy] = inLens ? warp(cx, cy) : [cx, cy];
+          const crossSize = inLens ? 6.5 : 5.5;
+          ctx.moveTo(wcx, wcy - crossSize);
+          ctx.lineTo(wcx, wcy + crossSize);
+          ctx.moveTo(wcx - crossSize, wcy);
+          ctx.lineTo(wcx + crossSize, wcy);
+        }
+      }
+      ctx.stroke();
+      ctx.lineCap = "butt";
+
+      // 4. Pickleball Perforation Accents (Gold corner dots, Emerald center dots)
+      // Gold corner dots
+      ctx.fillStyle = "rgba(223, 183, 86, 0.16)";
+      for (let gx = 0; gx <= width + STEP; gx += STEP) {
+        for (let gy = 0; gy <= height + STEP; gy += STEP) {
+          const inLens = hasConvex &&
+            gx >= xMin && gx <= xMax &&
+            gy >= yMin && gy <= yMax;
+          const [wgx, wgy] = inLens ? warp(gx, gy) : [gx, gy];
+          const dotR = inLens ? 2.2 : 1.8;
+          ctx.beginPath();
+          ctx.arc(wgx, wgy, dotR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Emerald center dots
+      ctx.fillStyle = "rgba(74, 222, 128, 0.18)";
+      for (let gx = 0; gx < width + STEP; gx += STEP) {
+        for (let gy = 0; gy < height + STEP; gy += STEP) {
+          const cx = gx + STEP / 2;
+          const cy = gy + STEP / 2;
+          const inLens = hasConvex &&
+            cx >= xMin && cx <= xMax &&
+            cy >= yMin && cy <= yMax;
+          const [wcx, wcy] = inLens ? warp(cx, cy) : [cx, cy];
+          const dotR = inLens ? 2.2 : 1.8;
+          ctx.beginPath();
+          ctx.arc(wcx, wcy, dotR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    function cleanup() {
+      if (animId) {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+      globalThis.removeEventListener("mousemove", handleMouseMove);
+      globalThis.removeEventListener("mouseleave", handleMouseLeave);
+      globalThis.removeEventListener("touchstart", handleTouch);
+      globalThis.removeEventListener("touchmove", handleTouch);
+      globalThis.removeEventListener("touchend", handleTouchEnd);
+      globalThis.removeEventListener("touchcancel", handleTouchEnd);
+      globalThis.removeEventListener("resize", resize);
+    }
+
+    function step() {
+      if (landingEl.isConnected) {
+        hasConnected = true;
+      } else if (hasConnected) {
+        cleanup();
+        return;
+      }
+
+      currentX += (targetX - currentX) * EASE;
+      currentY += (targetY - currentY) * EASE;
+      currentStrength += (targetStrength - currentStrength) * EASE;
+
+      draw();
+
+      if (watermarkEl) {
+        const halfW = width / 2 || 1;
+        const halfH = height / 2 || 1;
+        const normX = ((currentX - halfW) / halfW) * -16 * currentStrength;
+        const normY = ((currentY - halfH) / halfH) * -12 * currentStrength;
+        watermarkEl.style.transform = `translate(calc(-50% + ${
+          normX.toFixed(2)
+        }px), calc(-50% + ${normY.toFixed(2)}px)) rotate(${
+          (-4 + normX * 0.04).toFixed(2)
+        }deg)`;
+      }
+
+      // Settle and pause RAF when idle and mouse is not over
+      if (
+        targetStrength === 0 &&
+        currentStrength <= 0.0005 &&
+        Math.abs(targetX - currentX) < 0.1 &&
+        Math.abs(targetY - currentY) < 0.1
+      ) {
+        currentStrength = 0;
+        draw();
+        animId = null;
+        return;
+      }
+
+      animId = requestAnimationFrame(step);
+    }
+
+    function handleMouseMove(e) {
+      const rect = canvas.getBoundingClientRect();
+      targetX = e.clientX - rect.left;
+      targetY = e.clientY - rect.top;
+      if (currentX === -9999) {
+        currentX = targetX;
+        currentY = targetY;
+      }
+      targetStrength = 1;
+      if (!animId) animId = requestAnimationFrame(step);
+    }
+
+    function handleTouch(e) {
+      if (!e.touches || !e.touches[0]) return;
+      const t = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      targetX = t.clientX - rect.left;
+      targetY = t.clientY - rect.top;
+      if (currentX === -9999) {
+        currentX = targetX;
+        currentY = targetY;
+      }
+      targetStrength = 1;
+      if (!animId) animId = requestAnimationFrame(step);
+    }
+
+    function handleMouseLeave() {
+      targetStrength = 0;
+      if (!animId) animId = requestAnimationFrame(step);
+    }
+
+    function handleTouchEnd() {
+      targetStrength = 0;
+      if (!animId) animId = requestAnimationFrame(step);
+    }
+
+    globalThis.addEventListener("mousemove", handleMouseMove, {
+      passive: true,
+    });
+    globalThis.addEventListener("mouseleave", handleMouseLeave, {
+      passive: true,
+    });
+    globalThis.addEventListener("touchstart", handleTouch, { passive: true });
+    globalThis.addEventListener("touchmove", handleTouch, { passive: true });
+    globalThis.addEventListener("touchend", handleTouchEnd, { passive: true });
+    globalThis.addEventListener("touchcancel", handleTouchEnd, {
+      passive: true,
+    });
+    globalThis.addEventListener("resize", resize, { passive: true });
+
+    // Initial measurement
+    requestAnimationFrame(() => {
+      resize();
+    });
   }
 
   function welcomePage() {
-    const scene = createEquipmentScene();
-    const motionButton = h("button", {
-      class: "btn btn-ghost btn-sm cpc-motion-control",
-      type: "button",
-      "aria-pressed": "false",
-      "aria-label": "Pause decorative paddle and ball animation",
-      onClick: () => {
-        const paused = scene.classList.toggle("is-paused");
-        motionButton.setAttribute("aria-pressed", String(paused));
-        motionButton.setAttribute("aria-label", `${paused ? "Resume" : "Pause"} decorative paddle and ball animation`);
-        motionButton.textContent = paused ? "Resume motion" : "Pause motion";
-      },
-    }, "Pause motion");
-    const heroSection = h("section", {
-      class: "cpc-hero", "aria-labelledby": "cpc-welcome-title",
-    }, h("div", { class: "cpc-landing-container" },
-      h("div", { class: "cpc-hero-grid" },
-        h("div", { class: "cpc-hero-content" },
-          h("p", { class: "cpc-hero-badge" }, "Sultan Kudarat ? Philippines"),
-          h("h1", { class: "cpc-hero-title", id: "cpc-welcome-title" },
-            "A better place ", h("span", { class: "cpc-hero-title-accent" }, "to play.")),
-          h("p", { class: "cpc-hero-club" }, "Capitol Pickleball Club"),
-          h("p", { class: "cpc-hero-subtitle" },
-            "Good rallies. Great company. A club to call your own. Bring your love of the game ? we?ll help you find your next match."),
-          h("div", { class: "cpc-hero-actions" },
-            h("a", { class: "btn btn-primary btn-lg", href: "#/signup" }, "Become a member", icon("chevr")),
-            h("a", { class: "cpc-editorial-link", href: "#/booking" }, "Explore court availability", icon("chevr"))),
-          h("p", { class: "cpc-hero-note" }, "Already a member? Sign in using the menu above.")),
-        h("div", { class: "cpc-equipment-wrap" }, scene,
-          h("div", { class: "cpc-equipment-caption" },
-            h("span", {}, "The game brings us together."), motionButton))),
-      h("div", { class: "cpc-club-strip", "aria-label": "The club experience" },
-        h("span", {}, "One club. Every kind of player."),
-        h("span", {}, "Social rallies"), h("span", {}, "Court reservations"), h("span", {}, "Club competition"))));
+    const canvasEl = h("canvas", {
+      class: "cpc-hero-canvas",
+      "aria-hidden": "true",
+    });
+    const watermarkEl = createCourtWatermarkSvg();
 
-    // 3. Key Features Section
-    const featuresSection = h(
+    // 1. Hero Section
+    const memberCount = h(
+      "span",
+      { class: "cpc-social-count", "aria-live": "polite" },
+      "Active club members",
+    );
+    const heroSection = h(
       "section",
-      {
-        class: "cpc-section cpc-section-alt",
-        id: "features",
-        "aria-label": "Key Features",
-      },
+      { class: "cpc-hero", "aria-label": "Welcome to Capitol Pickleball Club" },
+      canvasEl,
+      watermarkEl,
       h(
         "div",
         { class: "cpc-landing-container" },
         h(
           "div",
-          { class: "cpc-section-header" },
-          h("span", { class: "cpc-section-tag" }, "The club experience"),
-          h(
-            "h2",
-            { class: "cpc-section-title" },
-            "More than a match.",
-          ),
-          h(
-            "p",
-            { class: "cpc-section-desc" },
-            "Make time for the game, connect with fellow players, and build your confidence on court.",
-          ),
-        ),
-        h(
-          "div",
-          { class: "cpc-features-grid" },
+          { class: "cpc-hero-grid" },
+          // Left Column: Headline and CTAs
           h(
             "div",
-            { class: "cpc-feature-card" },
-            h("div", { class: "cpc-feature-icon" }, icon("calendar")),
-            h("h3", { class: "cpc-feature-title" }, "Your time on court"),
+            { class: "cpc-hero-content" },
             h(
-              "p",
-              { class: "cpc-feature-text" },
-              "Find a court and a time that works for you. Submit a reservation and follow its approval status from your account.",
+              "div",
+              { class: "cpc-hero-badge" },
+              icon("trophy"),
+              "Province of Sultan Kudarat’s Pickleball Court",
             ),
-          ),
-          h(
-            "div",
-            { class: "cpc-feature-card" },
-            h("div", { class: "cpc-feature-icon" }, icon("layers")),
             h(
-              "h3",
-              { class: "cpc-feature-title" },
-              "Room to grow",
+              "h1",
+              { class: "cpc-hero-title" },
+              "Play, Compete & Elevate Your Game at ",
+              h(
+                "span",
+                { class: "cpc-hero-title-accent" },
+                "Capitol Pickleball Club",
+              ),
             ),
             h(
               "p",
-              { class: "cpc-feature-text" },
-              "Find your level with club-assigned categories and ranks. Enjoy a clear starting point as you develop your game.",
+              { class: "cpc-hero-subtitle" },
+              "Experience championship covered courts, instant court reservations with GCash verification, custom club categories and ranks, and digital member QR passes.",
+            ),
+            h(
+              "div",
+              { class: "cpc-hero-actions" },
+              h(
+                "a",
+                { class: "btn btn-accent", href: "#/signup" },
+                icon("checkCircle"),
+                "Join the Club",
+              ),
+              h(
+                "a",
+                { class: "btn btn-primary", href: "#/signin" },
+                icon("user"),
+                "Sign In",
+              ),
+              h(
+                "a",
+                { class: "btn btn-secondary", href: "#/booking" },
+                icon("calendar"),
+                "View Court Schedule",
+              ),
+            ),
+            h(
+              "div",
+              { class: "cpc-hero-social" },
+              h(
+                "div",
+                { class: "cpc-avatars" },
+                h("span", { class: "cpc-avatar-pill cpc-avatar-1" }, "CK"),
+                h("span", { class: "cpc-avatar-pill cpc-avatar-2" }, "MR"),
+                h("span", { class: "cpc-avatar-pill cpc-avatar-3" }, "AS"),
+                h("span", { class: "cpc-avatar-pill cpc-avatar-4" }, "GT"),
+              ),
+              h(
+                "div",
+                { class: "cpc-social-text" },
+                memberCount,
+                h(
+                  "span",
+                  { class: "cpc-social-stars" },
+                  "Custom club ranks ? Court reservations",
+                ),
+              ),
             ),
           ),
+          // Right Column: Symmetrical Paddles, Balls & Phone Mockup
           h(
             "div",
-            { class: "cpc-feature-card" },
-            h("div", { class: "cpc-feature-icon" }, icon("layers")),
+            { class: "cpc-hero-mockup-wrap" },
+            // Left Paddle (Opposite Side)
+            h("img", {
+              src: "icons/paddle.png",
+              alt: "Capitol Tournament Paddle Left",
+              class: "cpc-paddle cpc-paddle-left",
+            }),
+            // Left Pickleball (Opposite Side)
+            h("img", {
+              src: "icons/ball.png",
+              alt: "Tournament Pickleball Left",
+              class: "cpc-ball cpc-ball-left",
+            }),
+            // Right Paddle (Original Side)
+            h("img", {
+              src: "icons/paddle.png",
+              alt: "Capitol Tournament Paddle Right",
+              class: "cpc-paddle cpc-paddle-right",
+            }),
+            // Right Pickleball (Original Side)
+            h("img", {
+              src: "icons/ball.png",
+              alt: "Tournament Pickleball Right",
+              class: "cpc-ball cpc-ball-right",
+            }),
+            // Luxury Mobile Showcase Phone (Full Details)
             h(
-              "h3",
-              { class: "cpc-feature-title" },
-              "A competitive spirit",
-            ),
-            h(
-              "p",
-              { class: "cpc-feature-text" },
-              "From friendly rallies to club events, discover more reasons to practise, connect, and enjoy the challenge.",
-            ),
-          ),
-          h(
-            "div",
-            { class: "cpc-feature-card" },
-            h("div", { class: "cpc-feature-icon" }, icon("user")),
-            h(
-              "h3",
-              { class: "cpc-feature-title" },
-              "A sense of belonging",
-            ),
-            h(
-              "p",
-              { class: "cpc-feature-text" },
-              "Your member account keeps your club identity, bookings, and profile together, wherever the game takes you.",
+              "div",
+              {
+                class: "cpc-phone",
+                role: "img",
+                "aria-label":
+                  "Sample member dashboard showing a confirmed booking, club standing, tournament match, member pass, and recent activity. Illustrative data only.",
+              },
+              // Status Bar with Clock, Dynamic Island, and Signal/Battery
+              h(
+                "div",
+                { class: "cpc-phone-status-bar" },
+                h("span", { class: "cpc-phone-clock" }, "9:41"),
+                h(
+                  "div",
+                  { class: "cpc-phone-dynamic-island" },
+                  h("span", { class: "cpc-phone-camera-dot" }),
+                ),
+                h(
+                  "div",
+                  { class: "cpc-phone-status-tray" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-signal" },
+                    h("span", {}),
+                    h("span", {}),
+                    h("span", {}),
+                    h("span", {}),
+                  ),
+                  h("span", { class: "cpc-phone-5g" }, "5G"),
+                  h(
+                    "div",
+                    { class: "cpc-phone-battery" },
+                    h("div", { class: "cpc-phone-battery-level" }),
+                  ),
+                ),
+              ),
+              // Phone Screen
+              h(
+                "div",
+                { class: "cpc-phone-screen" },
+                // App Header with Avatar & QR Action
+                h(
+                  "div",
+                  { class: "cpc-phone-head" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-user" },
+                    h(
+                      "div",
+                      { class: "cpc-phone-avatar-wrap" },
+                      h("span", { class: "cpc-phone-avatar" }, "AR"),
+                      h("span", { class: "cpc-phone-online-dot" }),
+                    ),
+                    h(
+                      "div",
+                      {},
+                      h(
+                        "div",
+                        { class: "cpc-phone-greeting" },
+                        "Alex Reyes",
+                      ),
+                      h(
+                        "div",
+                        { class: "cpc-phone-status" },
+                        "Sample member · Intermediate",
+                      ),
+                    ),
+                  ),
+                  h(
+                    "span",
+                    {
+                      class: "cpc-phone-head-btn",
+                      "aria-hidden": "true",
+                    },
+                    icon("qrScan"),
+                  ),
+                ),
+                // Card 1: Active Court Reservation (Hero Card)
+                h(
+                  "div",
+                  { class: "cpc-phone-card cpc-phone-card-hero" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-card-top" },
+                    h(
+                      "span",
+                      { class: "cpc-phone-card-tag" },
+                      icon("calendar"),
+                      "Upcoming Booking",
+                    ),
+                    h("span", { class: "cpc-phone-court-badge" }, "Court 1"),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-court-name" },
+                    "Your next court session",
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-time" },
+                    icon("clock"),
+                    "Today · 5:00 PM – 7:00 PM (2 hrs)",
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-card-meta" },
+                    h(
+                      "span",
+                      { class: "cpc-phone-badge" },
+                      icon("checkCircle"),
+                      "GCash Paid ₱600 (#8921)",
+                    ),
+                    h(
+                      "span",
+                      { class: "cpc-phone-pill-sub" },
+                      "Gate Pass: Ready",
+                    ),
+                  ),
+                ),
+                // Card 2: Custom club standing and season record
+                h(
+                  "div",
+                  { class: "cpc-phone-card" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-card-top" },
+                    h(
+                      "span",
+                      { class: "cpc-phone-card-tag" },
+                      icon("trophy"),
+                      "Official Standing",
+                    ),
+                    h("span", { class: "cpc-phone-rank-badge" }, "Club ladder"),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-metrics-grid" },
+                    h(
+                      "div",
+                      { class: "cpc-phone-metric" },
+                      h("div", { class: "cpc-phone-metric-val" }, "19"),
+                      h(
+                        "div",
+                        { class: "cpc-phone-metric-lbl" },
+                        "Matches won",
+                      ),
+                    ),
+                    h(
+                      "div",
+                      { class: "cpc-phone-metric" },
+                      h("div", { class: "cpc-phone-metric-val" }, "#12"),
+                      h(
+                        "div",
+                        { class: "cpc-phone-metric-lbl" },
+                        "Club Rank (of 86)",
+                      ),
+                    ),
+                    h(
+                      "div",
+                      { class: "cpc-phone-metric" },
+                      h("div", { class: "cpc-phone-metric-val" }, "High"),
+                      h(
+                        "div",
+                        { class: "cpc-phone-metric-lbl" },
+                        "Club rank",
+                      ),
+                    ),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-progress-wrap" },
+                    h(
+                      "div",
+                      { class: "cpc-phone-progress-labels" },
+                      h("span", {}, "Season win rate: 83%"),
+                      h("span", {}, "19-4 Win Record"),
+                    ),
+                    h(
+                      "div",
+                      { class: "cpc-phone-progress-bar" },
+                      h("div", { class: "cpc-phone-progress-fill" }),
+                    ),
+                  ),
+                ),
+                // Card 3: Live Tournament Bracket
+                h(
+                  "div",
+                  { class: "cpc-phone-card" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-card-top" },
+                    h(
+                      "span",
+                      { class: "cpc-phone-card-tag" },
+                      icon("trophy"),
+                      "Summer Open 2026",
+                    ),
+                    h("span", { class: "cpc-phone-live-dot" }, "● LIVE"),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-match-row" },
+                    h(
+                      "div",
+                      {},
+                      h(
+                        "div",
+                        { class: "cpc-phone-match-title" },
+                        "Pool A · Reyes / Tan vs. Santos / Lim",
+                      ),
+                      h(
+                        "div",
+                        { class: "cpc-phone-time" },
+                        icon("clock"),
+                        "Next Match @ 7:30 PM (Court 3)",
+                      ),
+                    ),
+                    h("span", { class: "cpc-phone-badge" }, "On Deck"),
+                  ),
+                ),
+                // Card 4: Digital Member Pass & Privileges
+                h(
+                  "div",
+                  { class: "cpc-phone-card" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-card-top" },
+                    h(
+                      "span",
+                      { class: "cpc-phone-card-tag" },
+                      icon("user"),
+                      "Digital Member Pass",
+                    ),
+                    h("span", { class: "cpc-phone-badge" }, "Verified 2026"),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-pass-card-row" },
+                    h(
+                      "div",
+                      { class: "cpc-phone-pass-left" },
+                      h(
+                        "div",
+                        { class: "cpc-phone-pass-icon" },
+                        icon("qrScan"),
+                      ),
+                      h(
+                        "div",
+                        {},
+                        h(
+                          "div",
+                          { class: "cpc-phone-pass-title" },
+                          "Pass #0042 · Active QR",
+                        ),
+                        h(
+                          "div",
+                          { class: "cpc-phone-pass-sub" },
+                          "Covered Courts · Priority Booking",
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // A compact activity feed fills the remaining dashboard space.
+                h(
+                  "div",
+                  { class: "cpc-phone-card cpc-phone-activity" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-card-top" },
+                    h(
+                      "span",
+                      { class: "cpc-phone-card-tag" },
+                      icon("clock"),
+                      "Recent activity",
+                    ),
+                    h("span", { class: "cpc-phone-pill-sub" }, "Today"),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-activity-row" },
+                    h(
+                      "span",
+                      { class: "cpc-phone-activity-icon" },
+                      icon("layers"),
+                    ),
+                    h(
+                      "div",
+                      {},
+                      h(
+                        "div",
+                        { class: "cpc-phone-activity-title" },
+                        "Tournament draw published",
+                      ),
+                      h(
+                        "div",
+                        { class: "cpc-phone-pass-sub" },
+                        "Summer Open · Pool A · Court 3",
+                      ),
+                    ),
+                  ),
+                ),
+                // Bottom Navigation Bar
+                h(
+                  "div",
+                  { class: "cpc-phone-nav" },
+                  h(
+                    "div",
+                    { class: "cpc-phone-nav-item is-active" },
+                    icon("home"),
+                    h("span", {}, "Home"),
+                    h("span", { class: "cpc-phone-nav-dot" }),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-nav-item" },
+                    icon("calendar"),
+                    h("span", {}, "Courts"),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-nav-item" },
+                    icon("trophy"),
+                    h("span", {}, "Events"),
+                  ),
+                  h(
+                    "div",
+                    { class: "cpc-phone-nav-item" },
+                    icon("user"),
+                    h("span", {}, "Pass"),
+                  ),
+                ),
+                // Home Indicator Bar
+                h("div", { class: "cpc-phone-home-bar" }),
+              ),
             ),
           ),
         ),
       ),
     );
 
-    // 5. How It Works (3 Steps)
-    const howSection = h(
-      "section",
-      {
-        class: "cpc-section cpc-section-alt",
-        id: "how-it-works",
-        "aria-label": "How It Works",
-      },
-      h(
-        "div",
-        { class: "cpc-landing-container" },
-        h(
-          "div",
-          { class: "cpc-section-header" },
-          h("span", { class: "cpc-section-tag" }, "Your first rally starts here"),
-          h(
-            "h2",
-            { class: "cpc-section-title" },
-            "Join. Reserve. Play.",
-          ),
-          h(
-            "p",
-            { class: "cpc-section-desc" },
-            "A simple path from joining the club to stepping onto the court.",
-          ),
-        ),
-        h(
-          "div",
-          { class: "cpc-steps-grid" },
-          h(
-            "div",
-            { class: "cpc-step-card" },
-            h("div", { class: "cpc-step-num" }, "01"),
-            h("h3", { class: "cpc-step-title" }, "Join the club"),
-            h(
-              "p",
-              { class: "cpc-step-text" },
-              "Create your account and submit your profile. The club reviews new memberships before activating access.",
-            ),
-          ),
-          h(
-            "div",
-            { class: "cpc-step-card" },
-            h("div", { class: "cpc-step-num" }, "02"),
-            h("h3", { class: "cpc-step-title" }, "Find your time"),
-            h(
-              "p",
-              { class: "cpc-step-text" },
-              "Once approved, choose an available court and time. Submit any required payment proof and wait for confirmation.",
-            ),
-          ),
-          h(
-            "div",
-            { class: "cpc-step-card" },
-            h("div", { class: "cpc-step-num" }, "03"),
-            h("h3", { class: "cpc-step-title" }, "Make it a regular thing"),
-            h(
-              "p",
-              { class: "cpc-step-text" },
-              "Check your confirmed booking, bring your paddle, and enjoy your time on court. Your next good rally is waiting.",
-            ),
-          ),
-        ),
-      ),
-    );
-
-    // 8. FAQ Section
-    const faqSection = h(
-      "section",
-      {
-        class: "cpc-section",
-        id: "faq",
-        "aria-label": "A few things to know.",
-      },
-      h(
-        "div",
-        { class: "cpc-landing-container" },
-        h(
-          "div",
-          { class: "cpc-section-header" },
-          h("span", { class: "cpc-section-tag" }, "Before you play"),
-          h(
-            "h2",
-            { class: "cpc-section-title" },
-            "A few things to know.",
-          ),
-        ),
-        h(
-          "div",
-          { class: "cpc-faq-list" },
-          h(
-            "details",
-            { class: "cpc-faq-item", open: true },
-            h(
-              "summary",
-              { class: "cpc-faq-summary" },
-              "How do I reserve a court and submit payment?",
-              icon("chevronDown"),
-            ),
-            h(
-              "div",
-              { class: "cpc-faq-body" },
-              "After your membership is approved, sign in and open Book a court. Choose an available slot and submit your request. If payment proof is required, follow the booking instructions. Your reservation is confirmed after club approval.",
-            ),
-          ),
-          h(
-            "details",
-            { class: "cpc-faq-item" },
-            h(
-              "summary",
-              { class: "cpc-faq-summary" },
-              "When is my membership active?",
-              icon("chevronDown"),
-            ),
-            h(
-              "div",
-              { class: "cpc-faq-body" },
-              "New accounts are reviewed by the club. Check your account status after signing in; booking access becomes available once your membership is approved.",
-            ),
-          ),
-          h(
-            "details",
-            { class: "cpc-faq-item" },
-            h(
-              "summary",
-              { class: "cpc-faq-summary" },
-              "How do the player skill categories work?",
-              icon("chevronDown"),
-            ),
-            h(
-              "div",
-              { class: "cpc-faq-body" },
-              "The club assigns your starting category and rank. Rank changes follow club rules and are applied after an event division is finalized, rather than after each match.",
-            ),
-          ),
-          h(
-            "details",
-            { class: "cpc-faq-item" },
-            h(
-              "summary",
-              { class: "cpc-faq-summary" },
-              "Do I need an account to reserve a court?",
-              icon("chevronDown"),
-            ),
-            h(
-              "div",
-              { class: "cpc-faq-body" },
-              "Court reservations are for approved members. You can explore the public court schedule before joining, then create an account to request membership.",
-            ),
-          ),
-        ),
-      ),
-    );
-
-    const footerSection = h("footer", { class: "cpc-footer" },
-      h("div", { class: "cpc-landing-container" },
-        h("div", { class: "cpc-footer-grid" },
-          h("a", { class: "cpc-footer-brand", href: "#/", "aria-label": "Capitol Pickleball Club home" },
-            h("img", { src: "icons/cpc-logo.png", alt: "", width: "56", height: "56", loading: "lazy" }),
-            "Capitol Pickleball Club"),
-          h("p", { class: "cpc-footer-story" }, "Rooted in Sultan Kudarat. United by the game.")),
-        h("div", { class: "cpc-footer-bottom" },
-          h("span", {}, "Capitol Pickleball Club"),
-          h("span", {}, "Sultan Kudarat, Philippines"))));
-
-    return h(
+    const landingEl = h(
       "div",
       { class: "cpc-landing" },
       heroSection,
-      featuresSection,
-      howSection,
-      faqSection,
-      footerSection,
     );
+
+    setupConvexPatternCanvas(canvasEl, landingEl, watermarkEl);
+    loadClubMemberCount(memberCount);
+
+    return landingEl;
   }
 
   function gatePage(gate) {

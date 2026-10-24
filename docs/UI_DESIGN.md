@@ -47,7 +47,7 @@ Use comfortable spacing, not excessive empty areas or compressed controls. Allow
 ## 3. Color, hierarchy, and readability
 
 - Separate page background, raised panels, inputs, and hover states using subtle surface differences.
-- Use blue/cyan for primary actions and information; green for success; amber for warning; red for destructive actions and errors.
+- Use the shared forest-green palette with champagne-gold accents. Primary actions use green with white text; accent actions use gold with dark-green text. Tokens in `web/styles.css` are the source of truth; the Components palette reads their current values. Reserve status colors for success, warning, error, and information.
 - Never communicate meaning through color alone. Add a text label or recognizable icon.
 - Keep primary text clearly readable; do not use faint text for essential values or instructions.
 - Maintain at least 4.5:1 contrast for normal text and 3:1 for large text and meaningful control boundaries.

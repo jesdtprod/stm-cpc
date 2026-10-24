@@ -24,23 +24,23 @@
 /* ===== 1. Design tokens (UI_DESIGN.md section 2) ===== */
 :root {
   color-scheme: dark;
-  --bg: #0B1210;
-  --surface: #131E19;
-  --surface-2: #1C2B23;
-  --surface-3: #24382E;
-  --border: #2C4034;
-  --text: #F2F7F4;
-  --text-2: #A6B8AC;
+  --bg: #07130E;
+  --surface: #0E2218;
+  --surface-2: #142E21;
+  --surface-3: #1B3B2B;
+  --border: #234735;
+  --text: #F5F9F6;
+  --text-2: #9EB5A7;
   --primary: #15803D;
   --primary-hover: #16A34A;
   --primary-active: #14532D;
   --active-highlight: #4ADE80;
-  --accent: #F59E0B;
-  --accent-hover: #D97706;
+  --accent: #DFB756;
+  --accent-hover: #EAC875;
   --text-on-primary: #FFFFFF;
-  --text-on-accent: #0B1210;
+  --text-on-accent: #07130E;
   --success: #34D399;
-  --warning: #FBBF24;
+  --warning: #EAB308;
   --danger: #F87171;
   --danger-bg: #2B1516;
   --info: #60A5FA;
@@ -75,10 +75,10 @@
   --text-2: #415e4f;
   --primary: #0d6b38;
   --primary-hover: #0a542b;
-  --accent: #d97706;
-  --accent-hover: #b45309;
+  --accent: #B8860B;
+  --accent-hover: #996515;
   --success: #059669;
-  --warning: #d97706;
+  --warning: #CA8A04;
   --danger: #dc2626;
   --danger-bg: #fee2e2;
   --shadow: 0 6px 20px rgba(9, 33, 20, 0.08);
@@ -373,7 +373,6 @@ main[aria-busy="true"] {
 }
 .btn-link:hover {
   text-decoration: underline;
-  background: transparent;
 }
 .btn-danger {
   background: var(--danger-bg);
@@ -1508,13 +1507,20 @@ dialog.drawer::backdrop {
 /* ===== 9. Toasts ===== */
 .toasts {
   position: fixed;
-  right: var(--s4);
-  bottom: var(--s4);
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: var(--s5);
   display: grid;
   gap: var(--s2);
-  z-index: 100;
+  z-index: 120;
   pointer-events: none;
   max-width: calc(100vw - 32px);
+  width: max-content;
+}
+@media (max-width: 768px) {
+  .toasts {
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
 }
 .toast {
   pointer-events: auto;
@@ -2437,6 +2443,9 @@ dialog.drawer::backdrop {
   border: 1px solid var(--border);
   border-radius: var(--r-control);
   cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
   transition: transform 0.15s, border-color 0.15s;
 }
 .swatch-card:hover {
@@ -2948,4 +2957,16 @@ select.input {
     grid-template-columns: 1fr;
     gap: 2px;
   }
+}
+
+.swatch-active-highlight {
+  background: var(--active-highlight);
+}
+
+.swatch-accent-hover {
+  background: var(--accent-hover);
+}
+
+.swatch-info {
+  background: var(--info);
 }

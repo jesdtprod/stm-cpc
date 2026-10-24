@@ -73,6 +73,15 @@ export function componentsPage() {
   let searchQuery = "";
   let activeSection = "sec-foundations";
   const registeredCards = [];
+  const updateSwatches = () => {
+    const tokens = getComputedStyle(document.documentElement);
+    for (const swatch of host.querySelectorAll(".swatch-card[data-token]")) {
+      const token = swatch.dataset.token;
+      const value = tokens.getPropertyValue(token).trim().toUpperCase();
+      swatch.querySelector(".swatch-val").textContent = value;
+      swatch.title = `${token}: ${value}. Click to copy the CSS variable.`;
+    }
+  };
 
   const filterCards = (query) => {
     searchQuery = query.toLowerCase().trim();
@@ -156,6 +165,7 @@ export function componentsPage() {
     onClick: () => {
       activeTheme = activeTheme === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", activeTheme);
+      updateSwatches();
       const label = activeTheme === "dark" ? "Light Mode" : "Dark Mode";
       toggleThemeBtn.replaceChildren(
         icon(activeTheme === "dark" ? "sun" : "moon"),
@@ -252,98 +262,66 @@ export function componentsPage() {
       {
         token: "--primary",
         label: "Forest Green Primary",
-        val: "#15803D",
-        bg: "var(--primary)",
       },
       {
         token: "--primary-hover",
         label: "Primary Hover Green",
-        val: "#16A34A",
-        bg: "var(--primary-hover)",
       },
       {
         token: "--active-highlight",
         label: "Active Highlights",
-        val: "#4ADE80",
-        bg: "var(--active-highlight)",
       },
       {
         token: "--accent",
-        label: "Amber Gold Accent",
-        val: "#F59E0B",
-        bg: "var(--accent)",
+        label: "Champagne Gold Accent",
       },
       {
         token: "--accent-hover",
-        label: "Amber Hover",
-        val: "#D97706",
-        bg: "var(--accent-hover)",
+        label: "Gold Hover",
       },
       {
         token: "--bg",
-        label: "Main Charcoal Base",
-        val: "#0B1210",
-        bg: "var(--bg)",
+        label: "Obsidian Forest Base",
       },
       {
         token: "--surface",
         label: "Cards, Modals & Sidebar",
-        val: "#131E19",
-        bg: "var(--surface)",
       },
       {
         token: "--surface-2",
         label: "Inputs & Elevated",
-        val: "#1C2B23",
-        bg: "var(--surface-2)",
       },
       {
         token: "--surface-3",
         label: "Hover / Active Surface",
-        val: "#24382E",
-        bg: "var(--surface-3)",
       },
       {
         token: "--border",
         label: "Borders & Dividers",
-        val: "#2C4034",
-        bg: "var(--border)",
       },
       {
         token: "--text",
         label: "Main Text",
-        val: "#F2F7F4",
-        bg: "var(--text)",
       },
       {
         token: "--text-2",
         label: "Secondary Text",
-        val: "#A6B8AC",
-        bg: "var(--text-2)",
       },
       {
         token: "--success",
-        label: "Success Emerald",
-        val: "#34D399",
-        bg: "var(--success)",
+        label: "Success Green",
       },
       {
         token: "--warning",
         label: "Warning Amber",
-        val: "#FBBF24",
-        bg: "var(--warning)",
       },
       {
         token: "--danger",
         label: "Error Red",
-        val: "#F87171",
-        bg: "var(--danger)",
       },
       {
         token: "--info",
         label: "Information Blue",
-        val: "#60A5FA",
-        bg: "var(--info)",
       },
     ];
 
@@ -352,22 +330,31 @@ export function componentsPage() {
       { class: "swatch-grid" },
       ...COLOR_SWATCHES.map((sw) => {
         const item = h(
-          "div",
+          "button",
           {
             class: "swatch-card",
+            type: "button",
+            "data-token": sw.token,
+            "aria-label": `Copy ${sw.label} CSS variable`,
             title: `Click to copy ${sw.token}`,
             onClick: () => {
               if (navigator.clipboard) {
-                navigator.clipboard.writeText(`var(${sw.token})`);
-                toast(`Copied var(${sw.token}) to clipboard`, {
-                  tone: "success",
-                });
+                navigator.clipboard.writeText(`var(${sw.token})`).then(
+                  () =>
+                    toast(`Copied var(${sw.token}) to clipboard`, {
+                      tone: "success",
+                    }),
+                  () =>
+                    toast("Could not copy the color variable. Try again.", {
+                      tone: "error",
+                    }),
+                );
               }
             },
           },
           h("div", { class: `swatch-color swatch-${sw.token.slice(2)}` }),
           h("div", { class: "swatch-token" }, sw.token),
-          h("div", { class: "swatch-val" }, sw.val),
+          h("div", { class: "swatch-val" }),
         );
         return item;
       }),
@@ -1269,7 +1256,7 @@ export function componentsPage() {
         { value: "novice_high", label: "Novice High (2.5)" },
         { value: "intermediate_low", label: "Intermediate Low (3.0)" },
         { value: "intermediate_high", label: "Intermediate High (3.5)" },
-        { value: "advanced", label: "Advanced Open (4.0+)" },
+        { value: "advanced", label: "Advanced Open" },
       ],
       value: "intermediate_low",
       hint: "Select your verified CPC skill bracket.",
@@ -2122,7 +2109,7 @@ export function componentsPage() {
           avatar({ name: "Juan Dela Cruz", size: "lg", status: "online" }),
           divider({ label: "Details" }),
           h("p", { class: "muted" }, "Member ID: CPC-2026-00001"),
-          h("p", { class: "muted" }, "Rating: 3.5 (Intermediate High)"),
+          h("p", { class: "muted" }, "Club rank: Intermediate High"),
           h("p", { class: "muted" }, "Total Matches Played: 28"),
           button({
             label: "View Full Profile",
@@ -2150,7 +2137,7 @@ export function componentsPage() {
       content: h(
         "div",
         { class: "demo-stack-sm" },
-        h("h4", { class: "demo-body-title" }, "Rating Information"),
+        h("h4", { class: "demo-body-title" }, "Club Rank Information"),
         h(
           "p",
           { class: "muted" },
@@ -2533,7 +2520,7 @@ export function componentsPage() {
             "forest green",
           ],
           guidance:
-            "Member mobile navigation bar (5 icons in exact order: Home, Booking, QR Scan, Events, Account). Active icon highlighted with #4ADE80 and elevated amber gold (#F59E0B) center QR Scan touch target.",
+            "Member mobile navigation bar (5 icons in exact order: Home, Booking, QR Scan, Events, Account). Active destination uses the active-highlight token; the center QR Scan action uses the gold accent token.",
           variants: "Floating Member Nav (5 Icons)",
           demoEl: bottomNavDemoContainer,
         }),
@@ -2673,7 +2660,7 @@ export function componentsPage() {
       items: [
         {
           id: "acc-1",
-          title: "How do skill rating promotions work?",
+          title: "How do club rank promotions work?",
           content:
             "Ranks change once per member after the division finalization of a sanctioned tournament. Split single elimination champions gain +1 level; consolation bracket finalists retain rank.",
           defaultOpen: true,
@@ -2993,12 +2980,11 @@ export function componentsPage() {
         { value: "novice_high", label: "Novice High (2.5)" },
         { value: "intermediate_low", label: "Intermediate Low (3.0)" },
         { value: "intermediate_high", label: "Intermediate High (3.5)" },
-        { value: "advanced", label: "Advanced (4.0+)" },
+        { value: "advanced", label: "Advanced" },
       ],
       value: formValues.category,
       required: true,
-      hint:
-        "Self-assessed rating. Official rank assigned after first tournament.",
+      hint: "The club assigns and verifies your category and starting rank.",
       onChange: (e) => {
         formValues.category = e.target.value;
         updateDirty();
@@ -3261,6 +3247,7 @@ export function componentsPage() {
     buildCompleteFormSection(),
   );
 
+  updateSwatches();
   filterCards("");
   return host;
 }

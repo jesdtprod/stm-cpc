@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="shell.css" />
   </head>
-  <body>
+  <body data-landing="true">
     <button type="button" class="skip" id="skip">Skip to content</button>
     <header class="app-header">
       <button
@@ -31,9 +31,9 @@
           <path d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
-      <a class="brand" href="#/">
-        <img src="icons/cpc-logo.png" alt="CPC Logo" class="brand-logo" />
-        <span>Capitol Pickleball Club</span>
+      <a class="brand" href="#/" aria-label="Capitol Pickleball Club home">
+        <img src="icons/cpc-logo.png" alt="Capitol Pickleball Club"
+          class="brand-logo" width="36" height="36" />
       </a>
       <nav class="header-center-nav" id="header-center-nav"
         aria-label="Main navigation">
@@ -42,11 +42,6 @@
           data-route="/booking">Courts</a>
         <a href="#/events" class="header-nav-link"
           data-route="/events">Events</a>
-        <a href="#features" class="header-nav-link"
-          data-anchor="features">Features</a>
-        <a href="#membership" class="header-nav-link"
-          data-anchor="membership">Membership</a>
-        <a href="#faq" class="header-nav-link" data-anchor="faq">FAQ</a>
       </nav>
       <div class="header-account" id="account"></div>
     </header>

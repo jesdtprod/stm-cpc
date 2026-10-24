@@ -3,6 +3,19 @@
 // by the router and the database.
 import { button, h, icon, openModal } from "./ui.js";
 
+function svgEl(name, attrs = {}, ...children) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v != null) el.setAttribute(k, String(v));
+  }
+  for (const c of children) {
+    if (c) {
+      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+  }
+  return el;
+}
+
 // Each entry uses the access rule of its own route, so a user sees exactly the pages they can open.
 // `gated: true` entries stay visible while a user is held at a gate (password change, waiting for approval).
 const GROUPS = [
@@ -98,6 +111,15 @@ export function createShell(
     });
   }
 
+  function updateHeaderScroll() {
+    const isScrolled = (globalThis.scrollY ?? 0) > 20;
+    const header = document.querySelector(".app-header");
+    if (header) {
+      header.classList.toggle("is-scrolled", isScrolled);
+    }
+  }
+  globalThis.addEventListener("scroll", updateHeaderScroll, { passive: true });
+
   function openQrScanModal() {
     const state = session.getState();
     const name = state.access?.display_name || "Club Member";
@@ -186,8 +208,8 @@ export function createShell(
     if (state.status !== "signed_in") {
       toggle = panel = null;
       account.replaceChildren(
-        h("a", { class: "btn btn-secondary", href: "#/signin" }, "Sign in"),
-        h("a", { class: "btn btn-primary", href: "#/signup" }, "Join the club"),
+        h("a", { class: "btn btn-outline", href: "#/signin" }, "Sign In"),
+        h("a", { class: "btn btn-accent", href: "#/signup" }, "Join the club"),
       );
       return;
     }
@@ -277,10 +299,17 @@ export function createShell(
     const signedIn = state.status === "signed_in";
     document.body.dataset.signedIn = String(signedIn);
 
+    // Landing page: root path when not signed in
+    const isLanding = (path === "/" || path === "") && !signedIn;
+    document.body.dataset.landing = String(isLanding);
+    document.documentElement.dataset.landing = String(isLanding);
+
     // Member view vs Admin view: admin paths are under /admin
     const isMemberView = !path.startsWith("/admin");
     document.body.dataset.memberView = String(isMemberView);
     document.body.dataset.adminView = String(!isMemberView);
+
+    updateHeaderScroll();
 
     drawAccount(state);
 
@@ -310,7 +339,23 @@ export function createShell(
         const isAccount = path === "/profile" || path === "/password" ||
           path === "/pending";
 
-        mobileNav.replaceChildren(
+        const bgSvg = svgEl(
+          "svg",
+          {
+            class: "bottom-nav-bg-svg",
+            viewBox: "0 0 390 66",
+            preserveAspectRatio: "none",
+            "aria-hidden": "true",
+          },
+          svgEl("path", {
+            d: "M 0 24 C 0 10 10 0 24 0 L 146 0 C 162 0 168 28 195 28 C 222 28 228 0 244 0 L 366 0 C 380 0 390 10 390 24 L 390 66 L 0 66 Z",
+            fill: "#FFFFFF",
+          }),
+        );
+
+        const itemsWrap = h(
+          "div",
+          { class: "bottom-nav-items-grid" },
           h(
             "a",
             {
@@ -320,29 +365,40 @@ export function createShell(
               "aria-current": isHome ? "page" : null,
             },
             icon("home"),
+            h("span", { class: "bottom-nav-label" }, "Home"),
           ),
           h(
             "a",
             {
               class: `bottom-nav-item${isBooking ? " is-active" : ""}`,
               href: "#/booking",
-              "aria-label": "Booking",
+              "aria-label": "Courts",
               "aria-current": isBooking ? "page" : null,
             },
             icon("calendar"),
+            h("span", { class: "bottom-nav-label" }, "Courts"),
           ),
           h(
-            "button",
-            {
-              class: `bottom-nav-item bottom-nav-qr${isQr ? " is-active" : ""}`,
-              type: "button",
-              "aria-label": "QR Scan",
-              onClick: (e) => {
-                e.preventDefault();
-                openQrScanModal();
+            "div",
+            { class: "bottom-nav-elevated-wrap" },
+            h(
+              "button",
+              {
+                class: `bottom-nav-elevated-btn${isQr ? " is-active" : ""}`,
+                type: "button",
+                "aria-label": "Explore / QR Pass",
+                onClick: (e) => {
+                  e.preventDefault();
+                  openQrScanModal();
+                },
               },
-            },
-            icon("qrScan"),
+              icon("qrScan"),
+            ),
+            h(
+              "span",
+              { class: "bottom-nav-label bottom-nav-center-label" },
+              "Explore",
+            ),
           ),
           h(
             "a",
@@ -353,18 +409,22 @@ export function createShell(
               "aria-current": isEvents ? "page" : null,
             },
             icon("trophy"),
+            h("span", { class: "bottom-nav-label" }, "Events"),
           ),
           h(
             "a",
             {
               class: `bottom-nav-item${isAccount ? " is-active" : ""}`,
               href: signedIn ? "#/profile" : "#/signin",
-              "aria-label": "Account",
+              "aria-label": "Profile",
               "aria-current": isAccount ? "page" : null,
             },
             icon("user"),
+            h("span", { class: "bottom-nav-label" }, "Profile"),
           ),
         );
+
+        mobileNav.replaceChildren(bgSvg, itemsWrap);
       } else {
         mobileNav.hidden = true;
         mobileNav.replaceChildren();

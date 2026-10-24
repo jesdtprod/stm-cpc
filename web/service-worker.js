@@ -1,7 +1,7 @@
 // App shell cache only. Bump CACHE on every release so activate removes the old one.
 // Only same-origin shell files are cached. Supabase and every other request
 // goes straight to the network, so no authenticated data ever reaches the cache.
-const CACHE = "cpc-shell-v26";
+const CACHE = "cpc-shell-v48";
 const SHELL = [
   "./",
   "index.html",
@@ -48,6 +48,9 @@ const SHELL = [
   "fonts/inter-latin-wght-normal.woff2",
   "fonts/inter-latin-ext-wght-normal.woff2",
   "icons/cpc-logo.png",
+  "icons/paddle.png",
+  "icons/ball.png",
+  "icons/court-pattern.svg",
   "icons/icon-192.png",
   "icons/icon-512.png",
   "icons/icon-maskable-512.png",
