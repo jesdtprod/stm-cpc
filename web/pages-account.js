@@ -218,30 +218,24 @@ export function createAccountPages(
               { class: "cpc-hero-subtitle" },
               "Use your member ID or email and your password to manage court bookings, ranks, and event registrations.",
             ),
-            // Desktop only: the paddles and balls fill the empty space under the text, fully visible.
+            // Desktop only: one paddle with the ball in front of it, in the empty space under the text.
             h(
               "div",
               { class: "auth-showcase", "aria-hidden": "true" },
-              h("img", {
-                class: "auth-showcase-paddle auth-showcase-paddle-left",
-                src: "icons/paddle.png",
-                alt: "",
-              }),
-              h("img", {
-                class: "auth-showcase-ball auth-showcase-ball-left",
-                src: "icons/ball.png",
-                alt: "",
-              }),
-              h("img", {
-                class: "auth-showcase-paddle auth-showcase-paddle-right",
-                src: "icons/paddle.png",
-                alt: "",
-              }),
-              h("img", {
-                class: "auth-showcase-ball auth-showcase-ball-right",
-                src: "icons/ball.png",
-                alt: "",
-              }),
+              h(
+                "div",
+                { class: "auth-showcase-group" },
+                h("img", {
+                  class: "auth-showcase-paddle",
+                  src: "icons/paddle.png",
+                  alt: "",
+                }),
+                h("img", {
+                  class: "auth-showcase-ball",
+                  src: "icons/ball.png",
+                  alt: "",
+                }),
+              ),
             ),
           ),
           h(
