@@ -196,25 +196,26 @@ export function createAccountPages(
               }),
               flank("right", "ball", "paddle"),
             ),
-            // Desktop only, at the top of the text: two crossed paddles with the ball beside them.
+            // Desktop only, at the top of the text: two crossed paddles, each with its own ball.
             h(
               "div",
               { class: "auth-showcase", "aria-hidden": "true" },
-              h("img", {
-                class: "auth-showcase-paddle auth-showcase-paddle-a",
-                src: "icons/paddle.png",
-                alt: "",
-              }),
-              h("img", {
-                class: "auth-showcase-paddle auth-showcase-paddle-b",
-                src: "icons/paddle.png",
-                alt: "",
-              }),
-              h("img", {
-                class: "auth-showcase-ball",
-                src: "icons/ball.png",
-                alt: "",
-              }),
+              ...["a", "b"].map((side) =>
+                h(
+                  "div",
+                  { class: `auth-showcase-unit auth-showcase-unit-${side}` },
+                  h("img", {
+                    class: "auth-showcase-paddle",
+                    src: "icons/paddle.png",
+                    alt: "",
+                  }),
+                  h("img", {
+                    class: "auth-showcase-ball",
+                    src: "icons/ball.png",
+                    alt: "",
+                  }),
+                )
+              ),
             ),
             h(
               "div",
