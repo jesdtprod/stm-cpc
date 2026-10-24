@@ -2,7 +2,8 @@
 // sections the caller is allowed to see; this page just draws what it receives.
 //   member : own rank, upcoming bookings, event registrations, unread notices
 //   staff  : approvals, payment proofs, bookings to approve, today's bookings, events in progress
-import { h, icon, pageHeader } from "./ui.js";
+import { h, icon } from "./ui.js";
+import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
 
 // href is only set where the page already exists; the rest are plain figures until their steps arrive.
@@ -50,12 +51,15 @@ function statCard({ label, value, hint, iconName, href, attention = false }) {
       "div",
       { class: "home-card-top" },
       h("span", { class: "home-card-label" }, label),
-      h("span", { class: "badge-icon" }, icon(iconName)),
+      h("span", { class: "home-card-icon" }, icon(iconName)),
     ),
     h("div", { class: "home-card-value" }, value),
-    hint ? h("div", { class: "home-card-hint muted" }, hint) : null,
+    hint ? h("div", { class: "home-card-hint" }, hint) : null,
+    href
+      ? h("span", { class: "home-card-go" }, "Open", icon("chevronRight"))
+      : null,
   ];
-  const cls = `card home-card${attention ? " is-attention" : ""}`;
+  const cls = `home-card${attention ? " is-attention" : ""}`;
   return href
     ? h("a", { class: `${cls} is-link`, href }, ...body)
     : h("div", { class: cls }, ...body);
@@ -106,8 +110,12 @@ function section(title, description, cards) {
   return h(
     "section",
     { class: "home-section", "aria-label": title },
-    h("h2", { class: "home-section-title" }, title),
-    description ? h("p", { class: "muted" }, description) : null,
+    h(
+      "div",
+      { class: "home-section-head" },
+      h("h2", { class: "home-section-title" }, title),
+      description ? h("p", { class: "home-section-desc" }, description) : null,
+    ),
     h("div", { class: "home-grid" }, ...cards),
   );
 }
@@ -159,6 +167,75 @@ function dashboardView(data) {
   return parts;
 }
 
+const greeting = () => {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "Asia/Manila",
+    }).format(new Date()),
+  );
+  return hour < 12
+    ? "Good morning"
+    : hour < 18
+    ? "Good afternoon"
+    : "Good evening";
+};
+
+/** The welcome banner: who you are, and the three things members do most. Same button design as the home and sign-in pages. */
+function heroView({ name, memberNo, role }) {
+  const actions = [
+    can("bookings.create")
+      ? h(
+        "a",
+        { class: "btn btn-accent", href: "#/book" },
+        icon("calendar"),
+        "Book a court",
+      )
+      : null,
+    h(
+      "a",
+      { class: "btn btn-primary", href: "#/bookings" },
+      icon("clock"),
+      "My bookings",
+    ),
+    h(
+      "a",
+      { class: "btn btn-secondary", href: "#/profile" },
+      icon("user"),
+      "My profile",
+    ),
+  ];
+  return h(
+    "section",
+    { class: "dash-hero", "aria-label": "Welcome" },
+    h(
+      "div",
+      { class: "dash-hero-copy" },
+      h(
+        "div",
+        { class: "dash-hero-chips" },
+        h("span", { class: "dash-chip is-role" }, icon("medal"), role),
+        memberNo
+          ? h("span", { class: "dash-chip" }, icon("idCard"), memberNo)
+          : null,
+      ),
+      h(
+        "h1",
+        { class: "dash-hero-title", id: "page-title", tabindex: "-1" },
+        `${greeting()}${name ? ", " : ""}`,
+        name ? h("span", { class: "dash-hero-name" }, name) : null,
+      ),
+      h(
+        "p",
+        { class: "dash-hero-sub" },
+        "Here is what is happening at Capitol Pickleball Club today.",
+      ),
+    ),
+    h("div", { class: "dash-hero-actions" }, ...actions),
+  );
+}
+
 function loadingView() {
   return h(
     "div",
@@ -166,7 +243,7 @@ function loadingView() {
     ...[1, 2, 3, 4].map(() =>
       h(
         "div",
-        { class: "card home-card is-loading" },
+        { class: "home-card is-loading" },
         h("span", { class: "sk-line" }),
         h("span", { class: "sk-line sk-wide" }),
         h("span", { class: "sk-line sk-short" }),
@@ -1046,15 +1123,12 @@ export function createHomePages({ session, api }) {
 
     const name = (state.access?.display_name ?? "").split(/\s+/)[0];
     const host = h("div", { class: "home-body" }, loadingView());
-    const header = pageHeader({
-      icon: "home",
-      eyebrow: "Home",
-      title: name ? `Welcome, ${name}` : "Welcome",
-      description: state.access?.member_no
-        ? `Member ID ${state.access.member_no}`
-        : null,
+    const header = heroView({
+      name,
+      memberNo: state.access?.member_no ?? "",
+      role: "Member",
     });
-    const page = h("div", { class: "page" }, header, host);
+    const page = h("div", { class: "page dash-page" }, header, host);
 
     async function load() {
       host.replaceChildren(loadingView());
@@ -1062,8 +1136,10 @@ export function createHomePages({ session, api }) {
         const data = await api.rpc("my_dashboard");
         if (!page.isConnected && !host.isConnected) return;
         host.replaceChildren(...dashboardView(data ?? {}));
-        const eyebrow = header.querySelector(".eyebrow");
-        if (eyebrow && data?.role_name) eyebrow.textContent = data.role_name;
+        const role = header.querySelector(".dash-chip.is-role");
+        if (role && data?.role_name) {
+          role.replaceChildren(icon("medal"), data.role_name);
+        }
       } catch (error) {
         host.replaceChildren(
           h(

@@ -648,8 +648,9 @@ export function createShell(
       nav.replaceChildren();
       return;
     }
+    const groups = visibleGroups(state);
     nav.replaceChildren(
-      ...visibleGroups(state).flatMap((g) => [
+      ...groups.flatMap((g) => [
         h("div", { class: "nav-heading" }, g.label),
         ...g.items.map((n) =>
           h(
@@ -664,6 +665,39 @@ export function createShell(
           )
         ),
       ]),
+      h(
+        "div",
+        { class: "side-foot" },
+        h(
+          "div",
+          { class: "side-user" },
+          h(
+            "span",
+            { class: "side-user-avatar", "aria-hidden": "true" },
+            initials(state.access?.display_name),
+          ),
+          h(
+            "div",
+            { class: "side-user-copy" },
+            h(
+              "span",
+              { class: "side-user-name" },
+              state.access?.display_name ?? "My account",
+            ),
+            h("span", { class: "side-user-id" }, state.access?.member_no ?? ""),
+          ),
+        ),
+        h(
+          "button",
+          {
+            class: "btn btn-secondary side-signout",
+            type: "button",
+            onClick: () => session.signOut("manual"),
+          },
+          icon("logOut"),
+          "Sign out",
+        ),
+      ),
     );
   }
 
