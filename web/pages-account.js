@@ -80,7 +80,7 @@ export function createAccountPages(
       label: "Member ID or email",
       required: true,
       placeholder: "CPC-2026-00001 or your email",
-      iconLeading: "user",
+      iconLeading: "idCard",
     });
     const idInput = memberId.querySelector("input");
     idInput.setAttribute("autocomplete", "username");
@@ -92,7 +92,7 @@ export function createAccountPages(
       type: "password",
       required: true,
       placeholder: "••••••••••••",
-      iconLeading: "lock",
+      iconLeading: "keyRound",
     });
     const pwInput = password.querySelector("input");
     pwInput.setAttribute("autocomplete", "current-password");
@@ -251,7 +251,7 @@ export function createAccountPages(
                 h(
                   "span",
                   { class: "badge-icon", "aria-hidden": "true" },
-                  icon("user"),
+                  icon("logIn"),
                 ),
                 h(
                   "div",

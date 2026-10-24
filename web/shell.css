@@ -4128,3 +4128,12 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
   justify-content: center;
   gap: 10px;
 }
+
+/* Sign-in card icons: finer Lucide strokes */
+.auth-split .auth-card .icon {
+  stroke-width: 1.75;
+}
+.auth-split .auth-card .icon-leading .icon {
+  width: 18px;
+  height: 18px;
+}
