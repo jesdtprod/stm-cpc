@@ -11,6 +11,8 @@ import {
   h,
   iconButton,
   openModal,
+  searchControl,
+  selectControl,
   tabs,
   toast,
 } from "./ui.js";
@@ -75,8 +77,7 @@ export function createStaffPages({ api }) {
       return false;
     };
     const roleSelect = (id, value) =>
-      h(
-        "select",
+      selectControl(
         { class: "input select-input", id, name: "role" },
         ...roleOptions().map((r) =>
           h("option", { value: r.code, selected: r.code === value }, r.name)
@@ -162,7 +163,7 @@ export function createStaffPages({ api }) {
         role: "radiogroup",
         "aria-label": "Search results",
       });
-      const term = h("input", {
+      const term = searchControl({
         class: "input",
         id: "st-term",
         type: "search",
@@ -317,6 +318,7 @@ export function createStaffPages({ api }) {
               key: "actions",
               label: "Action",
               align: "center",
+              actionCount: 1,
               render: (r) =>
                 iconButton({
                   label: r.is_self

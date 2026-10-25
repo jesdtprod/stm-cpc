@@ -4,13 +4,15 @@
 //   * The database checks every value; this page shows its answer in plain words. Edits check the row's version and
 //     deletes need a reason.
 import {
+  adminHero,
+  attachPagePattern,
   badge,
   button,
   dataTable,
   h,
   iconButton,
   openModal,
-  pageHeader,
+  selectControl,
   toast,
 } from "./ui.js";
 
@@ -42,7 +44,10 @@ function messageOf(e, fallback) {
 
 export function createScoringPages({ api, getOrgId }) {
   function scoringPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-scoring-page",
+    });
+    attachPagePattern(page);
     const body = h("div", { class: "scoring-body" });
     const state = { status: "loading", rules: [] };
 
@@ -92,8 +97,7 @@ export function createScoringPages({ api, getOrgId }) {
         "point_diff",
       ]).filter((t) => t !== "match_wins");
       const slots = [0, 1, 2, 3].map((i) =>
-        h(
-          "select",
+        selectControl(
           { class: "input select-input", id: `sc-tb-${i}`, name: `tb${i}` },
           h("option", { value: "" }, "—"),
           ...TIEBREAKS.map((t) =>
@@ -341,99 +345,107 @@ export function createScoringPages({ api, getOrgId }) {
       body.replaceChildren(
         h(
           "div",
-          { class: "actions scoring-actions" },
+          { class: "member-directory-card is-auto-grid" },
+          h(
+            "div",
+            { class: "table-host" },
+            dataTable({
+              schema: {
+                columns: [
+                  {
+                    key: "name",
+                    label: "Rule",
+                    render: (r) =>
+                      h(
+                        "span",
+                        {},
+                        r.name,
+                        h("span", { class: "sub" }, describe(r)),
+                      ),
+                  },
+                  {
+                    key: "game",
+                    label: "Each game",
+                    render: (r) =>
+                      `To ${r.points_per_game}, win by ${r.win_by}${
+                        r.point_cap ? `, cap ${r.point_cap}` : ""
+                      }`,
+                  },
+                  {
+                    key: "forfeit",
+                    label: "Forfeit",
+                    align: "right",
+                    render: (r) => `${r.forfeit_score}–0`,
+                  },
+                  {
+                    key: "ties",
+                    label: "Ties are split by",
+                    render: (r) =>
+                      r.tiebreak_order.map((t) => TIEBREAK_LABEL[t] ?? t).join(
+                        ", ",
+                      ),
+                  },
+                  {
+                    key: "status",
+                    label: "Status",
+                    render: (r) =>
+                      r.is_active
+                        ? badge("Active", "success")
+                        : badge("Inactive", "neutral"),
+                  },
+                  {
+                    key: "actions",
+                    label: "Action",
+                    align: "center",
+                    render: (r) =>
+                      h(
+                        "span",
+                        { class: "row-actions" },
+                        iconButton({
+                          label: `Edit ${r.name}`,
+                          icon: "edit",
+                          size: "sm",
+                          variant: "edit",
+                          onClick: () => ruleModal(r),
+                        }),
+                        iconButton({
+                          label: `Delete ${r.name}`,
+                          icon: "trash",
+                          size: "sm",
+                          variant: "danger",
+                          onClick: () => deleteModal(r),
+                        }),
+                      ),
+                  },
+                ],
+              },
+              rows: state.rules,
+              state: state.status,
+              ariaLabel: "Scoring rules",
+              onRetry: refresh,
+              emptyTitle: "No scoring rules yet",
+              emptyText:
+                "Add a rule so divisions know how their matches are scored.",
+            }),
+          ),
+        ),
+      );
+    }
+
+    page.append(
+      adminHero({
+        title: "Scoring Rules",
+        chip: "Scoring Management",
+        description:
+          "How a match is scored and how ties in a table are split. Divisions keep a copy of the rule they were created with.",
+        actions: [
           button({
             label: "New scoring rule",
             icon: "plus",
             variant: "primary",
             onClick: () => ruleModal(null),
           }),
-        ),
-        dataTable({
-          schema: {
-            columns: [
-              {
-                key: "name",
-                label: "Rule",
-                render: (r) =>
-                  h(
-                    "span",
-                    {},
-                    r.name,
-                    h("span", { class: "sub" }, describe(r)),
-                  ),
-              },
-              {
-                key: "game",
-                label: "Each game",
-                render: (r) =>
-                  `To ${r.points_per_game}, win by ${r.win_by}${
-                    r.point_cap ? `, cap ${r.point_cap}` : ""
-                  }`,
-              },
-              {
-                key: "forfeit",
-                label: "Forfeit",
-                align: "right",
-                render: (r) => `${r.forfeit_score}–0`,
-              },
-              {
-                key: "ties",
-                label: "Ties are split by",
-                render: (r) =>
-                  r.tiebreak_order.map((t) => TIEBREAK_LABEL[t] ?? t).join(
-                    ", ",
-                  ),
-              },
-              {
-                key: "status",
-                label: "Status",
-                render: (r) =>
-                  r.is_active
-                    ? badge("Active", "success")
-                    : badge("Inactive", "neutral"),
-              },
-              {
-                key: "actions",
-                label: "Action",
-                align: "center",
-                render: (r) =>
-                  h(
-                    "span",
-                    { class: "row-actions" },
-                    iconButton({
-                      label: `Edit ${r.name}`,
-                      icon: "edit",
-                      onClick: () => ruleModal(r),
-                    }),
-                    iconButton({
-                      label: `Delete ${r.name}`,
-                      icon: "trash",
-                      variant: "danger",
-                      onClick: () => deleteModal(r),
-                    }),
-                  ),
-              },
-            ],
-          },
-          rows: state.rules,
-          state: state.status,
-          ariaLabel: "Scoring rules",
-          onRetry: refresh,
-          emptyTitle: "No scoring rules yet",
-          emptyText:
-            "Add a rule so divisions know how their matches are scored.",
-        }),
-      );
-    }
-
-    page.append(
-      pageHeader({
-        icon: "medal",
-        eyebrow: "Admin",
-        title: "Scoring Rules",
-        description:
-          "How a match is scored and how ties in a table are split. Divisions keep a copy of the rule they were created with.",
+        ],
       }),
       body,
     );

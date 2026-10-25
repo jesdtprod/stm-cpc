@@ -419,6 +419,7 @@ export function createCategoriesPages({ api, getOrgId }) {
           key: "actions",
           label: "Action",
           align: "center",
+          actionCount: 3,
           render: actionsFor,
         },
       ],

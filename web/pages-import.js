@@ -14,7 +14,8 @@ import {
   iconButton,
   openModal,
   pagination,
-  tabs,
+  searchControl,
+  selectField,
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
@@ -39,6 +40,7 @@ export function createImportPages({ api }) {
   function importPage() {
     const state = {
       tab: "open",
+      term: "",
       page: 1,
       rows: [],
       total: 0,
@@ -52,9 +54,57 @@ export function createImportPages({ api }) {
     });
     attachPagePattern(page);
     const kpis = h("div", { class: "home-grid kpis is-quad" });
-    const tabsHost = h("div", {});
     const tableHost = h("div", { class: "table-host" });
     const pagerHost = h("div", {});
+    let timer = null;
+
+    const statusField = selectField({
+      id: "import-status",
+      value: state.tab,
+      ariaLabel: "Filter import records",
+      options: TABS.map((item) => ({ value: item.id, label: item.label })),
+      onChange: (event) => {
+        clearTimeout(timer);
+        state.tab = event.target.value;
+        state.term = search.value;
+        state.page = 1;
+        load();
+      },
+    });
+    const statusFilter = h(
+      "div",
+      { class: "member-status-filter" },
+      statusField,
+    );
+
+    function drawStatusFilter() {
+      statusField.setOptions(
+        TABS.map((item) => ({
+          value: item.id,
+          label: item.id === "open" && state.openCount != null
+            ? `${item.label} (${state.openCount})`
+            : item.label,
+        })),
+        state.tab,
+      );
+    }
+
+    const search = searchControl({
+      class: "input",
+      id: "import-search",
+      type: "search",
+      placeholder: "Search by member ID, row, or issue…",
+      "aria-label": "Search import records",
+      onInput: (e) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          state.term = e.target.value;
+          state.page = 1;
+          draw();
+        }, 250);
+      },
+    });
+    const searchBox = search;
 
     async function load() {
       state.status = "loading";
@@ -130,6 +180,7 @@ export function createImportPages({ api }) {
       } catch { /* the summary is optional */ }
       state.summaryReady = true;
       drawKpis();
+      drawStatusFilter();
     }
 
     function drawKpis() {
@@ -257,55 +308,114 @@ export function createImportPages({ api }) {
     const issueSchema = {
       columns: [
         {
-          key: "row",
-          label: "Row",
-          align: "right",
-          render: (r) => String(r.source_row),
+          key: "name",
+          label: "Import row",
+          render: (r) =>
+            h(
+              "div",
+              { class: "member-cell" },
+              h(
+                "span",
+                { class: "member-avatar is-icon", "aria-hidden": "true" },
+                icon(r.resolved_at ? "check" : "alert"),
+              ),
+              h(
+                "div",
+                { class: "member-meta" },
+                h("span", { class: "member-name" }, `Row ${r.source_row}`),
+                h(
+                  "span",
+                  { class: "sub member-subtext" },
+                  r.member_no_claimed ?? "No member ID",
+                ),
+              ),
+            ),
         },
         {
           key: "issue",
           label: "Issue",
+          skeleton: "stack",
           render: (r) =>
             h(
-              "span",
-              {},
+              "div",
+              { class: "member-table-stack" },
               ISSUE_LABEL[r.issue_code] ?? r.issue_code,
-              r.detail ? h("span", { class: "sub" }, r.detail) : null,
+              h(
+                "span",
+                { class: "sub" },
+                r.detail || r.issue_code || "Import issue",
+              ),
             ),
         },
         {
           key: "no",
           label: "Member ID in the file",
-          render: (r) => r.member_no_claimed ?? "—",
+          skeleton: "stack",
+          render: (r) =>
+            h(
+              "div",
+              { class: "member-table-stack" },
+              r.member_no_claimed ?? "—",
+              h("span", { class: "sub" }, `Source row #${r.source_row}`),
+            ),
         },
         {
           key: "status",
           label: "Status",
+          skeleton: "badge-stack",
           render: (r) =>
             r.resolved_at
               ? h(
-                "span",
-                {},
+                "div",
+                { class: "member-table-stack" },
                 badge("Reviewed", "success"),
-                r.meta?.resolution_note
-                  ? h("span", { class: "sub" }, r.meta.resolution_note)
-                  : null,
+                h(
+                  "span",
+                  { class: "sub" },
+                  r.meta?.resolution_note || "Marked as reviewed",
+                ),
               )
-              : badge("Needs review", "warning"),
+              : h(
+                "div",
+                { class: "member-table-stack" },
+                badge("Needs review", "warning"),
+                h("span", { class: "sub" }, "Awaiting admin check"),
+              ),
+        },
+        {
+          key: "resolved",
+          label: "Resolution",
+          skeleton: "stack",
+          render: (r) =>
+            h(
+              "div",
+              { class: "member-table-stack" },
+              r.resolved_at ? formatDateTime(r.resolved_at) : "Pending",
+              h(
+                "span",
+                { class: "sub" },
+                r.resolved_at ? "Reviewed" : "Not reviewed yet",
+              ),
+            ),
         },
         {
           key: "actions",
           label: "Action",
           align: "center",
+          actionCount: 1,
           render: (r) =>
             !r.resolved_at && can("members.review_import")
-              ? iconButton({
-                label: `Mark row ${r.source_row} as reviewed`,
-                icon: "check",
-                size: "sm",
-                variant: "success",
-                onClick: () => resolveModal(r),
-              })
+              ? h(
+                "div",
+                { class: "row-actions" },
+                iconButton({
+                  label: `Mark row ${r.source_row} as reviewed`,
+                  icon: "check",
+                  size: "sm",
+                  variant: "success",
+                  onClick: () => resolveModal(r),
+                }),
+              )
               : "—",
         },
       ],
@@ -313,94 +423,159 @@ export function createImportPages({ api }) {
     const batchSchema = {
       columns: [
         {
-          key: "when",
+          key: "name",
           label: "Imported",
-          render: (r) => formatDateTime(r.created_at),
-        },
-        {
-          key: "rows",
-          label: "Rows",
-          align: "right",
-          render: (r) => String(r.row_count),
+          render: (r) =>
+            h(
+              "div",
+              { class: "member-cell" },
+              h(
+                "span",
+                { class: "member-avatar is-icon", "aria-hidden": "true" },
+                icon("file"),
+              ),
+              h(
+                "div",
+                { class: "member-meta" },
+                h(
+                  "span",
+                  { class: "member-name" },
+                  formatDateTime(r.created_at),
+                ),
+                h(
+                  "span",
+                  { class: "sub member-subtext" },
+                  `${r.row_count} total rows`,
+                ),
+              ),
+            ),
         },
         {
           key: "created",
           label: "Created",
-          align: "right",
-          render: (r) => String(r.created_count),
+          skeleton: "stack",
+          render: (r) =>
+            h(
+              "div",
+              { class: "member-table-stack" },
+              String(r.created_count),
+              h("span", { class: "sub" }, `of ${r.row_count} rows`),
+            ),
         },
         {
           key: "skipped",
           label: "Skipped",
-          align: "right",
-          render: (r) => String(r.skipped_count),
+          skeleton: "stack",
+          render: (r) =>
+            h(
+              "div",
+              { class: "member-table-stack" },
+              String(r.skipped_count),
+              h("span", { class: "sub" }, "Already imported or skipped"),
+            ),
         },
         {
           key: "held",
-          label: "Held back",
-          align: "right",
-          render: (r) => String(r.held_back_count),
-        },
-        {
-          key: "failed",
-          label: "Failed",
-          align: "right",
-          render: (r) => String(r.failed_count),
+          label: "Held back / Failed",
+          skeleton: "stack",
+          render: (r) =>
+            h(
+              "div",
+              { class: "member-table-stack" },
+              `${r.held_back_count} held · ${r.failed_count} failed`,
+              h("span", { class: "sub" }, "Flagged during import"),
+            ),
         },
         {
           key: "status",
           label: "Result",
+          skeleton: "badge-stack",
           render: (r) =>
-            badge(
-              {
-                completed: "Completed",
-                running: "Running",
-                failed: "Failed",
-              }[r.status] ?? r.status,
-              {
-                completed: "success",
-                running: "warning",
-                failed: "danger",
-              }[r.status] ?? "neutral",
+            h(
+              "div",
+              { class: "member-table-stack" },
+              badge(
+                {
+                  completed: "Completed",
+                  running: "Running",
+                  failed: "Failed",
+                }[r.status] ?? r.status,
+                {
+                  completed: "success",
+                  running: "warning",
+                  failed: "danger",
+                }[r.status] ?? "neutral",
+              ),
+              h("span", { class: "sub" }, "Import batch status"),
             ),
+        },
+        {
+          key: "actions",
+          label: "Action",
+          align: "center",
+          actionCount: 1,
+          render: () => "—",
         },
       ],
     };
 
+    function filteredRows() {
+      const q = state.term.trim().toLowerCase();
+      if (!q) return state.rows;
+      if (state.tab === "batches") {
+        return state.rows.filter((r) =>
+          formatDateTime(r.created_at).toLowerCase().includes(q) ||
+          String(r.status ?? "").toLowerCase().includes(q) ||
+          String(r.row_count ?? "").includes(q)
+        );
+      }
+      return state.rows.filter((r) => {
+        const label = ISSUE_LABEL[r.issue_code] ?? r.issue_code ?? "";
+        return String(r.source_row ?? "").includes(q) ||
+          String(r.member_no_claimed ?? "").toLowerCase().includes(q) ||
+          String(r.issue_code ?? "").toLowerCase().includes(q) ||
+          label.toLowerCase().includes(q) ||
+          String(r.detail ?? "").toLowerCase().includes(q);
+      });
+    }
+
     function draw() {
-      tabsHost.replaceChildren(tabs({
-        activeId: state.tab,
-        tabs: TABS.map((t) => ({
-          ...t,
-          badge: t.id === "open" && state.openCount
-            ? String(state.openCount)
-            : undefined,
-        })),
-        onChange: (id) => {
-          state.tab = id;
-          state.page = 1;
-          load();
-        },
-      }));
+      const rows = filteredRows();
+      let emptyTitle = state.tab === "open"
+        ? "Nothing needs review"
+        : (state.tab === "done" ? "Nothing reviewed yet" : "No imports yet");
+      let emptyText = state.tab === "open"
+        ? "Rows the import could not handle on its own appear here."
+        : "";
+      if (state.term.trim()) {
+        emptyTitle = `No records match "${state.term.trim()}"`;
+        emptyText =
+          "Try searching by another member ID, row number, or issue description.";
+      }
       tableHost.replaceChildren(dataTable({
         schema: state.tab === "batches" ? batchSchema : issueSchema,
-        rows: state.rows,
+        rows,
         state: state.status,
+        hasFilters: Boolean(state.term.trim()),
         ariaLabel: state.tab === "batches" ? "Import history" : "Import issues",
         onRetry: load,
-        emptyTitle: state.tab === "open"
-          ? "Nothing needs review"
-          : (state.tab === "done" ? "Nothing reviewed yet" : "No imports yet"),
-        emptyText: state.tab === "open"
-          ? "Rows the import could not handle on its own appear here."
-          : "",
+        onReset: () => {
+          clearTimeout(timer);
+          search.value = "";
+          state.term = "";
+          state.page = 1;
+          draw();
+        },
+        resetLabel: "Clear search",
+        emptyTitle,
+        emptyText,
       }));
       pagerHost.replaceChildren(
-        state.status === "ready" && state.total > PAGE_SIZE
+        state.status === "ready"
           ? pagination({
             page: state.page,
             pageSize: PAGE_SIZE,
-            total: state.total,
+            total: state.term.trim() ? rows.length : state.total,
             onPage: (p) => {
               state.page = p;
               load();
@@ -426,15 +601,21 @@ export function createImportPages({ api }) {
         ],
       }),
       kpis,
-      tabsHost,
       h(
         "div",
-        { class: "member-directory-card is-auto-grid" },
+        { class: "toolbar admin-members-toolbar" },
+        searchBox,
+        statusFilter,
+      ),
+      h(
+        "div",
+        { class: "member-directory-card" },
         tableHost,
         pagerHost,
       ),
     );
     drawKpis();
+    drawStatusFilter();
     load();
     loadSummary();
     return page;

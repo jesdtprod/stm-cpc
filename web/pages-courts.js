@@ -5,13 +5,16 @@
 //   * The database decides what is allowed (overlapping hours, a court with upcoming bookings, bad ranges);
 //     this page shows its answer in plain words. Creates are idempotent and edits check the row's version.
 import {
+  adminHero,
+  attachPagePattern,
   badge,
   button,
   dataTable,
+  dateControl,
   h,
   iconButton,
   openModal,
-  pageHeader,
+  selectControl,
   tabs,
   toast,
 } from "./ui.js";
@@ -74,7 +77,10 @@ function messageOf(e, fallback) {
 
 export function createCourtsPages({ api, getOrgId }) {
   function courtsPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-courts-page",
+    });
+    attachPagePattern(page);
     const tabsHost = h("div", {});
     const body = h("div", { class: "courts-body" });
     const state = {
@@ -148,10 +154,11 @@ export function createCourtsPages({ api, getOrgId }) {
           : null,
       );
     const input = (id, name, props = {}) =>
-      h("input", { class: "input", id, name, ...props });
+      props.type === "date"
+        ? dateControl({ id, name, ...props })
+        : h("input", { class: "input", id, name, ...props });
     const select = (id, name, options, value) =>
-      h(
-        "select",
+      selectControl(
         { class: "input select-input", id, name },
         ...options.map((o) =>
           h(
@@ -463,6 +470,7 @@ export function createCourtsPages({ api, getOrgId }) {
               key: "actions",
               label: "Action",
               align: "center",
+              actionCount: 2,
               render: (r) =>
                 h(
                   "span",
@@ -470,11 +478,14 @@ export function createCourtsPages({ api, getOrgId }) {
                   iconButton({
                     label: `Edit ${r.name}`,
                     icon: "edit",
+                    size: "sm",
+                    variant: "edit",
                     onClick: () => courtModal(r),
                   }),
                   iconButton({
                     label: `Delete ${r.name}`,
                     icon: "trash",
+                    size: "sm",
                     variant: "danger",
                     onClick: () =>
                       deleteModal("courts", r, {
@@ -660,6 +671,7 @@ export function createCourtsPages({ api, getOrgId }) {
                 key: "actions",
                 label: "Action",
                 align: "center",
+                actionCount: 2,
                 render: (r) =>
                   h(
                     "span",
@@ -669,6 +681,8 @@ export function createCourtsPages({ api, getOrgId }) {
                         courtName(r.court_id)
                       }`,
                       icon: "calendar",
+                      size: "sm",
+                      variant: "warning",
                       onClick: () =>
                         endModal(
                           "court_hours",
@@ -681,6 +695,7 @@ export function createCourtsPages({ api, getOrgId }) {
                         courtName(r.court_id)
                       }`,
                       icon: "trash",
+                      size: "sm",
                       variant: "danger",
                       onClick: () =>
                         deleteModal("court_hours", r, {
@@ -879,6 +894,7 @@ export function createCourtsPages({ api, getOrgId }) {
                 key: "actions",
                 label: "Action",
                 align: "center",
+                actionCount: 2,
                 render: (r) =>
                   h(
                     "span",
@@ -886,11 +902,14 @@ export function createCourtsPages({ api, getOrgId }) {
                     iconButton({
                       label: `End rate: ${describe(r)}`,
                       icon: "calendar",
+                      size: "sm",
+                      variant: "warning",
                       onClick: () => endModal("court_rates", r, describe(r)),
                     }),
                     iconButton({
                       label: `Delete rate: ${describe(r)}`,
                       icon: "trash",
+                      size: "sm",
                       variant: "danger",
                       onClick: () =>
                         deleteModal("court_rates", r, {
@@ -1055,10 +1074,12 @@ export function createCourtsPages({ api, getOrgId }) {
               key: "actions",
               label: "Action",
               align: "center",
+              actionCount: 1,
               render: (r) =>
                 iconButton({
                   label: `Delete blackout: ${r.reason}`,
                   icon: "trash",
+                  size: "sm",
                   variant: "danger",
                   onClick: () =>
                     deleteModal("court_blackouts", r, {
@@ -1087,6 +1108,14 @@ export function createCourtsPages({ api, getOrgId }) {
       rates: ["New rate", rateModal],
       blackouts: ["New blackout", blackoutModal],
     };
+    const addBtnLabel = h("span", { class: "btn-label" }, "New court");
+    const addBtn = button({
+      label: "New court",
+      icon: "plus",
+      variant: "primary",
+      onClick: () => ADD[state.tab][1](),
+    });
+    addBtn.querySelector(".btn-label")?.replaceWith(addBtnLabel);
 
     function draw() {
       tabsHost.replaceChildren(tabs({
@@ -1097,39 +1126,50 @@ export function createCourtsPages({ api, getOrgId }) {
           draw();
         },
       }));
-      const [label, open] = ADD[state.tab];
+      const [label] = ADD[state.tab];
       const disabled = state.tab !== "courts" && state.status === "ready" &&
         state.courts.length === 0;
+      addBtnLabel.textContent = label;
+      addBtn.disabled = disabled;
       const view = {
         courts: courtsView,
         hours: hoursView,
         rates: ratesView,
         blackouts: blackoutsView,
       }[state.tab];
-      body.replaceChildren(
-        h(
+      const content = view();
+      const tableNode = content.classList?.contains("table-scroll")
+        ? h(
           "div",
-          { class: "actions courts-actions" },
-          button({
-            label,
-            icon: "plus",
-            variant: "primary",
-            disabled,
-            onClick: open,
-          }),
-          disabled ? h("span", { class: "muted" }, "Add a court first.") : null,
-        ),
-        view(),
+          { class: "member-directory-card is-auto-grid" },
+          h("div", { class: "table-host" }, content),
+        )
+        : (() => {
+          const tbl = content.querySelector(".table-scroll");
+          if (tbl) {
+            const card = h(
+              "div",
+              { class: "member-directory-card is-auto-grid" },
+              h("div", { class: "table-host" }),
+            );
+            tbl.replaceWith(card);
+            card.firstElementChild.append(tbl);
+          }
+          return content;
+        })();
+      body.replaceChildren(
+        disabled ? h("p", { class: "muted" }, "Add a court first.") : null,
+        tableNode,
       );
     }
 
     page.append(
-      pageHeader({
-        icon: "grid",
-        eyebrow: "Admin",
+      adminHero({
         title: "Courts",
+        chip: "Courts Management",
         description:
           "Courts, opening hours, rates and blackout times. All times are Asia/Manila.",
+        actions: [addBtn],
       }),
       tabsHost,
       body,

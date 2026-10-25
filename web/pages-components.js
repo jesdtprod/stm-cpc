@@ -39,6 +39,7 @@ import {
   progressBar,
   radioGroup,
   searchableSelect,
+  searchControl,
   segmentedControl,
   selectField,
   sidebarNav,
@@ -198,7 +199,7 @@ export function componentsPage() {
     { id: "sec-completeform", label: "Complete Form", icon: "checkCircle" },
   ];
 
-  const searchInput = h("input", {
+  const searchInput = searchControl({
     type: "search",
     class: "input",
     placeholder: "Search components…",

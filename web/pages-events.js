@@ -6,13 +6,16 @@
 //   * Creates are idempotent (the new row's ID is made when the form opens). Everything is written by database
 //     functions that check the caller; this page shows their answers in plain words. Times are Asia/Manila.
 import {
+  adminHero,
+  attachPagePattern,
   badge,
   button,
   dataTable,
+  dateControl,
   h,
   iconButton,
   openModal,
-  pageHeader,
+  selectControl,
   toast,
 } from "./ui.js";
 import { formatDate, formatDateTime } from "./lib/dates.js";
@@ -58,7 +61,7 @@ const EVENT_SELECT =
   "cancel_reason,divisions(id,status)";
 const DIVISION_SELECT =
   "id,name,category_id,format,gender,age_group,min_rank_id,max_rank_id,max_entries,status,cancel_reason," +
-  "format_snapshot,scoring_snapshot,category:categories(name),stages:division_stages(id,stage_no,status)";
+  "format_snapshot,scoring_snapshot,category:categories(name),stages:division_stages(id,stage_no,stage_type,status,config)";
 
 /** "2026-11-05T09:00" typed in the form (Manila time) -> an instant; "" -> null. */
 const toInstant = (v) => (v ? `${v}:00+08:00` : null);
@@ -81,7 +84,10 @@ function messageOf(e, fallback) {
 
 export function createEventsPages({ api }) {
   function eventsPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-events-page",
+    });
+    attachPagePattern(page);
     const body = h("div", { class: "events-body" });
     const state = {
       status: "loading",
@@ -219,10 +225,11 @@ export function createEventsPages({ api }) {
           : null,
       );
     const input = (id, name, props = {}) =>
-      h("input", { class: "input", id, name, ...props });
+      props.type === "date"
+        ? dateControl({ id, name, ...props })
+        : h("input", { class: "input", id, name, ...props });
     const select = (id, name, options, value) =>
-      h(
-        "select",
+      selectControl(
         { class: "input select-input", id, name },
         ...options.map((o) =>
           h(
@@ -496,6 +503,7 @@ export function createEventsPages({ api }) {
               key: "actions",
               label: "Action",
               align: "center",
+              actionCount: 4,
               render: (r) =>
                 h(
                   "span",
@@ -503,12 +511,16 @@ export function createEventsPages({ api }) {
                   iconButton({
                     label: `Divisions of ${r.name}`,
                     icon: "layers",
+                    size: "sm",
+                    variant: "info",
                     onClick: () => openEvent(r),
                   }),
                   beforeDraw(r)
                     ? iconButton({
                       label: `Edit ${r.name}`,
                       icon: "edit",
+                      size: "sm",
+                      variant: "edit",
                       onClick: () => eventModal(r),
                     })
                     : null,
@@ -516,6 +528,8 @@ export function createEventsPages({ api }) {
                     ? iconButton({
                       label: `Open registration for ${r.name}`,
                       icon: "check",
+                      size: "sm",
+                      variant: "success",
                       onClick: () =>
                         setStatus(r, "registration_open", "Registration open."),
                     })
@@ -524,6 +538,8 @@ export function createEventsPages({ api }) {
                     ? iconButton({
                       label: `Close registration for ${r.name}`,
                       icon: "lock",
+                      size: "sm",
+                      variant: "warning",
                       onClick: () =>
                         setStatus(
                           r,
@@ -536,6 +552,8 @@ export function createEventsPages({ api }) {
                     ? iconButton({
                       label: `Mark ${r.name} completed`,
                       icon: "medal",
+                      size: "sm",
+                      variant: "success",
                       onClick: () =>
                         setStatus(r, "completed", "Event completed."),
                     })
@@ -544,6 +562,7 @@ export function createEventsPages({ api }) {
                     ? iconButton({
                       label: `Cancel ${r.name}`,
                       icon: "x",
+                      size: "sm",
                       variant: "danger",
                       onClick: () => cancelEvent(r),
                     })
@@ -855,6 +874,101 @@ export function createEventsPages({ api }) {
       });
     }
 
+    // ---------------------------------------------------------- format settings
+    const poolStage = (d) =>
+      (d.stages ?? []).find((s) => s.stage_type === "pool_play");
+
+    /** Pool play: how many brackets, how many advance, how entries are placed. Fixed once the draw is made. */
+    function formatSettingsModal(d) {
+      const stage = poolStage(d);
+      const cfg = stage.config ?? {};
+      const error = errorLine();
+      return openModal({
+        title: "Format settings",
+        eyebrow: `${state.open.name} · ${d.name}`,
+        icon: "settings",
+        confirmLabel: "Save settings",
+        body: h(
+          "div",
+          { class: "stack" },
+          h(
+            "p",
+            { class: "muted" },
+            "Entries are split into Brackets A, B, C ... that each play a round robin; the best of each bracket enter a knockout. The settings are fixed once the draw is made.",
+          ),
+          field(
+            "fs-size",
+            "Players per bracket",
+            input("fs-size", "target_group_size", {
+              type: "number",
+              min: 3,
+              max: 12,
+              step: 1,
+              value: cfg.target_group_size ?? 5,
+            }),
+            "Used to work out the number of brackets, for example 20 players at 5 each make 4 brackets.",
+          ),
+          field(
+            "fs-count",
+            "Number of brackets",
+            input("fs-count", "group_count", {
+              type: "number",
+              min: 1,
+              max: 26,
+              step: 1,
+              value: cfg.group_count ?? "",
+            }),
+            "Optional. Leave empty to use the players per bracket.",
+          ),
+          field(
+            "fs-adv",
+            "Advance from each bracket",
+            input("fs-adv", "advance_per_group", {
+              type: "number",
+              min: 1,
+              max: 4,
+              step: 1,
+              value: cfg.advance_per_group ?? 2,
+            }),
+          ),
+          field(
+            "fs-assign",
+            "Placing players in brackets",
+            select("fs-assign", "group_assignment", [
+              { value: "random", label: "Random draw" },
+              {
+                value: "snake_by_rank",
+                label: "By rank (strongest spread evenly)",
+              },
+            ], cfg.group_assignment ?? "random"),
+          ),
+          error,
+        ),
+        onConfirm: async (form) => {
+          const countText = String(form.get("group_count") ?? "").trim();
+          const config = {
+            target_group_size: Number(form.get("target_group_size")),
+            group_count: countText === "" ? null : Number(countText),
+            advance_per_group: Number(form.get("advance_per_group")),
+            group_assignment: String(form.get("group_assignment")),
+          };
+          try {
+            await api.rpc("set_stage_config", {
+              p_stage_id: stage.id,
+              p_config: config,
+            });
+            toast("Settings saved.", { tone: "success" });
+            await refresh();
+          } catch (e) {
+            return showError(
+              error,
+              messageOf(e, "That did not work. Try again."),
+            );
+          }
+        },
+      });
+    }
+
     function cancelDivision(d) {
       return reasonModal({
         title: "Cancel this division",
@@ -930,6 +1044,7 @@ export function createEventsPages({ api }) {
               key: "actions",
               label: "Action",
               align: "center",
+              actionCount: 4,
               render: (r) =>
                 h(
                   "span",
@@ -939,6 +1054,8 @@ export function createEventsPages({ api }) {
                     ? iconButton({
                       label: `Run the draw for ${r.name}`,
                       icon: "shuffle",
+                      size: "sm",
+                      variant: "success",
                       onClick: () => runDraw(r),
                     })
                     : null,
@@ -946,6 +1063,8 @@ export function createEventsPages({ api }) {
                     ? iconButton({
                       label: `Open the bracket for ${r.name}`,
                       icon: "trophy",
+                      size: "sm",
+                      variant: "info",
                       onClick: () => {
                         location.hash = `#/bracket?division=${r.id}`;
                       },
@@ -955,13 +1074,26 @@ export function createEventsPages({ api }) {
                     ? iconButton({
                       label: `View the draw for ${r.name}`,
                       icon: "eye",
+                      size: "sm",
+                      variant: "info",
                       onClick: () => drawModal(r),
+                    })
+                    : null,
+                  r.status === "open" && poolStage(r)
+                    ? iconButton({
+                      label: `Format settings for ${r.name}`,
+                      icon: "settings",
+                      size: "sm",
+                      variant: "edit",
+                      onClick: () => formatSettingsModal(r),
                     })
                     : null,
                   r.status === "open"
                     ? iconButton({
                       label: `Edit ${r.name}`,
                       icon: "edit",
+                      size: "sm",
+                      variant: "edit",
                       onClick: () => divisionModal(r),
                     })
                     : null,
@@ -969,6 +1101,7 @@ export function createEventsPages({ api }) {
                     ? iconButton({
                       label: `Cancel ${r.name}`,
                       icon: "x",
+                      size: "sm",
                       variant: "danger",
                       onClick: () => cancelDivision(r),
                     })
@@ -1123,6 +1256,7 @@ export function createEventsPages({ api }) {
               key: "actions",
               label: "Action",
               align: "center",
+              actionCount: 1,
               render: (r) =>
                 ["confirmed", "waitlisted"].includes(r.status) &&
                   r.division?.status === "open"
@@ -1131,6 +1265,7 @@ export function createEventsPages({ api }) {
                       r.member?.person?.display_name ?? "registration"
                     }`,
                     icon: "x",
+                    size: "sm",
                     variant: "danger",
                     onClick: () => withdrawRegistration(r),
                   })
@@ -1143,6 +1278,8 @@ export function createEventsPages({ api }) {
                         r.member?.person?.display_name ?? "registration"
                       }`,
                       icon: "check",
+                      size: "sm",
+                      variant: "success",
                       onClick: () => decide(r, "approve"),
                     }),
                     iconButton({
@@ -1150,6 +1287,7 @@ export function createEventsPages({ api }) {
                         r.member?.person?.display_name ?? "registration"
                       }`,
                       icon: "x",
+                      size: "sm",
                       variant: "danger",
                       onClick: () => rejectRegistration(r),
                     }),
@@ -1169,6 +1307,13 @@ export function createEventsPages({ api }) {
         emptyText: "Members' registrations for this event appear here.",
       });
     }
+
+    const wrapTable = (table) =>
+      h(
+        "div",
+        { class: "member-directory-card is-auto-grid" },
+        h("div", { class: "table-host" }, table),
+      );
 
     function detailView() {
       const ev = state.open;
@@ -1201,7 +1346,7 @@ export function createEventsPages({ api }) {
         ),
         h(
           "div",
-          { class: "events-summary" },
+          { class: "member-panel events-summary" },
           h("h2", {}, ev.name),
           badge(statusLabel, statusTone),
           h(
@@ -1225,40 +1370,38 @@ export function createEventsPages({ api }) {
             ? h("p", { class: "muted" }, `Cancelled: ${ev.cancel_reason}`)
             : null,
         ),
-        divisionsView(),
+        wrapTable(divisionsView()),
         h("h3", {}, "Registrations"),
-        registrationsView(),
+        wrapTable(registrationsView()),
       );
     }
 
     // ---------------------------------------------------------------- layout
+    const newEventBtn = button({
+      label: "New event",
+      icon: "plus",
+      variant: "primary",
+      onClick: () => eventModal(null),
+    });
+
     function draw() {
+      newEventBtn.hidden = Boolean(state.open);
       if (state.open) {
         body.replaceChildren(detailView());
         return;
       }
       body.replaceChildren(
-        h(
-          "div",
-          { class: "actions events-actions" },
-          button({
-            label: "New event",
-            icon: "plus",
-            variant: "primary",
-            onClick: () => eventModal(null),
-          }),
-        ),
-        eventsView(),
+        wrapTable(eventsView()),
       );
     }
 
     page.append(
-      pageHeader({
-        icon: "trophy",
-        eyebrow: "Admin",
+      adminHero({
         title: "Events",
+        chip: "Events Management",
         description:
           "Create events, add their divisions, and open or close registration. All times are Asia/Manila.",
+        actions: [newEventBtn],
       }),
       body,
     );

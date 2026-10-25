@@ -20,6 +20,29 @@ Preserve business logic, calculations, permissions, routes, data, and working in
 - Use reusable components for repeated table, modal, toolbar, empty-state, pagination, and skeleton patterns (for example shared Vue components rendered through Inertia layouts).
 - Consistency means a shared visual language, not forcing every workflow into the same page layout.
 
+### Members reference controls (approved October 25, 2026)
+
+The current Members page is the reference for comparable controls. Retain the
+existing green, gold, and semantic colors and shared font; buttons are flat and
+have no shadows. Use `ui.js` components rather than new page-specific controls.
+
+- Tables: one column schema drives headings, records, and skeletons. Text aligns
+  left, money right, and actions center. Use the shared horizontal-scroll wrapper
+  on desktop and the shared labelled row layout on mobile. Stack primary and
+  secondary text with a 2px gap. Keep header and pagination about 49px high.
+- Row actions and pagination: 36px square, 10px radius, 17px icons, and 8px action
+  gaps. Provide an accessible action label and tooltip; use semantic colors.
+  Declare `actionCount` for conditional actions so loading reserves their width.
+- Dropdowns: `selectField` for new fields; `selectControl` for existing native
+  select references. Both use the searchable, keyboard-accessible component.
+  Preserve native field names, validation, disabled state, and change callbacks.
+- Searches: `searchControl` returns the input for existing handlers and renders
+  the shared search icon and clear action. Clear is hidden when empty and rotates
+  on hover, with reduced-motion support.
+- Dates, modal actions, empty states, and pagination reuse `dateField`,
+  `dateControl` (native-form adapter), `openModal`, `dataTable`, and `pagination`. Specialized calendar and tournament
+  layouts retain their workflow while using the same controls.
+
 ## 2. Design tokens
 
 Use one shared scale throughout the application:

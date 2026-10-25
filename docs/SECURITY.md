@@ -146,6 +146,7 @@ GitHub Pages cannot send security headers. Use these controls in every HTML file
 - Run Supabase's **Security Advisor** and **Performance Advisor** after every migration and resolve all findings (especially: RLS disabled, mutable function search_path, security-definer views).
 - **Separate projects for development and production**, with different keys and no real member data in development.
 - Storage: private buckets by default, RLS on `storage.objects`, restrict file type/size, random file names, short-lived signed URLs, never serve user-uploaded HTML/SVG from the app origin.
+- Profile photos: JPG, PNG, or WebP, maximum 3 MB at selection and in the private `avatars` bucket. The browser crops/resizes uploads to JPEG. CSP permits photo display only from this project's Storage object endpoint; failed images show initials.
 
 ## 9. Public repository and secrets
 

@@ -5,13 +5,15 @@
 // and the starting rank go through functions that change the whole ladder in one step; deletes need a reason. The
 // database decides what is allowed and this page shows its answer in plain words.
 import {
+  adminHero,
+  attachPagePattern,
   badge,
   button,
   dataTable,
   h,
   iconButton,
   openModal,
-  pageHeader,
+  selectControl,
   tabs,
   toast,
 } from "./ui.js";
@@ -52,7 +54,10 @@ function messageOf(e, fallback) {
 
 export function createRanksPages({ api, getOrgId }) {
   function ranksPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-ranks-page",
+    });
+    attachPagePattern(page);
     const tabsHost = h("div", {});
     const body = h("div", { class: "ranks-body" });
     const state = {
@@ -118,8 +123,7 @@ export function createRanksPages({ api, getOrgId }) {
           : null,
       );
     const select = (id, name, options, value) =>
-      h(
-        "select",
+      selectControl(
         { class: "input select-input", id, name },
         ...options.map((o) =>
           h(
@@ -361,7 +365,7 @@ export function createRanksPages({ api, getOrgId }) {
       if (!ladder) {
         return h(
           "div",
-          { class: "card ladder-card" },
+          { class: "member-panel ladder-card" },
           head,
           h("p", { class: "muted" }, "This category has no rank ladder yet."),
           h(
@@ -412,18 +416,24 @@ export function createRanksPages({ api, getOrgId }) {
                 iconButton({
                   label: `Move ${r.name} up`,
                   icon: "chevronUp",
+                  size: "sm",
+                  variant: "info",
                   disabled: i === ranks.length - 1,
                   onClick: () => move(ladder, ranks, i, 1),
                 }),
                 iconButton({
                   label: `Move ${r.name} down`,
                   icon: "chevronDown",
+                  size: "sm",
+                  variant: "info",
                   disabled: i === 0,
                   onClick: () => move(ladder, ranks, i, -1),
                 }),
                 iconButton({
                   label: `Edit ${r.name}`,
                   icon: "edit",
+                  size: "sm",
+                  variant: "edit",
                   onClick: () => rankModal(cat, ladder, r),
                 }),
                 iconButton({
@@ -431,6 +441,8 @@ export function createRanksPages({ api, getOrgId }) {
                     ? `${r.name} is the starting rank`
                     : `Make ${r.name} the starting rank`,
                   icon: "check",
+                  size: "sm",
+                  variant: "success",
                   disabled: r.is_starting,
                   onClick: () =>
                     run(
@@ -445,6 +457,7 @@ export function createRanksPages({ api, getOrgId }) {
                 iconButton({
                   label: `Delete ${r.name}`,
                   icon: "trash",
+                  size: "sm",
                   variant: "danger",
                   onClick: () =>
                     deleteModal(r, {
@@ -461,7 +474,7 @@ export function createRanksPages({ api, getOrgId }) {
         : h("p", { class: "muted" }, "No ranks yet. Add the first one.");
       return h(
         "div",
-        { class: "card ladder-card" },
+        { class: "member-panel ladder-card" },
         head,
         field(
           `ov-${cat.id}`,
@@ -822,6 +835,7 @@ export function createRanksPages({ api, getOrgId }) {
             key: "actions",
             label: "Action",
             align: "center",
+            actionCount: 3,
             render: (r) =>
               h(
                 "span",
@@ -829,6 +843,8 @@ export function createRanksPages({ api, getOrgId }) {
                 iconButton({
                   label: `Edit ${r.name}`,
                   icon: "edit",
+                  size: "sm",
+                  variant: "edit",
                   onClick: () => ruleModal(r),
                 }),
                 iconButton({
@@ -836,6 +852,8 @@ export function createRanksPages({ api, getOrgId }) {
                     ? `Turn off ${r.name}`
                     : `Turn on ${r.name}`,
                   icon: r.is_active ? "eye" : "check",
+                  size: "sm",
+                  variant: r.is_active ? "warning" : "success",
                   onClick: () =>
                     run(async () => {
                       const done = await api.read((c) =>
@@ -852,6 +870,7 @@ export function createRanksPages({ api, getOrgId }) {
                 iconButton({
                   label: `Delete ${r.name}`,
                   icon: "trash",
+                  size: "sm",
                   variant: "danger",
                   onClick: () =>
                     deleteModal(r, {
@@ -873,15 +892,24 @@ export function createRanksPages({ api, getOrgId }) {
           { class: "muted" },
           "Rules are checked in priority order after a division is finalized, once per member. Ranks never change from a single match.",
         ),
-        dataTable({
-          schema,
-          rows: state.rules,
-          state: state.status,
-          ariaLabel: "Rank rules",
-          onRetry: refresh,
-          emptyTitle: "No rules yet",
-          emptyText: "Add a rule to say how results move members up or down.",
-        }),
+        h(
+          "div",
+          { class: "member-directory-card is-auto-grid" },
+          h(
+            "div",
+            { class: "table-host" },
+            dataTable({
+              schema,
+              rows: state.rules,
+              state: state.status,
+              ariaLabel: "Rank rules",
+              onRetry: refresh,
+              emptyTitle: "No rules yet",
+              emptyText:
+                "Add a rule to say how results move members up or down.",
+            }),
+          ),
+        ),
       );
     }
 
@@ -902,18 +930,21 @@ export function createRanksPages({ api, getOrgId }) {
         body.replaceChildren(
           h(
             "div",
-            { class: "card home-error", role: "alert" },
+            { class: "member-panel home-error", role: "alert" },
             h("p", {}, "The ranks could not be loaded."),
             button({ label: "Try again", icon: "refresh", onClick: refresh }),
           ),
         );
         return;
       }
-      if (state.status === "loading") {
+      if (state.status === "loading" && state.tab === "ladders") {
         body.replaceChildren(
           h(
             "div",
-            { class: "card settings-card is-loading", "aria-busy": "true" },
+            {
+              class: "member-panel settings-card is-loading",
+              "aria-busy": "true",
+            },
             h("span", { class: "sk-line" }),
             h("span", { class: "sk-line sk-wide" }),
           ),
@@ -926,7 +957,7 @@ export function createRanksPages({ api, getOrgId }) {
             ? h("div", { class: "stack" }, ...state.cats.map(ladderCard))
             : h(
               "div",
-              { class: "card" },
+              { class: "member-panel" },
               h("p", {}, "Add categories first, then set up their ladders."),
             ))
           : rulesView(),
@@ -934,10 +965,9 @@ export function createRanksPages({ api, getOrgId }) {
     }
 
     page.append(
-      pageHeader({
-        icon: "layers",
-        eyebrow: "Admin",
+      adminHero({
         title: "Ranks",
+        chip: "Ranks Management",
         description:
           "Each category has a ladder of ranks. Rules decide how results move members along it.",
         actions: [

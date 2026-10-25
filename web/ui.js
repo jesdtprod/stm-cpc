@@ -1,10 +1,13 @@
 import { LUCIDE, LUCIDE_SOLID } from "./lib/lucide.js";
 import { buttonClasses } from "./lib/buttons.js";
+import { tableColumn, tableMinWidth, tableTracks } from "./lib/table-layout.js";
 
 // Shared UI components. Every dynamic value goes through textContent / text nodes,
 // never innerHTML, so output is escaped by construction.
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const controlNodes = new WeakMap();
+const selectSequence = { next: 0 };
 
 /** Create an element. Event handlers must be functions; string `on*` attributes are ignored. */
 export function h(tag, props = {}, ...children) {
@@ -22,7 +25,9 @@ export function h(tag, props = {}, ...children) {
   for (const child of children.flat()) {
     if (child == null || child === false) continue;
     el.append(
-      child instanceof Node ? child : document.createTextNode(String(child)),
+      child instanceof Node
+        ? controlNodes.get(child) ?? child
+        : document.createTextNode(String(child)),
     );
   }
   return el;
@@ -166,6 +171,20 @@ export function field(
     onChange,
   },
 ) {
+  if (type === "date") {
+    return dateField({
+      id,
+      label,
+      value,
+      required,
+      disabled,
+      min,
+      max,
+      error,
+      hint,
+      onChange,
+    });
+  }
   const describedBy = [error ? `${id}-err` : null, hint ? `${id}-hint` : null]
     .filter(Boolean).join(" ");
 
@@ -334,8 +353,103 @@ export function selectField(config) {
   return searchableSelect(config);
 }
 
+/** Members-style search; returning the input preserves existing event/value code. */
+export function searchControl(props = {}) {
+  const input = h("input", { ...props, type: "search" });
+  const clear = h("button", {
+    class: "search-box-clear",
+    type: "button",
+    hidden: !input.value,
+    "aria-label": "Clear search",
+    title: "Clear search",
+    onClick: () => {
+      input.value = "";
+      input.focus();
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+  }, icon("x"));
+  const wrap = h(
+    "div",
+    { class: "search-box grow" },
+    h(
+      "span",
+      { class: "search-box-icon", "aria-hidden": "true" },
+      icon("search"),
+    ),
+    input,
+    clear,
+  );
+  const descriptor = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value",
+  );
+  Object.defineProperty(input, "value", {
+    get() {
+      return descriptor.get.call(this);
+    },
+    set(value) {
+      descriptor.set.call(this, value);
+      clear.hidden = !this.value;
+    },
+    configurable: true,
+  });
+  input.addEventListener("input", () => {
+    clear.hidden = !input.value;
+  });
+  input.setAttribute(
+    "aria-label",
+    props["aria-label"] || props.placeholder || "Search",
+  );
+  controlNodes.set(input, wrap);
+  return input;
+}
+
+/** Native-select API for existing forms, rendered with the shared searchable UI. */
+export function selectControl(props = {}, ...children) {
+  const native = h("select", props, ...children);
+  const control = searchableSelect({
+    id: props.id,
+    name: props.name,
+    required: props.required,
+    disabled: props.disabled,
+    ariaLabel: props["aria-label"],
+    options: [...native.options].map((option) => ({
+      value: option.value,
+      label: option.textContent,
+      disabled: option.disabled,
+    })),
+    value: native.value,
+    nativeSelect: native,
+  });
+  const refresh = () => control.refreshFromNative();
+  // Preserve references used by dependent selectors and price previews.
+  for (const property of ["value", "disabled"]) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLSelectElement.prototype,
+      property,
+    );
+    Object.defineProperty(native, property, {
+      get() {
+        return descriptor.get.call(this);
+      },
+      set(next) {
+        descriptor.set.call(this, next);
+        refresh();
+      },
+      configurable: true,
+    });
+  }
+  const replace = native.replaceChildren.bind(native);
+  native.replaceChildren = (...options) => {
+    replace(...options);
+    refresh();
+  };
+  controlNodes.set(native, control);
+  return native;
+}
+
 export function searchableSelect({
-  id,
+  id = `select-${++selectSequence.next}`,
   label,
   ariaLabel,
   name = id,
@@ -349,6 +463,7 @@ export function searchableSelect({
   onSelect,
   onChange,
   searchable = true,
+  nativeSelect = null,
 }) {
   const optionValue = (item) => typeof item === "object" ? item.value : item;
   const optionLabel = (item) =>
@@ -372,7 +487,7 @@ export function searchableSelect({
     id: `${id}-options`,
     "aria-label": ariaLabel || label || "Options",
   });
-  const native = h("select", {
+  const native = nativeSelect ?? h("select", {
     class: "searchable-select-native",
     name,
     required,
@@ -388,6 +503,19 @@ export function searchableSelect({
       toggle(true);
     },
   });
+  if (nativeSelect) {
+    native.className = "searchable-select-native";
+    native.removeAttribute("id");
+    native.setAttribute("tabindex", "-1");
+    native.setAttribute("aria-hidden", "true");
+    native.addEventListener("invalid", (event) => {
+      event.preventDefault();
+      validation.textContent = "Please select an option.";
+      validation.hidden = false;
+      triggerBtn.setAttribute("aria-invalid", "true");
+      toggle(true);
+    });
+  }
   const searchInput = h("input", {
     type: "search",
     class: "input input-sm",
@@ -410,12 +538,14 @@ export function searchableSelect({
   );
 
   function sync() {
-    native.replaceChildren(...options.map((item) =>
-      h("option", {
-        value: optionValue(item),
-        disabled: typeof item === "object" && item.disabled,
-      }, optionLabel(item))
-    ));
+    if (!nativeSelect) {
+      native.replaceChildren(...options.map((item) =>
+        h("option", {
+          value: optionValue(item),
+          disabled: typeof item === "object" && item.disabled,
+        }, optionLabel(item))
+      ));
+    }
     native.value = selected === null ? "" : String(optionValue(selected));
     triggerText.textContent = selected === null
       ? placeholder
@@ -466,7 +596,7 @@ export function searchableSelect({
     if (!wrap.contains(event.target)) toggle(false);
   }
   function toggle(open, restoreFocus = false, focusSearch = true) {
-    if (disabled) return;
+    if (native.disabled) return;
     isOpen = open;
     dropdown.hidden = !open;
     triggerBtn.setAttribute("aria-expanded", String(open));
@@ -577,6 +707,21 @@ export function searchableSelect({
     if (isOpen) renderList();
   };
   fieldEl.close = () => toggle(false);
+  fieldEl.refreshFromNative = () => {
+    options = [...native.options].map((option) => ({
+      value: option.value,
+      label: option.textContent,
+      disabled: option.disabled,
+    }));
+    selected = findOption(native.value);
+    filtered = [...options];
+    triggerText.textContent = selected === null
+      ? placeholder
+      : optionLabel(selected);
+    triggerBtn.disabled = native.disabled;
+    if (native.disabled && isOpen) toggle(false);
+    if (isOpen) renderList();
+  };
   Object.defineProperty(fieldEl, "value", {
     get: () => selected === null ? "" : optionValue(selected),
     set: (next) => fieldEl.setValue(next),
@@ -1015,33 +1160,39 @@ export function sliderField(
   );
 }
 
-export function dateField(
-  {
-    id,
-    label,
-    value = "",
-    min,
-    max,
-    error,
-    hint,
-    required,
-    disabled,
-    onChange,
-  },
-) {
-  return calendarDropdown({
-    id,
-    label,
-    value,
-    range: false,
-    min,
-    max,
-    error,
-    hint,
-    required,
-    disabled,
-    onChange,
+/** Date adapter preserves native validation and FormData while sharing the calendar. */
+export function dateControl(props = {}) {
+  const native = h("input", { ...props, type: "date" });
+  const control = calendarDropdown({
+    ...props,
+    ariaLabel: props.ariaLabel || props["aria-label"],
+    value: native.value,
+    nativeInput: native,
+    onChange: () =>
+      native.dispatchEvent(new Event("change", { bubbles: true })),
   });
+  for (const property of ["value", "disabled"]) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      property,
+    );
+    Object.defineProperty(native, property, {
+      get() {
+        return descriptor.get.call(this);
+      },
+      set(next) {
+        descriptor.set.call(this, next);
+        control.refreshFromNative();
+      },
+      configurable: true,
+    });
+  }
+  controlNodes.set(native, control);
+  return native;
+}
+
+export function dateField(config) {
+  return controlNodes.get(dateControl({ ...config, name: config.id }));
 }
 
 export function timeField(
@@ -1108,6 +1259,7 @@ export function calendarDropdown(
   {
     id = "calendar-drop",
     label,
+    ariaLabel,
     value = "",
     range = false,
     startValue = "",
@@ -1120,6 +1272,7 @@ export function calendarDropdown(
     required = false,
     disabled = false,
     defaultView = "",
+    nativeInput = null,
   },
 ) {
   let selectedStart = range ? startValue : value;
@@ -1178,6 +1331,7 @@ export function calendarDropdown(
       type: "button",
       class: "input calendar-drop-trigger",
       id,
+      "aria-label": ariaLabel || label || "Choose date",
       "aria-haspopup": "dialog",
       "aria-expanded": "false",
       "aria-controls": `${id}-calendar`,
@@ -1204,9 +1358,9 @@ export function calendarDropdown(
     hidden: true,
   });
 
-  const hiddenInput = h("input", {
+  const hiddenInput = nativeInput ?? h("input", {
     type: "hidden",
-    id,
+    id: `${id}-value`,
     name: id,
     value: selectedStart || "",
   });
@@ -1322,7 +1476,7 @@ export function calendarDropdown(
       const inRange = range && selectedStart && selectedEnd &&
         dStr > selectedStart && dStr < selectedEnd;
       const isDateDisabled = Boolean(
-        disabled ||
+        (nativeInput?.disabled ?? disabled) ||
           (min && dStr < min) ||
           (max && dStr > max),
       );
@@ -1559,6 +1713,26 @@ export function calendarDropdown(
     errorEl,
   );
 
+  if (nativeInput) {
+    nativeInput.removeAttribute("id");
+    nativeInput.className = "searchable-select-native";
+    nativeInput.setAttribute("tabindex", "-1");
+    nativeInput.setAttribute("aria-hidden", "true");
+    nativeInput.addEventListener("invalid", (event) => {
+      event.preventDefault();
+      errorEl.textContent = nativeInput.validationMessage ||
+        "Choose a valid date.";
+      errorEl.hidden = false;
+      triggerBtn.setAttribute("aria-invalid", "true");
+      toggleCalendar(true);
+    });
+  }
+  wrapper.refreshFromNative = () => {
+    selectedStart = hiddenInput.value;
+    displayText.textContent = formatDisplay();
+    triggerBtn.disabled = hiddenInput.disabled;
+    if (hiddenInput.disabled && isOpen) toggleCalendar(false);
+  };
   wrapper.inputEl = hiddenInput;
   Object.defineProperty(wrapper, "value", {
     get: () => selectedStart,
@@ -1918,7 +2092,12 @@ export function adminHero({ title, description, chip, actions = [] }) {
       h(
         "div",
         { class: "dash-hero-chips" },
-        h("span", { class: "dash-chip is-role" }, icon("medal"), "Admin Console"),
+        h(
+          "span",
+          { class: "dash-chip is-role" },
+          icon("medal"),
+          "Admin Console",
+        ),
         h(
           "span",
           { class: "dash-chip is-date" },
@@ -1948,18 +2127,33 @@ export function adminHero({ title, description, chip, actions = [] }) {
  * "teal" or "rose"; `text` shrinks the value for dates and words; `loading` shows a skeleton instead of the value.
  */
 export function adminStatCard(
-  { label, value, hint, iconName, tone = "emerald", pill, text = false, loading = false },
+  {
+    label,
+    value,
+    hint,
+    iconName,
+    tone = "emerald",
+    pill,
+    text = false,
+    loading = false,
+  },
 ) {
   return h(
     "div",
     {
-      class: `home-card member-stat-card is-tone-${tone}${text ? " is-text" : ""}`,
+      class: `home-card member-stat-card is-tone-${tone}${
+        text ? " is-text" : ""
+      }`,
       "aria-busy": loading ? "true" : "false",
     },
     h(
       "div",
       { class: "member-stat-main" },
-      h("span", { class: "home-card-icon", "aria-hidden": "true" }, icon(iconName)),
+      h(
+        "span",
+        { class: "home-card-icon", "aria-hidden": "true" },
+        icon(iconName),
+      ),
       h(
         "div",
         { class: "member-stat-copy" },
@@ -1970,7 +2164,11 @@ export function adminStatCard(
       ),
       loading ? null : pill,
     ),
-    h("div", { class: "home-card-bottom" }, h("div", { class: "home-card-hint" }, hint)),
+    h(
+      "div",
+      { class: "home-card-bottom" },
+      h("div", { class: "home-card-hint" }, hint),
+    ),
   );
 }
 
@@ -2013,7 +2211,7 @@ export function toolbar(
       "div",
       { class: "grow field" },
       h("label", { for: searchId, class: "muted" }, searchLabel),
-      h("input", {
+      searchControl({
         class: "input",
         id: searchId,
         type: "search",
@@ -2055,7 +2253,7 @@ export function dataTable(
     ariaLabel,
   },
 ) {
-  const cols = schema.columns;
+  const cols = schema.columns.map(tableColumn);
   const actions = schema.actions ?? [];
   const cls = `tbl cols-${cols.length}${
     actions.length ? ` act-${actions.length}` : ""
@@ -2065,7 +2263,6 @@ export function dataTable(
     role: "table",
     "aria-label": ariaLabel ?? "Data table",
     "aria-busy": state === "loading" ? "true" : "false",
-    style: schema.gridTemplate ? `--tbl-grid: ${schema.gridTemplate};` : null,
   });
 
   const head = h("div", { class: "tbl-row tbl-head", role: "row" });
@@ -2073,14 +2270,21 @@ export function dataTable(
     head.append(
       h(
         "div",
-        { class: `tbl-cell ${c.align ?? ""}`, role: "columnheader" },
+        {
+          class: `tbl-cell ${c.align}${c.actions ? " tbl-actions" : ""}`,
+          role: "columnheader",
+        },
         c.label,
       ),
     );
   }
   if (actions.length) {
     head.append(
-      h("div", { class: "tbl-cell center", role: "columnheader" }, "Action"),
+      h(
+        "div",
+        { class: "tbl-cell center tbl-actions", role: "columnheader" },
+        "Action",
+      ),
     );
   }
   table.append(head);
@@ -2095,14 +2299,7 @@ export function dataTable(
       });
       for (const c of cols) {
         let bar;
-        const shape = c.skeleton ??
-          (c.key === "name" || c.key === "member" || c.label === "Member"
-            ? "member"
-            : c.key === "status" || c.label === "Status"
-            ? "badge"
-            : c.key === "actions" || c.label === "Action"
-            ? "actions"
-            : null);
+        const shape = c.skeleton;
         if (shape === "member") {
           bar = h(
             "div",
@@ -2137,7 +2334,7 @@ export function dataTable(
             { class: "row-actions" },
             ...Array.from(
               { length: c.actionCount ?? 2 },
-              () => h("span", { class: "sk round" }),
+              () => h("span", { class: "sk sk-action" }),
             ),
           );
         } else if (shape === "date") {
@@ -2155,7 +2352,7 @@ export function dataTable(
         }
         row.append(
           h("div", {
-            class: `tbl-cell ${c.align ?? ""}`,
+            class: `tbl-cell ${c.align}${c.actions ? " tbl-actions" : ""}`,
             "data-label": c.label,
           }, bar),
         );
@@ -2163,8 +2360,8 @@ export function dataTable(
       if (actions.length) {
         row.append(h(
           "div",
-          { class: "tbl-cell center" },
-          actions.map(() => h("span", { class: "sk round" })),
+          { class: "tbl-cell center tbl-actions" },
+          actions.map(() => h("span", { class: "sk sk-action" })),
         ));
       }
       body.append(row);
@@ -2213,9 +2410,15 @@ export function dataTable(
         if (c.render) content = c.render(r);
         else if (c.kind === "money") content = PHP.format(r[c.key]);
         else content = r[c.key];
+        if (c.actions) {
+          const group = h("div", { class: "row-actions" }, content);
+          const buttons = group.querySelectorAll("button, a.btn");
+          c.actionCount = Math.max(c.actionCount, buttons.length);
+          content = group;
+        }
         row.append(
           h("div", {
-            class: `tbl-cell ${c.kind === "money" ? "right" : (c.align ?? "")}`,
+            class: `tbl-cell ${c.align}${c.actions ? " tbl-actions" : ""}`,
             role: "cell",
             "data-label": c.label,
           }, content),
@@ -2225,11 +2428,16 @@ export function dataTable(
         row.append(
           h(
             "div",
-            { class: "tbl-cell center", role: "cell", "data-label": "Action" },
+            {
+              class: "tbl-cell center tbl-actions",
+              role: "cell",
+              "data-label": "Action",
+            },
             actions.map((a) =>
               iconButton({
                 label: a.label,
                 icon: a.icon,
+                variant: a.variant ?? "secondary",
                 onClick: () => a.onClick(r),
               })
             ),
@@ -2240,7 +2448,20 @@ export function dataTable(
     }
   }
   table.append(body);
-  return table;
+  const layout = [
+    ...cols,
+    ...(actions.length
+      ? [tableColumn({ key: "actions", actionCount: actions.length })]
+      : []),
+  ];
+  table.style.setProperty("--tbl-grid", tableTracks(layout).join(" "));
+  table.style.setProperty("--tbl-min", `${tableMinWidth(layout)}px`);
+  return h("div", {
+    class: "table-scroll",
+    role: "region",
+    "aria-label": `${ariaLabel ?? "Data table"} table`,
+    tabindex: "0",
+  }, table);
 }
 
 /** Footer with the visible range and total; never shows "1–0". */

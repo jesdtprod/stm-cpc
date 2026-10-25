@@ -8,10 +8,13 @@ import {
   badge,
   button,
   dataTable,
+  dateField,
   h,
   iconButton,
   openModal,
   pageHeader,
+  searchControl,
+  selectControl,
   tabs,
   toast,
 } from "./ui.js";
@@ -192,8 +195,7 @@ export function createBookingPages({ api, client, session }) {
         { class: "muted", role: "status" },
         "Checking the price…",
       );
-      const minutesSel = h(
-        "select",
+      const minutesSel = selectControl(
         { class: "input select-input", id: "bk-len", name: "minutes" },
         ...Array.from({ length: runLimit }, (_, i) => {
           const m = (i + 1) * state.slotMinutes;
@@ -218,7 +220,7 @@ export function createBookingPages({ api, client, session }) {
         role: "group",
         "aria-label": "Search results",
       });
-      const term = h("input", {
+      const term = searchControl({
         class: "input",
         id: "bk-term",
         type: "search",
@@ -402,14 +404,12 @@ export function createBookingPages({ api, client, session }) {
     function drawDay() {
       const today = businessDate();
       const last = addDays(today, state.advanceDays);
-      const dateInput = h("input", {
-        class: "input",
+      const dateInput = dateField({
         id: "book-date",
-        type: "date",
         min: today,
         max: last,
         value: state.day,
-        "aria-label": "Day",
+        ariaLabel: "Day",
         onChange: (e) => {
           if (e.target.value >= today && e.target.value <= last) {
             state.day = e.target.value;
@@ -739,8 +739,7 @@ export function createBookingPages({ api, client, session }) {
             "div",
             { class: "field" },
             h("label", { for: "pay-method" }, "Method *"),
-            h(
-              "select",
+            selectControl(
               { class: "input select-input", id: "pay-method", name: "method" },
               ...methods.map((m) =>
                 h("option", { value: m }, METHOD_LABEL[m] ?? m)

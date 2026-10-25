@@ -1218,15 +1218,54 @@ textarea.input {
   border: 1px solid var(--border);
   border-radius: var(--r-card);
   overflow: hidden;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255,
-    0.03);
+  box-shadow: none;
 }
-.card > .tbl {
+.table-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--r-card);
+}
+.tbl .tbl-cell {
+  min-width: 0;
+}
+.tbl-cell > :is(span, div):has(> .sub) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.tbl-cell.right > :is(span, div):has(> .sub) {
+  align-items: flex-end;
+}
+.tbl-actions > .row-actions {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.tbl-actions .row-actions .row-actions {
+  display: contents;
+}
+.sk-action {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+@media (min-width: 721px) {
+  .table-scroll > .tbl {
+    min-width: var(--tbl-min, 600px);
+  }
+}
+.card > .tbl,
+.card > .table-scroll > .tbl {
   border: 0;
   border-radius: 0;
   box-shadow: none;
 }
-.card:has(> .tbl) {
+.card:has(> .tbl),
+.card:has(> .table-scroll) {
   padding: 0;
   overflow: hidden;
 }
@@ -1482,7 +1521,7 @@ textarea.input {
 }
 .pager .pages {
   display: flex;
-  gap: var(--s1);
+  gap: 8px;
 }
 
 /* ===== 8. Modal (native dialog) ===== */
@@ -3238,7 +3277,8 @@ p.member-id,
 }
 .search-box input.input {
   padding-left: 42px;
-  height: 42px;
+  padding-right: 46px;
+  height: 46px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 10px;

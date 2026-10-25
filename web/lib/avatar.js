@@ -4,7 +4,31 @@
 //   * signedAvatarUrls: a private photo is shown through a short-lived signed link, never a public address.
 
 export const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
-export const AVATAR_MAX_PICK_BYTES = 12 * 1024 * 1024;
+export const AVATAR_MAX_PICK_BYTES = 3 * 1024 * 1024;
+
+export function avatarFileError(file) {
+  if (!AVATAR_TYPES.includes(file?.type)) {
+    return "Choose a JPG, PNG or WebP picture.";
+  }
+  if (file.size > AVATAR_MAX_PICK_BYTES) {
+    return "That picture is too large. Choose one no larger than 3 MB.";
+  }
+  if (!file.size) return "That picture is empty. Choose another picture.";
+  return null;
+}
+
+/** Keep initials visible if a private photo is missing or its signed URL expires. */
+export function avatarImage(url, name) {
+  const fallback = () => document.createTextNode(initialsOf(name));
+  if (!url) return fallback();
+  const image = document.createElement("img");
+  image.alt = "";
+  image.addEventListener("error", () => image.replaceWith(fallback()), {
+    once: true,
+  });
+  image.src = url;
+  return image;
+}
 
 /** Crops to the centre square and returns a JPEG blob of edge x edge pixels. */
 export async function resizeToJpeg(file, edge = 320, quality = 0.85) {

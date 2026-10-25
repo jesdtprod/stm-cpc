@@ -1,6 +1,8 @@
 // Account pages (PLAN 3.4): sign in, forced password change, profile completion, pending approval.
 // All dynamic text goes through h()/textContent (see ui.js), so nothing here can inject markup.
 import {
+  adminHero,
+  attachPagePattern,
   badge,
   button,
   calendarDropdown,
@@ -10,7 +12,9 @@ import {
   icon,
   pageHeader,
   searchableSelect,
+  selectControl,
   setupConvexPatternCanvas,
+  skeleton,
   toast,
   withPending,
 } from "./ui.js";
@@ -20,9 +24,9 @@ import {
 } from "./lib/password-hints.js";
 import { suggestNameParts } from "./lib/names.js";
 import {
-  AVATAR_MAX_PICK_BYTES,
   AVATAR_TYPES,
-  initialsOf,
+  avatarFileError,
+  avatarImage,
   resizeToJpeg,
   signedAvatarUrls,
 } from "./lib/avatar.js";
@@ -376,19 +380,54 @@ export function createAccountPages(
       }),
     );
 
-    return h(
-      "div",
-      { class: "page auth-page" },
-      pageHeader({
-        icon: "check",
-        eyebrow: forced ? "One more step" : "Account",
+    const pwPage = h("div", {
+      class: "page admin-dashboard admin-members-page profile-page",
+    });
+    attachPagePattern(pwPage);
+    pwPage.append(
+      adminHero({
         title: forced ? "Choose a new password" : "Change password",
+        chip: forced ? "One more step" : "Account Security",
         description: forced
           ? "For your security, replace the password you were given before you continue."
-          : "Pick a new password for your account.",
+          : "Pick a strong new password for your account.",
+        actions: !forced
+          ? [
+            button({
+              label: "My profile",
+              icon: "user",
+              variant: "secondary",
+              onClick: () => go("#/profile"),
+            }),
+          ]
+          : [],
       }),
-      h("div", { class: "card auth-card" }, form),
+      h(
+        "div",
+        { class: "member-panel profile-section-card profile-password-card" },
+        h(
+          "div",
+          { class: "profile-section-head" },
+          h(
+            "span",
+            { class: "section-icon", "aria-hidden": "true" },
+            icon("keyRound"),
+          ),
+          h(
+            "div",
+            { class: "profile-section-copy" },
+            h("h2", { class: "profile-section-title" }, "Update Password"),
+            h(
+              "p",
+              { class: "profile-section-sub muted" },
+              "Use at least 12 characters. Avoid reusing your temporary password or birth date.",
+            ),
+          ),
+        ),
+        form,
+      ),
     );
+    return pwPage;
   }
 
   // ---------------------------------------------------------------- profile
@@ -490,6 +529,7 @@ export function createAccountPages(
       label: "Last name",
       value: me.last_name ?? guess?.last ?? "",
       required: true,
+      iconLeading: "user",
       hint: guess?.last
         ? "Suggested from your name: please check it."
         : undefined,
@@ -499,6 +539,7 @@ export function createAccountPages(
       label: "First name",
       value: me.first_name ?? guess?.first ?? "",
       required: true,
+      iconLeading: "user",
     });
     const middleName = field({
       id: "pf-middle",
@@ -517,6 +558,7 @@ export function createAccountPages(
       label: "Display name",
       value: me.display_name ?? "",
       required: true,
+      iconLeading: "idCard",
       hint: "How your name appears in the app and on brackets.",
     });
     const gender = choiceField(
@@ -530,6 +572,7 @@ export function createAccountPages(
       id: "pf-birth",
       label: "Date of birth",
       value: formatDate(me.date_of_birth),
+      iconLeading: "calendar",
       hint: "To change your date of birth, ask the club.",
     });
     birth.querySelector("input").disabled = true;
@@ -549,6 +592,7 @@ export function createAccountPages(
       label: "Mobile number",
       value: me.mobile ?? "",
       required: true,
+      iconLeading: "phone",
       hint: "For example 09171234567",
       placeholder: "09171234567",
     });
@@ -560,6 +604,7 @@ export function createAccountPages(
       type: "email",
       value: me.email ?? "",
       required: true,
+      iconLeading: "mail",
       hint:
         "Required. The club uses it to reach you and you can sign in with it.",
     });
@@ -570,6 +615,7 @@ export function createAccountPages(
       id: "pf-em-name",
       label: "Emergency contact name (optional)",
       value: me.emergency_name ?? "",
+      iconLeading: "user",
     });
     const emRel = field({
       id: "pf-em-rel",
@@ -581,6 +627,7 @@ export function createAccountPages(
       id: "pf-em-phone",
       label: "Emergency contact number (optional)",
       value: me.emergency_phone ?? "",
+      iconLeading: "phone",
     });
     emPhone.querySelector("input").setAttribute("inputmode", "tel");
 
@@ -589,9 +636,10 @@ export function createAccountPages(
       id: "pf-street",
       label: "House number and street (optional)",
       value: me.street_line ?? "",
+      iconLeading: "home",
     });
     const selectField = (id, label) => {
-      const sel = h("select", {
+      const sel = selectControl({
         class: "input",
         id,
         name: id,
@@ -612,6 +660,31 @@ export function createAccountPages(
     const city = selectField("pf-city", "City or municipality");
     const barangay = selectField("pf-barangay", "Barangay");
     const error = errorBox();
+
+    const addressSkeleton = h(
+      "div",
+      { class: "profile-address-skeleton", "aria-hidden": "true" },
+      skeleton({ height: "44px" }),
+      h(
+        "div",
+        { class: "profile-form-grid is-three-col" },
+        skeleton({ height: "44px" }),
+        skeleton({ height: "44px" }),
+        skeleton({ height: "44px" }),
+      ),
+    );
+    const addressFields = h(
+      "div",
+      { class: "profile-address-fields", hidden: true },
+      street,
+      h(
+        "div",
+        { class: "profile-form-grid is-three-col" },
+        province.node,
+        city.node,
+        barangay.node,
+      ),
+    );
 
     function fill(select, rows, placeholder, selected) {
       select.replaceChildren(...options(rows, placeholder, selected));
@@ -657,6 +730,9 @@ export function createAccountPages(
           error,
           "The address list could not be loaded. Check your connection and reload.",
         );
+      } finally {
+        addressSkeleton.hidden = true;
+        addressFields.hidden = false;
       }
     })();
     province.sel.addEventListener(
@@ -675,12 +751,13 @@ export function createAccountPages(
     );
 
     // ---- photo (Supabase Storage, private). The picture is cropped and shrunk here before it is uploaded.
-    const photoFace = h("span", { class: "avatar-lg", "aria-hidden": "true" });
+    const photoFace = h("span", {
+      class: "avatar-lg profile-avatar-ring",
+      "aria-hidden": "true",
+    });
     const showFace = (url) => {
       photoFace.replaceChildren(
-        url
-          ? h("img", { src: url, alt: "" })
-          : document.createTextNode(initialsOf(me.display_name)),
+        avatarImage(url, inputValue(display).trim() || me.display_name),
       );
     };
     showFace(null);
@@ -691,28 +768,64 @@ export function createAccountPages(
     }
     const photoNote = h(
       "p",
-      { class: "muted", id: "pf-photo-note", "aria-live": "polite" },
-      "A square picture of your face works best. JPG, PNG or WebP.",
+      {
+        class: "muted profile-photo-note",
+        id: "pf-photo-note",
+        "aria-live": "polite",
+      },
+      "JPG, PNG or WebP, up to 3 MB. Automatically cropped to a square.",
     );
     const photoInput = h("input", {
-      class: "input",
+      class: "sr-only profile-photo-input",
       id: "pf-photo",
       type: "file",
       accept: AVATAR_TYPES.join(","),
       "aria-describedby": "pf-photo-note",
     });
+    const photoUploadBtn = button({
+      label: "Upload photo",
+      icon: "upload",
+      variant: "secondary",
+      size: "sm",
+      onClick: () => photoInput.click(),
+    });
+    const photoRemove = button({
+      label: "Remove photo",
+      icon: "trash",
+      variant: "ghost",
+      size: "sm",
+      onClick: async () => {
+        photoRemove.disabled = true;
+        photoUploadBtn.disabled = true;
+        photoInput.disabled = true;
+        try {
+          await api.rpc("set_my_avatar", { p_path: null });
+          showFace(null);
+          photoInput.value = "";
+          photoNote.textContent = "Photo removed.";
+          toast("Photo removed.", { tone: "info" });
+          await session.refresh();
+        } catch {
+          photoNote.textContent = "The photo could not be removed. Try again.";
+        } finally {
+          photoRemove.disabled = false;
+          photoUploadBtn.disabled = false;
+          photoInput.disabled = false;
+        }
+      },
+    });
     photoInput.addEventListener("change", async () => {
       const file = photoInput.files?.[0];
       if (!file) return;
-      if (!AVATAR_TYPES.includes(file.type)) {
-        photoNote.textContent = "Choose a JPG, PNG or WebP picture.";
+      const fileError = avatarFileError(file);
+      if (fileError) {
+        photoNote.textContent = fileError;
+        photoInput.value = "";
         return;
       }
-      if (file.size > AVATAR_MAX_PICK_BYTES) {
-        photoNote.textContent =
-          "That picture is too large. Choose one under 12 MB.";
-        return;
-      }
+      photoInput.disabled = true;
+      photoUploadBtn.disabled = true;
+      photoRemove.disabled = true;
       photoNote.textContent = "Saving your photo...";
       try {
         const blob = await resizeToJpeg(file);
@@ -727,38 +840,93 @@ export function createAccountPages(
         await api.rpc("set_my_avatar", { p_path: path });
         showFace(URL.createObjectURL(blob));
         photoNote.textContent = "Photo saved.";
+        toast("Photo saved.", { tone: "success" });
         await session.refresh();
       } catch {
         photoNote.textContent =
           "The photo could not be saved. Try another picture.";
+      } finally {
+        photoInput.disabled = false;
+        photoUploadBtn.disabled = false;
+        photoRemove.disabled = false;
+        photoInput.value = "";
       }
     });
-    const photoRemove = button({
-      label: "Remove photo",
-      size: "sm",
-      onClick: async () => {
-        try {
-          await api.rpc("set_my_avatar", { p_path: null });
-          showFace(null);
-          photoInput.value = "";
-          photoNote.textContent = "Photo removed.";
-          await session.refresh();
-        } catch {
-          photoNote.textContent = "The photo could not be removed. Try again.";
-        }
-      },
+
+    const identityName = h(
+      "h2",
+      { class: "profile-identity-name" },
+      me.display_name || "Club Member",
+    );
+    display.querySelector("input").addEventListener("input", () => {
+      identityName.textContent = inputValue(display).trim() ||
+        me.display_name || "Club Member";
     });
-    const photoBlock = h(
-      "div",
-      { class: "photo-field" },
-      photoFace,
+
+    const identityCard = h(
+      "aside",
+      { class: "member-panel profile-identity-card" },
       h(
         "div",
-        { class: "stack" },
-        h("label", { for: "pf-photo" }, "Profile photo (optional)"),
+        { class: "profile-identity-top" },
+        h("div", { class: "profile-avatar-stage" }, photoFace),
+        identityName,
+        h(
+          "span",
+          { class: "profile-member-id" },
+          me.member_no || "CPC Member",
+        ),
+        h(
+          "div",
+          { class: "profile-identity-badges" },
+          badge(
+            me.status === "active" ? "Active Member" : (me.status || "Pending"),
+            me.status === "active" ? "success" : "warning",
+          ),
+          badge(
+            me.profile_complete ? "Verified Profile" : "Setup Required",
+            me.profile_complete ? "info" : "warning",
+          ),
+        ),
+      ),
+      h(
+        "div",
+        { class: "profile-photo-box" },
+        h(
+          "label",
+          { class: "profile-photo-label", for: "pf-photo" },
+          "Profile Photo",
+        ),
         photoInput,
+        h(
+          "div",
+          { class: "profile-photo-actions" },
+          photoUploadBtn,
+          photoRemove,
+        ),
         photoNote,
-        photoRemove,
+      ),
+      h(
+        "dl",
+        { class: "profile-meta-list" },
+        h(
+          "div",
+          { class: "profile-meta-row" },
+          h("dt", {}, "Member ID"),
+          h("dd", {}, me.member_no || "Assigned on approval"),
+        ),
+        h(
+          "div",
+          { class: "profile-meta-row" },
+          h("dt", {}, "Date of birth"),
+          h("dd", {}, formatDate(me.date_of_birth) || "—"),
+        ),
+        h(
+          "div",
+          { class: "profile-meta-row" },
+          h("dt", {}, "Sign-in email"),
+          h("dd", {}, me.email || "—"),
+        ),
       ),
     );
 
@@ -768,40 +936,178 @@ export function createAccountPages(
       type: "submit",
       icon: "check",
     });
+
+    const personalCard = h(
+      "section",
+      { class: "member-panel profile-section-card" },
+      h(
+        "div",
+        { class: "profile-section-head" },
+        h(
+          "span",
+          { class: "section-icon", "aria-hidden": "true" },
+          icon("user"),
+        ),
+        h(
+          "div",
+          { class: "profile-section-copy" },
+          h("h2", { class: "profile-section-title" }, "Personal Information"),
+          h(
+            "p",
+            { class: "profile-section-sub muted" },
+            "Your legal name and how you appear on club brackets and directories.",
+          ),
+        ),
+      ),
+      h(
+        "div",
+        { class: "profile-form-grid is-two-col" },
+        lastName,
+        firstName,
+      ),
+      h(
+        "div",
+        { class: "profile-form-grid is-two-col" },
+        middleName,
+        suffix.node,
+      ),
+      h(
+        "div",
+        { class: "profile-form-grid is-three-col" },
+        display,
+        gender.node,
+        birth,
+      ),
+    );
+
+    const contactCard = h(
+      "section",
+      { class: "member-panel profile-section-card" },
+      h(
+        "div",
+        { class: "profile-section-head" },
+        h(
+          "span",
+          { class: "section-icon", "aria-hidden": "true" },
+          icon("phone"),
+        ),
+        h(
+          "div",
+          { class: "profile-section-copy" },
+          h(
+            "h2",
+            { class: "profile-section-title" },
+            "Contact & Emergency Details",
+          ),
+          h(
+            "p",
+            { class: "profile-section-sub muted" },
+            "Where the club sends booking updates and who to reach in an emergency.",
+          ),
+        ),
+      ),
+      h(
+        "div",
+        { class: "profile-form-grid is-two-col" },
+        mobile,
+        email,
+      ),
+      h(
+        "div",
+        { class: "profile-subsection-divider" },
+        h(
+          "span",
+          { class: "profile-subsection-label" },
+          "Emergency Contact (Optional)",
+        ),
+      ),
+      h(
+        "div",
+        { class: "profile-form-grid is-three-col" },
+        emName,
+        emRel,
+        emPhone,
+      ),
+    );
+
+    const addressCard = h(
+      "section",
+      { class: "member-panel profile-section-card" },
+      h(
+        "div",
+        { class: "profile-section-head" },
+        h(
+          "span",
+          { class: "section-icon", "aria-hidden": "true" },
+          icon("home"),
+        ),
+        h(
+          "div",
+          { class: "profile-section-copy" },
+          h("h2", { class: "profile-section-title" }, "Residential Address"),
+          h(
+            "p",
+            { class: "profile-section-sub muted" },
+            "Your current street address, province, city or municipality, and barangay.",
+          ),
+        ),
+      ),
+      addressSkeleton,
+      addressFields,
+    );
+
+    const actionsBar = h(
+      "div",
+      { class: "member-panel profile-actions-bar" },
+      error,
+      h(
+        "div",
+        { class: "profile-actions-row" },
+        h(
+          "span",
+          { class: "profile-required-note muted" },
+          "Fields marked with * are required.",
+        ),
+        h("div", { class: "actions" }, submit),
+      ),
+    );
+
     const form = h(
       "form",
-      { class: "stack", novalidate: true, onSubmit: (e) => e.preventDefault() },
+      {
+        class: "profile-form-stack",
+        novalidate: true,
+        onSubmit: (e) => e.preventDefault(),
+      },
       state.gate === "profile_update"
         ? h(
-          "p",
-          { class: "card", role: "status" },
-          "An administrator reset your password. Please check your details and make sure your email is correct, then save.",
+          "div",
+          { class: "member-panel profile-alert-banner", role: "status" },
+          h(
+            "span",
+            { class: "section-icon is-warning", "aria-hidden": "true" },
+            icon("alert"),
+          ),
+          h(
+            "p",
+            {},
+            "An administrator reset your password. Please check your details and make sure your email is correct, then save.",
+          ),
         )
         : null,
-      h("h2", { class: "form-section" }, "Photo"),
-      photoBlock,
-      h("h2", { class: "form-section" }, "Name"),
-      lastName,
-      firstName,
-      middleName,
-      suffix.node,
-      display,
-      gender.node,
-      birth,
-      h("h2", { class: "form-section" }, "Contact"),
-      mobile,
-      email,
-      h("h2", { class: "form-section" }, "Emergency contact"),
-      emName,
-      emRel,
-      emPhone,
-      h("h2", { class: "form-section" }, "Address"),
-      street,
-      province.node,
-      city.node,
-      barangay.node,
-      error,
-      h("div", { class: "actions" }, submit),
+      h(
+        "div",
+        { class: "profile-layout" },
+        identityCard,
+        h(
+          "div",
+          { class: "profile-form-column" },
+          personalCard,
+          contactCard,
+          addressCard,
+          actionsBar,
+        ),
+      ),
     );
     form.addEventListener(
       "submit",
@@ -848,7 +1154,7 @@ export function createAccountPages(
           });
           await api.rpc("confirm_my_profile");
           await session.refresh();
-          toast("Profile saved.");
+          toast("Profile saved.", { tone: "success" });
           go(nextHash(session.getState()));
         } catch (e) {
           const own = ["22023", "23505"].includes(e?.code) && e.cause?.message;
@@ -860,18 +1166,30 @@ export function createAccountPages(
       }),
     );
 
-    return h(
-      "div",
-      { class: "page auth-page" },
-      pageHeader({
-        icon: "edit",
-        eyebrow: "Your account",
-        title: "Complete your profile",
-        description:
-          "The club needs your details, contact numbers and address before it can approve your membership.",
+    const isOnboarding = !me.profile_complete && me.status !== "active";
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page profile-page",
+    });
+    attachPagePattern(page);
+    page.append(
+      adminHero({
+        title: isOnboarding ? "Complete your profile" : "Account & Profile",
+        chip: isOnboarding ? "Member Onboarding" : "Profile Settings",
+        description: isOnboarding
+          ? "The club needs your details, contact numbers and address before it can approve your membership."
+          : "Manage your personal information, contact details, emergency contact, and profile photo.",
+        actions: [
+          button({
+            label: "Change password",
+            icon: "keyRound",
+            variant: "secondary",
+            onClick: () => go("#/password"),
+          }),
+        ],
       }),
-      h("div", { class: "card auth-card" }, form),
+      form,
     );
+    return page;
   }
 
   // ---------------------------------------------------------------- sign up (new members only)

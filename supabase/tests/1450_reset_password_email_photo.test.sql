@@ -92,7 +92,7 @@ select lives_ok($f$select public.set_my_avatar(null)$f$, 'a photo can be removed
 select is((select avatar_path from public.my_access_state()), null, 'and then it is empty');
 reset role;
 select is((select public from storage.buckets where id = 'avatars'), false, 'the photo bucket is private');
-select is((select file_size_limit from storage.buckets where id = 'avatars'), 2097152::bigint, 'with a 2 MB limit');
+select is((select file_size_limit from storage.buckets where id = 'avatars'), 3145728::bigint, 'with a 3 MB limit');
 select is((select allowed_mime_types from storage.buckets where id = 'avatars'), array['image/jpeg', 'image/png', 'image/webp'], 'and only image types');
 
 select * from finish();

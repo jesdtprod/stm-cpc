@@ -10,8 +10,11 @@ import {
   button,
   dataTable,
   h,
+  iconButton,
   openModal,
   pageHeader,
+  searchControl,
+  selectControl,
   tabs,
   toast,
 } from "./ui.js";
@@ -148,7 +151,7 @@ export function createMemberEventsPages({ api, client, session }) {
       let partner = null; // { member_id, display_name, member_no }
       const chosen = h("p", { class: "muted" }, "No partner chosen yet.");
       const results = h("div", { class: "staff-results" });
-      const term = h("input", {
+      const term = searchControl({
         class: "input",
         id: "rg-term",
         type: "search",
@@ -358,8 +361,7 @@ export function createMemberEventsPages({ api, client, session }) {
             "div",
             { class: "field" },
             h("label", { for: "pay-method" }, "Method *"),
-            h(
-              "select",
+            selectControl(
               { class: "input select-input", id: "pay-method", name: "method" },
               ...methods.map((m) =>
                 h("option", { value: m }, METHOD_LABEL[m] ?? m)
@@ -528,14 +530,15 @@ export function createMemberEventsPages({ api, client, session }) {
               key: "actions",
               label: "Action",
               align: "center",
+              actionCount: 1,
               render: (d) =>
                 !d.mine && !d.problem
-                  ? button({
+                  ? iconButton({
+                    icon: "userPlus",
                     label: d.max_entries && d.taken >= d.max_entries
                       ? "Waitlist"
                       : "Register",
-                    variant: "primary",
-                    size: "sm",
+                    variant: "success",
                     onClick: () => registerModal(ev, d),
                   })
                   : null,
@@ -643,6 +646,7 @@ export function createMemberEventsPages({ api, client, session }) {
               key: "actions",
               label: "Action",
               align: "center",
+              actionCount: 3,
               render: (r) => {
                 const live = ["requested", "confirmed", "waitlisted"].includes(
                   r.status,
@@ -651,27 +655,30 @@ export function createMemberEventsPages({ api, client, session }) {
                   "span",
                   { class: "row-actions" },
                   live && remaining(r) > 0
-                    ? button({
+                    ? iconButton({
+                      icon: "currency",
                       label: "Pay",
-                      size: "sm",
+                      variant: "success",
                       onClick: () => payModal(r),
                     })
                     : null,
                   r.division && ["drawn", "in_progress", "finalized"].includes(
                       r.division.status,
                     )
-                    ? button({
+                    ? iconButton({
+                      icon: "layers",
                       label: "Bracket",
-                      size: "sm",
+                      variant: "info",
                       onClick: () => {
                         location.hash = `#/bracket?division=${r.division.id}`;
                       },
                     })
                     : null,
                   live && r.division?.status === "open"
-                    ? button({
+                    ? iconButton({
+                      icon: "x",
                       label: "Withdraw",
-                      size: "sm",
+                      variant: "danger",
                       onClick: () => withdrawModal(r),
                     })
                     : null,

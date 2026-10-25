@@ -2,12 +2,13 @@
 // value against the key's rule, takes an idempotency key and writes the audit row. The checks here (ranges, required
 // text) only save a round trip: the database refuses anything outside the rules, whatever this page sends.
 import {
+  adminHero,
   alertBox,
+  attachPagePattern,
   button,
   checkbox,
   field,
   h,
-  pageHeader,
   selectField,
   switchToggle,
   tabs,
@@ -259,7 +260,10 @@ export function createSettingsPages({ api }) {
   }
 
   function settingsPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-settings-page",
+    });
+    attachPagePattern(page);
     const body = h("div", { class: "settings-body" });
     let data = null;
     let activeId = GROUPS[0].id;
@@ -267,12 +271,19 @@ export function createSettingsPages({ api }) {
     const keys = new Map();
 
     page.append(
-      pageHeader({
-        icon: "layers",
-        eyebrow: "Admin",
+      adminHero({
         title: "Settings",
+        chip: "Club Settings",
         description:
           "Rules for sign-up, bookings, payments, events and security. Every change is recorded.",
+        actions: [
+          button({
+            label: "Refresh",
+            icon: "refresh",
+            variant: "secondary",
+            onClick: () => start(),
+          }),
+        ],
       }),
       body,
     );
@@ -282,7 +293,7 @@ export function createSettingsPages({ api }) {
         h(
           "div",
           {
-            class: "card settings-card is-loading",
+            class: "member-panel settings-card is-loading",
             "aria-busy": "true",
           },
           h("span", { class: "sk-line" }),
@@ -296,7 +307,7 @@ export function createSettingsPages({ api }) {
       body.replaceChildren(
         h(
           "div",
-          { class: "card home-error", role: "alert" },
+          { class: "member-panel home-error", role: "alert" },
           h("p", {}, error?.message ?? "The settings could not be loaded."),
           button({ label: "Try again", icon: "refresh", onClick: start }),
         ),
@@ -532,7 +543,7 @@ export function createSettingsPages({ api }) {
       const form = h(
         "form",
         {
-          class: "card settings-card",
+          class: "member-panel settings-card",
           id: panelId,
           role: "tabpanel",
           "aria-labelledby": `tab-${group.id}`,

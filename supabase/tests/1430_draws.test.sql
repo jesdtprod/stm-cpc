@@ -138,7 +138,7 @@ select is((select status from public.events where id = (select ev from fx)), 'dr
 
 -- ---- redo
 insert into public.matches (id, org_id, division_stage_id, round_no, match_no, entry_a_id, entry_b_id)
-select (select m1 from fx), (select org from fx), (select s1 from stg), 1, 1, (select r -> 'order' ->> 0 from d1), (select r -> 'order' ->> 1 from d1);
+select (select m1 from fx), (select org from fx), (select s1 from stg), 9, 1, (select r -> 'order' ->> 0 from d1), (select r -> 'order' ->> 1 from d1);
 select pg_temp.as_user((select u from us where role = 'outsider')); set local role authenticated;
 select throws_ok(format($f$select public.redo_draw(%L, 'Unfair', %L)$f$, (select s1 from stg), (select core.ulid())), '42501', null, 'a member cannot redo a draw');
 reset role;
@@ -164,7 +164,7 @@ select ok(exists (select 1 from core.audit_log where action = 'draw.run' and rec
 
 -- once play starts the draw is final
 insert into public.matches (id, org_id, division_stage_id, round_no, match_no, entry_a_id, entry_b_id, status)
-select (select m2 from fx), (select org from fx), (select s1 from stg), 1, 2, (select r -> 'order' ->> 2 from d2), (select r -> 'order' ->> 3 from d2), 'scheduled';
+select (select m2 from fx), (select org from fx), (select s1 from stg), 9, 2, (select r -> 'order' ->> 2 from d2), (select r -> 'order' ->> 3 from d2), 'scheduled';
 update public.matches set status = 'in_progress' where id = (select m2 from fx);
 select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
 select throws_ok(format($f$select public.redo_draw(%L, 'Too late', %L)$f$, (select s1 from stg), (select core.ulid())), '22023', 'the stage is already under way and cannot be redrawn', 'a draw cannot be redone after a match has started');

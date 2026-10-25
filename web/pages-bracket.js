@@ -12,6 +12,7 @@ import {
   iconButton,
   openModal,
   pageHeader,
+  selectControl,
   tabs,
   toast,
 } from "./ui.js";
@@ -274,8 +275,7 @@ export function createBracketPages({ api }) {
             "div",
             { class: "field" },
             h("label", { for: "ff-side" }, "Who forfeits? *"),
-            h(
-              "select",
+            selectControl(
               { class: "input select-input", id: "ff-side", name: "side" },
               h("option", { value: m.entry_a_id }, m.a_name),
               h("option", { value: m.entry_b_id }, m.b_name),
@@ -385,6 +385,31 @@ export function createBracketPages({ api }) {
       (m.games ?? []).map((g) => `${g.a}–${g.b}`).join(", ") || "—";
 
     function standingsView() {
+      const groups = [
+        ...new Set(
+          state.standings.map((r) => r.group_label).filter(Boolean),
+        ),
+      ];
+      if (groups.length) {
+        return h(
+          "div",
+          { class: "stack" },
+          ...groups.map((g) =>
+            h(
+              "section",
+              { class: "stack" },
+              h("h3", {}, `Bracket ${g}`),
+              standingsTable(
+                state.standings.filter((r) => r.group_label === g),
+              ),
+            )
+          ),
+        );
+      }
+      return standingsTable(state.standings);
+    }
+
+    function standingsTable(rows) {
       const showTie = state.standings.some((r) => r.tied);
       return dataTable({
         schema: {
@@ -432,7 +457,7 @@ export function createBracketPages({ api }) {
             },
           ],
         },
-        rows: state.standings,
+        rows,
         state: state.detail === "refreshing" ? "ready" : state.detail,
         ariaLabel: "Standings",
         onRetry: loadStage,
@@ -490,7 +515,7 @@ export function createBracketPages({ api }) {
         columns: [
           {
             key: "no",
-            label: "Match",
+            label: "Round",
             align: "right",
             render: (m) => `${m.round_no}.${m.match_no}`,
           },
@@ -504,6 +529,7 @@ export function createBracketPages({ api }) {
                   class: m.winner_entry_id === m.entry_a_id ? "match-win" : "",
                 },
                 m.a_name ?? "To be decided",
+                m.a_label ? h("span", { class: "sub" }, m.a_label) : null,
               ),
           },
           {
@@ -522,6 +548,7 @@ export function createBracketPages({ api }) {
                   class: m.winner_entry_id === m.entry_b_id ? "match-win" : "",
                 },
                 m.b_name ?? "To be decided",
+                m.b_label ? h("span", { class: "sub" }, m.b_label) : null,
               ),
           },
           {
@@ -556,6 +583,28 @@ export function createBracketPages({ api }) {
           emptyTitle: "No matches yet",
           emptyText: "Matches appear once the draw has been made.",
         });
+      }
+      const groups = [
+        ...new Set(state.matches.map((m) => m.group_label).filter(Boolean)),
+      ];
+      if (groups.length) {
+        return h(
+          "div",
+          { class: "stack" },
+          ...groups.map((g) =>
+            h(
+              "section",
+              { class: "stack" },
+              h("h3", {}, `Bracket ${g}`),
+              dataTable({
+                schema,
+                rows: state.matches.filter((m) => m.group_label === g),
+                state: "ready",
+                ariaLabel: `Bracket ${g} matches`,
+              }),
+            )
+          ),
+        );
       }
       return h(
         "div",

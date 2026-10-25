@@ -12,11 +12,13 @@ import {
   iconButton,
   openModal,
   pagination,
+  searchControl,
+  selectControl,
   selectField,
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
-import { initialsOf, signedAvatarUrls } from "./lib/avatar.js";
+import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatDateTime } from "./lib/dates.js";
 
 const PAGE_SIZE = 25;
@@ -310,8 +312,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       (a.rank_ladders.categories.sort_order -
         b.rank_ladders.categories.sort_order) || (a.sort_order - b.sort_order)
     );
-    const rankSelect = h(
-      "select",
+    const rankSelect = selectControl(
       { class: "input", id: "decision-rank", name: "rank" },
       h("option", { value: "" }, "No starting rank yet"),
       ...ranks.map((r) => h("option", { value: r.id }, r.name)),
@@ -864,35 +865,13 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       statusField,
     );
 
-    const clearBtn = h(
-      "button",
-      {
-        class: "search-box-clear",
-        type: "button",
-        "aria-label": "Clear search input",
-        title: "Clear search",
-        hidden: true,
-        onClick: () => {
-          clearTimeout(timer);
-          search.value = "";
-          state.term = "";
-          clearBtn.hidden = true;
-          state.page = 1;
-          search.focus();
-          load();
-        },
-      },
-      icon("x"),
-    );
-
-    const search = h("input", {
+    const search = searchControl({
       class: "input",
       id: "members-search",
       type: "search",
       placeholder: "Search by name or member ID…",
       "aria-label": "Search members",
       onInput: (e) => {
-        clearBtn.hidden = e.target.value.length === 0;
         clearTimeout(timer);
         timer = setTimeout(() => {
           state.term = e.target.value;
@@ -902,17 +881,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       },
     });
 
-    const searchBox = h(
-      "div",
-      { class: "search-box grow" },
-      h(
-        "span",
-        { class: "search-box-icon", "aria-hidden": "true" },
-        icon("search"),
-      ),
-      search,
-      clearBtn,
-    );
+    const searchBox = search;
 
     const actionsFor = (row) => {
       const buttons = [
@@ -1075,14 +1044,13 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           label: "Member",
           render: (r) => {
             const name = r.persons.display_name || "Unknown";
-            const initials = initialsOf(name);
             return h(
               "div",
               { class: "member-cell" },
               h(
                 "span",
                 { class: "member-avatar", "aria-hidden": "true" },
-                r._avatar ? h("img", { src: r._avatar, alt: "" }) : initials,
+                avatarImage(r._avatar, name),
               ),
               h(
                 "div",
@@ -1368,7 +1336,6 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           clearTimeout(timer);
           search.value = "";
           state.term = "";
-          clearBtn.hidden = true;
           state.page = 1;
           load();
         },

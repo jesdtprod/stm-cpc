@@ -8,16 +8,18 @@ import {
   badge,
   button,
   dataTable,
+  dateField,
   h,
   icon,
   iconButton,
   openModal,
   pagination,
+  searchControl,
   tabs,
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
-import { initialsOf, signedAvatarUrls } from "./lib/avatar.js";
+import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { businessDate, formatDateTime } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 import {
@@ -285,35 +287,13 @@ export function createBookingAdminPages({ api, client }) {
     };
     let timer = null;
 
-    const clearBtn = h(
-      "button",
-      {
-        class: "search-box-clear",
-        type: "button",
-        "aria-label": "Clear search input",
-        title: "Clear search",
-        hidden: true,
-        onClick: () => {
-          clearTimeout(timer);
-          search.value = "";
-          state.term = "";
-          clearBtn.hidden = true;
-          state.page = 1;
-          search.focus();
-          draw();
-        },
-      },
-      icon("x"),
-    );
-
-    const search = h("input", {
+    const search = searchControl({
       class: "input",
       id: "bookings-search",
       type: "search",
       placeholder: "Search by member, member ID, court, or booking no…",
       "aria-label": "Search bookings",
       onInput: (e) => {
-        clearBtn.hidden = e.target.value.length === 0;
         clearTimeout(timer);
         timer = setTimeout(() => {
           state.term = e.target.value;
@@ -323,17 +303,7 @@ export function createBookingAdminPages({ api, client }) {
       },
     });
 
-    const searchBox = h(
-      "div",
-      { class: "search-box grow" },
-      h(
-        "span",
-        { class: "search-box-icon", "aria-hidden": "true" },
-        icon("search"),
-      ),
-      search,
-      clearBtn,
-    );
+    const searchBox = search;
 
     const toolbar = h(
       "div",
@@ -604,14 +574,13 @@ export function createBookingAdminPages({ api, client }) {
         skeleton: "member",
         render: (r) => {
           const name = who(r.requester);
-          const initials = initialsOf(name);
           return h(
             "div",
             { class: "member-cell" },
             h(
               "span",
               { class: "member-avatar", "aria-hidden": "true" },
-              r._avatar ? h("img", { src: r._avatar, alt: "" }) : initials,
+              avatarImage(r._avatar, name),
             ),
             h(
               "div",
@@ -830,12 +799,10 @@ export function createBookingAdminPages({ api, client }) {
       const today = businessDate();
       const isToday = cal.day === today;
       const isLoading = cal.status === "loading" || cal.status === "idle";
-      const day = h("input", {
-        class: "input calendar-date-input",
+      const day = dateField({
         id: "cal-day",
-        type: "date",
         value: cal.day,
-        "aria-label": "Day",
+        ariaLabel: "Day",
         onChange: (e) => {
           if (e.target.value) {
             cal.day = e.target.value;
@@ -1482,7 +1449,6 @@ export function createBookingAdminPages({ api, client }) {
           clearTimeout(timer);
           search.value = "";
           state.term = "";
-          clearBtn.hidden = true;
           state.page = 1;
           draw();
         },
@@ -1654,7 +1620,6 @@ export function createBookingAdminPages({ api, client }) {
           iconButton({
             label: `View the proof for ${label}`,
             icon: "eye",
-            variant: "info",
             size: "sm",
             variant: "info",
             onClick: () => viewProof(p),
@@ -1666,7 +1631,6 @@ export function createBookingAdminPages({ api, client }) {
           iconButton({
             label: `Verify ${label}`,
             icon: "check",
-            variant: "success",
             size: "sm",
             variant: "success",
             onClick: () =>
@@ -1690,7 +1654,6 @@ export function createBookingAdminPages({ api, client }) {
           iconButton({
             label: `Reject ${label}`,
             icon: "x",
-            variant: "danger",
             size: "sm",
             variant: "danger",
             onClick: () =>
