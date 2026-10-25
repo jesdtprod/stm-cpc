@@ -404,3 +404,105 @@ Deno.test("date adapter: native name, constraints and value remain synchronized"
       "Disabled date must disable its trigger",
     );
   }));
+
+Deno.test("table search: filters visible values, preserves actions, and clears no-results", () =>
+  withDom(() => {
+    let viewed = 0;
+    const schema = {
+      columns: [
+        {
+          key: "name",
+          label: "Category",
+          render: (r) =>
+            h("span", {}, r.name, h("span", { class: "sub" }, r.code)),
+        },
+        {
+          key: "actions",
+          label: "Action",
+          actionCount: 1,
+          render: () =>
+            iconButton({
+              icon: "eye",
+              label: "View hidden label",
+              onClick: () => viewed++,
+            }),
+        },
+      ],
+    };
+    const table = dataTable({
+      schema,
+      rows: [{ name: "D\u00e9butant", code: "beginner" }, {
+        name: "Advanced",
+        code: "advanced",
+      }],
+      ariaLabel: "Categories",
+    });
+    const search = table.querySelector(".data-grid-toolbar").querySelector(
+      "input",
+    );
+    const records = table.querySelector(".tbl-body").querySelectorAll(
+      ".tbl-row",
+    );
+    search.value = "DEBUTANT beginner";
+    search.dispatchEvent(new Event("input"));
+    assert(
+      !records[0].hidden && records[1].hidden,
+      "Search must match all words across displayed values, ignoring case and accents",
+    );
+    records[0].querySelector("button").click();
+    assert(viewed === 1, "Filtering must preserve existing action handlers");
+    search.value = "hidden label";
+    search.dispatchEvent(new Event("input"));
+    assert(
+      records.every((row) => row.hidden),
+      "Action labels must not count as searchable data",
+    );
+    assert(
+      !table.querySelector(".tbl-search-empty").hidden,
+      "No matches must have a distinct empty state",
+    );
+    table.querySelector(".search-box-clear").click();
+    assert(
+      records.every((row) => !row.hidden) &&
+        table.querySelector(".tbl-search-empty").hidden,
+      "Clearing search must restore the records",
+    );
+  }));
+
+Deno.test("table search: retains page-scoped query through refresh without duplicating external search", () =>
+  withDom(() => {
+    const searchState = {};
+    const config = {
+      schema: { columns: [{ key: "name", label: "Name" }] },
+      rows: [{ name: "Beginner" }, { name: "Advanced" }],
+      ariaLabel: "Categories",
+      searchState,
+    };
+    const first = dataTable(config);
+    const input = first.querySelector(".data-grid-toolbar").querySelector(
+      "input",
+    );
+    input.value = "Advanced";
+    input.dispatchEvent(new Event("input"));
+    const refreshed = dataTable(config);
+    assert(
+      refreshed.querySelector("input").value === "Advanced",
+      "Refresh must retain the page query",
+    );
+    assert(
+      refreshed.querySelector(".tbl-body").querySelectorAll(".tbl-row")[0]
+        .hidden,
+      "Refresh must apply the retained filter",
+    );
+    assert(
+      !dataTable({ ...config, searchable: false }).querySelector(
+        ".data-grid-toolbar",
+      ),
+      "An external list search must not get a second search box",
+    );
+    assert(
+      dataTable({ ...config, state: "loading" }).querySelector("input")
+        .disabled,
+      "Loading tables must keep search disabled",
+    );
+  }));

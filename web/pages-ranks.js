@@ -899,6 +899,7 @@ export function createRanksPages({ api, getOrgId }) {
             "div",
             { class: "table-host" },
             dataTable({
+              searchState: state,
               schema,
               rows: state.rules,
               state: state.status,

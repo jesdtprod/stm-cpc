@@ -35,3 +35,22 @@ matches in unchanged files. No database changes are part of this rollout.
 - [ ] Rendered desktop, tablet and mobile review. Computer Use returned no browsers
   or apps because the native pipe is unavailable; source coverage and component
   tests do not establish visual acceptance.
+
+
+## Follow-up: missing table searches and uniform grids
+
+Shared data grids now include search by default. Existing full-list searches in
+Members, administrator Bookings, Import, and the Components table demo explicitly
+opt out of a duplicate search. Page-owned search state retains queries through
+refresh; nested lists have separate keys. Search indexes displayed cells, excludes
+action labels, ignores case/accents, and preserves existing action handlers.
+
+Uniform grid rules include a shared search toolbar, result count, clearable
+no-results state, 72px minimum rows, compact 80px ordering columns, consistent
+header separators, centered action groups, and borders that remain single when
+records are filtered. Courts wrapping and the service-worker cache are updated.
+
+Verification: 157 unit tests passed, including new search and column-width
+regressions; lint and repository hygiene passed. Rendered desktop/mobile review
+remains blocked because Computer Use reports no browsers and an unavailable
+native pipe. No database changes are included in this follow-up.

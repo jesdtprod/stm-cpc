@@ -12,7 +12,8 @@ import {
   h,
   iconButton,
   openModal,
-  tabs,
+  searchControl,
+  selectField,
   toast,
 } from "./ui.js";
 import { button } from "./ui.js";
@@ -60,9 +61,28 @@ export function createCategoriesPages({ api, getOrgId }) {
       class: "page admin-dashboard admin-members-page admin-categories-page",
     });
     attachPagePattern(page);
-    const tabsHost = h("div", {});
     const tableHost = h("div", { class: "table-host" });
-    const state = { rows: [], status: "loading", tab: "active" };
+    const state = { rows: [], status: "loading", tab: "active", term: "" };
+    const search = searchControl({
+      class: "input",
+      id: "categories-search",
+      placeholder: "Search categories...",
+      "aria-label": "Search categories",
+      onInput: () => {
+        state.term = search.value;
+        draw();
+      },
+    });
+    const statusFilter = selectField({
+      id: "categories-status",
+      value: state.tab,
+      ariaLabel: "Filter categories by status",
+      options: TABS.map((item) => ({ value: item.id, label: item.label })),
+      onChange: (event) => {
+        state.tab = event.target.value;
+        draw();
+      },
+    });
 
     // ---------------------------------------------------------------- form
     function formModal(row) {
@@ -431,24 +451,43 @@ export function createCategoriesPages({ api, getOrgId }) {
       );
 
     function draw() {
-      tabsHost.replaceChildren(tabs({
-        activeId: state.tab,
-        tabs: TABS.map((t) => {
-          const n = state.rows.filter((r) => tabOf(r) === t.id).length;
-          return { ...t, badge: n ? String(n) : undefined };
-        }),
-        onChange: (id) => {
-          state.tab = id;
+      statusFilter.setOptions(TABS.map((item) => ({
+        value: item.id,
+        label: `${item.label} (${
+          state.rows.filter((row) => tabOf(row) === item.id).length
+        })`,
+      })));
+      const normalize = (text) =>
+        String(text ?? "").normalize("NFKD").replace(/\p{M}/gu, "")
+          .toLocaleLowerCase();
+      const terms = normalize(state.term).trim().split(/\s+/).filter(Boolean);
+      const rows = rowsOf(state.tab).filter((row) => {
+        const text = normalize([
+          row.name,
+          row.code,
+          row.description,
+          row.sort_order,
+          liveLadders(row).length ? "Set up" : "None yet",
+          TABS.find((item) => item.id === tabOf(row))?.label,
+        ].join(" "));
+        return terms.every((term) => text.includes(term));
+      });
+      tableHost.replaceChildren(dataTable({
+        searchable: false,
+        hasFilters: Boolean(state.term.trim()),
+        onReset: () => {
+          state.term = "";
+          search.value = "";
           draw();
         },
-      }));
-      tableHost.replaceChildren(dataTable({
         schema,
-        rows: rowsOf(state.tab),
+        rows,
         state: state.status,
         ariaLabel: "Categories",
         onRetry: refresh,
-        emptyTitle: state.tab === "active"
+        emptyTitle: state.term.trim()
+          ? "No matching categories"
+          : state.tab === "active"
           ? "No categories yet"
           : (state.tab === "retired" ? "Nothing retired" : "Nothing deleted"),
         emptyText: state.tab === "active"
@@ -484,7 +523,12 @@ export function createCategoriesPages({ api, getOrgId }) {
           }),
         ],
       }),
-      tabsHost,
+      h(
+        "div",
+        { class: "toolbar admin-members-toolbar" },
+        search,
+        h("div", { class: "member-status-filter" }, statusFilter),
+      ),
       h("div", { class: "member-directory-card is-auto-grid" }, tableHost),
     );
     refresh();

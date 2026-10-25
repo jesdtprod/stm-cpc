@@ -1037,7 +1037,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     };
 
     const schema = {
-      // Column widths live in the directory card CSS, shared by header, rows and skeleton.
+      // One shared column schema drives headings, rows and skeletons.
       columns: [
         {
           key: "name",
@@ -1153,7 +1153,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           key: "actions",
           label: "Action",
           align: "center",
-          actionCount: 4,
+          actionCount: 5,
           render: actionsFor,
         },
       ],
@@ -1330,6 +1330,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         schema,
         rows: state.rows,
         state: state.status,
+        searchable: false,
         hasFilters: Boolean(state.term),
         onRetry: load,
         onReset: () => {

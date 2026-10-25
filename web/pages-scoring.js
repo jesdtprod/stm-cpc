@@ -350,6 +350,7 @@ export function createScoringPages({ api, getOrgId }) {
             "div",
             { class: "table-host" },
             dataTable({
+              searchState: state,
               schema: {
                 columns: [
                   {

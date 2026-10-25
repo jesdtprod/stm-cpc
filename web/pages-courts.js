@@ -439,6 +439,7 @@ export function createCourtsPages({ api, getOrgId }) {
 
     function courtsView() {
       return dataTable({
+        searchState: state,
         schema: {
           columns: [
             {
@@ -646,6 +647,7 @@ export function createCourtsPages({ api, getOrgId }) {
           'Hours for a specific court replace the "All courts" hours for that court and day.',
         ),
         dataTable({
+          searchState: state,
           schema: {
             columns: [
               {
@@ -856,6 +858,7 @@ export function createCourtsPages({ api, getOrgId }) {
           "To change a price, add a new rate that starts on a date, and end the old one. Past bookings keep the price they were booked at.",
         ),
         dataTable({
+          searchState: state,
           schema: {
             columns: [
               {
@@ -1042,6 +1045,7 @@ export function createCourtsPages({ api, getOrgId }) {
         );
       const now = Date.now();
       return dataTable({
+        searchState: state,
         schema: {
           columns: [
             {
@@ -1138,14 +1142,14 @@ export function createCourtsPages({ api, getOrgId }) {
         blackouts: blackoutsView,
       }[state.tab];
       const content = view();
-      const tableNode = content.classList?.contains("table-scroll")
+      const tableNode = content.classList?.contains("data-grid")
         ? h(
           "div",
           { class: "member-directory-card is-auto-grid" },
           h("div", { class: "table-host" }, content),
         )
         : (() => {
-          const tbl = content.querySelector(".table-scroll");
+          const tbl = content.querySelector(".data-grid");
           if (tbl) {
             const card = h(
               "div",

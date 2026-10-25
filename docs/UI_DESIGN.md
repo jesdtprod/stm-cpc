@@ -29,13 +29,21 @@ have no shadows. Use `ui.js` components rather than new page-specific controls.
 - Tables: one column schema drives headings, records, and skeletons. Text aligns
   left, money right, and actions center. Use the shared horizontal-scroll wrapper
   on desktop and the shared labelled row layout on mobile. Stack primary and
-  secondary text with a 2px gap. Keep header and pagination about 49px high.
+  secondary text with a 2px gap. Keep every grid header at 49px high (48px cells plus the divider); pagination uses the same height. Keep Action on one line and reserve at least 88px for its heading and controls.
 - Row actions and pagination: 36px square, 10px radius, 17px icons, and 8px action
   gaps. Provide an accessible action label and tooltip; use semantic colors.
   Declare `actionCount` for conditional actions so loading reserves their width.
 - Dropdowns: `selectField` for new fields; `selectControl` for existing native
   select references. Both use the searchable, keyboard-accessible component.
   Preserve native field names, validation, disabled state, and change callbacks.
+- Data grids include search by default, filtering their displayed data and showing a
+  live result count and a clearable no-results state. Pass the page-owned
+  `searchState` object to retain the query through refresh, and a distinct
+  `searchKey` for separate nested lists. Set `searchable: false` only when an
+  existing external search already filters the full dataset before pagination.
+  Grid rows have a shared 72px minimum height; ordering columns are 80px wide,
+  while descriptions receive the remaining width. Filtered rows retain one
+  separator, with no duplicate borders around the integrated search/header.
 - Searches: `searchControl` returns the input for existing handlers and renders
   the shared search icon and clear action. Clear is hidden when empty and rotates
   on hover, with reduced-motion support.

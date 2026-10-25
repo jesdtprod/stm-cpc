@@ -67,6 +67,7 @@ export function createBracketPages({ api }) {
       stageId: null,
       standings: [],
       matches: [],
+      results: [],
       detail: "loading",
     };
 
@@ -93,6 +94,11 @@ export function createBracketPages({ api }) {
         ) ?? division.stages[0])?.id;
         state.status = "ready";
         draw();
+        if (division.status === "finalized") {
+          state.results = await api.rpc("division_results_view", {
+            p_division_id: division.id,
+          }) ?? [];
+        }
         await loadStage();
       } catch {
         state.status = "error";
@@ -412,6 +418,7 @@ export function createBracketPages({ api }) {
     function standingsTable(rows) {
       const showTie = state.standings.some((r) => r.tied);
       return dataTable({
+        searchState: state,
         schema: {
           columns: [
             {
@@ -460,6 +467,7 @@ export function createBracketPages({ api }) {
         rows,
         state: state.detail === "refreshing" ? "ready" : state.detail,
         ariaLabel: "Standings",
+        searchKey: `standings:${rows[0]?.group_label ?? "all"}`,
         onRetry: loadStage,
         emptyTitle: "No standings yet",
         emptyText: showTie
@@ -575,6 +583,7 @@ export function createBracketPages({ api }) {
       };
       if (!state.matches.length) {
         return dataTable({
+          searchState: state,
           schema,
           rows: [],
           state: state.detail === "refreshing" ? "ready" : state.detail,
@@ -583,6 +592,46 @@ export function createBracketPages({ api }) {
           emptyTitle: "No matches yet",
           emptyText: "Matches appear once the draw has been made.",
         });
+      }
+      if (stage()?.stage_type === "split_single_elimination") {
+        const part = (label) =>
+          state.matches.filter((m) => m.group_label === label);
+        const section = (title, rows, named) => {
+          if (!rows.length) return null;
+          const rs = [...new Set(rows.map((m) => m.round_no))].sort((a, b) =>
+            a - b
+          );
+          return h(
+            "section",
+            { class: "stack" },
+            h("h3", {}, title),
+            ...rs.map((r) =>
+              h(
+                "section",
+                { class: "stack" },
+                named ? h("h4", {}, roundName(r - rs[0] + 1, rs.length)) : null,
+                dataTable({
+                  searchState: state,
+                  schema,
+                  rows: rows.filter((m) => m.round_no === r),
+                  state: "ready",
+                  ariaLabel: `${title} round ${r}`,
+                }),
+              )
+            ),
+          );
+        };
+        return h(
+          "div",
+          { class: "stack" },
+          section(
+            "Round 1",
+            state.matches.filter((m) => !m.group_label),
+            false,
+          ),
+          section("H bracket", part("H"), true),
+          section("L bracket", part("L"), true),
+        );
       }
       const groups = [
         ...new Set(state.matches.map((m) => m.group_label).filter(Boolean)),
@@ -597,6 +646,7 @@ export function createBracketPages({ api }) {
               { class: "stack" },
               h("h3", {}, `Bracket ${g}`),
               dataTable({
+                searchState: state,
                 schema,
                 rows: state.matches.filter((m) => m.group_label === g),
                 state: "ready",
@@ -621,6 +671,7 @@ export function createBracketPages({ api }) {
                 : `Round ${r}`,
             ),
             dataTable({
+              searchState: state,
               schema,
               rows: state.matches.filter((m) => m.round_no === r),
               state: "ready",
@@ -628,6 +679,104 @@ export function createBracketPages({ api }) {
             }),
           )
         ),
+      );
+    }
+
+    const readyToFinalize = () =>
+      state.division?.status === "in_progress" &&
+      state.division.stages.every((x) =>
+        ["completed", "cancelled"].includes(x.status)
+      ) &&
+      can("scores.finalize");
+
+    function finalizeDivisionModal() {
+      const error = errorLine();
+      return openModal({
+        title: "Finalize this division",
+        eyebrow: state.division.name,
+        icon: "medal",
+        confirmLabel: "Finalize division",
+        destructive: true,
+        body: h(
+          "div",
+          { class: "stack" },
+          h(
+            "p",
+            {},
+            "The final placements are recorded and the club's rank rules move each player once. Results can still be corrected afterwards, with a reason.",
+          ),
+          error,
+        ),
+        onConfirm: async () => {
+          try {
+            await api.rpc("finalize_division", {
+              p_division_id: state.division.id,
+            });
+            toast("Division finalized.", { tone: "success" });
+            state.stageId = null;
+            await load();
+          } catch (e) {
+            return showError(
+              error,
+              messageOf(e, "That did not work. Try again."),
+            );
+          }
+        },
+      });
+    }
+
+    function resultsView() {
+      if (!state.results.length) return null;
+      const staff = state.results.some((r) => r.rank_from);
+      const columns = [
+        {
+          key: "place",
+          label: "Place",
+          align: "right",
+          render: (r) => String(r.placement),
+        },
+        {
+          key: "name",
+          label: "Player or team",
+          render: (r) => r.entry_name ?? "—",
+        },
+        {
+          key: "bracket",
+          label: "Bracket",
+          render: (r) =>
+            r.bracket_tier
+              ? `${r.bracket_tier} bracket${
+                r.bracket_result === "won" ? " champion" : ""
+              }`
+              : "—",
+        },
+      ];
+      if (staff) {
+        columns.push({
+          key: "rank",
+          label: "Rank",
+          render: (r) =>
+            h(
+              "span",
+              {},
+              r.rank_from === r.rank_to
+                ? `${r.rank_to} (no change)`
+                : `${r.rank_from} → ${r.rank_to}`,
+              r.rule_name ? h("span", { class: "sub" }, r.rule_name) : null,
+            ),
+        });
+      }
+      return h(
+        "div",
+        { class: "stack" },
+        h("h2", {}, "Final placements"),
+        dataTable({
+          searchState: state,
+          schema: { columns },
+          rows: state.results,
+          state: "ready",
+          ariaLabel: "Final placements",
+        }),
       );
     }
 
@@ -653,6 +802,7 @@ export function createBracketPages({ api }) {
       if (state.status === "error") {
         body.replaceChildren(
           dataTable({
+            searchState: state,
             schema: {
               columns: [{ key: "n", label: "Bracket", render: () => "" }],
             },
@@ -667,6 +817,7 @@ export function createBracketPages({ api }) {
       if (state.status === "loading" || !state.division) {
         body.replaceChildren(
           dataTable({
+            searchState: state,
             schema: {
               columns: [{ key: "n", label: "Bracket", render: () => "" }],
             },
@@ -720,12 +871,29 @@ export function createBracketPages({ api }) {
               s ? STAGE_STATUS[s.status] : null,
             ].filter(Boolean).join(" · "),
           ),
+          readyToFinalize()
+            ? h(
+              "div",
+              { class: "actions" },
+              button({
+                label: "Finalize division",
+                icon: "medal",
+                variant: "primary",
+                onClick: finalizeDivisionModal,
+              }),
+            )
+            : null,
+          resultsView(),
           stageTabs,
           s?.stage_type === "single_elimination" ? championLine() : null,
-          s?.stage_type === "single_elimination"
+          s?.stage_type === "single_elimination" ||
+            s?.stage_type === "split_single_elimination"
             ? null
             : h("h2", {}, "Standings"),
-          s?.stage_type === "single_elimination" ? null : standingsView(),
+          s?.stage_type === "single_elimination" ||
+            s?.stage_type === "split_single_elimination"
+            ? null
+            : standingsView(),
           h(
             "h2",
             {},

@@ -556,6 +556,7 @@ export function createImportPages({ api }) {
         schema: state.tab === "batches" ? batchSchema : issueSchema,
         rows,
         state: state.status,
+        searchable: false,
         hasFilters: Boolean(state.term.trim()),
         ariaLabel: state.tab === "batches" ? "Import history" : "Import issues",
         onRetry: load,

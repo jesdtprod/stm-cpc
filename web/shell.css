@@ -6528,6 +6528,7 @@ main:has(.dashboard-pattern) {
   background: var(--member-panel-background);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
 }
+.member-directory-card .data-grid,
 .member-directory-card .tbl {
   border: 0;
   border-radius: 0;

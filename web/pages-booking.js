@@ -992,6 +992,7 @@ export function createBookingPages({ api, client, session }) {
         },
       }));
       tableHost.replaceChildren(dataTable({
+        searchState: state,
         schema,
         rows,
         state: state.status,

@@ -2775,6 +2775,7 @@ export function componentsPage() {
           schema: tableSchema,
           rows: filtered,
           state: tableStateMode,
+          searchable: false,
           hasFilters: tableSearch !== "",
           emptyTitle: "No members match search query",
           emptyText: "No players exist in this division.",

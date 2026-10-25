@@ -482,6 +482,7 @@ export function createMemberEventsPages({ api, client, session }) {
     // --------------------------------------------------------------- views
     function divisionsTable(ev) {
       return dataTable({
+        searchState: state,
         schema: {
           columns: [
             {
@@ -556,6 +557,7 @@ export function createMemberEventsPages({ api, client, session }) {
     function openView() {
       if (state.status === "loading") {
         return dataTable({
+          searchState: state,
           schema: { columns: [{ key: "n", label: "Event", render: () => "" }] },
           rows: [],
           state: "loading",
@@ -564,6 +566,7 @@ export function createMemberEventsPages({ api, client, session }) {
       }
       if (state.status === "error") {
         return dataTable({
+          searchState: state,
           schema: { columns: [{ key: "n", label: "Event", render: () => "" }] },
           rows: [],
           state: "error",
@@ -573,6 +576,7 @@ export function createMemberEventsPages({ api, client, session }) {
       }
       if (!state.options.length) {
         return dataTable({
+          searchState: state,
           schema: { columns: [{ key: "n", label: "Event", render: () => "" }] },
           rows: [],
           state: "ready",
@@ -609,6 +613,7 @@ export function createMemberEventsPages({ api, client, session }) {
 
     function mineView() {
       return dataTable({
+        searchState: state,
         schema: {
           columns: [
             {

@@ -463,6 +463,7 @@ export function createEventsPages({ api }) {
 
     function eventsView() {
       return dataTable({
+        searchState: state,
         schema: {
           columns: [
             {
@@ -995,6 +996,7 @@ export function createEventsPages({ api }) {
 
     function divisionsView() {
       return dataTable({
+        searchState: state,
         schema: {
           columns: [
             {
@@ -1188,6 +1190,7 @@ export function createEventsPages({ api }) {
 
     function registrationsView() {
       return dataTable({
+        searchState: state,
         schema: {
           columns: [
             {

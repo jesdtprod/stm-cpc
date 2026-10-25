@@ -24,3 +24,21 @@ Deno.test("table layout: variable action groups reserve 36px controls with 8px g
   assert.equal(columns[0].skeleton, "member");
   assert.equal(columns[1].skeleton, "actions");
 });
+
+Deno.test("table layout: ordering stays compact while text columns receive available width", () => {
+  const columns = [{ key: "order", label: "Order", align: "right" }, {
+    key: "name",
+    label: "Category",
+  }].map(tableColumn);
+  assert.equal(tableTracks(columns)[0], "80px");
+  assert.equal(tableMinWidth(columns), 260);
+  assert.equal(tableTracks(columns)[1], "minmax(180px, 1.5fr)");
+});
+
+Deno.test("table layout: a single action reserves enough width for its one-line heading", () => {
+  const columns = [
+    tableColumn({ key: "actions", label: "Action", actionCount: 1 }),
+  ];
+  assert.equal(tableTracks(columns)[0], "88px");
+  assert.equal(tableMinWidth(columns), 88);
+});

@@ -287,6 +287,7 @@ export function createStaffPages({ api }) {
 
     function staffView() {
       return dataTable({
+        searchState: state,
         schema: {
           columns: [
             {

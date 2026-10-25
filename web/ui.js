@@ -7,6 +7,7 @@ import { tableColumn, tableMinWidth, tableTracks } from "./lib/table-layout.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const controlNodes = new WeakMap();
+const tableSearches = new WeakMap();
 const selectSequence = { next: 0 };
 
 /** Create an element. Event handlers must be functions; string `on*` attributes are ignored. */
@@ -2238,6 +2239,8 @@ const PHP = new Intl.NumberFormat("en-PH", {
  *   icon buttons the Action column shows, so the placeholder reserves the same number.
  * schema.actions: array of { label, icon, onClick(row) } rendered icon-only.
  * state: "loading" | "error" | "ready"
+ * Search defaults on. Use searchable:false only beside an existing full-list search.
+ * searchState: page-owned object retaining query across refresh; searchKey separates nested lists.
  */
 export function dataTable(
   {
@@ -2251,6 +2254,11 @@ export function dataTable(
     emptyText,
     resetLabel = "Reset Filters",
     ariaLabel,
+    searchable = true,
+    searchPlaceholder,
+    searchState,
+    searchKey = ariaLabel ??
+      schema.columns.map((column) => column.key).join(":"),
   },
 ) {
   const cols = schema.columns.map(tableColumn);
@@ -2273,6 +2281,7 @@ export function dataTable(
         {
           class: `tbl-cell ${c.align}${c.actions ? " tbl-actions" : ""}`,
           role: "columnheader",
+          title: c.label,
         },
         c.label,
       ),
@@ -2290,6 +2299,15 @@ export function dataTable(
   table.append(head);
 
   const body = h("div", { class: "tbl-body", role: "rowgroup" });
+  const records = [];
+  const readText = (node) => {
+    const children = [...(node.childNodes ?? node.children ?? [])];
+    return children.length
+      ? children.map(readText).join(" ")
+      : node.textContent ?? "";
+  };
+  const normalize = (text) =>
+    String(text).normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase();
   if (state === "loading") {
     for (let i = 0; i < 5; i++) {
       const row = h("div", {
@@ -2404,6 +2422,7 @@ export function dataTable(
     );
   } else {
     for (const r of rows) {
+      const searchableValues = [];
       const row = h("div", { class: "tbl-row", role: "row" });
       for (const c of cols) {
         let content;
@@ -2416,13 +2435,13 @@ export function dataTable(
           c.actionCount = Math.max(c.actionCount, buttons.length);
           content = group;
         }
-        row.append(
-          h("div", {
-            class: `tbl-cell ${c.align}${c.actions ? " tbl-actions" : ""}`,
-            role: "cell",
-            "data-label": c.label,
-          }, content),
-        );
+        const cell = h("div", {
+          class: `tbl-cell ${c.align}${c.actions ? " tbl-actions" : ""}`,
+          role: "cell",
+          "data-label": c.label,
+        }, content);
+        if (!c.actions) searchableValues.push(readText(cell));
+        row.append(cell);
       }
       if (actions.length) {
         row.append(
@@ -2444,6 +2463,7 @@ export function dataTable(
           ),
         );
       }
+      records.push({ node: row, text: normalize(searchableValues.join(" ")) });
       body.append(row);
     }
   }
@@ -2456,12 +2476,72 @@ export function dataTable(
   ];
   table.style.setProperty("--tbl-grid", tableTracks(layout).join(" "));
   table.style.setProperty("--tbl-min", `${tableMinWidth(layout)}px`);
-  return h("div", {
+  const scroll = h("div", {
     class: "table-scroll",
     role: "region",
-    "aria-label": `${ariaLabel ?? "Data table"} table`,
+    "aria-label": ariaLabel ?? "Data table",
     tabindex: "0",
   }, table);
+  if (!searchable) return h("div", { class: "data-grid" }, scroll);
+
+  let saved = searchState ? tableSearches.get(searchState) : null;
+  if (searchState && !saved) {
+    saved = new Map();
+    tableSearches.set(searchState, saved);
+  }
+  const result = h("span", {
+    class: "data-grid-result muted",
+    role: "status",
+    "aria-live": "polite",
+  });
+  const search = searchControl({
+    class: "input",
+    placeholder: searchPlaceholder ??
+      `Search ${(ariaLabel ?? "records").toLocaleLowerCase()}\u2026`,
+    "aria-label": `Search ${ariaLabel ?? "records"}`,
+    value: saved?.get(searchKey) ?? "",
+    disabled: state === "loading" || state === "error",
+    onInput: () => applySearch(),
+  });
+  const empty = h(
+    "div",
+    { class: "tbl-state tbl-search-empty", role: "status", hidden: true },
+    h("span", { class: "badge-icon" }, icon("search")),
+    h("h2", {}, "No matching records"),
+    h("p", { class: "muted" }, "Try another search or clear the search box."),
+    button({
+      label: "Clear search",
+      icon: "x",
+      onClick: () => {
+        search.value = "";
+        applySearch();
+        search.focus();
+      },
+    }),
+  );
+  body.append(empty);
+  function applySearch() {
+    const terms = normalize(search.value).trim().split(/\s+/).filter(Boolean);
+    let visible = 0;
+    for (const record of records) {
+      record.node.hidden = !terms.every((term) => record.text.includes(term));
+      if (!record.node.hidden) visible++;
+    }
+    saved?.set(searchKey, search.value);
+    empty.hidden = !records.length || visible > 0;
+    result.textContent = state === "loading"
+      ? "Loading\u2026"
+      : state === "error"
+      ? "Unable to load"
+      : `Showing ${visible} of ${rows.length}`;
+  }
+  applySearch();
+  return h(
+    "div",
+    { class: "data-grid" },
+    h("div", { class: "data-grid-toolbar" }, search, result),
+    scroll,
+  );
 }
 
 /** Footer with the visible range and total; never shows "1–0". */

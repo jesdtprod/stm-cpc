@@ -1439,9 +1439,11 @@ export function createBookingAdminPages({ api, client }) {
 
       const tableState = state.status === "refreshing" ? "ready" : state.status;
       tableHost.replaceChildren(dataTable({
+        searchState: state,
         schema: { columns },
         rows: pageRows,
         state: tableState,
+        searchable: false,
         hasFilters: Boolean(term),
         ariaLabel: "Bookings",
         onRetry: refresh,
@@ -1761,7 +1763,13 @@ export function createBookingAdminPages({ api, client }) {
               : null,
           ),
       },
-      { key: "actions", label: "Action", align: "center", render: actionsFor },
+      {
+        key: "actions",
+        label: "Action",
+        align: "center",
+        actionCount: 3,
+        render: actionsFor,
+      },
     ];
     const lists = {
       check: () => state.rows.filter((p) => p.status === "submitted").reverse(),
@@ -1800,6 +1808,7 @@ export function createBookingAdminPages({ api, client }) {
       }));
       const [title, text] = EMPTY[state.tab];
       body.replaceChildren(dataTable({
+        searchState: state,
         schema: { columns },
         rows: lists[state.tab](),
         state: state.status === "refreshing" ? "ready" : state.status,
