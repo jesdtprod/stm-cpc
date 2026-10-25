@@ -5,11 +5,13 @@
 //   * Payment proof goes to the private bucket under the member's own folder, then submit_payment records it. Nothing is
 //     paid until an admin verifies it.
 import {
+  attachPagePattern,
   badge,
   button,
   dataTable,
   dateField,
   h,
+  icon,
   iconButton,
   openModal,
   pageHeader,
@@ -40,12 +42,12 @@ const METHOD_LABEL = {
   cash: "Cash",
   gcash: "GCash",
   maya: "Maya",
-  bank_transfer: "Bank transfer",
+  bank_transfer: "Bank Transfer",
 };
 const STATUS = {
-  pending_approval: ["Waiting for approval", "warning"],
+  pending_approval: ["Waiting for Approval", "warning"],
   confirmed: ["Confirmed", "success"],
-  checked_in: ["Checked in", "info"],
+  checked_in: ["Checked In", "info"],
   completed: ["Completed", "neutral"],
   rejected: ["Rejected", "danger"],
   cancelled: ["Cancelled", "neutral"],
@@ -94,9 +96,9 @@ export function createBookingPages({ api, client, session }) {
 
   // ===================================================================== book
   function bookPage() {
-    const page = h("div", { class: "page" });
-    const dayHost = h("div", { class: "book-day" });
-    const body = h("div", { class: "book-body" });
+    const page = h("div", { class: "page book-page" });
+    attachPagePattern(page);
+    const body = h("div", { class: "member-directory-card" });
     const state = {
       day: businessDate(),
       courts: [],
@@ -218,7 +220,7 @@ export function createBookingPages({ api, client, session }) {
       const results = h("div", {
         class: "staff-results",
         role: "group",
-        "aria-label": "Search results",
+        "aria-label": "Search Results",
       });
       const term = searchControl({
         class: "input",
@@ -347,14 +349,14 @@ export function createBookingPages({ api, client, session }) {
           timeLabel(first.start)
         }`,
         icon: "calendar",
-        confirmLabel: "Send request",
+        confirmLabel: "Send Request",
         body: h(
           "div",
           { class: "stack" },
           h(
             "div",
             { class: "field" },
-            h("label", { for: "bk-len" }, "How long"),
+            h("label", { for: "bk-len" }, "How Long"),
             minutesSel,
           ),
           quote,
@@ -401,71 +403,53 @@ export function createBookingPages({ api, client, session }) {
     }
 
     // ---------------------------------------------------------------- layout
-    function drawDay() {
-      const today = businessDate();
-      const last = addDays(today, state.advanceDays);
-      const dateInput = dateField({
-        id: "book-date",
-        min: today,
-        max: last,
-        value: state.day,
-        ariaLabel: "Day",
-        onChange: (e) => {
-          if (e.target.value >= today && e.target.value <= last) {
-            state.day = e.target.value;
-            load();
-          }
-        },
-      });
-      dayHost.replaceChildren(
-        iconButton({
-          label: "Previous day",
-          icon: "chevronLeft",
-          disabled: state.day <= today,
-          onClick: () => {
-            state.day = addDays(state.day, -1);
-            load();
-          },
-        }),
-        dateInput,
-        iconButton({
-          label: "Next day",
-          icon: "chevronRight",
-          disabled: state.day >= last,
-          onClick: () => {
-            state.day = addDays(state.day, 1);
-            load();
-          },
-        }),
-        h("strong", { class: "book-day-label" }, dayLabel(state.day)),
-      );
-    }
-
     function courtCard(court) {
       const slots = slotsFor(court);
+      const bookedCount = slots.filter((s) => s.state === "booked").length;
+      const openCount = slots.filter((s) => s.state === "free").length;
+      const surfaceText = [
+        court.indoor ? "Indoor" : "Outdoor",
+        court.surface,
+      ].filter(Boolean).join(", ");
       return h(
         "section",
-        { class: "card book-court", "aria-label": court.name },
+        { class: "booking-calendar-court", "aria-label": court.name },
         h(
           "div",
-          { class: "ladder-head" },
+          { class: "booking-calendar-court-head" },
           h(
             "div",
-            {},
-            h("h2", { class: "settings-title" }, court.name),
+            { class: "member-cell" },
             h(
               "span",
-              { class: "muted" },
-              [court.indoor ? "Indoor" : "Outdoor", court.surface].filter(
-                Boolean,
-              ).join(", "),
+              { class: "member-avatar is-icon", "aria-hidden": "true" },
+              icon("grid", { solid: true }),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h("h2", { class: "settings-title" }, court.name),
+              h(
+                "span",
+                { class: "sub" },
+                slots.length
+                  ? `${
+                    surfaceText ? `${surfaceText} · ` : ""
+                  }${openCount} free · ${bookedCount} taken`
+                  : (surfaceText || "Closed this day"),
+              ),
             ),
           ),
+          court.status === "available"
+            ? badge("Available", "success")
+            : (court.status === "maintenance"
+              ? badge("Maintenance", "warning")
+              : badge(court.status || "Closed", "neutral")),
         ),
         slots.length
           ? h(
             "div",
-            { class: "slots" },
+            { class: "slots slots-wide" },
             ...slots.map((s, i) => {
               const free = s.state === "free";
               const text = timeLabel(s.start);
@@ -482,65 +466,262 @@ export function createBookingPages({ api, client, session }) {
                       closed: "closed",
                       past: "passed",
                       far: "not open for booking yet",
-                    }[s.state]
+                    }[s.state] ?? s.state
                   }`,
                   onClick: () => requestModal(court, slots, i),
                 },
-                text,
+                h("span", {}, text),
               );
             }),
           )
-          : h("p", { class: "muted" }, "Closed this day."),
+          : h(
+            "div",
+            { class: "booking-calendar-closed" },
+            h(
+              "span",
+              {
+                class: "booking-calendar-closed-icon",
+                "aria-hidden": "true",
+              },
+              icon("clock"),
+            ),
+            h("span", { class: "muted" }, "Closed this day."),
+          ),
       );
     }
 
     function draw() {
-      drawDay();
+      const today = businessDate();
+      const last = addDays(today, state.advanceDays);
+      const isToday = state.day === today;
+      const isLoading = state.status === "loading";
+
+      const day = dateField({
+        id: "book-date",
+        min: today,
+        max: last,
+        value: state.day,
+        ariaLabel: "Day",
+        onChange: (e) => {
+          if (e.target.value >= today && e.target.value <= last) {
+            state.day = e.target.value;
+            load();
+          }
+        },
+      });
+
+      const shift = (n) => {
+        const next = addDays(state.day, n);
+        if (next >= today && next <= last) {
+          state.day = next;
+          load();
+        }
+      };
+
+      let freeTotal = 0;
+      let bookedTotal = 0;
+      let closedTotal = 0;
+      if (state.status === "ready" || state.status === "refreshing") {
+        for (const c of state.courts) {
+          const slots = slotsFor(c);
+          if (!slots.length) {
+            closedTotal += 1;
+          } else {
+            for (const s of slots) {
+              if (s.state === "booked") bookedTotal += 1;
+              else if (s.state === "free") freeTotal += 1;
+              else closedTotal += 1;
+            }
+          }
+        }
+      }
+
+      const legendPill = (tone, label, count) =>
+        h(
+          "span",
+          { class: `calendar-legend-pill is-${tone}` },
+          h("span", { class: "calendar-legend-swatch", "aria-hidden": "true" }),
+          h("span", { class: "calendar-legend-label" }, label),
+          isLoading
+            ? h("span", {
+              class: "sk calendar-legend-sk",
+              "aria-hidden": "true",
+            })
+            : h(
+              "span",
+              { class: "calendar-legend-count" },
+              String(count),
+            ),
+        );
+
+      const bar = h(
+        "div",
+        { class: "book-day booking-calendar-bar" },
+        h(
+          "div",
+          { class: "booking-calendar-nav" },
+          h(
+            "div",
+            { class: "calendar-date-tools" },
+            h(
+              "div",
+              {
+                class: "calendar-date-stepper",
+                role: "group",
+                "aria-label": "Date Navigation",
+              },
+              iconButton({
+                label: "Previous Day",
+                icon: "chevronLeft",
+                size: "sm",
+                disabled: state.day <= today,
+                onClick: () => shift(-1),
+              }),
+              day,
+              iconButton({
+                label: "Next Day",
+                icon: "chevronRight",
+                size: "sm",
+                disabled: state.day >= last,
+                onClick: () => shift(1),
+              }),
+            ),
+          ),
+          h(
+            "div",
+            { class: "calendar-date-heading" },
+            h(
+              "div",
+              { class: "calendar-date-eyebrow-row" },
+              h(
+                "span",
+                {
+                  class: `calendar-date-eyebrow${isToday ? " is-today" : ""}`,
+                },
+                isToday ? "Today's Schedule" : "Selected Schedule",
+              ),
+              isToday ? null : h(
+                "button",
+                {
+                  type: "button",
+                  class: "calendar-today-btn",
+                  onClick: () => {
+                    state.day = today;
+                    load();
+                  },
+                },
+                icon("calendar"),
+                h("span", {}, "Jump to Today"),
+              ),
+            ),
+            h("strong", { class: "book-day-label" }, dayLabel(state.day)),
+          ),
+        ),
+        h(
+          "div",
+          {
+            class: "slot-legend calendar-legend-dock",
+            role: "group",
+            "aria-label": "Court availability legend",
+          },
+          legendPill("free", "Free", freeTotal),
+          legendPill("booked", "Taken", bookedTotal),
+          legendPill("closed", "Closed", closedTotal),
+        ),
+      );
+
+      if (isLoading) {
+        body.replaceChildren(
+          h(
+            "div",
+            { class: "booking-calendar-wrap", "aria-busy": "true" },
+            bar,
+            h(
+              "div",
+              { class: "booking-calendar-list" },
+              ...[1, 2, 3, 4, 5, 6].map(() =>
+                h(
+                  "section",
+                  { class: "booking-calendar-court is-loading" },
+                  h(
+                    "div",
+                    { class: "booking-calendar-court-head" },
+                    h(
+                      "div",
+                      { class: "sk-member-cell" },
+                      h("span", { class: "sk sk-avatar round" }),
+                      h(
+                        "div",
+                        { class: "sk-meta" },
+                        h("span", { class: "sk w-50" }),
+                        h("span", { class: "sk w-70 sk-sub" }),
+                      ),
+                    ),
+                    h("span", { class: "sk sk-pill" }),
+                  ),
+                  h(
+                    "div",
+                    { class: "slots slots-wide" },
+                    ...Array.from(
+                      { length: 4 },
+                      () => h("span", { class: "sk sk-slot-pill" }),
+                    ),
+                  ),
+                )
+              ),
+            ),
+          ),
+        );
+        return;
+      }
+
       if (state.status === "error") {
         body.replaceChildren(
           h(
             "div",
-            { class: "card home-error", role: "alert" },
-            h("p", {}, state.error),
-            button({ label: "Try again", icon: "refresh", onClick: load }),
-          ),
-        );
-        return;
-      }
-      if (state.status === "loading") {
-        body.replaceChildren(
-          h(
-            "div",
-            { class: "card settings-card is-loading", "aria-busy": "true" },
-            h("span", { class: "sk-line" }),
-            h("span", { class: "sk-line sk-wide" }),
-          ),
-        );
-        return;
-      }
-      body.replaceChildren(
-        state.courts.length
-          ? h(
-            "div",
-            { class: "stack" },
+            { class: "booking-calendar-wrap" },
+            bar,
             h(
               "div",
-              {
-                class: "slot-legend",
-                role: "group",
-                "aria-label": "Court availability legend",
-              },
-              badge("Free", "success"),
-              badge("Taken", "danger"),
-              badge("Closed", "neutral"),
+              { class: "tbl-state error", role: "alert" },
+              h("span", { class: "badge-icon" }, icon("alert")),
+              h("h2", {}, "The calendar could not be loaded"),
+              h(
+                "p",
+                {},
+                state.error ||
+                  "Check your connection and try loading the courts again.",
+              ),
+              button({
+                label: "Try Again",
+                icon: "refresh",
+                onClick: load,
+              }),
             ),
-            ...state.courts.map(courtCard),
-          )
-          : h(
-            "div",
-            { class: "card" },
-            h("p", {}, "No courts are open for booking yet."),
           ),
+        );
+        return;
+      }
+
+      body.replaceChildren(
+        h(
+          "div",
+          { class: "booking-calendar-wrap" },
+          bar,
+          state.courts.length
+            ? h(
+              "div",
+              { class: "booking-calendar-list" },
+              ...state.courts.map(courtCard),
+            )
+            : h(
+              "div",
+              { class: "tbl-state" },
+              h("span", { class: "badge-icon" }, icon("calendar")),
+              h("h2", {}, "No courts yet"),
+              h("p", {}, "No courts are open for booking yet."),
+            ),
+        ),
       );
     }
 
@@ -548,18 +729,17 @@ export function createBookingPages({ api, client, session }) {
       pageHeader({
         icon: "calendar",
         eyebrow: "Play",
-        title: "Book a court",
+        title: "Book a Court",
         description:
           "Pick a day, then a free time. The club may need to approve your request.",
         actions: [
           button({
-            label: "My bookings",
+            label: "My Bookings",
             icon: "clock",
             onClick: () => (location.hash = "#/bookings"),
           }),
         ],
       }),
-      dayHost,
       body,
     );
     load();
@@ -649,12 +829,12 @@ export function createBookingPages({ api, client, session }) {
       const late = r.status === "confirmed" && x &&
         x.start.getTime() - Date.now() < cutoff * 3600_000 && fee > 0;
       return openModal({
-        title: "Cancel this booking",
+        title: "Cancel This Booking",
         eyebrow: `${r.court_name_snapshot} · ${formatDateTime(x?.start)}`,
         icon: "alert",
         destructive: true,
-        confirmLabel: "Cancel booking",
-        cancelLabel: "Keep it",
+        confirmLabel: "Cancel Booking",
+        cancelLabel: "Keep It",
         body: h(
           "div",
           { class: "stack" },
@@ -720,10 +900,10 @@ export function createBookingPages({ api, client, session }) {
       });
       let uploaded = null; // { file, path }: one upload per file, reused on retry
       return openModal({
-        title: "Pay for this booking",
+        title: "Pay for This Booking",
         eyebrow: `${r.court_name_snapshot} · ${r.doc_no}`,
         icon: "currency",
-        confirmLabel: "Send payment",
+        confirmLabel: "Send Payment",
         body: h(
           "div",
           { class: "stack" },
@@ -749,7 +929,7 @@ export function createBookingPages({ api, client, session }) {
           h(
             "div",
             { class: "field" },
-            h("label", { for: "pay-ref" }, "Reference number"),
+            h("label", { for: "pay-ref" }, "Reference Number"),
             h("input", {
               class: "input",
               id: "pay-ref",
@@ -952,7 +1132,7 @@ export function createBookingPages({ api, client, session }) {
             return h(
               "span",
               {},
-              paid ? `${formatMoney(paid)} paid` : "Not paid",
+              paid ? `${formatMoney(paid)} paid` : "Not Paid",
               pending
                 ? h(
                   "span",
@@ -984,7 +1164,7 @@ export function createBookingPages({ api, client, session }) {
             label: "Upcoming",
             badge: state.rows.filter(isUpcoming).length || undefined,
           },
-          { id: "past", label: "Past and closed" },
+          { id: "past", label: "Past and Closed" },
         ],
         onChange: (id) => {
           state.tab = id;
@@ -997,7 +1177,7 @@ export function createBookingPages({ api, client, session }) {
         schema,
         rows,
         state: state.status,
-        ariaLabel: "My bookings",
+        ariaLabel: "My Bookings",
         onRetry: load,
         emptyTitle: state.tab === "upcoming"
           ? "No upcoming bookings"
@@ -1012,11 +1192,11 @@ export function createBookingPages({ api, client, session }) {
       pageHeader({
         icon: "clock",
         eyebrow: "Play",
-        title: "My bookings",
+        title: "My Bookings",
         description: "Your court requests, their status, and payment.",
         actions: [
           button({
-            label: "Book a court",
+            label: "Book a Court",
             variant: "primary",
             icon: "plus",
             onClick: () => (location.hash = "#/book"),

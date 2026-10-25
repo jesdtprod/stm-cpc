@@ -20,9 +20,9 @@ import {
 
 const TIEBREAKS = [
   { value: "head_to_head", label: "Head-to-head (among those tied)" },
-  { value: "game_diff", label: "Game difference" },
-  { value: "point_diff", label: "Point difference" },
-  { value: "points_for", label: "Points scored" },
+  { value: "game_diff", label: "Game Difference" },
+  { value: "point_diff", label: "Point Difference" },
+  { value: "points_for", label: "Points Scored" },
   { value: "coin_toss", label: "Coin toss (random, final)" },
 ];
 const TIEBREAK_LABEL = {
@@ -111,13 +111,13 @@ export function createScoringPages({ api, getOrgId }) {
         )
       );
       return openModal({
-        title: editing ? "Edit scoring rule" : "New scoring rule",
-        eyebrow: editing ? row.name : "Scoring rules",
+        title: editing ? "Edit Scoring Rule" : "New Scoring Rule",
+        eyebrow: editing ? row.name : "Scoring Rules",
         icon: "medal",
         description:
           "Configure match scoring and the order used to resolve tied standings.",
         size: "lg",
-        confirmLabel: editing ? "Save changes" : "Add rule",
+        confirmLabel: editing ? "Save Changes" : "Add Rule",
         body: h(
           "div",
           { class: "form-grid" },
@@ -150,7 +150,7 @@ export function createScoringPages({ api, getOrgId }) {
             { class: "form-grid-wide" },
             field(
               "sc-name",
-              "Rule name *",
+              "Rule Name *",
               input("sc-name", "name", {
                 required: true,
                 maxlength: 80,
@@ -163,7 +163,7 @@ export function createScoringPages({ api, getOrgId }) {
           ),
           h(
             "section",
-            { class: "form-section", "aria-label": "Match scoring" },
+            { class: "form-section", "aria-label": "Match Scoring" },
             h(
               "div",
               { class: "form-section-head" },
@@ -175,7 +175,7 @@ export function createScoringPages({ api, getOrgId }) {
               h(
                 "div",
                 {},
-                h("h3", { class: "form-section-title" }, "Match scoring"),
+                h("h3", { class: "form-section-title" }, "Match Scoring"),
                 h(
                   "p",
                   { class: "form-section-description" },
@@ -188,7 +188,7 @@ export function createScoringPages({ api, getOrgId }) {
               { class: "form-grid" },
               field(
                 "sc-games",
-                "Games to win *",
+                "Games to Win *",
                 input("sc-games", "games_to_win", {
                   type: "number",
                   min: 1,
@@ -202,7 +202,7 @@ export function createScoringPages({ api, getOrgId }) {
               ),
               field(
                 "sc-points",
-                "Points per game *",
+                "Points per Game *",
                 input("sc-points", "points_per_game", {
                   type: "number",
                   min: 1,
@@ -230,14 +230,14 @@ export function createScoringPages({ api, getOrgId }) {
               ),
               field(
                 "sc-cap",
-                "Point cap",
+                "Point Cap",
                 input("sc-cap", "point_cap", {
                   type: "number",
                   min: 1,
                   max: 99,
                   step: 1,
                   value: row?.point_cap ?? "",
-                  placeholder: "No cap",
+                  placeholder: "No Cap",
                 }),
                 "Optional. Leave empty for no cap.",
                 "lock",
@@ -247,7 +247,7 @@ export function createScoringPages({ api, getOrgId }) {
                 { class: "form-grid-wide" },
                 field(
                   "sc-forfeit",
-                  "Forfeit score *",
+                  "Forfeit Score *",
                   input("sc-forfeit", "forfeit_score", {
                     type: "number",
                     min: 0,
@@ -264,7 +264,7 @@ export function createScoringPages({ api, getOrgId }) {
           ),
           h(
             "section",
-            { class: "form-section", "aria-label": "Tiebreak order" },
+            { class: "form-section", "aria-label": "Tiebreak Order" },
             h(
               "div",
               { class: "form-section-head" },
@@ -276,7 +276,7 @@ export function createScoringPages({ api, getOrgId }) {
               h(
                 "div",
                 {},
-                h("h3", { class: "form-section-title" }, "Tiebreak order"),
+                h("h3", { class: "form-section-title" }, "Tiebreak Order"),
                 h(
                   "p",
                   { class: "form-section-description" },
@@ -292,7 +292,7 @@ export function createScoringPages({ api, getOrgId }) {
                   `sc-tb-${index}`,
                   `${index + 1}. ${
                     ["First", "Second", "Third", "Fourth"][index]
-                  } tiebreak`,
+                  } Tiebreak`,
                   slot,
                   null,
                   "shuffle",
@@ -313,10 +313,10 @@ export function createScoringPages({ api, getOrgId }) {
           if (!name) return showError(error, "Enter a name.");
           for (
             const [k, lo, hi, label] of [
-              ["games_to_win", 1, 5, "Games to win"],
-              ["points_per_game", 1, 99, "Points per game"],
-              ["win_by", 1, 5, "Win by"],
-              ["forfeit_score", 0, 99, "Forfeit score"],
+              ["games_to_win", 1, 5, "Games to Win"],
+              ["points_per_game", 1, 99, "Points per Game"],
+              ["win_by", 1, 5, "Win By"],
+              ["forfeit_score", 0, 99, "Forfeit Score"],
             ]
           ) {
             const v = num(k);
@@ -395,7 +395,7 @@ export function createScoringPages({ api, getOrgId }) {
         for: "sc-reason",
       }, "0 / 500");
       return openModal({
-        title: "Delete this scoring rule",
+        title: "Delete This Scoring Rule",
         eyebrow: row.name,
         icon: "alert",
         destructive: true,
@@ -518,7 +518,7 @@ export function createScoringPages({ api, getOrgId }) {
 
     const describe = (r) =>
       r.games_to_win === 1
-        ? "Single game"
+        ? "Single Game"
         : `Best of ${2 * r.games_to_win - 1}`;
 
     function draw() {
@@ -546,7 +546,7 @@ export function createScoringPages({ api, getOrgId }) {
                   },
                   {
                     key: "game",
-                    label: "Each game",
+                    label: "Each Game",
                     render: (r) =>
                       `To ${r.points_per_game}, win by ${r.win_by}${
                         r.point_cap ? `, cap ${r.point_cap}` : ""
@@ -560,7 +560,7 @@ export function createScoringPages({ api, getOrgId }) {
                   },
                   {
                     key: "ties",
-                    label: "Ties are split by",
+                    label: "Ties Are Split by",
                     render: (r) =>
                       r.tiebreak_order.map((t) => TIEBREAK_LABEL[t] ?? t).join(
                         ", ",
@@ -602,7 +602,7 @@ export function createScoringPages({ api, getOrgId }) {
               },
               rows: state.rules,
               state: state.status,
-              ariaLabel: "Scoring rules",
+              ariaLabel: "Scoring Rules",
               onRetry: refresh,
               emptyTitle: "No scoring rules yet",
               emptyText:
@@ -621,7 +621,7 @@ export function createScoringPages({ api, getOrgId }) {
           "How a match is scored and how ties in a table are split. Divisions keep a copy of the rule they were created with.",
         actions: [
           button({
-            label: "New scoring rule",
+            label: "New Scoring Rule",
             icon: "plus",
             variant: "primary",
             onClick: () => ruleModal(null),

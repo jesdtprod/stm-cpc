@@ -33,7 +33,7 @@ export function createRankingPages({ api }) {
           },
           {
             key: "change",
-            label: "Rank change",
+            label: "Rank Change",
             render: (r) =>
               h(
                 "span",
@@ -71,7 +71,7 @@ export function createRankingPages({ api }) {
       },
       rows,
       state,
-      ariaLabel: "Rank history",
+      ariaLabel: "Rank History",
       onRetry,
       emptyTitle: "No rank changes yet",
       emptyText:
@@ -155,7 +155,7 @@ export function createRankingPages({ api }) {
         status = "error";
       }
       return openModal({
-        title: "Rank history",
+        title: "Rank History",
         eyebrow: row.display_name,
         icon: "clock",
         size: "lg",
@@ -186,10 +186,10 @@ export function createRankingPages({ api }) {
         ),
       );
       return openModal({
-        title: "Change rank by hand",
+        title: "Change Rank by Hand",
         eyebrow: `${row.display_name} · now ${row.rank_name}`,
         icon: "medal",
-        confirmLabel: "Set rank",
+        confirmLabel: "Set Rank",
         destructive: true,
         body: h(
           "div",
@@ -202,7 +202,7 @@ export function createRankingPages({ api }) {
           h(
             "div",
             { class: "field" },
-            h("label", { for: "ov-rank" }, "New rank *"),
+            h("label", { for: "ov-rank" }, "New Rank *"),
             select,
           ),
           h(
@@ -316,7 +316,7 @@ export function createRankingPages({ api }) {
               load();
             },
           },
-          h("option", { value: "" }, "All categories"),
+          h("option", { value: "" }, "All Categories"),
           ...state.categories.map((c) =>
             h(
               "option",
@@ -347,7 +347,7 @@ export function createRankingPages({ api }) {
         activeId: state.tab,
         tabs: [
           { id: "ranking", label: "Ranking" },
-          { id: "mine", label: "My rank history" },
+          { id: "mine", label: "My Rank History" },
         ],
         onChange: (id) => {
           state.tab = id;

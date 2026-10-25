@@ -164,6 +164,7 @@ Use this order when the section is applicable:
 - Header, populated rows, and skeleton rows must use exactly the same column definition.
 - Distribute ordinary data columns equally across the available width. Reserve a compact, consistent width for Action based on its button count.
 - Any necessary exception for long content must be defined in a shared table schema and applied identically to its header, rows, and skeleton—not as an isolated inline override.
+- Shared dropdown lists, action menus, date and date-time calendars use `dropdownPosition()` from `web/lib/dropdown-position.js`: open above when space below is insufficient, respect viewport and scrolling-modal bounds, and constrain tall panels with internal scrolling. Reposition on scroll, resize, and mobile keyboard changes.
 - Center the Action heading and all action icons beneath it. Keep action-button gaps consistent.
 - Left-align text. Right-align money and numerical amounts, including their headings. Use tabular numerals.
 - Keep quantities, currency, and dates consistently formatted. Do not wrap a currency label separately from its amount.

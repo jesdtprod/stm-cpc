@@ -25,8 +25,8 @@ const GROUPS = [
       { path: "/book", label: "Book a Court", icon: "calendar" },
       { path: "/bookings", label: "My Bookings", icon: "clock" },
       { path: "/events", label: "Events", icon: "trophy" },
-      { path: "/notifications", label: "Notifications", icon: "inbox" },
       { path: "/ranking", label: "Ranking", icon: "medal" },
+      { path: "/notifications", label: "Notifications", icon: "inbox" },
     ],
   },
   {
@@ -192,7 +192,7 @@ export function createShell(
     side.toggleAttribute("data-open", open);
     scrim.hidden = !open;
     menuBtn.setAttribute("aria-expanded", String(open));
-    menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    menuBtn.setAttribute("aria-label", open ? "Close Menu" : "Open Menu");
     if (open) side.querySelector("a")?.focus();
     else if (side.contains(document.activeElement)) {
       menuBtn?.focus();
@@ -242,7 +242,7 @@ export function createShell(
       );
       return;
     }
-    const name = state.access?.display_name || "My account";
+    const name = state.access?.display_name || "My Account";
     const memberNo = state.access?.member_no ?? "";
     toggle = h(
       "button",
@@ -393,7 +393,7 @@ export function createShell(
       brand.setAttribute("href", isAdminPath ? "#/admin" : "#/");
       const small = brand.querySelector("small");
       if (small) {
-        small.textContent = isAdminPath ? "Administration" : "Member area";
+        small.textContent = isAdminPath ? "Administration" : "Member Area";
       }
     }
 
@@ -436,7 +436,7 @@ export function createShell(
             class: "assistive-nav-menu-close",
             type: "button",
             "aria-label": "Close navigation menu",
-            title: "Close menu",
+            title: "Close Menu",
             onClick: () => setMenuOpen(false),
           },
           icon("x"),
@@ -501,7 +501,7 @@ export function createShell(
           ? [
             tab({
               label: "Home",
-              detail: "Club overview",
+              detail: "Club Overview",
               iconName: "home",
               active: isHome,
               href: "#/",
@@ -626,7 +626,7 @@ export function createShell(
               : [
                 tab({
                   label: "Home",
-                  detail: "Club overview",
+                  detail: "Club Overview",
                   iconName: "home",
                   active: isHome,
                   href: "#/",
@@ -790,7 +790,7 @@ export function createShell(
     const viewSwitch = !state.gate && canOpenAdmin() && !isAdminAccount()
       ? h(
         "div",
-        { class: "view-switch", role: "group", "aria-label": "Switch view" },
+        { class: "view-switch", role: "group", "aria-label": "Switch View" },
         h(
           "a",
           {
@@ -858,7 +858,7 @@ export function createShell(
             h(
               "span",
               { class: "side-user-name" },
-              state.access?.display_name ?? "My account",
+              state.access?.display_name ?? "My Account",
             ),
             h("span", { class: "side-user-id" }, state.access?.member_no ?? ""),
           ),

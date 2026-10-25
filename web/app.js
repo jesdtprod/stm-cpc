@@ -164,16 +164,16 @@ const accountPages = createAccountPages({
   getAccessToken: async () =>
     (await client.auth.getSession()).data.session?.access_token,
 });
-route("/signin", () => accountPages.signInPage(), "Sign in", "public");
+route("/signin", () => accountPages.signInPage(), "Sign In", "public");
 route(
   "/signup",
   () => accountPages.signUpPage(),
-  "Create an account",
+  "Create an Account",
   "public",
 );
 route("/password", () => accountPages.passwordPage(), "Password", "gated");
 route("/profile", () => accountPages.profilePage(), "Profile", "gated");
-route("/pending", () => accountPages.pendingPage(), "Account status", "gated");
+route("/pending", () => accountPages.pendingPage(), "Account Status", "gated");
 
 const adminPages = createAdminPages({ client, api, adminResetPassword });
 route("/admin/members", () => adminPages.membersPage(), "Members", {
@@ -255,7 +255,7 @@ route("/admin/scoring", () => scoringPages.scoringPage(), "Scoring Rules", {
 });
 
 const importPages = createImportPages({ api });
-route("/admin/import", () => importPages.importPage(), "Member import", {
+route("/admin/import", () => importPages.importPage(), "Member Import", {
   any: ["members.import", "members.review_import"],
 });
 
@@ -265,10 +265,10 @@ route("/admin/staff", () => staffPages.staffPage(), "Staff and Roles", {
 });
 
 const bookingPages = createBookingPages({ api, client, session });
-route("/book", () => bookingPages.bookPage(), "Book a court", {
+route("/book", () => bookingPages.bookPage(), "Book a Court", {
   permission: "bookings.create",
 });
-route("/bookings", () => bookingPages.myBookingsPage(), "My bookings", {
+route("/bookings", () => bookingPages.myBookingsPage(), "My Bookings", {
   permission: "bookings.create",
 });
 const bookingAdminPages = createBookingAdminPages({ api, client });
@@ -281,7 +281,7 @@ route("/admin/payments", () => bookingAdminPages.paymentsPage(), "Payments", {
 
 const homePages = createHomePages({ session, api, client });
 route("/", () => homePages.homePage(), "Home", "public");
-route("/admin", () => homePages.adminHomePage(), "Admin dashboard", {
+route("/admin", () => homePages.adminHomePage(), "Admin Dashboard", {
   any: ADMIN_CODES,
 });
 route("/booking", () => bookingPage(), "Court Booking", "public");

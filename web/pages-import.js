@@ -32,9 +32,9 @@ const ISSUE_LABEL = {
   invalid_email: "Email address not valid",
 };
 const TABS = [
-  { id: "open", label: "Needs review" },
+  { id: "open", label: "Needs Review" },
   { id: "done", label: "Reviewed" },
-  { id: "batches", label: "Import history" },
+  { id: "batches", label: "Import History" },
 ];
 
 export function createImportPages({ api }) {
@@ -192,7 +192,7 @@ export function createImportPages({ api }) {
         : null;
       kpis.replaceChildren(
         adminStatCard({
-          label: "Last import",
+          label: "Last Import",
           value: l ? formatDateTime(l.created_at) : "—",
           hint: l ? "Most recent import run" : "No import has run yet",
           iconName: "calendar",
@@ -202,7 +202,7 @@ export function createImportPages({ api }) {
           pill: h("span", { class: "card-status-pill is-clean" }, "Latest"),
         }),
         adminStatCard({
-          label: "Rows in the file",
+          label: "Rows in the File",
           value: l?.row_count ?? "—",
           hint: "Rows read from the member file",
           iconName: "file",
@@ -211,7 +211,7 @@ export function createImportPages({ api }) {
           pill: h("span", { class: "card-status-pill is-clean" }, "Rows"),
         }),
         adminStatCard({
-          label: "Members created",
+          label: "Members Created",
           value: l?.created_count ?? "—",
           hint: "Accounts made by the import",
           iconName: "user",
@@ -244,7 +244,7 @@ export function createImportPages({ api }) {
               "span",
               { class: "card-status-pill is-clean" },
               icon("check"),
-              "All clear",
+              "All Clear",
             ),
         }),
       );
@@ -263,7 +263,7 @@ export function createImportPages({ api }) {
           ISSUE_LABEL[row.issue_code] ?? row.issue_code
         }`,
         icon: "check",
-        confirmLabel: "Mark reviewed",
+        confirmLabel: "Mark Reviewed",
         body: h(
           "div",
           { class: "stack" },
@@ -310,7 +310,7 @@ export function createImportPages({ api }) {
       columns: [
         {
           key: "name",
-          label: "Import row",
+          label: "Import Row",
           render: (r) =>
             h(
               "div",
@@ -344,13 +344,13 @@ export function createImportPages({ api }) {
               h(
                 "span",
                 { class: "sub" },
-                r.detail || r.issue_code || "Import issue",
+                r.detail || r.issue_code || "Import Issue",
               ),
             ),
         },
         {
           key: "no",
-          label: "Member ID in the file",
+          label: "Member ID in the File",
           skeleton: "stack",
           render: (r) =>
             h(
@@ -379,7 +379,7 @@ export function createImportPages({ api }) {
               : h(
                 "div",
                 { class: "member-table-stack" },
-                badge("Needs review", "warning"),
+                badge("Needs Review", "warning"),
                 h("span", { class: "sub" }, "Awaiting admin check"),
               ),
         },
@@ -477,7 +477,7 @@ export function createImportPages({ api }) {
         },
         {
           key: "held",
-          label: "Held back / Failed",
+          label: "Held Back / Failed",
           skeleton: "stack",
           render: (r) =>
             h(
@@ -559,7 +559,7 @@ export function createImportPages({ api }) {
         state: state.status,
         searchable: false,
         hasFilters: Boolean(state.term.trim()),
-        ariaLabel: state.tab === "batches" ? "Import history" : "Import issues",
+        ariaLabel: state.tab === "batches" ? "Import History" : "Import Issues",
         onRetry: load,
         onReset: () => {
           clearTimeout(timer);
@@ -568,7 +568,7 @@ export function createImportPages({ api }) {
           state.page = 1;
           draw();
         },
-        resetLabel: "Clear search",
+        resetLabel: "Clear Search",
         emptyTitle,
         emptyText,
       }));
@@ -589,7 +589,7 @@ export function createImportPages({ api }) {
 
     page.append(
       adminHero({
-        title: "Member import",
+        title: "Member Import",
         chip: "Import Management",
         description:
           "What the import did, and the rows that need a look. The member file is imported with the secure import tool, not through the web.",

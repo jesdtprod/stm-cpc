@@ -39,7 +39,7 @@ const OVERFLOW = {
   chain: "Continue into the next category",
   stop: "Stay within this category",
 };
-const ACTION_LABEL = { up: "Move up", down: "Move down", retain: "Stay" };
+const ACTION_LABEL = { up: "Move Up", down: "Move Down", retain: "Stay" };
 
 const liveLadder = (cat) => (cat.ladders ?? []).find((l) => !l.deleted_at);
 const liveRanks = (ladder) =>
@@ -78,7 +78,7 @@ export function createRanksPages({ api, getOrgId }) {
       class: "input",
       id: "ranks-search",
       placeholder: "Search categories or ranks...",
-      "aria-label": "Search ranks",
+      "aria-label": "Search Ranks",
       onInput: () => {
         state.term = search.value;
         state.page = 1;
@@ -87,11 +87,11 @@ export function createRanksPages({ api, getOrgId }) {
     });
     const viewFilter = selectField({
       id: "ranks-view",
-      ariaLabel: "View rank management",
+      ariaLabel: "View Rank Management",
       value: state.tab,
-      options: [{ value: "ladders", label: "Ladders and ranks" }, {
+      options: [{ value: "ladders", label: "Ladders and Ranks" }, {
         value: "rules",
-        label: "Movement rules",
+        label: "Movement Rules",
       }],
       onChange: (event) => {
         state.tab = event.target.value;
@@ -105,7 +105,7 @@ export function createRanksPages({ api, getOrgId }) {
       id: "ranks-category",
       ariaLabel: "Filter ladders by category",
       value: state.category,
-      options: [{ value: "all", label: "All categories" }],
+      options: [{ value: "all", label: "All Categories" }],
       onChange: (event) => {
         state.category = event.target.value;
         draw();
@@ -257,18 +257,18 @@ export function createRanksPages({ api, getOrgId }) {
           "span",
           { class: "form-setting-label" },
           icon("checkCircle"),
-          "Default starting rank",
+          "Default Starting Rank",
         ),
         checked: autoStart || alreadyStart,
         disabled: autoStart || alreadyStart,
       });
       return openModal({
-        title: editing ? "Edit rank" : "New rank",
+        title: editing ? "Edit Rank" : "New Rank",
         eyebrow: cat.name,
         icon: "medal",
         description:
           "Set the rank name, unique code and starting status within this category.",
-        confirmLabel: editing ? "Save changes" : "Add rank",
+        confirmLabel: editing ? "Save Changes" : "Add Rank",
         body: h(
           "div",
           { class: "form-grid" },
@@ -302,24 +302,24 @@ export function createRanksPages({ api, getOrgId }) {
                     `${ranks.length} ${ranks.length === 1 ? "rank" : "ranks"}`,
                     ranks.length ? "success" : "neutral",
                   ),
-                alreadyStart ? badge("Starting rank", "success") : null,
+                alreadyStart ? badge("Starting Rank", "success") : null,
               ),
               h(
                 "span",
                 { class: "sub member-subtext" },
                 editing
                   ? `${cat.name} (${cat.code}) • ${
-                    OVERFLOW[ladder.overflow] ?? "Rank ladder"
+                    OVERFLOW[ladder.overflow] ?? "Rank Ladder"
                   }`
                   : `${cat.code} • ${
-                    OVERFLOW[ladder.overflow] ?? "Rank ladder"
+                    OVERFLOW[ladder.overflow] ?? "Rank Ladder"
                   }`,
               ),
             ),
           ),
           field(
             "rk-name",
-            "Rank name *",
+            "Rank Name *",
             nameInput,
             "Shown on member profiles and brackets.",
           ),
@@ -337,7 +337,7 @@ export function createRanksPages({ api, getOrgId }) {
             { class: "form-grid-wide" },
             field(
               "rk-starting",
-              "Starting rank",
+              "Starting Rank",
               h("div", { class: "form-setting" }, startingToggle),
               autoStart
                 ? "The first rank in a ladder automatically starts as the default rank."
@@ -476,7 +476,7 @@ export function createRanksPages({ api, getOrgId }) {
                 { class: "member-decision-name" },
                 h("strong", { class: "member-name" }, row.name),
                 row.is_starting
-                  ? badge("Starting rank", "success")
+                  ? badge("Starting Rank", "success")
                   : (row.is_active !== undefined
                     ? badge(
                       row.is_active ? "Active" : "Paused",
@@ -489,9 +489,9 @@ export function createRanksPages({ api, getOrgId }) {
                 { class: "sub member-subtext" },
                 row.code ||
                   (table === "rank_rules"
-                    ? "Movement rule"
+                    ? "Movement Rule"
                     : table === "rank_ladders"
-                    ? "Rank ladder"
+                    ? "Rank Ladder"
                     : "Rank"),
               ),
             ),
@@ -654,7 +654,7 @@ export function createRanksPages({ api, getOrgId }) {
             h(
               "span",
               { class: "muted" },
-              cat.is_active ? cat.code : "Retired category",
+              cat.is_active ? cat.code : "Retired Category",
             ),
           ),
         ),
@@ -673,7 +673,7 @@ export function createRanksPages({ api, getOrgId }) {
             "div",
             { class: "actions ladder-actions" },
             button({
-              label: "Set up ladder",
+              label: "Set Up Ladder",
               icon: "plus",
               variant: "primary",
               onClick: () => setUpLadder(cat),
@@ -712,7 +712,7 @@ export function createRanksPages({ api, getOrgId }) {
                   "span",
                   { class: "rank-meta" },
                   h("span", { class: "sub member-subtext" }, r.code),
-                  r.is_starting ? badge("Starting rank", "success") : null,
+                  r.is_starting ? badge("Starting Rank", "success") : null,
                 ),
               ),
               h(
@@ -767,7 +767,7 @@ export function createRanksPages({ api, getOrgId }) {
                   onClick: () =>
                     deleteModal(r, {
                       table: "ranks",
-                      title: "Delete this rank",
+                      title: "Delete This Rank",
                       note:
                         "Members who hold this rank must be moved first; the database refuses otherwise.",
                     }),
@@ -783,11 +783,11 @@ export function createRanksPages({ api, getOrgId }) {
         head,
         field(
           `ov-${cat.id}`,
-          "Boundary behavior",
+          "Boundary Behavior",
           overflowSelect,
           "How movement behaves at the highest and lowest rank.",
         ),
-        h("div", { class: "ladder-order muted" }, "Highest rank first"),
+        h("div", { class: "ladder-order muted" }, "Highest Rank First"),
         list,
         ranks.length && !hasStart
           ? h(
@@ -800,7 +800,7 @@ export function createRanksPages({ api, getOrgId }) {
           "div",
           { class: "actions ladder-actions" },
           button({
-            label: "Add rank",
+            label: "Add Rank",
             icon: "plus",
             onClick: () => rankModal(cat, ladder, null),
           }),
@@ -812,7 +812,7 @@ export function createRanksPages({ api, getOrgId }) {
               onClick: () =>
                 deleteModal({ id: ladder.id, name: `${cat.name} ladder` }, {
                   table: "rank_ladders",
-                  title: "Delete this ladder",
+                  title: "Delete This Ladder",
                   note:
                     "The category stays. You can set up a ladder again later.",
                 }),
@@ -829,7 +829,7 @@ export function createRanksPages({ api, getOrgId }) {
       if (c.bracket_result) parts.push(c.bracket_result);
       if (c.placement) parts.push(`placed ${c.placement}`);
       if (c.min_matches) parts.push(`at least ${c.min_matches} matches`);
-      return parts.length ? parts.join(", ") : "Any result";
+      return parts.length ? parts.join(", ") : "Any Result";
     }
     const actionText = (r) =>
       r.action === "retain"
@@ -843,7 +843,7 @@ export function createRanksPages({ api, getOrgId }) {
       const key = row?.id ?? api.newKey();
       const c = row?.conditions ?? {};
       const error = errorLine();
-      const rankOptions = [{ value: "", label: "No limit" }].concat(
+      const rankOptions = [{ value: "", label: "No Limit" }].concat(
         allRanks().map((r) => ({ value: r.id, label: r.label })),
       );
       const levels = h("input", {
@@ -857,8 +857,8 @@ export function createRanksPages({ api, getOrgId }) {
         value: row?.levels ?? 1,
       });
       const actionSel = select("ru-action", "action", [
-        { value: "up", label: "Move up" },
-        { value: "down", label: "Move down" },
+        { value: "up", label: "Move Up" },
+        { value: "down", label: "Move Down" },
         { value: "retain", label: "Stay (no change)" },
       ], row?.action ?? "up");
       const sync = () => {
@@ -876,7 +876,7 @@ export function createRanksPages({ api, getOrgId }) {
           "span",
           { class: "form-setting-label" },
           icon("trophy"),
-          "Ignore forfeits",
+          "Ignore Forfeits",
         ),
         checked: row?.exclude_forfeits ?? true,
       });
@@ -887,18 +887,18 @@ export function createRanksPages({ api, getOrgId }) {
           "span",
           { class: "form-setting-label" },
           icon("checkCircle"),
-          "Rule is active",
+          "Rule Is Active",
         ),
         checked: row?.is_active ?? true,
       });
       return openModal({
-        title: editing ? "Edit rule" : "New rule",
-        eyebrow: editing ? row.name : "Rank movement",
+        title: editing ? "Edit Rule" : "New Rule",
+        eyebrow: editing ? row.name : "Rank Movement",
         icon: "layers",
         description:
           "Choose the results that trigger a rank change and set its limits.",
         size: "lg",
-        confirmLabel: editing ? "Save changes" : "Add rule",
+        confirmLabel: editing ? "Save Changes" : "Add Rule",
         body: h(
           "div",
           { class: "form-grid" },
@@ -941,17 +941,17 @@ export function createRanksPages({ api, getOrgId }) {
           ),
           field(
             "ru-result",
-            "Result in that bracket",
+            "Result in That Bracket",
             select("ru-result", "bracket_result", [
               { value: "", label: "Any" },
-              { value: "won", label: "Won the bracket" },
+              { value: "won", label: "Won the Bracket" },
               { value: "lost", label: "Lost (eliminated)" },
             ], c.bracket_result),
             "Outcome required in the chosen bracket.",
           ),
           field(
             "ru-place",
-            "Final placement",
+            "Final Placement",
             h("input", {
               class: "input",
               id: "ru-place",
@@ -988,25 +988,25 @@ export function createRanksPages({ api, getOrgId }) {
           ),
           field(
             "ru-action",
-            "Rank change",
+            "Rank Change",
             actionSel,
             "Direction to move on the rank ladder.",
           ),
           field(
             "ru-levels",
-            "By how many levels",
+            "By How Many Levels",
             levels,
             "1 to 10. Stay uses 0.",
           ),
           field(
             "ru-min",
-            "Never below",
+            "Never Below",
             select("ru-min", "min_rank_id", rankOptions, row?.min_rank_id),
             "Lowest rank where downward movement stops.",
           ),
           field(
             "ru-max",
-            "Never above",
+            "Never Above",
             select("ru-max", "max_rank_id", rankOptions, row?.max_rank_id),
             "Highest rank where upward movement stops.",
           ),
@@ -1044,14 +1044,14 @@ export function createRanksPages({ api, getOrgId }) {
           ),
           field(
             "ru-forfeits",
-            "Forfeits & withdrawals",
+            "Forfeits & Withdrawals",
             h("div", { class: "form-setting" }, forfeits),
             "Exclude matches ended by walkover or forfeit.",
             false,
           ),
           field(
             "ru-active",
-            "Rule status",
+            "Rule Status",
             h("div", { class: "form-setting" }, activeBox),
             "Apply this rule when tournament results are posted.",
             false,
@@ -1242,7 +1242,7 @@ export function createRanksPages({ api, getOrgId }) {
                   onClick: () =>
                     deleteModal(r, {
                       table: "rank_rules",
-                      title: "Delete this rule",
+                      title: "Delete This Rule",
                       note:
                         "Past rank changes keep the name of the rule that made them.",
                     }),
@@ -1295,7 +1295,7 @@ export function createRanksPages({ api, getOrgId }) {
                 state.page * DEFAULT_PAGE_SIZE,
               ),
               state: state.status,
-              ariaLabel: "Rank rules",
+              ariaLabel: "Rank Rules",
               onRetry: refresh,
               emptyTitle: state.term.trim()
                 ? "No matching rules"
@@ -1330,7 +1330,7 @@ export function createRanksPages({ api, getOrgId }) {
         categoryFilter.value = "all";
       }
       categoryFilter.setOptions([
-        { value: "all", label: "All categories" },
+        { value: "all", label: "All Categories" },
         ...state.cats.map((cat) => ({ value: cat.id, label: cat.name })),
       ]);
       categoryHost.hidden = state.tab !== "ladders";
@@ -1358,7 +1358,7 @@ export function createRanksPages({ api, getOrgId }) {
             "div",
             { class: "member-panel home-error", role: "alert" },
             h("p", {}, "The ranks could not be loaded."),
-            button({ label: "Try again", icon: "refresh", onClick: refresh }),
+            button({ label: "Try Again", icon: "refresh", onClick: refresh }),
           ),
         );
         return;
@@ -1393,7 +1393,7 @@ export function createRanksPages({ api, getOrgId }) {
               ),
               state.cats.length
                 ? button({
-                  label: "Clear filters",
+                  label: "Clear Filters",
                   icon: "x",
                   onClick: () => {
                     state.term = "";
@@ -1417,7 +1417,7 @@ export function createRanksPages({ api, getOrgId }) {
           "Each category has a ladder of ranks. Rules decide how results move members along it.",
         actions: [
           button({
-            label: "New rule",
+            label: "New Rule",
             variant: "primary",
             icon: "plus",
             onClick: () => ruleModal(null),

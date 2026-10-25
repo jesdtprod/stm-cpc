@@ -20,7 +20,7 @@ const METHODS = [
   { value: "cash", label: "Cash" },
   { value: "gcash", label: "GCash" },
   { value: "maya", label: "Maya" },
-  { value: "bank_transfer", label: "Bank transfer" },
+  { value: "bank_transfer", label: "Bank Transfer" },
 ];
 
 // type: switch | int | money | text | textarea | methods | rule | readonly
@@ -28,13 +28,13 @@ const GROUPS = [
   {
     id: "general",
     label: "General",
-    title: "Club details",
+    title: "Club Details",
     items: [
-      { key: "club.name", type: "text", label: "Club name", max: 80 },
+      { key: "club.name", type: "text", label: "Club Name", max: 80 },
       {
         key: "timezone",
         type: "readonly",
-        label: "Business time zone",
+        label: "Business Time Zone",
         hint: "Every date and time in the app uses this zone. It is fixed.",
       },
     ],
@@ -42,7 +42,7 @@ const GROUPS = [
   {
     id: "members",
     label: "Members",
-    title: "Members and sign-up",
+    title: "Members and Sign-up",
     items: [
       {
         key: "members.signup_enabled",
@@ -69,13 +69,13 @@ const GROUPS = [
       {
         key: "members.id_prefix",
         type: "readonly",
-        label: "Member ID prefix",
+        label: "Member ID Prefix",
         hint: "Set up with the club. It is fixed.",
       },
       {
         key: "members.id_pattern",
         type: "readonly",
-        label: "Member ID format",
+        label: "Member ID Format",
         hint: "Set up with the club. It is fixed.",
       },
     ],
@@ -83,7 +83,7 @@ const GROUPS = [
   {
     id: "booking",
     label: "Bookings",
-    title: "Court bookings",
+    title: "Court Bookings",
     items: [
       {
         key: "booking.approval_required",
@@ -95,7 +95,7 @@ const GROUPS = [
       {
         key: "booking.slot_minutes",
         type: "int",
-        label: "Slot length",
+        label: "Slot Length",
         suffix: "minutes",
         min: 15,
         max: 240,
@@ -126,7 +126,7 @@ const GROUPS = [
       {
         key: "booking.cancel_cutoff_hours",
         type: "int",
-        label: "Free cancellation until",
+        label: "Free Cancellation Until",
         suffix: "hours before",
         min: 0,
         max: 168,
@@ -134,13 +134,13 @@ const GROUPS = [
       {
         key: "booking.cancel_fee",
         type: "money",
-        label: "Late cancellation fee",
+        label: "Late Cancellation Fee",
         prefix: "PHP",
       },
       {
         key: "booking.no_show_fee",
         type: "money",
-        label: "No-show fee",
+        label: "No-show Fee",
         prefix: "PHP",
       },
     ],
@@ -169,12 +169,12 @@ const GROUPS = [
       {
         key: "payments.methods",
         type: "methods",
-        label: "Accepted payment methods",
+        label: "Accepted Payment Methods",
       },
       {
         key: "payments.instructions",
         type: "textarea",
-        label: "Payment instructions shown to members",
+        label: "Payment Instructions Shown to Members",
         max: 1000,
         hint:
           "For example the GCash number or bank account name. Up to 1,000 characters.",
@@ -184,12 +184,12 @@ const GROUPS = [
   {
     id: "events",
     label: "Events",
-    title: "Events and tournaments",
+    title: "Events and Tournaments",
     items: [
       {
         key: "events.default_scoring_rule",
         type: "rule",
-        label: "Default scoring rule",
+        label: "Default Scoring Rule",
       },
       {
         key: "events.registration_approval_required",
@@ -211,7 +211,7 @@ const GROUPS = [
       {
         key: "ranks.movement_enabled",
         type: "switch",
-        label: "Ranks move up and down after events",
+        label: "Ranks Move Up and Down After Events",
         hint:
           "Movement is applied once per member when a division is finalized.",
       },
@@ -219,8 +219,8 @@ const GROUPS = [
   },
   {
     id: "public",
-    label: "Public pages",
-    title: "Public pages",
+    label: "Public Pages",
+    title: "Public Pages",
     items: [
       {
         key: "public.results_enabled",
@@ -330,7 +330,7 @@ export function createSettingsPages({ api }) {
           "div",
           { class: "member-panel home-error", role: "alert" },
           h("p", {}, error?.message ?? "The settings could not be loaded."),
-          button({ label: "Try again", icon: "refresh", onClick: start }),
+          button({ label: "Try Again", icon: "refresh", onClick: start }),
         ),
       );
     }
@@ -345,7 +345,7 @@ export function createSettingsPages({ api }) {
       const bad = {}; // key -> message from the quick checks
       const panelId = `panel-${group.id}`;
       const saveBtn = button({
-        label: "Save changes",
+        label: "Save Changes",
         variant: "primary",
         icon: "check",
         disabled: true,

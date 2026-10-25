@@ -1,5 +1,6 @@
 import { LUCIDE, LUCIDE_SOLID } from "./lib/lucide.js";
 import { buttonClasses } from "./lib/buttons.js";
+import { dropdownPosition } from "./lib/dropdown-position.js";
 import { DEFAULT_PAGE_SIZE } from "./lib/paginate.js";
 export { DEFAULT_PAGE_SIZE } from "./lib/paginate.js";
 import { tableColumn, tableMinWidth, tableTracks } from "./lib/table-layout.js";
@@ -231,15 +232,15 @@ export function field(
     toggleBtn = h("button", {
       type: "button",
       class: "input-toggle-btn",
-      "aria-label": "Show password",
-      title: "Show password",
+      "aria-label": "Show Password",
+      title: "Show Password",
       tabindex: "-1",
       onClick: (e) => {
         e.preventDefault();
         isPasswordToggled = !isPasswordToggled;
         inputEl.type = isPasswordToggled ? "text" : "password";
         toggleBtn.replaceChildren(icon(isPasswordToggled ? "eyeOff" : "eye"));
-        const lbl = isPasswordToggled ? "Hide password" : "Show password";
+        const lbl = isPasswordToggled ? "Hide Password" : "Show Password";
         toggleBtn.setAttribute("aria-label", lbl);
         toggleBtn.setAttribute("title", lbl);
       },
@@ -392,8 +393,8 @@ export function searchControl(props = {}) {
     class: "search-box-clear",
     type: "button",
     hidden: !input.value,
-    "aria-label": "Clear search",
-    title: "Clear search",
+    "aria-label": "Clear Search",
+    title: "Clear Search",
     onClick: () => {
       input.value = "";
       input.focus();
@@ -482,7 +483,7 @@ export function selectControl(props = {}, ...children) {
 
 /** List status filter using the same searchable control as Members. */
 export function tableFilter(
-  { id, activeId, tabs: options = [], onChange, label = "Filter records" },
+  { id, activeId, tabs: options = [], onChange, label = "Filter Records" },
 ) {
   return h(
     "div",
@@ -658,6 +659,7 @@ export function searchableSelect({
       searchInput.value = "";
       filtered = [...options];
       renderList();
+      position.start();
       document.addEventListener("pointerdown", outside);
       if (focusSearch) {
         (searchable ? searchInput : listEl.querySelector(
@@ -666,6 +668,7 @@ export function searchableSelect({
       }
     } else {
       document.removeEventListener("pointerdown", outside);
+      position.stop();
       if (restoreFocus) triggerBtn.focus();
     }
   }
@@ -688,6 +691,7 @@ export function searchableSelect({
     triggerText,
     icon("chevronDown"),
   );
+  const position = dropdownPosition(triggerBtn, dropdown);
   const wrap = h(
     "div",
     { class: "searchable-select-wrap" },
@@ -1427,7 +1431,7 @@ export function calendarDropdown(
       if (selectedStart) return `${selectedStart} → Select end date`;
       return "Select date range";
     }
-    return selectedStart || "Select date";
+    return selectedStart || "Select Date";
   };
 
   const displayText = h(
@@ -1442,7 +1446,7 @@ export function calendarDropdown(
       class: "input calendar-drop-trigger",
       id,
       "aria-label": ariaLabel || label ||
-        (includeTime ? "Choose date and time" : "Choose date"),
+        (includeTime ? "Choose date and time" : "Choose Date"),
       "aria-haspopup": "dialog",
       "aria-expanded": "false",
       "aria-controls": `${id}-calendar`,
@@ -1466,7 +1470,7 @@ export function calendarDropdown(
     class: `calendar-popover${includeTime ? " has-time" : ""}`,
     role: "dialog",
     "aria-label": label ||
-      (includeTime ? "Choose date and time" : "Choose date"),
+      (includeTime ? "Choose date and time" : "Choose Date"),
     hidden: true,
   });
 
@@ -1971,6 +1975,7 @@ export function calendarDropdown(
     popover.append(header, weekdaysRow, daysGrid, presetsBar);
   };
 
+  const position = dropdownPosition(triggerBtn, popover);
   const closeOutside = (event) => {
     if (!container.contains(event.target)) toggleCalendar(false);
   };
@@ -1987,6 +1992,7 @@ export function calendarDropdown(
       pickMode = "days";
       renderMonth();
       popover.hidden = false;
+      position.start();
       requestAnimationFrame(() => {
         popover.classList.add("is-open");
         if (includeTime) {
@@ -2005,6 +2011,7 @@ export function calendarDropdown(
       document.removeEventListener("keydown", closeOnEscape);
       popover.classList.remove("is-open");
       popover.hidden = true;
+      position.stop();
     }
   };
 
@@ -2120,7 +2127,7 @@ export function dateRangePicker(
     max,
     disabled,
     required,
-    "aria-label": "Start date",
+    "aria-label": "Start Date",
     onChange: (e) => {
       start = e.target.value;
       onChange?.({ start, end });
@@ -2137,7 +2144,7 @@ export function dateRangePicker(
     max,
     disabled,
     required,
-    "aria-label": "End date",
+    "aria-label": "End Date",
     onChange: (e) => {
       end = e.target.value;
       onChange?.({ start, end });
@@ -2304,7 +2311,7 @@ export function fileUploadField(
         progressBarEl.replaceChildren(
           progressBar({
             value: 100,
-            label: "Ready to upload",
+            label: "Ready to Upload",
             tone: "success",
           }),
         );
@@ -2596,7 +2603,7 @@ export function dataTable(
   const table = h("div", {
     class: cls,
     role: "table",
-    "aria-label": ariaLabel ?? "Data table",
+    "aria-label": ariaLabel ?? "Data Table",
     "aria-busy": state === "loading" ? "true" : "false",
   });
 
@@ -2806,7 +2813,7 @@ export function dataTable(
   const scroll = h("div", {
     class: "table-scroll",
     role: "region",
-    "aria-label": ariaLabel ?? "Data table",
+    "aria-label": ariaLabel ?? "Data Table",
     tabindex: "0",
   }, table);
   if (!searchable) return h("div", { class: "data-grid" }, scroll);
@@ -2842,7 +2849,7 @@ export function dataTable(
     h("h2", {}, "No matching records"),
     h("p", { class: "muted" }, "Try another search or clear the search box."),
     button({
-      label: "Clear search",
+      label: "Clear Search",
       icon: "x",
       onClick: () => {
         search.value = "";
@@ -2921,7 +2928,7 @@ export function pagination(
     h("button", {
       class: "btn btn-icon",
       type: "button",
-      "aria-label": "Previous page",
+      "aria-label": "Previous Page",
       disabled: current === 1,
       onClick: () => onPage(current - 1),
     }, icon("chevl")),
@@ -2942,7 +2949,7 @@ export function pagination(
     h("button", {
       class: "btn btn-icon",
       type: "button",
-      "aria-label": "Next page",
+      "aria-label": "Next Page",
       disabled: current === pages,
       onClick: () => onPage(current + 1),
     }, icon("chevr")),
@@ -3048,7 +3055,7 @@ export function openModal(
       h("button", {
         class: "modal-close-btn",
         type: "button",
-        "aria-label": "Close modal",
+        "aria-label": "Close Modal",
         title: "Close",
         onClick: close,
       }, icon("x")),
@@ -3159,7 +3166,7 @@ export function openDrawer(
       h("button", {
         class: "btn btn-icon",
         type: "button",
-        "aria-label": "Close drawer",
+        "aria-label": "Close Drawer",
         title: "Close",
         onClick: close,
       }, icon("x")),
@@ -3234,6 +3241,7 @@ export function dropdownMenu({ trigger, items = [] }) {
     role: "menu",
     hidden: true,
   });
+  const position = dropdownPosition(trigger, menuEl);
   for (const item of items) {
     if (item.divider) {
       menuEl.append(h("div", { class: "dropdown-divider", role: "separator" }));
@@ -3249,6 +3257,7 @@ export function dropdownMenu({ trigger, items = [] }) {
         onClick: (e) => {
           e.stopPropagation();
           menuEl.setAttribute("hidden", "");
+          position.stop();
           trigger.setAttribute("aria-expanded", "false");
           item.onClick?.(e);
         },
@@ -3264,21 +3273,25 @@ export function dropdownMenu({ trigger, items = [] }) {
     const isHidden = menuEl.hasAttribute("hidden");
     if (isHidden) {
       menuEl.removeAttribute("hidden");
+      position.start();
       trigger.setAttribute("aria-expanded", "true");
     } else {
       menuEl.setAttribute("hidden", "");
+      position.stop();
       trigger.setAttribute("aria-expanded", "false");
     }
   });
   document.addEventListener("click", (e) => {
     if (!wrapper.contains(e.target) && !menuEl.hasAttribute("hidden")) {
       menuEl.setAttribute("hidden", "");
+      position.stop();
       trigger.setAttribute("aria-expanded", "false");
     }
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !menuEl.hasAttribute("hidden")) {
       menuEl.setAttribute("hidden", "");
+      position.stop();
       trigger.setAttribute("aria-expanded", "false");
       trigger.focus();
     }
@@ -3373,7 +3386,7 @@ export function toast(
     {
       class: "toast-close-btn",
       type: "button",
-      "aria-label": "Dismiss notification",
+      "aria-label": "Dismiss Notification",
       title: "Dismiss",
       onClick: dismiss,
     },
@@ -3434,7 +3447,7 @@ export function alertBox(
       ? h("button", {
         class: "btn btn-icon alert-dismiss",
         type: "button",
-        "aria-label": "Dismiss alert",
+        "aria-label": "Dismiss Alert",
         title: "Dismiss",
         onClick: () => {
           if (el.classList.contains("alert-exit")) return;
@@ -3483,7 +3496,7 @@ export function banner(
         ? h("button", {
           class: "btn btn-icon",
           type: "button",
-          "aria-label": "Dismiss announcement",
+          "aria-label": "Dismiss Announcement",
           title: "Dismiss",
           onClick: () => {
             el.remove();
@@ -3748,7 +3761,7 @@ export function stepper({ steps = [], currentStep = 0, onStepClick }) {
 export function sidebarNav({ items = [], activePath, onNavigate }) {
   const nav = h("nav", {
     class: "sidebar-nav",
-    "aria-label": "Sidebar navigation",
+    "aria-label": "Sidebar Navigation",
   });
   for (const item of items) {
     if (item.header) {

@@ -46,12 +46,14 @@ const STATUS = {
 };
 const TABS = [
   { id: "courts", label: "Courts" },
-  { id: "hours", label: "Opening hours" },
+  { id: "hours", label: "Opening Hours" },
   { id: "rates", label: "Rates" },
   { id: "blackouts", label: "Blackouts" },
 ];
 
 const hhmm = (t) => String(t ?? "").slice(0, 5);
+/** A closing time for display: the end of the day is stored as 23:59 and shown as midnight. */
+const closeLabel = (t) => hhmm(t) === "23:59" ? "00:00 (midnight)" : hhmm(t);
 
 /** A PostgREST tstzrange such as ["2030-02-01 01:00:00+00","2030-02-01 04:00:00+00") -> [Date, Date]. */
 function parseRange(text) {
@@ -137,7 +139,7 @@ export function createCourtsPages({ api, getOrgId }) {
     }
 
     const courtName = (id) =>
-      id ? (state.courts.find((c) => c.id === id)?.name ?? "—") : "All courts";
+      id ? (state.courts.find((c) => c.id === id)?.name ?? "—") : "All Courts";
 
     // ------------------------------------------------------------- form kit
     const errorLine = () =>
@@ -175,7 +177,7 @@ export function createCourtsPages({ api, getOrgId }) {
           )
         ),
       );
-    const courtOptions = (allLabel = "All courts") =>
+    const courtOptions = (allLabel = "All Courts") =>
       [{ value: "", label: allLabel }].concat(
         state.courts.map((c) => ({ value: c.id, label: c.name })),
       );
@@ -241,7 +243,7 @@ export function createCourtsPages({ api, getOrgId }) {
           icon: "clock",
           name: courtName(row.court_id),
           badge: badge(DAY_NAME[row.weekday], "info"),
-          subtext: `${hhmm(row.opens_at)} to ${hhmm(row.closes_at)}`,
+          subtext: `${hhmm(row.opens_at)} to ${closeLabel(row.closes_at)}`,
           metaLabel: "Applies",
           metaValue: row.valid_to
             ? `${row.valid_from} to ${row.valid_to}`
@@ -254,13 +256,13 @@ export function createCourtsPages({ api, getOrgId }) {
           icon: "currency",
           name: courtName(row.court_id),
           badge: badge(
-            row.weekday == null ? "Every day" : DAY_NAME[row.weekday],
+            row.weekday == null ? "Every Day" : DAY_NAME[row.weekday],
             "info",
           ),
           subtext: row.valid_to
             ? `${row.valid_from} to ${row.valid_to}`
             : `From ${row.valid_from}`,
-          metaLabel: "Per hour",
+          metaLabel: "Per Hour",
           metaValue: formatMoney(row.rate_per_hour),
           impactTitle: "Rate will be removed",
         };
@@ -284,7 +286,7 @@ export function createCourtsPages({ api, getOrgId }) {
       const subject = deleteSubject(table, row, name);
       return openModal({
         title,
-        eyebrow: "Courts management",
+        eyebrow: "Courts Management",
         icon: "trash",
         tone: "danger",
         destructive: true,
@@ -381,13 +383,13 @@ export function createCourtsPages({ api, getOrgId }) {
         title: "End on a date",
         eyebrow: label,
         icon: "calendar",
-        confirmLabel: "End it",
+        confirmLabel: "End It",
         body: h(
           "div",
           { class: "stack" },
           field(
             "end-date",
-            "Last day it applies *",
+            "Last Day It Applies *",
             input("end-date", "valid_to", {
               type: "date",
               required: true,
@@ -460,7 +462,7 @@ export function createCourtsPages({ api, getOrgId }) {
           "span",
           { class: "form-setting-label" },
           icon("home"),
-          "Indoor court",
+          "Indoor Court",
         ),
         checked: row?.indoor ?? false,
       });
@@ -469,17 +471,17 @@ export function createCourtsPages({ api, getOrgId }) {
       const nextOrder =
         (Math.max(0, ...state.courts.map((c) => c.sort_order)) || 0) + 10;
       return openModal({
-        title: editing ? "Edit court" : "New court",
+        title: editing ? "Edit Court" : "New Court",
         eyebrow: editing ? row.name : "Courts",
         icon: "grid",
         description: "Set court details and booking availability.",
-        confirmLabel: editing ? "Save changes" : "Add court",
+        confirmLabel: editing ? "Save Changes" : "Add Court",
         body: h(
           "div",
           { class: "form-grid" },
           courtField(
             "ct-name",
-            "Court name *",
+            "Court Name *",
             nameInput,
             "grid",
             "Shown on schedules and brackets.",
@@ -517,7 +519,7 @@ export function createCourtsPages({ api, getOrgId }) {
           ),
           courtField(
             "ct-order",
-            "Display order *",
+            "Display Order *",
             input("ct-order", "sort_order", {
               type: "number",
               min: 0,
@@ -673,7 +675,7 @@ export function createCourtsPages({ api, getOrgId }) {
                     variant: "danger",
                     onClick: () =>
                       deleteModal("courts", r, {
-                        title: "Delete this court",
+                        title: "Delete This Court",
                         name: r.name,
                         note:
                           "A court with upcoming bookings cannot be deleted: cancel or move them first, or set the court to Closed instead.",
@@ -693,27 +695,31 @@ export function createCourtsPages({ api, getOrgId }) {
     }
 
     // ----------------------------------------------------------------- hours
-    function hoursModal() {
+    function hoursModal(row = null) {
+      const editing = Boolean(row);
       const error = errorLine();
       const days = DAYS.map((d) =>
         h(
           "div",
           { class: "check" },
           h("input", {
-            type: "checkbox",
+            type: editing ? "radio" : "checkbox",
             id: `hr-day-${d.n}`,
-            name: `day${d.n}`,
-            checked: d.n >= 1 && d.n <= 5,
+            name: editing ? "day" : `day${d.n}`,
+            value: String(d.n),
+            checked: editing ? row.weekday === d.n : d.n >= 1 && d.n <= 5,
           }),
           h("label", { for: `hr-day-${d.n}` }, d.label),
         )
       );
       return openModal({
-        title: "New opening hours",
-        eyebrow: "Opening hours",
+        title: editing ? "Edit Opening Hours" : "New Opening Hours",
+        eyebrow: "Opening Hours",
         icon: "clock",
-        description: "Set the days and hours a court is open for bookings.",
-        confirmLabel: "Add hours",
+        description: editing
+          ? "Change the court, day, times or dates for these hours."
+          : "Set the days and hours a court is open for bookings.",
+        confirmLabel: editing ? "Save Hours" : "Add Hours",
         body: h(
           "div",
           { class: "form-grid" },
@@ -723,8 +729,8 @@ export function createCourtsPages({ api, getOrgId }) {
             field(
               "hr-court",
               "Court",
-              select("hr-court", "court", courtOptions(), ""),
-              'Specific court hours replace "All courts" hours for that day.',
+              select("hr-court", "court", courtOptions(), row?.court_id ?? ""),
+              'Specific court hours replace "All Courts" hours for that day.',
             ),
           ),
           h(
@@ -743,7 +749,7 @@ export function createCourtsPages({ api, getOrgId }) {
             input("hr-open", "opens", {
               type: "time",
               required: true,
-              value: "08:00",
+              value: row ? hhmm(row.opens_at) : "08:00",
             }),
             "Opening time (Asia/Manila).",
           ),
@@ -753,9 +759,13 @@ export function createCourtsPages({ api, getOrgId }) {
             input("hr-close", "closes", {
               type: "time",
               required: true,
-              value: "21:00",
+              value: row
+                ? (hhmm(row.closes_at) === "23:59"
+                  ? "00:00"
+                  : hhmm(row.closes_at))
+                : "21:00",
             }),
-            "Closing time (Asia/Manila).",
+            "Closing time (Asia/Manila). Choose 12:00 am for midnight.",
           ),
           field(
             "hr-from",
@@ -763,22 +773,30 @@ export function createCourtsPages({ api, getOrgId }) {
             input("hr-from", "valid_from", {
               type: "date",
               required: true,
-              value: businessDate(),
+              value: row?.valid_from ?? businessDate(),
             }),
             "First day these hours apply.",
           ),
           field(
             "hr-to",
-            "Ends on",
-            input("hr-to", "valid_to", { type: "date" }),
+            "Ends On",
+            input("hr-to", "valid_to", {
+              type: "date",
+              value: row?.valid_to ?? "",
+            }),
             "Leave empty for no end date.",
           ),
           h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
-          const chosen = DAYS.filter((d) => form.get(`day${d.n}`) === "on");
+          const chosen = editing
+            ? DAYS.filter((d) => String(d.n) === String(form.get("day")))
+            : DAYS.filter((d) => form.get(`day${d.n}`) === "on");
           const opens = String(form.get("opens"));
-          const closes = String(form.get("closes"));
+          // 12:00 am as the closing time means the end of the day, which the database holds as 23:59
+          const closes = String(form.get("closes")) === "00:00"
+            ? "23:59"
+            : String(form.get("closes"));
           const from = String(form.get("valid_from") ?? "");
           const to = String(form.get("valid_to") ?? "") || null;
           if (!chosen.length) {
@@ -795,6 +813,27 @@ export function createCourtsPages({ api, getOrgId }) {
           }
           const done = [];
           try {
+            if (editing) {
+              const saved = await api.read((c) =>
+                c.from("court_hours").update({
+                  court_id: form.get("court") || null,
+                  weekday: chosen[0].n,
+                  opens_at: opens,
+                  closes_at: closes,
+                  valid_from: from,
+                  valid_to: to,
+                }).eq("id", row.id).eq("version", row.version).select("id")
+              );
+              if (!saved?.length) {
+                return showError(
+                  error,
+                  "Someone else changed these hours. Close this window and open it again.",
+                );
+              }
+              toast("Hours saved.", { tone: "success" });
+              await refresh();
+              return;
+            }
             for (const d of chosen) {
               await api.create("court_hours", api.newKey(), {
                 org_id: getOrgId(),
@@ -839,7 +878,7 @@ export function createCourtsPages({ api, getOrgId }) {
         h(
           "p",
           { class: "muted" },
-          'Hours for a specific court replace the "All courts" hours for that court and day.',
+          'Hours for a specific court replace the "All Courts" hours for that court and day.',
         ),
         dataTable({
           searchState: state,
@@ -856,7 +895,8 @@ export function createCourtsPages({ api, getOrgId }) {
               {
                 key: "time",
                 label: "Open",
-                render: (r) => `${hhmm(r.opens_at)} to ${hhmm(r.closes_at)}`,
+                render: (r) =>
+                  `${hhmm(r.opens_at)} to ${closeLabel(r.closes_at)}`,
               },
               {
                 key: "valid",
@@ -870,11 +910,20 @@ export function createCourtsPages({ api, getOrgId }) {
                 key: "actions",
                 label: "Action",
                 align: "center",
-                actionCount: 2,
+                actionCount: 3,
                 render: (r) =>
                   h(
                     "span",
                     { class: "row-actions" },
+                    iconButton({
+                      label: `Edit ${DAY_NAME[r.weekday]} hours for ${
+                        courtName(r.court_id)
+                      }`,
+                      icon: "edit",
+                      size: "sm",
+                      variant: "edit",
+                      onClick: () => hoursModal(r),
+                    }),
                     iconButton({
                       label: `End ${DAY_NAME[r.weekday]} hours for ${
                         courtName(r.court_id)
@@ -898,7 +947,7 @@ export function createCourtsPages({ api, getOrgId }) {
                       variant: "danger",
                       onClick: () =>
                         deleteModal("court_hours", r, {
-                          title: "Delete these hours",
+                          title: "Delete These Hours",
                           name: `${courtName(r.court_id)}, ${
                             DAY_NAME[r.weekday]
                           }`,
@@ -912,7 +961,7 @@ export function createCourtsPages({ api, getOrgId }) {
           },
           rows,
           state: state.status,
-          ariaLabel: "Opening hours",
+          ariaLabel: "Opening Hours",
           onRetry: refresh,
           emptyTitle: "No opening hours yet",
           emptyText:
@@ -925,11 +974,11 @@ export function createCourtsPages({ api, getOrgId }) {
     function rateModal() {
       const error = errorLine();
       return openModal({
-        title: "New rate",
+        title: "New Rate",
         eyebrow: "Rates",
         icon: "currency",
         description: "Set the hourly booking rate for a court, day or time.",
-        confirmLabel: "Add rate",
+        confirmLabel: "Add Rate",
         body: h(
           "div",
           { class: "form-grid" },
@@ -945,7 +994,7 @@ export function createCourtsPages({ api, getOrgId }) {
             select(
               "rt-day",
               "weekday",
-              [{ value: "", label: "Every day" }].concat(
+              [{ value: "", label: "Every Day" }].concat(
                 DAYS.map((d) => ({ value: d.n, label: d.label })),
               ),
               "",
@@ -971,13 +1020,13 @@ export function createCourtsPages({ api, getOrgId }) {
           ),
           field(
             "rt-from-t",
-            "From time",
+            "From Time",
             input("rt-from-t", "from_time", { type: "time", value: "00:00" }),
             "Start of rate window.",
           ),
           field(
             "rt-to-t",
-            "To time",
+            "To Time",
             input("rt-to-t", "to_time", { type: "time", value: "23:59" }),
             "Leave 00:00 to 23:59 for the whole day.",
           ),
@@ -993,7 +1042,7 @@ export function createCourtsPages({ api, getOrgId }) {
           ),
           field(
             "rt-to",
-            "Ends on",
+            "Ends On",
             input("rt-to", "valid_to", { type: "date" }),
             "Leave empty for no end date.",
           ),
@@ -1082,7 +1131,7 @@ export function createCourtsPages({ api, getOrgId }) {
                   const whole = hhmm(r.from_time) === "00:00" &&
                     hhmm(r.to_time) >= "23:59";
                   return `${
-                    r.weekday == null ? "Every day" : DAY_NAME[r.weekday]
+                    r.weekday == null ? "Every Day" : DAY_NAME[r.weekday]
                   }${
                     whole ? "" : `, ${hhmm(r.from_time)} to ${hhmm(r.to_time)}`
                   }`;
@@ -1090,7 +1139,7 @@ export function createCourtsPages({ api, getOrgId }) {
               },
               {
                 key: "rate",
-                label: "Per hour",
+                label: "Per Hour",
                 align: "right",
                 render: (r) => formatMoney(r.rate_per_hour),
               },
@@ -1125,7 +1174,7 @@ export function createCourtsPages({ api, getOrgId }) {
                       variant: "danger",
                       onClick: () =>
                         deleteModal("court_rates", r, {
-                          title: "Delete this rate",
+                          title: "Delete This Rate",
                           name: describe(r),
                           note:
                             "Prefer ending a rate on a date. Deleting removes it from the rate list.",
@@ -1150,12 +1199,12 @@ export function createCourtsPages({ api, getOrgId }) {
       const error = errorLine();
       const today = businessDate();
       return openModal({
-        title: "New blackout",
+        title: "New Blackout",
         eyebrow: "Blackouts",
         icon: "alert",
         description:
           "Block a court or all courts during maintenance or events.",
-        confirmLabel: "Add blackout",
+        confirmLabel: "Add Blackout",
         body: h(
           "div",
           { class: "form-grid" },
@@ -1171,7 +1220,7 @@ export function createCourtsPages({ api, getOrgId }) {
           ),
           field(
             "bo-sd",
-            "From date *",
+            "From Date *",
             input("bo-sd", "start_date", {
               type: "date",
               required: true,
@@ -1181,7 +1230,7 @@ export function createCourtsPages({ api, getOrgId }) {
           ),
           field(
             "bo-st",
-            "From time *",
+            "From Time *",
             input("bo-st", "start_time", {
               type: "time",
               required: true,
@@ -1191,7 +1240,7 @@ export function createCourtsPages({ api, getOrgId }) {
           ),
           field(
             "bo-ed",
-            "To date *",
+            "To Date *",
             input("bo-ed", "end_date", {
               type: "date",
               required: true,
@@ -1201,7 +1250,7 @@ export function createCourtsPages({ api, getOrgId }) {
           ),
           field(
             "bo-et",
-            "To time *",
+            "To Time *",
             input("bo-et", "end_time", {
               type: "time",
               required: true,
@@ -1313,7 +1362,7 @@ export function createCourtsPages({ api, getOrgId }) {
                   variant: "danger",
                   onClick: () =>
                     deleteModal("court_blackouts", r, {
-                      title: "Delete this blackout",
+                      title: "Delete This Blackout",
                       name: `${courtName(r.court_id)}: ${r.reason}`,
                       note: "The court can be booked again for that time.",
                     }),
@@ -1325,7 +1374,7 @@ export function createCourtsPages({ api, getOrgId }) {
         state: state.status,
         ariaLabel: "Blackouts",
         onRetry: refresh,
-        emptyTitle: "No blackouts",
+        emptyTitle: "No Blackouts",
         emptyText:
           "Add a blackout when a court cannot be booked, for example for maintenance or an event.",
       });
@@ -1333,14 +1382,14 @@ export function createCourtsPages({ api, getOrgId }) {
 
     // ---------------------------------------------------------------- layout
     const ADD = {
-      courts: ["New court", () => courtModal(null)],
-      hours: ["New hours", hoursModal],
-      rates: ["New rate", rateModal],
-      blackouts: ["New blackout", blackoutModal],
+      courts: ["New Court", () => courtModal(null)],
+      hours: ["New Hours", hoursModal],
+      rates: ["New Rate", rateModal],
+      blackouts: ["New Blackout", blackoutModal],
     };
-    const addBtnLabel = h("span", { class: "btn-label" }, "New court");
+    const addBtnLabel = h("span", { class: "btn-label" }, "New Court");
     const addBtn = button({
-      label: "New court",
+      label: "New Court",
       icon: "plus",
       variant: "primary",
       onClick: () => ADD[state.tab][1](),
@@ -1350,7 +1399,7 @@ export function createCourtsPages({ api, getOrgId }) {
     function draw() {
       tabsHost.replaceChildren(tableFilter({
         activeId: state.tab,
-        label: "View court records",
+        label: "View Court Records",
         tabs: TABS,
         onChange: (id) => {
           state.tab = id;

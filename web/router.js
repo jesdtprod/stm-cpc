@@ -36,7 +36,7 @@ export function start(main, { onChange, notFound, forbidden, check }) {
     if (verdict.forbidden || verdict.redirect) {
       entry = {
         render: forbidden ?? notFound,
-        title: "No access",
+        title: "No Access",
         access: "public",
       };
     }

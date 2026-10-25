@@ -204,7 +204,7 @@ export function componentsPage() {
     type: "search",
     class: "input",
     placeholder: "Search components…",
-    "aria-label": "Search components",
+    "aria-label": "Search Components",
     onInput: (e) => filterCards(e.target.value),
   });
 
@@ -246,7 +246,7 @@ export function componentsPage() {
     title: "No components found",
     description: "Try another name, such as button, date, or table.",
     action: button({
-      label: "Clear search",
+      label: "Clear Search",
       onClick: () => {
         searchInput.value = "";
         filterCards("");
@@ -818,7 +818,7 @@ export function componentsPage() {
           label: "Delete Record",
           icon: "trash",
           variant: "danger",
-          onClick: () => toast("Delete action", { tone: "error" }),
+          onClick: () => toast("Delete Action", { tone: "error" }),
         }),
       ),
     );
@@ -892,7 +892,7 @@ export function componentsPage() {
           label: "Cancel Event",
           icon: "trash",
           danger: true,
-          onClick: () => toast("Event cancelled", { tone: "error" }),
+          onClick: () => toast("Event Cancelled", { tone: "error" }),
         },
       ],
     });
@@ -1231,7 +1231,7 @@ export function componentsPage() {
       label: "Confirm Password",
       type: "password",
       value: valState.confirm,
-      placeholder: "Re-enter password",
+      placeholder: "Re-enter Password",
       required: true,
       showToggle: true,
       hint: "Must match the password entered above.",
@@ -1436,7 +1436,7 @@ export function componentsPage() {
       field({
         id: "st-default",
         label: "Default State",
-        placeholder: "Standard input",
+        placeholder: "Standard Input",
       }),
       field({
         id: "st-filled",
@@ -1452,7 +1452,7 @@ export function componentsPage() {
       field({
         id: "st-disabled",
         label: "Disabled State",
-        value: "Locked value",
+        value: "Locked Value",
         disabled: true,
       }),
       field({
@@ -3014,7 +3014,7 @@ export function componentsPage() {
       label: "Confirm Password",
       type: "password",
       value: formValues.confirmPassword,
-      placeholder: "Re-enter password",
+      placeholder: "Re-enter Password",
       required: true,
       showToggle: true,
       hint: "Must match password exactly.",

@@ -26,7 +26,7 @@ try {
   const retry = document.createElement("button");
   retry.type = "button";
   retry.className = "btn btn-primary";
-  retry.textContent = "Try again";
+  retry.textContent = "Try Again";
   retry.addEventListener("click", () => location.reload());
   startup.querySelector(".startup-card").append(retry);
 }

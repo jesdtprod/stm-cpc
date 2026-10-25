@@ -37,7 +37,7 @@ Deno.test("slot grid: Manila wall-clock times and weekdays", () => {
   );
   assert.equal(weekdayOf(DAY), 1);
   assert.equal(weekdayOf("2030-02-03"), 0);
-  assert.equal(timeLabel(new Date("2030-02-04T01:00:00Z")), "09:00");
+  assert.equal(timeLabel(new Date("2030-02-04T01:00:00Z")), "9:00 AM");
 });
 
 Deno.test("slot grid: a court's own hours beat the all-courts hours, and dates are respected", () => {
@@ -74,8 +74,8 @@ Deno.test("slot grid: one slot per hour from opening to closing", () => {
     now,
   });
   assert.equal(slots.length, 13);
-  assert.equal(timeLabel(slots[0].start), "08:00");
-  assert.equal(timeLabel(slots.at(-1).start), "20:00");
+  assert.equal(timeLabel(slots[0].start), "8:00 AM");
+  assert.equal(timeLabel(slots.at(-1).start), "8:00 PM");
   assert.ok(slots.every((s) => s.state === "free"));
   const half = buildSlots({
     day: DAY,
@@ -120,11 +120,11 @@ Deno.test("slot grid: booked and closed ranges, the past, and the booking window
     now,
   });
   const state = (t) => slots.find((s) => timeLabel(s.start) === t).state;
-  assert.equal(state("09:00"), "free");
-  assert.equal(state("10:00"), "booked");
-  assert.equal(state("11:00"), "booked");
-  assert.equal(state("12:00"), "free");
-  assert.equal(state("14:00"), "closed");
+  assert.equal(state("9:00 AM"), "free");
+  assert.equal(state("10:00 AM"), "booked");
+  assert.equal(state("11:00 AM"), "booked");
+  assert.equal(state("12:00 PM"), "free");
+  assert.equal(state("2:00 PM"), "closed");
   const later = buildSlots({
     day: DAY,
     courtId: "C2",
@@ -133,11 +133,14 @@ Deno.test("slot grid: booked and closed ranges, the past, and the booking window
     now: new Date("2030-02-04T05:30:00Z"),
   });
   assert.equal(
-    later.find((s) => timeLabel(s.start) === "13:00").state,
+    later.find((s) => timeLabel(s.start) === "1:00 PM").state,
     "past",
     "13:00 Manila has started",
   );
-  assert.equal(later.find((s) => timeLabel(s.start) === "14:00").state, "free");
+  assert.equal(
+    later.find((s) => timeLabel(s.start) === "2:00 PM").state,
+    "free",
+  );
   const far = buildSlots({
     day: DAY,
     courtId: "C2",

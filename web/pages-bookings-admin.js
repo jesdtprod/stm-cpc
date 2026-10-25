@@ -34,9 +34,9 @@ import { bookingMessage } from "./pages-booking.js";
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 const STATUS = {
-  pending_approval: ["Waiting for approval", "warning"],
+  pending_approval: ["Waiting for Approval", "warning"],
   confirmed: ["Confirmed", "success"],
-  checked_in: ["Checked in", "info"],
+  checked_in: ["Checked In", "info"],
   completed: ["Completed", "neutral"],
   rejected: ["Rejected", "danger"],
   cancelled: ["Cancelled", "neutral"],
@@ -53,7 +53,7 @@ const METHOD_LABEL = {
   cash: "Cash",
   gcash: "GCash",
   maya: "Maya",
-  bank_transfer: "Bank transfer",
+  bank_transfer: "Bank Transfer",
   other: "Other",
 };
 const BOOKING_SELECT =
@@ -293,7 +293,7 @@ export function createBookingAdminPages({ api, client }) {
       id: "bookings-search",
       type: "search",
       placeholder: "Search by member, member ID, court, or booking no…",
-      "aria-label": "Search bookings",
+      "aria-label": "Search Bookings",
       onInput: (e) => {
         clearTimeout(timer);
         timer = setTimeout(() => {
@@ -431,8 +431,8 @@ export function createBookingAdminPages({ api, client }) {
             disabled: blocked,
             onClick: () =>
               actionModal({
-                title: "Approve this booking",
-                eyebrow: "Booking management",
+                title: "Approve This Booking",
+                eyebrow: "Booking Management",
                 icon: "check",
                 tone: "success",
                 verb: "Approve",
@@ -451,8 +451,8 @@ export function createBookingAdminPages({ api, client }) {
             variant: "danger",
             onClick: () =>
               actionModal({
-                title: "Reject this request",
-                eyebrow: "Booking management",
+                title: "Reject This Request",
+                eyebrow: "Booking Management",
                 icon: "x",
                 tone: "danger",
                 verb: "Reject",
@@ -479,11 +479,11 @@ export function createBookingAdminPages({ api, client }) {
               variant: "success",
               onClick: () =>
                 actionModal({
-                  title: "Check in",
-                  eyebrow: "Booking management",
+                  title: "Check In",
+                  eyebrow: "Booking Management",
                   icon: "check",
                   tone: "success",
-                  verb: "Check in",
+                  verb: "Check In",
                   subject: subjectOf(r),
                   impactTitle: "Member arrival confirmed",
                   note: `${r.court_name_snapshot} · ${
@@ -504,10 +504,10 @@ export function createBookingAdminPages({ api, client }) {
             onClick: () =>
               actionModal({
                 title: "Mark as a no-show",
-                eyebrow: "Booking management",
+                eyebrow: "Booking Management",
                 icon: "alert",
                 tone: "warning",
-                verb: "Mark no-show",
+                verb: "Mark No-show",
                 destructive: true,
                 subject: subjectOf(r),
                 impactTitle: "Session will be marked as no-show",
@@ -529,7 +529,7 @@ export function createBookingAdminPages({ api, client }) {
           onClick: () =>
             actionModal({
               title: "Complete this booking",
-              eyebrow: "Booking management",
+              eyebrow: "Booking Management",
               icon: "check",
               tone: "success",
               verb: "Complete",
@@ -549,11 +549,11 @@ export function createBookingAdminPages({ api, client }) {
           variant: "danger",
           onClick: () =>
             actionModal({
-              title: "Cancel this booking",
-              eyebrow: "Booking management",
+              title: "Cancel This Booking",
+              eyebrow: "Booking Management",
               icon: "trash",
               tone: "danger",
-              verb: "Cancel booking",
+              verb: "Cancel Booking",
               destructive: true,
               subject: subjectOf(r),
               impactTitle: "Booking will be cancelled",
@@ -599,7 +599,7 @@ export function createBookingAdminPages({ api, client }) {
       },
       {
         key: "when",
-        label: "Court and time",
+        label: "Court and Time",
         skeleton: "stack",
         render: (r) => {
           const x = range(r);
@@ -648,7 +648,7 @@ export function createBookingAdminPages({ api, client }) {
             return h(
               "div",
               { class: "member-table-stack" },
-              badge("No charge", "neutral"),
+              badge("No Charge", "neutral"),
               sub("Complimentary"),
             );
           }
@@ -665,7 +665,7 @@ export function createBookingAdminPages({ api, client }) {
             { class: "member-table-stack" },
             waiting(r)
               ? badge("Waiting to check", "warning")
-              : badge("Not paid", "neutral"),
+              : badge("Not Paid", "neutral"),
             sub(
               waiting(r)
                 ? `${formatMoney(waiting(r))} to check`
@@ -708,7 +708,7 @@ export function createBookingAdminPages({ api, client }) {
     };
     const EMPTY = {
       approve: [
-        "Nothing waiting",
+        "Nothing Waiting",
         "Requests from members that need a decision appear here.",
       ],
       today: [
@@ -892,7 +892,7 @@ export function createBookingAdminPages({ api, client }) {
             "div",
             { class: "calendar-date-tools" },
             iconButton({
-              label: "Back to bookings",
+              label: "Back to Bookings",
               icon: "arrowLeft",
               onClick: () => {
                 state.tab = "approve";
@@ -905,17 +905,17 @@ export function createBookingAdminPages({ api, client }) {
               {
                 class: "calendar-date-stepper",
                 role: "group",
-                "aria-label": "Date navigation",
+                "aria-label": "Date Navigation",
               },
               iconButton({
-                label: "Previous day",
+                label: "Previous Day",
                 icon: "chevronLeft",
                 size: "sm",
                 onClick: () => shift(-1),
               }),
               day,
               iconButton({
-                label: "Next day",
+                label: "Next Day",
                 icon: "chevronRight",
                 size: "sm",
                 onClick: () => shift(1),
@@ -1021,7 +1021,7 @@ export function createBookingAdminPages({ api, client }) {
               "Check your connection and try loading the courts again.",
             ),
             button({
-              label: "Try again",
+              label: "Try Again",
               icon: "refresh",
               onClick: loadCalendar,
             }),
@@ -1133,12 +1133,12 @@ export function createBookingAdminPages({ api, client }) {
 
       const statusBadge = badge(...(STATUS[r.status] ?? [r.status, "neutral"]));
       const paymentBadge = !(Number(r.price_snapshot) > 0)
-        ? badge("No charge", "neutral")
+        ? badge("No Charge", "neutral")
         : paid(r) >= Number(r.price_snapshot)
         ? badge("Paid", "success")
         : waiting(r) > 0
         ? badge("Waiting to check", "warning")
-        : badge("Not paid", "neutral");
+        : badge("Not Paid", "neutral");
       const priceBadge = badge(
         Number(r.price_snapshot) > 0 ? formatMoney(r.price_snapshot) : "Free",
         "neutral",
@@ -1161,19 +1161,19 @@ export function createBookingAdminPages({ api, client }) {
             h(
               "div",
               { class: "member-summary-item" },
-              h("span", { class: "kv-label" }, "Booking status"),
+              h("span", { class: "kv-label" }, "Booking Status"),
               statusBadge,
             ),
             h(
               "div",
               { class: "member-summary-item" },
-              h("span", { class: "kv-label" }, "Payment status"),
+              h("span", { class: "kv-label" }, "Payment Status"),
               paymentBadge,
             ),
             h(
               "div",
               { class: "member-summary-item" },
-              h("span", { class: "kv-label" }, "Court fee"),
+              h("span", { class: "kv-label" }, "Court Fee"),
               priceBadge,
             ),
           ),
@@ -1335,7 +1335,7 @@ export function createBookingAdminPages({ api, client }) {
           h(
             "span",
             { class: "home-card-go" },
-            tabId === "approve" ? "Review requests" : "View bookings",
+            tabId === "approve" ? "Review Requests" : "View Bookings",
             icon("chevronRight"),
           ),
         ),
@@ -1361,7 +1361,7 @@ export function createBookingAdminPages({ api, client }) {
 
       kpis.replaceChildren(
         bookingStatCard({
-          label: "Waiting for approval",
+          label: "Waiting for Approval",
           value: state.loaded ? pCount : "—",
           hint: pCount > 0
             ? "Requires administrator review"
@@ -1375,17 +1375,17 @@ export function createBookingAdminPages({ api, client }) {
               "span",
               { class: "card-status-pill is-attention" },
               h("span", { class: "pill-pulse-dot", "aria-hidden": "true" }),
-              "Needs review",
+              "Needs Review",
             )
             : h(
               "span",
               { class: "card-status-pill is-clean" },
               icon("check"),
-              "All clear",
+              "All Clear",
             ),
         }),
         bookingStatCard({
-          label: "Bookings today",
+          label: "Bookings Today",
           value: state.loaded ? tCount : "—",
           hint: `${tCount} court session${
             tCount === 1 ? "" : "s"
@@ -1402,7 +1402,7 @@ export function createBookingAdminPages({ api, client }) {
           ),
         }),
         bookingStatCard({
-          label: "Upcoming bookings",
+          label: "Upcoming Bookings",
           value: state.loaded ? uCount : "—",
           hint: `${uCount} confirmed session${
             uCount === 1 ? "" : "s"
@@ -1425,7 +1425,7 @@ export function createBookingAdminPages({ api, client }) {
         tabs: [
           {
             id: "approve",
-            label: "Waiting for approval",
+            label: "Waiting for Approval",
             badge: counts.approve ? String(counts.approve) : undefined,
           },
           {
@@ -1498,7 +1498,7 @@ export function createBookingAdminPages({ api, client }) {
           state.page = 1;
           draw();
         },
-        resetLabel: "Clear search",
+        resetLabel: "Clear Search",
         emptyTitle,
         emptyText,
       }));
@@ -1703,7 +1703,7 @@ export function createBookingAdminPages({ api, client }) {
             variant: "danger",
             onClick: () =>
               actionModal({
-                title: "Reject this payment",
+                title: "Reject This Payment",
                 eyebrow: label,
                 verb: "Reject",
                 destructive: true,
@@ -1731,7 +1731,7 @@ export function createBookingAdminPages({ api, client }) {
             actionModal({
               title: "Void this payment",
               eyebrow: label,
-              verb: "Void payment",
+              verb: "Void Payment",
               destructive: true,
               note:
                 "Use this for a refund or a mistake. The credit is reversed in the ledger. Any cash refund is handled outside the app.",
@@ -1759,7 +1759,7 @@ export function createBookingAdminPages({ api, client }) {
       },
       {
         key: "for",
-        label: "For booking",
+        label: "For Booking",
         render: (p) => {
           const b = state.bookings[p.source_id];
           return b
@@ -1783,7 +1783,7 @@ export function createBookingAdminPages({ api, client }) {
             {},
             METHOD_LABEL[p.method] ?? p.method,
             p.reference_no ? sub(`Ref ${p.reference_no}`) : null,
-            p.file ? sub("Proof attached") : null,
+            p.file ? sub("Proof Attached") : null,
           ),
       },
       {
@@ -1829,7 +1829,7 @@ export function createBookingAdminPages({ api, client }) {
         "No verified payments",
         "Payments you verify are listed here.",
       ],
-      closed: ["Nothing here", "Rejected and voided payments are listed here."],
+      closed: ["Nothing Here", "Rejected and voided payments are listed here."],
     };
 
     function draw() {
@@ -1838,11 +1838,11 @@ export function createBookingAdminPages({ api, client }) {
         tabs: [
           {
             id: "check",
-            label: "To check",
+            label: "To Check",
             badge: lists.check().length || undefined,
           },
           { id: "verified", label: "Verified" },
-          { id: "closed", label: "Rejected and voided" },
+          { id: "closed", label: "Rejected and Voided" },
         ],
         onChange: (id) => {
           state.tab = id;

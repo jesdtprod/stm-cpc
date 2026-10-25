@@ -31,7 +31,7 @@ import { formatDateTime } from "./lib/dates.js";
 const STAFF_CARDS = [
   {
     key: "pending_members",
-    label: "Members waiting for approval",
+    label: "Members Waiting for Approval",
     icon: "user",
     href: "#/admin/members",
     hint: (n) =>
@@ -39,28 +39,28 @@ const STAFF_CARDS = [
   },
   {
     key: "pending_proofs",
-    label: "Payment proofs to verify",
+    label: "Payment Proofs to Verify",
     icon: "file",
     href: "#/admin/payments",
     hint: (n) => n ? "Waiting for a decision." : "Nothing to verify.",
   },
   {
     key: "pending_bookings",
-    label: "Bookings to approve",
+    label: "Bookings to Approve",
     icon: "calendar",
     href: "#/admin/bookings",
     hint: (n) => n ? "Requests from members." : "No open requests.",
   },
   {
     key: "todays_bookings",
-    label: "Today's bookings",
+    label: "Today's Bookings",
     icon: "clock",
     href: "#/admin/bookings",
     hint: () => "Confirmed for today.",
   },
   {
     key: "active_events",
-    label: "Events in progress",
+    label: "Events in Progress",
     icon: "layers",
     hint: () => "Open for registration or running.",
   },
@@ -75,8 +75,8 @@ function statCard({
   attention = false,
   kind = null,
   pillLabel = null,
-  attentionLabel = "Needs review",
-  clearLabel = "All clear",
+  attentionLabel = "Needs Review",
+  clearLabel = "All Clear",
   goLabel = null,
   wide = false,
 }) {
@@ -157,7 +157,7 @@ function statCard({
         ? h(
           "span",
           { class: "home-card-go" },
-          goLabel ?? (kind === "pending" ? "Open queue" : "View details"),
+          goLabel ?? (kind === "pending" ? "Open Queue" : "View Details"),
           icon("chevronRight"),
         )
         : null,
@@ -190,18 +190,18 @@ function memberCards(m) {
     : "Nothing booked yet.";
   return [
     statCard({
-      label: "Current rank",
+      label: "Current Rank",
       value: m.rank?.name ?? "Not ranked yet",
       hint: m.rank ? m.rank.category : "The club sets your starting rank.",
       iconName: "medal",
       href: "#/ranking",
       kind: "activity",
-      pillLabel: m.rank ? "Ranked" : "Not ranked",
+      pillLabel: m.rank ? "Ranked" : "Not Ranked",
       goLabel: "See the ranking",
       wide: true,
     }),
     statCard({
-      label: "Upcoming bookings",
+      label: "Upcoming Bookings",
       value: m.upcoming_bookings,
       hint: next,
       iconName: "calendar",
@@ -210,7 +210,7 @@ function memberCards(m) {
       pillLabel: Number(m.upcoming_bookings) > 0 ? "Upcoming" : "None",
     }),
     statCard({
-      label: "Event registrations",
+      label: "Event Registrations",
       value: m.open_registrations,
       hint: m.open_registrations
         ? "Events you have joined or are waiting for."
@@ -221,7 +221,7 @@ function memberCards(m) {
       pillLabel: Number(m.open_registrations) > 0 ? "Joined" : "None",
     }),
     statCard({
-      label: "Unread notices",
+      label: "Unread Notices",
       value: m.unread_notices,
       hint: m.unread_notices
         ? "Messages from the club are waiting."
@@ -230,8 +230,8 @@ function memberCards(m) {
       href: "#/notifications",
       kind: "pending",
       attentionLabel: "Unread",
-      clearLabel: "All read",
-      goLabel: "Open notices",
+      clearLabel: "All Read",
+      goLabel: "Open Notices",
     }),
   ];
 }
@@ -462,26 +462,26 @@ function heroView({ name, memberNo, role, mode = "member", avatar = null }) {
   const actions = mode === "admin"
     ? [
       can("members.approve")
-        ? link("btn-accent", "#/admin/members", "user", "Review members")
+        ? link("btn-accent", "#/admin/members", "user", "Review Members")
         : null,
       can("bookings.approve")
         ? link(
           "btn-primary",
           "#/admin/bookings",
           "calendar",
-          "Approve bookings",
+          "Approve Bookings",
         )
         : null,
       can("payments.verify")
-        ? link("btn-secondary", "#/admin/payments", "file", "Verify payments")
+        ? link("btn-secondary", "#/admin/payments", "file", "Verify Payments")
         : null,
       isAdminAccount()
         ? null
-        : link("btn-secondary", "#/", "home", "Member view"),
+        : link("btn-secondary", "#/", "home", "Member View"),
     ]
     : [
       canAny(ADMIN_CODES)
-        ? link("btn-secondary", "#/admin", "grid", "Admin console")
+        ? link("btn-secondary", "#/admin", "grid", "Admin Console")
         : null,
     ];
   const manilaDate = new Intl.DateTimeFormat("en-PH", {
@@ -1111,10 +1111,10 @@ export function createHomePages({ session, api, client }) {
       hidden: true,
     });
     const WEEKDAY = {
-      registration_open: "Registration open",
-      registration_closed: "Registration closed",
-      drawn: "Draw made",
-      in_progress: "Under way",
+      registration_open: "Registration Open",
+      registration_closed: "Registration Closed",
+      drawn: "Draw Made",
+      in_progress: "Under Way",
     };
     const day = (iso) =>
       new Date(`${iso}T00:00:00+08:00`).toLocaleDateString("en-PH", {
@@ -1142,7 +1142,7 @@ export function createHomePages({ session, api, client }) {
           h(
             "div",
             { class: "cpc-info-block" },
-            h("h2", {}, "Upcoming events"),
+            h("h2", {}, "Upcoming Events"),
             events.length
               ? h(
                 "div",
@@ -1178,7 +1178,7 @@ export function createHomePages({ session, api, client }) {
           h(
             "div",
             { class: "cpc-info-block" },
-            h("h2", {}, "Our courts"),
+            h("h2", {}, "Our Courts"),
             courts.length
               ? h(
                 "div",
@@ -1215,7 +1215,7 @@ export function createHomePages({ session, api, client }) {
           h(
             "div",
             { class: "cpc-info-block" },
-            h("h2", {}, "How to join"),
+            h("h2", {}, "How to Join"),
             h(
               "ol",
               { class: "cpc-info-steps" },
@@ -1241,14 +1241,14 @@ export function createHomePages({ session, api, client }) {
               h(
                 "a",
                 { class: "btn btn-primary", href: "#/signup" },
-                "Create an account",
+                "Create an Account",
               ),
-              h("a", { class: "btn", href: "#/signin" }, "Sign in"),
+              h("a", { class: "btn", href: "#/signin" }, "Sign In"),
               info?.results_public || info?.leaderboard_public
                 ? h(
                   "a",
                   { class: "btn", href: "#/leaderboard" },
-                  "Leaderboard and results",
+                  "Leaderboard and Results",
                 )
                 : null,
             ),
@@ -1509,7 +1509,7 @@ export function createHomePages({ session, api, client }) {
                         "span",
                         { class: "cpc-phone-card-tag" },
                         icon("calendarCheck"),
-                        "Next booking",
+                        "Next Booking",
                       ),
                       h("span", { class: "cpc-phone-court-badge" }, "Court 1"),
                     ),
@@ -1535,13 +1535,13 @@ export function createHomePages({ session, api, client }) {
                         "span",
                         { class: "cpc-phone-card-tag" },
                         icon("medal"),
-                        "Your standing",
+                        "Your Standing",
                       ),
                     ),
                     h(
                       "div",
                       { class: "cpc-phone-metrics-grid" },
-                      ...[["19", "Wins"], ["#12", "Club rank"], [
+                      ...[["19", "Wins"], ["#12", "Club Rank"], [
                         "High",
                         "Level",
                       ]]
@@ -1643,12 +1643,12 @@ export function createHomePages({ session, api, client }) {
       password_change: [
         "Choose your own password to continue.",
         "#/password",
-        "Change password",
+        "Change Password",
       ],
       pending: [
         "Your account is waiting for approval. We will let you know when it is ready.",
         "#/pending",
-        "See account status",
+        "See Account Status",
       ],
     }[gate] ??
       [
@@ -1706,7 +1706,7 @@ export function createHomePages({ session, api, client }) {
       mode,
       avatar,
       memberNo: state.access?.member_no ?? "",
-      role: mode === "admin" ? "Admin console" : "Member",
+      role: mode === "admin" ? "Admin Console" : "Member",
     });
     const page = h(
       "div",
@@ -1749,7 +1749,7 @@ export function createHomePages({ session, api, client }) {
               "button",
               { class: "btn btn-secondary", type: "button", onClick: load },
               icon("refresh"),
-              "Try again",
+              "Try Again",
             ),
             isLocalDev
               ? h(

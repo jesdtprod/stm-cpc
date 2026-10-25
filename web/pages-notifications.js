@@ -1,6 +1,6 @@
 // Notifications page (PLAN 9.3): the member's messages, and switching alerts on for this device.
 //   * Messages appear here as they arrive (the page refreshes itself from the live feed) and open the page they are about.
-//   * "Alerts on this device" registers the device for push messages, so approvals, booking decisions, payments, draws,
+//   * "Alerts on This Device" registers the device for push messages, so approvals, booking decisions, payments, draws,
 //     results, rank changes and match times arrive even when the app is in the background or closed.
 import { badge, button, emptyState, h, pageHeader, toast } from "./ui.js";
 import { formatDateTime } from "./lib/dates.js";
@@ -64,7 +64,7 @@ export function createNotificationPages({ api, feed }) {
     function drawDevice() {
       const d = state.device;
       const children = [
-        h("h2", {}, "Alerts on this device"),
+        h("h2", {}, "Alerts on This Device"),
       ];
       if (!d) {
         children.push(h("p", { class: "muted" }, "Checking this device..."));
@@ -93,7 +93,7 @@ export function createNotificationPages({ api, feed }) {
             " This device gets alerts even when the app is in the background or closed.",
           ),
           button({
-            label: "Turn off alerts on this device",
+            label: "Turn Off Alerts on This Device",
             onClick: async () => {
               try {
                 await disablePush(api);
@@ -113,7 +113,7 @@ export function createNotificationPages({ api, feed }) {
             "Get a message on this device the moment something happens: your membership or booking is decided, a payment is checked, the draw is made, results are in, or your rank changes. It works even when the app is in the background or closed.",
           ),
           button({
-            label: "Turn on alerts on this device",
+            label: "Turn on Alerts on This Device",
             variant: "primary",
             onClick: async () => {
               const r = await enablePush(api);
@@ -149,7 +149,7 @@ export function createNotificationPages({ api, feed }) {
             { class: "field-error", role: "alert" },
             "Your messages could not be loaded.",
           ),
-          button({ label: "Try again", onClick: load }),
+          button({ label: "Try Again", onClick: load }),
         );
         return;
       }
@@ -169,10 +169,10 @@ export function createNotificationPages({ api, feed }) {
         h(
           "div",
           { class: "actions" },
-          h("strong", {}, unread ? `${unread} unread` : "All read"),
+          h("strong", {}, unread ? `${unread} unread` : "All Read"),
           unread
             ? button({
-              label: "Mark all as read",
+              label: "Mark All as Read",
               size: "sm",
               onClick: markAll,
             })

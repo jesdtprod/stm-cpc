@@ -77,7 +77,7 @@ export function createDev({ client, api, session, reporter }) {
       type: "password",
     });
     const signIn = button({
-      label: "Sign in",
+      label: "Sign In",
       variant: "primary",
       onClick: async () => {
         try {
@@ -169,7 +169,7 @@ export function createDev({ client, api, session, reporter }) {
           org_id: me().org_id,
           type: "selfcheck",
           code: `sc-${key.slice(-8).toLowerCase()}`,
-          label: "Self-check row",
+          label: "Self-check Row",
         };
         await api.create("lookups", key, row);
         await api.create("lookups", key, row);
@@ -263,7 +263,7 @@ export function createDev({ client, api, session, reporter }) {
       { class: "page" },
       pageHeader({
         icon: "info",
-        eyebrow: "Development only",
+        eyebrow: "Development Only",
         title: "Self-check",
         description:
           "Sign in with a test account, then run the checks. Shown only on localhost.",
@@ -271,7 +271,7 @@ export function createDev({ client, api, session, reporter }) {
       h(
         "div",
         { class: "card" },
-        h("h2", {}, "Sign in"),
+        h("h2", {}, "Sign In"),
         email,
         password,
         box,
@@ -280,7 +280,7 @@ export function createDev({ client, api, session, reporter }) {
           { class: "actions" },
           signIn,
           button({
-            label: "Sign out",
+            label: "Sign Out",
             onClick: () => session.signOut("manual"),
           }),
           button({

@@ -44,7 +44,7 @@ export function createStaffPages({ api }) {
     const body = h("div", { class: "staff-body" });
     const state = { tab: "staff", status: "loading", staff: [], roles: [] };
     const addBtn = button({
-      label: "Give someone a role",
+      label: "Give Someone a Role",
       icon: "plus",
       variant: "primary",
       disabled: true,
@@ -147,12 +147,12 @@ export function createStaffPages({ api }) {
       const key = api.newKey();
       const error = errorLine();
       return openModal({
-        title: "Change role",
+        title: "Change Role",
         eyebrow: `${row.display_name} · ${row.member_no}`,
         icon: "user",
         description:
           "Update staff permissions and assigned capabilities for this member.",
-        confirmLabel: "Change role",
+        confirmLabel: "Change Role",
         body: h(
           "div",
           { class: "member-decision" },
@@ -209,7 +209,7 @@ export function createStaffPages({ api }) {
             h(
               "div",
               { class: "field" },
-              h("label", { for: "st-role" }, "New role"),
+              h("label", { for: "st-role" }, "New Role"),
               inputWithIcon(roleSelect("st-role", row.role_code), "user"),
             ),
             reasonField(),
@@ -245,7 +245,7 @@ export function createStaffPages({ api }) {
       const results = h("div", {
         class: "staff-results",
         role: "radiogroup",
-        "aria-label": "Search results",
+        "aria-label": "Search Results",
       });
       const term = searchControl({
         class: "input",
@@ -356,12 +356,12 @@ export function createStaffPages({ api }) {
         }
       });
       return openModal({
-        title: "Give someone a role",
+        title: "Give Someone a Role",
         eyebrow: "Staff",
         icon: "user",
         description:
           "Select a member, choose their role and record the reason.",
-        confirmLabel: "Assign role",
+        confirmLabel: "Assign Role",
         body: h(
           "div",
           { class: "form-grid" },
@@ -369,7 +369,7 @@ export function createStaffPages({ api }) {
             "section",
             {
               class: "form-section form-grid-wide",
-              "aria-label": "Member selection",
+              "aria-label": "Member Selection",
             },
             h(
               "div",
@@ -378,9 +378,9 @@ export function createStaffPages({ api }) {
                 "label",
                 { for: "st-term", class: "form-setting-label" },
                 icon("user"),
-                "Find a member",
+                "Find a Member",
               ),
-              badge("Active members", "success"),
+              badge("Active Members", "success"),
             ),
             h(
               "div",
@@ -556,7 +556,7 @@ export function createStaffPages({ api }) {
             "div",
             { class: "card home-error", role: "alert" },
             h("p", {}, state.error),
-            button({ label: "Try again", icon: "refresh", onClick: refresh }),
+            button({ label: "Try Again", icon: "refresh", onClick: refresh }),
           ),
         );
         return;

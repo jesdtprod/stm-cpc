@@ -737,7 +737,7 @@ textarea.input {
 @keyframes dropdown-open {
   from {
     opacity: 0;
-    transform: translateY(-4px) scale(0.98);
+    transform: translateY(var(--dropdown-enter-y, -4px)) scale(0.98);
   }
   to {
     opacity: 1;
@@ -1097,7 +1097,7 @@ textarea.input {
 @keyframes calendarPop {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.97);
+    transform: translateY(var(--dropdown-enter-y, -6px)) scale(0.97);
   }
   to {
     opacity: 1;
@@ -2244,6 +2244,32 @@ dialog.drawer::backdrop {
   height: 1px;
   background: var(--border);
   margin: 4px 0;
+}
+
+/* Shared dropdown placement: constrained by the viewport and modal scroll area. */
+.searchable-select-dropdown[data-placement],
+.calendar-popover[data-placement],
+.dropdown-menu-list[data-placement] {
+  max-height: var(--dropdown-max-height);
+  overscroll-behavior: contain;
+}
+.calendar-popover[data-placement],
+.dropdown-menu-list[data-placement] {
+  overflow-y: auto;
+}
+.searchable-select-dropdown[data-placement="top"],
+.calendar-popover[data-placement="top"],
+.dropdown-menu-list[data-placement="top"] {
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform-origin: bottom left;
+  --dropdown-enter-y: 6px;
+}
+.searchable-select-dropdown[data-placement] > .input {
+  flex-shrink: 0;
+}
+.searchable-select-options {
+  min-height: 0;
 }
 
 /* ===== 9. Toasts ===== */

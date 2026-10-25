@@ -26,29 +26,29 @@ import { formatMoney } from "./lib/money.js";
 
 const EVENT_STATUS = {
   draft: ["Draft", "neutral"],
-  registration_open: ["Registration open", "success"],
-  registration_closed: ["Registration closed", "warning"],
+  registration_open: ["Registration Open", "success"],
+  registration_closed: ["Registration Closed", "warning"],
   drawn: ["Drawn", "info"],
-  in_progress: ["In progress", "info"],
+  in_progress: ["In Progress", "info"],
   completed: ["Completed", "neutral"],
   cancelled: ["Cancelled", "danger"],
 };
 const DIVISION_STATUS = {
   open: ["Open", "success"],
   drawn: ["Drawn", "info"],
-  in_progress: ["In progress", "info"],
+  in_progress: ["In Progress", "info"],
   finalized: ["Finalized", "neutral"],
   cancelled: ["Cancelled", "danger"],
 };
 const STAGE_LABEL = {
-  round_robin: "Round robin",
-  single_elimination: "Single elimination",
-  pool_play: "Pool play",
-  best_of_n_playoff: "Best-of playoff",
-  split_single_elimination: "Split single elimination",
+  round_robin: "Round Robin",
+  single_elimination: "Single Elimination",
+  pool_play: "Pool Play",
+  best_of_n_playoff: "Best-of Playoff",
+  split_single_elimination: "Split Single Elimination",
 };
 const REG_STATUS = {
-  requested: ["Waiting for approval", "warning"],
+  requested: ["Waiting for Approval", "warning"],
   confirmed: ["Confirmed", "success"],
   waitlisted: ["Waitlisted", "info"],
   withdrawn: ["Withdrawn", "neutral"],
@@ -304,7 +304,7 @@ export function createEventsPages({ api }) {
                   h(
                     "strong",
                     { class: "decision-impact-title" },
-                    "Action impact",
+                    "Action Impact",
                   ),
                   h("p", { class: "decision-impact-text" }, note),
                 ),
@@ -372,13 +372,13 @@ export function createEventsPages({ api }) {
       const key = row?.id ?? api.newKey();
       const error = errorLine();
       return openModal({
-        title: editing ? "Edit event" : "New event",
+        title: editing ? "Edit Event" : "New Event",
         eyebrow: editing ? row.doc_no : "Events",
         icon: "trophy",
         description:
           "Set the tournament dates, location, entry fee and registration window.",
         size: "lg",
-        confirmLabel: editing ? "Save changes" : "Create event",
+        confirmLabel: editing ? "Save Changes" : "Create Event",
         body: h(
           "div",
           { class: "form-grid" },
@@ -428,12 +428,12 @@ export function createEventsPages({ api }) {
             h(
               "span",
               { class: "profile-subsection-label" },
-              "Schedule & venue",
+              "Schedule & Venue",
             ),
           ),
           field(
             "ev-start",
-            "First day *",
+            "First Day *",
             input("ev-start", "starts_on", {
               type: "date",
               required: true,
@@ -443,7 +443,7 @@ export function createEventsPages({ api }) {
           ),
           field(
             "ev-end",
-            "Last day *",
+            "Last Day *",
             input("ev-end", "ends_on", {
               type: "date",
               required: true,
@@ -481,12 +481,12 @@ export function createEventsPages({ api }) {
             h(
               "span",
               { class: "profile-subsection-label" },
-              "Registration window",
+              "Registration Window",
             ),
           ),
           field(
             "ev-opens",
-            "Registration opens",
+            "Registration Opens",
             input("ev-opens", "opens_at", {
               type: "datetime-local",
               value: toLocalInput(row?.registration_opens_at),
@@ -495,7 +495,7 @@ export function createEventsPages({ api }) {
           ),
           field(
             "ev-closes",
-            "Registration closes",
+            "Registration Closes",
             input("ev-closes", "closes_at", {
               type: "datetime-local",
               value: toLocalInput(row?.registration_closes_at),
@@ -576,11 +576,11 @@ export function createEventsPages({ api }) {
 
     function cancelEvent(ev) {
       return reasonModal({
-        title: "Cancel this event",
+        title: "Cancel This Event",
         eyebrow: ev.name,
         note:
           "Its divisions that have not finished are cancelled too. This cannot be undone.",
-        confirmLabel: "Cancel event",
+        confirmLabel: "Cancel Event",
         run: (reason) =>
           api.rpc("set_event_status", {
             p_id: ev.id,
@@ -753,37 +753,37 @@ export function createEventsPages({ api }) {
       const minRank = select(
         "dv-min",
         "min_rank_id",
-        rankOptions(row?.category_id ?? state.categories[0]?.id, "No minimum"),
+        rankOptions(row?.category_id ?? state.categories[0]?.id, "No Minimum"),
         row?.min_rank_id,
       );
       const maxRank = select(
         "dv-max",
         "max_rank_id",
-        rankOptions(row?.category_id ?? state.categories[0]?.id, "No maximum"),
+        rankOptions(row?.category_id ?? state.categories[0]?.id, "No Maximum"),
         row?.max_rank_id,
       );
       if (!editing) {
         category.addEventListener("change", () => {
           minRank.replaceChildren(
-            ...rankOptions(category.value, "No minimum").map((o) =>
+            ...rankOptions(category.value, "No Minimum").map((o) =>
               h("option", { value: o.value }, o.label)
             ),
           );
           maxRank.replaceChildren(
-            ...rankOptions(category.value, "No maximum").map((o) =>
+            ...rankOptions(category.value, "No Maximum").map((o) =>
               h("option", { value: o.value }, o.label)
             ),
           );
         });
       }
       return openModal({
-        title: editing ? "Edit division" : "New division",
+        title: editing ? "Edit Division" : "New Division",
         eyebrow: ev.name,
         icon: "layers",
         description:
           "Configure the skill category, play format, eligibility and bracket template.",
         size: "lg",
-        confirmLabel: editing ? "Save changes" : "Add division",
+        confirmLabel: editing ? "Save Changes" : "Add Division",
         body: h(
           "div",
           { class: "form-grid" },
@@ -820,7 +820,7 @@ export function createEventsPages({ api }) {
             { class: "form-grid-wide" },
             field(
               "dv-name",
-              "Division name *",
+              "Division Name *",
               input("dv-name", "name", {
                 required: true,
                 maxlength: 120,
@@ -837,7 +837,7 @@ export function createEventsPages({ api }) {
             h(
               "span",
               { class: "profile-subsection-label" },
-              "Format & category",
+              "Format & Category",
             ),
           ),
           editing ? null : field(
@@ -849,7 +849,7 @@ export function createEventsPages({ api }) {
           ),
           editing ? null : field(
             "dv-format",
-            "Singles or doubles *",
+            "Singles or Doubles *",
             select("dv-format", "format", [
               { value: "singles", label: "Singles" },
               { value: "doubles", label: "Doubles" },
@@ -871,7 +871,7 @@ export function createEventsPages({ api }) {
           ),
           field(
             "dv-age",
-            "Age group",
+            "Age Group",
             input("dv-age", "age_group", {
               maxlength: 40,
               placeholder: "e.g. 35+",
@@ -886,19 +886,19 @@ export function createEventsPages({ api }) {
             h(
               "span",
               { class: "profile-subsection-label" },
-              "Rank limits & entries",
+              "Rank Limits & Entries",
             ),
           ),
           field(
             "dv-min",
-            "Lowest rank allowed",
+            "Lowest Rank Allowed",
             minRank,
             "Minimum player rank required.",
             "medal",
           ),
           field(
             "dv-max",
-            "Highest rank allowed",
+            "Highest Rank Allowed",
             maxRank,
             "Maximum player rank allowed.",
             "medal",
@@ -908,14 +908,14 @@ export function createEventsPages({ api }) {
             { class: editing ? "form-grid-wide" : "" },
             field(
               "dv-limit",
-              "Most entries",
+              "Most Entries",
               input("dv-limit", "max_entries", {
                 type: "number",
                 min: 2,
                 max: 512,
                 step: 1,
                 value: row?.max_entries ?? "",
-                placeholder: "No limit",
+                placeholder: "No Limit",
               }),
               "Leave empty for no limit (2 to 512).",
               "layers",
@@ -923,7 +923,7 @@ export function createEventsPages({ api }) {
           ),
           editing ? null : field(
             "dv-format-tpl",
-            "Format template *",
+            "Format Template *",
             select(
               "dv-format-tpl",
               "template_id",
@@ -935,9 +935,9 @@ export function createEventsPages({ api }) {
           ),
           editing ? null : field(
             "dv-rule",
-            "Scoring rule",
+            "Scoring Rule",
             select("dv-rule", "scoring_rule_id", [
-              { value: "", label: "Club default" },
+              { value: "", label: "Club Default" },
               ...state.rules.map((r) => ({ value: r.id, label: r.name })),
             ], ""),
             "Match point and win-by configuration.",
@@ -958,7 +958,7 @@ export function createEventsPages({ api }) {
                 h(
                   "strong",
                   { class: "decision-impact-title" },
-                  "Format & rules locked",
+                  "Format & Rules Locked",
                 ),
                 h(
                   "p",
@@ -1065,7 +1065,7 @@ export function createEventsPages({ api }) {
         title: "Draw",
         eyebrow: `${state.open.name} · ${d.name}`,
         icon: "layers",
-        confirmLabel: canRedo ? "Redo the draw" : "Close",
+        confirmLabel: canRedo ? "Redo the Draw" : "Close",
         destructive: canRedo,
         body: h(
           "div",
@@ -1098,11 +1098,11 @@ export function createEventsPages({ api }) {
     function redoDraw(d) {
       const key = api.newKey();
       return reasonModal({
-        title: "Redo the draw",
+        title: "Redo the Draw",
         eyebrow: d.name,
         note:
           "A new random draw replaces this one. Matches already scheduled from it are cancelled.",
-        confirmLabel: "Redo the draw",
+        confirmLabel: "Redo the Draw",
         run: (reason) =>
           api.rpc("redo_draw", {
             p_stage_id: stageOne(d).id,
@@ -1123,13 +1123,13 @@ export function createEventsPages({ api }) {
       const cfg = stage.config ?? {};
       const error = errorLine();
       return openModal({
-        title: "Format settings",
+        title: "Format Settings",
         eyebrow: `${state.open.name} · ${d.name}`,
         icon: "settings",
         description:
           "Configure bracket grouping and advancement rules for pool play.",
         size: "lg",
-        confirmLabel: "Save settings",
+        confirmLabel: "Save Settings",
         body: h(
           "div",
           { class: "form-grid" },
@@ -1147,7 +1147,7 @@ export function createEventsPages({ api }) {
               h(
                 "strong",
                 { class: "decision-impact-title" },
-                "Pool play configuration",
+                "Pool Play Configuration",
               ),
               h(
                 "p",
@@ -1158,7 +1158,7 @@ export function createEventsPages({ api }) {
           ),
           field(
             "fs-size",
-            "Players per bracket *",
+            "Players per Bracket *",
             input("fs-size", "target_group_size", {
               type: "number",
               min: 3,
@@ -1172,7 +1172,7 @@ export function createEventsPages({ api }) {
           ),
           field(
             "fs-count",
-            "Number of brackets",
+            "Number of Brackets",
             input("fs-count", "group_count", {
               type: "number",
               min: 1,
@@ -1186,7 +1186,7 @@ export function createEventsPages({ api }) {
           ),
           field(
             "fs-adv",
-            "Advance from each bracket *",
+            "Advance from Each Bracket *",
             input("fs-adv", "advance_per_group", {
               type: "number",
               min: 1,
@@ -1202,7 +1202,7 @@ export function createEventsPages({ api }) {
             "fs-assign",
             "Placing players in brackets",
             select("fs-assign", "group_assignment", [
-              { value: "random", label: "Random draw" },
+              { value: "random", label: "Random Draw" },
               {
                 value: "snake_by_rank",
                 label: "By rank (strongest spread evenly)",
@@ -1240,11 +1240,11 @@ export function createEventsPages({ api }) {
 
     function cancelDivision(d) {
       return reasonModal({
-        title: "Cancel this division",
+        title: "Cancel This Division",
         eyebrow: d.name,
         note:
           "Members already registered will need to be told. This cannot be undone.",
-        confirmLabel: "Cancel division",
+        confirmLabel: "Cancel Division",
         run: (reason) =>
           api.rpc("cancel_division", { p_id: d.id, p_reason: reason }),
         done: "Division cancelled.",
@@ -1300,9 +1300,9 @@ export function createEventsPages({ api }) {
             },
             {
               key: "limit",
-              label: "Most entries",
+              label: "Most Entries",
               align: "right",
-              render: (r) => r.max_entries ? String(r.max_entries) : "No limit",
+              render: (r) => r.max_entries ? String(r.max_entries) : "No Limit",
             },
             {
               key: "status",
@@ -1412,7 +1412,7 @@ export function createEventsPages({ api }) {
 
     function rejectRegistration(r) {
       return reasonModal({
-        title: "Reject this registration",
+        title: "Reject This Registration",
         eyebrow: r.member?.person?.display_name ?? "",
         confirmLabel: "Reject",
         run: (reason) =>
@@ -1427,7 +1427,7 @@ export function createEventsPages({ api }) {
 
     function withdrawRegistration(r) {
       return reasonModal({
-        title: "Withdraw this registration",
+        title: "Withdraw This Registration",
         eyebrow: r.member?.person?.display_name ?? "",
         note: r.status === "confirmed" && Number(r.fee_snapshot) > 0
           ? "The fee charge is reversed on the member's account. Void any payment separately if money is handed back."
@@ -1598,7 +1598,7 @@ export function createEventsPages({ api }) {
           "div",
           { class: "actions events-actions" },
           button({
-            label: "All events",
+            label: "All Events",
             icon: "chevl",
             variant: "secondary",
             onClick: () => {
@@ -1608,7 +1608,7 @@ export function createEventsPages({ api }) {
           }),
           canAdd
             ? button({
-              label: "New division",
+              label: "New Division",
               icon: "plus",
               variant: "primary",
               onClick: () => divisionModal(null),
@@ -1649,7 +1649,7 @@ export function createEventsPages({ api }) {
 
     // ---------------------------------------------------------------- layout
     const newEventBtn = button({
-      label: "New event",
+      label: "New Event",
       icon: "plus",
       variant: "primary",
       onClick: () => eventModal(null),

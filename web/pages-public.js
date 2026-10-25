@@ -48,14 +48,14 @@ export function createPublicPages({ api }) {
           { class: "muted" },
           "The club has not made this page public. Members can see it after signing in.",
         ),
-        h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign in"),
+        h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In"),
       );
     }
 
     function leaderboardView() {
       if (!state.board?.enabled) {
         return state.status === "ready"
-          ? notPublished("The leaderboard")
+          ? notPublished("The Leaderboard")
           : dataTable({
             schema: {
               columns: [{ key: "n", label: "Player", render: () => "" }],
@@ -84,7 +84,7 @@ export function createPublicPages({ api }) {
                 load();
               },
             },
-            h("option", { value: "" }, "All categories"),
+            h("option", { value: "" }, "All Categories"),
             ...(state.board.categories ?? []).map((c) =>
               h(
                 "option",
@@ -205,7 +205,7 @@ export function createPublicPages({ api }) {
       pageHeader({
         icon: "trophy",
         eyebrow: "Capitol Pickleball Club",
-        title: "Leaderboard and results",
+        title: "Leaderboard and Results",
         description:
           "What the club has chosen to share publicly. Sign in for the full ranking and your own history.",
       }),

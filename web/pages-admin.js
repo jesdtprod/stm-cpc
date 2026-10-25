@@ -27,14 +27,14 @@ const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 const TABS = [
   {
     id: "pending",
-    label: "Waiting for approval",
+    label: "Waiting for Approval",
     statuses: ["pending_approval"],
   },
   { id: "active", label: "Active", statuses: ["active"] },
   { id: "suspended", label: "Suspended", statuses: ["suspended"] },
   { id: "rejected", label: "Rejected", statuses: ["rejected"] },
   { id: "archived", label: "Archived", statuses: ["archived"] },
-  { id: "new", label: "Not signed in yet", statuses: ["imported", "invited"] },
+  { id: "new", label: "Not Signed in Yet", statuses: ["imported", "invited"] },
   {
     id: "all",
     label: "All",
@@ -208,7 +208,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     const roleValue = h("span", {}, "Loading…");
     const dialog = openModal({
       title,
-      eyebrow: "Member management",
+      eyebrow: "Member Management",
       icon: iconName || (destructive ? "alert" : "check"),
       tone: tone || (destructive ? "danger" : "info"),
       body: h(
@@ -326,7 +326,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     decide({
       action: "approve",
       row,
-      title: "Approve this member",
+      title: "Approve This Member",
       verb: "Approve",
       icon: "check",
       tone: "success",
@@ -396,7 +396,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
   function reasonModal(action, row, text, onDone) {
     const copy = {
       reject: {
-        title: "Reject this application",
+        title: "Reject This Application",
         verb: "Reject",
         destructive: true,
         icon: "x",
@@ -404,7 +404,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         label: "Reason (the member is not shown this)",
       },
       reconsider: {
-        title: "Reconsider this application",
+        title: "Reconsider This Application",
         verb: "Reconsider",
         destructive: false,
         icon: "refresh",
@@ -412,7 +412,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         label: "Reason",
       },
       suspend: {
-        title: "Suspend this member",
+        title: "Suspend This Member",
         verb: "Suspend",
         destructive: true,
         icon: "alert",
@@ -420,7 +420,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         label: "Reason",
       },
       restore: {
-        title: "Restore this member",
+        title: "Restore This Member",
         verb: "Restore",
         destructive: false,
         icon: "refresh",
@@ -428,7 +428,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         label: "Reason",
       },
       archive: {
-        title: "Archive this member",
+        title: "Archive This Member",
         verb: "Archive",
         destructive: true,
         icon: "inbox",
@@ -436,7 +436,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         label: "Reason",
       },
       delete: {
-        title: "Delete this member record",
+        title: "Delete This Member Record",
         verb: "Delete",
         destructive: true,
         icon: "trash",
@@ -624,11 +624,11 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     );
 
     return openModal({
-      title: "Reset password",
-      eyebrow: "Member security",
+      title: "Reset Password",
+      eyebrow: "Member Security",
       icon: "lock",
       tone: "danger",
-      confirmLabel: "Reset password",
+      confirmLabel: "Reset Password",
       cancelLabel: "Cancel",
       destructive: true,
       body: h(
@@ -712,7 +712,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           h(
             "div",
             { class: "member-summary-item" },
-            h("span", { class: "kv-label" }, "Club ranking"),
+            h("span", { class: "kv-label" }, "Club Ranking"),
             rankEl,
           ),
         ),
@@ -824,7 +824,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             row.deleted_at
               ? kv(
                 "Deleted Record",
-                `Deleted: ${row.delete_reason ?? "No reason"}`,
+                `Deleted: ${row.delete_reason ?? "No Reason"}`,
               )
               : null,
           ),
@@ -976,7 +976,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       id: "members-search",
       type: "search",
       placeholder: "Search by name or member ID…",
-      "aria-label": "Search members",
+      "aria-label": "Search Members",
       onInput: (e) => {
         clearTimeout(timer);
         timer = setTimeout(() => {
@@ -992,7 +992,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     const actionsFor = (row) => {
       const buttons = [
         iconButton({
-          label: "View details",
+          label: "View Details",
           icon: "info",
           size: "sm",
           variant: "info",
@@ -1004,7 +1004,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         ["active", "invited", "pending_approval"].includes(row.status)
       ) {
         buttons.push(iconButton({
-          label: "Reset password",
+          label: "Reset Password",
           icon: "lock",
           size: "sm",
           variant: "edit",
@@ -1017,7 +1017,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       if (row.deleted_at) {
         if (edit) {
           buttons.push(iconButton({
-            label: "Restore the record",
+            label: "Restore the Record",
             icon: "refresh",
             size: "sm",
             variant: "restore",
@@ -1126,7 +1126,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         ["archived", "rejected", "imported", "invited"].includes(row.status)
       ) {
         buttons.push(iconButton({
-          label: "Delete the record",
+          label: "Delete the Record",
           icon: "trash",
           size: "sm",
           variant: "danger",
@@ -1176,7 +1176,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               "div",
               { class: "member-table-stack" },
               r.persons.mobile ?? "—",
-              h("span", { class: "sub" }, r.persons.email ?? "No email"),
+              h("span", { class: "sub" }, r.persons.email ?? "No Email"),
             ),
         },
         {
@@ -1237,7 +1237,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         },
         {
           key: "joined",
-          label: "Membership dates",
+          label: "Membership Dates",
           skeleton: "stack",
           render: (r) =>
             h(
@@ -1323,7 +1323,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           h(
             "span",
             { class: "home-card-go" },
-            tabId === "pending" ? "Review applications" : "View members",
+            tabId === "pending" ? "Review Applications" : "View Members",
             icon("chevronRight"),
           ),
         ),
@@ -1337,7 +1337,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
 
       kpis.replaceChildren(
         memberStatCard({
-          label: "Waiting for approval",
+          label: "Waiting for Approval",
           value: counts.pending ?? "—",
           hint: pCount > 0
             ? "Requires administrator review"
@@ -1351,17 +1351,17 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               "span",
               { class: "card-status-pill is-attention" },
               h("span", { class: "pill-pulse-dot", "aria-hidden": "true" }),
-              "Needs review",
+              "Needs Review",
             )
             : h(
               "span",
               { class: "card-status-pill is-clean" },
               icon("check"),
-              "All clear",
+              "All Clear",
             ),
         }),
         memberStatCard({
-          label: "Active members",
+          label: "Active Members",
           value: counts.active ?? "—",
           hint: `${aCount} registered member${aCount === 1 ? "" : "s"} in club`,
           iconName: "user",
@@ -1402,7 +1402,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     }
 
     function draw() {
-      let emptyTitle = "Nobody here";
+      let emptyTitle = "Nobody Here";
       let emptyText = "Members will appear in this list.";
       if (state.term) {
         emptyTitle = `No members match "${state.term}"`;
@@ -1448,7 +1448,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         },
         emptyTitle,
         emptyText,
-        resetLabel: "Clear search",
+        resetLabel: "Clear Search",
         ariaLabel: "Members",
       }));
       pagerHost.replaceChildren(

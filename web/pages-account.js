@@ -202,7 +202,7 @@ export function createAccountPages(
 
     const memberId = field({
       id: "signin-id",
-      label: "Member ID or email",
+      label: "Member ID or Email",
       required: true,
       placeholder: "CPC-2026-00001 or your email",
       iconLeading: "idCard",
@@ -224,7 +224,7 @@ export function createAccountPages(
     const error = errorBox();
 
     const submit = button({
-      label: "Sign in",
+      label: "Sign In",
       variant: "primary",
       type: "submit",
     });
@@ -318,14 +318,14 @@ export function createAccountPages(
     const forced = Boolean(state.access?.must_change_password);
     const next = field({
       id: "pw-new",
-      label: "New password",
+      label: "New Password",
       type: "password",
       required: true,
       hint: "At least 12 characters. A few unrelated words works well.",
     });
     const again = field({
       id: "pw-confirm",
-      label: "Repeat the new password",
+      label: "Repeat the New Password",
       type: "password",
       required: true,
     });
@@ -333,7 +333,7 @@ export function createAccountPages(
     again.querySelector("input").setAttribute("autocomplete", "new-password");
     const error = errorBox();
     const submit = button({
-      label: "Save password",
+      label: "Save Password",
       variant: "primary",
       type: "submit",
       icon: "check",
@@ -386,7 +386,7 @@ export function createAccountPages(
     attachPagePattern(pwPage);
     pwPage.append(
       adminHero({
-        title: forced ? "Choose a new password" : "Change password",
+        title: forced ? "Choose a new password" : "Change Password",
         chip: forced ? "One more step" : "Account Security",
         description: forced
           ? "For your security, replace the password you were given before you continue."
@@ -394,7 +394,7 @@ export function createAccountPages(
         actions: !forced
           ? [
             button({
-              label: "My profile",
+              label: "My Profile",
               icon: "user",
               variant: "secondary",
               onClick: () => go("#/profile"),
@@ -526,7 +526,7 @@ export function createAccountPages(
     // ---- name
     const lastName = field({
       id: "pf-last",
-      label: "Last name",
+      label: "Last Name",
       value: me.last_name ?? guess?.last ?? "",
       required: true,
       iconLeading: "user",
@@ -536,7 +536,7 @@ export function createAccountPages(
     });
     const firstName = field({
       id: "pf-first",
-      label: "First name",
+      label: "First Name",
       value: me.first_name ?? guess?.first ?? "",
       required: true,
       iconLeading: "user",
@@ -555,7 +555,7 @@ export function createAccountPages(
     );
     const display = field({
       id: "pf-name",
-      label: "Display name",
+      label: "Display Name",
       value: me.display_name ?? "",
       required: true,
       iconLeading: "idCard",
@@ -571,7 +571,7 @@ export function createAccountPages(
     const metaBirthDd = h("dd", {}, formatDate(me.date_of_birth) || "—");
     const birth = calendarDropdown({
       id: "pf-birth",
-      label: "Date of birth",
+      label: "Date of Birth",
       value: me.date_of_birth ?? "",
       min: "1920-01-01",
       max: new Date().toISOString().slice(0, 10),
@@ -594,7 +594,7 @@ export function createAccountPages(
     // ---- contact
     const mobile = field({
       id: "pf-mobile",
-      label: "Mobile number",
+      label: "Mobile Number",
       value: me.mobile ?? "",
       required: true,
       iconLeading: "phone",
@@ -662,7 +662,7 @@ export function createAccountPages(
       };
     };
     const province = selectField("pf-province", "Province or Metro Manila");
-    const city = selectField("pf-city", "City or municipality");
+    const city = selectField("pf-city", "City or Municipality");
     const barangay = selectField("pf-barangay", "Barangay");
     const error = errorBox();
 
@@ -764,12 +764,12 @@ export function createAccountPages(
     const dropzoneTitle = h(
       "span",
       { class: "profile-upload-title" },
-      hasPhoto ? "Replace current photo" : "Click or drop photo here",
+      hasPhoto ? "Replace Current Photo" : "Click or drop photo here",
     );
     const showFace = (url) => {
       hasPhoto = Boolean(url);
       dropzoneTitle.textContent = hasPhoto
-        ? "Replace current photo"
+        ? "Replace Current Photo"
         : "Click or drop photo here";
       if (photoRemove) photoRemove.disabled = !hasPhoto;
       photoFace.replaceChildren(
@@ -797,7 +797,7 @@ export function createAccountPages(
       icon: "upload",
       variant: "secondary",
       size: "sm",
-      ariaLabel: "Upload photo",
+      ariaLabel: "Upload Photo",
       onClick: () => photoInput.click(),
     });
     const photoRemove = button({
@@ -805,7 +805,7 @@ export function createAccountPages(
       icon: "trash",
       variant: "danger",
       size: "sm",
-      ariaLabel: "Remove photo",
+      ariaLabel: "Remove Photo",
       disabled: !hasPhoto,
       onClick: async () => {
         photoRemove.disabled = true;
@@ -837,8 +837,8 @@ export function createAccountPages(
       {
         type: "button",
         class: "profile-avatar-edit-btn",
-        "aria-label": "Upload new profile photo",
-        title: "Upload new profile photo",
+        "aria-label": "Upload New Profile Photo",
+        title: "Upload New Profile Photo",
         onClick: () => photoInput.click(),
       },
       icon("upload"),
@@ -1007,20 +1007,20 @@ export function createAccountPages(
         h(
           "div",
           { class: "profile-meta-row" },
-          h("dt", {}, "Date of birth"),
+          h("dt", {}, "Date of Birth"),
           metaBirthDd,
         ),
         h(
           "div",
           { class: "profile-meta-row" },
-          h("dt", {}, "Sign-in email"),
+          h("dt", {}, "Sign-in Email"),
           h("dd", {}, me.email || "—"),
         ),
       ),
     );
 
     const submit = button({
-      label: "Save profile",
+      label: "Save Profile",
       variant: "primary",
       type: "submit",
       icon: "check",
@@ -1287,7 +1287,7 @@ export function createAccountPages(
           : "Manage your personal information, contact details, emergency contact, and profile photo.",
         actions: [
           button({
-            label: "Change password",
+            label: "Change Password",
             icon: "keyRound",
             variant: "secondary",
             onClick: () => go("#/password"),
@@ -1342,12 +1342,12 @@ export function createAccountPages(
 
     const firstName = field({
       id: "su-first",
-      label: "First name",
+      label: "First Name",
       required: true,
     });
     const lastName = field({
       id: "su-last",
-      label: "Last name",
+      label: "Last Name",
       required: true,
     });
     const middleName = field({
@@ -1370,7 +1370,7 @@ export function createAccountPages(
     );
     const birth = calendarDropdown({
       id: "su-birth",
-      label: "Date of birth",
+      label: "Date of Birth",
       required: true,
       min: "1920-01-01",
       max: new Date().toISOString().slice(0, 10),
@@ -1378,7 +1378,7 @@ export function createAccountPages(
     });
     const mobile = field({
       id: "su-mobile",
-      label: "Mobile number",
+      label: "Mobile Number",
       required: true,
       placeholder: "09171234567",
     });
@@ -1401,7 +1401,7 @@ export function createAccountPages(
     });
     const confirm = field({
       id: "su-confirm",
-      label: "Repeat the password",
+      label: "Repeat the Password",
       type: "password",
       required: true,
     });
@@ -1439,7 +1439,7 @@ export function createAccountPages(
     );
 
     const submit = button({
-      label: "Create my account",
+      label: "Create My Account",
       variant: "primary",
       type: "submit",
       icon: "check",
@@ -1451,7 +1451,7 @@ export function createAccountPages(
         novalidate: true,
         onSubmit: (e) => e.preventDefault(),
       },
-      h("h3", { class: "form-section" }, "About you"),
+      h("h3", { class: "form-section" }, "About You"),
       h("div", { class: "form-row" }, firstName, lastName),
       h("div", { class: "form-row" }, middleName, suffix.node),
       h("div", { class: "form-row" }, gender.node, birth),
@@ -1481,8 +1481,8 @@ export function createAccountPages(
         h(
           "div",
           { class: "auth-card-head-copy" },
-          h("div", { class: "eyebrow" }, "New members"),
-          h("h2", { class: "card-title" }, "Create an account"),
+          h("div", { class: "eyebrow" }, "New Members"),
+          h("h2", { class: "card-title" }, "Create an Account"),
           h(
             "p",
             { class: "card-subtitle muted" },
@@ -1495,7 +1495,7 @@ export function createAccountPages(
         "div",
         { class: "auth-card-footer" },
         "Already a member? ",
-        h("a", { href: "#/signin", class: "auth-signup-link" }, "Sign in"),
+        h("a", { href: "#/signin", class: "auth-signup-link" }, "Sign In"),
         ". Under 18? A parent or guardian should complete this form.",
       ),
     );
@@ -1551,7 +1551,7 @@ export function createAccountPages(
               h(
                 "a",
                 { class: "btn btn-primary", href: "#/signin" },
-                "Go to sign in",
+                "Go to Sign in",
               ),
             ),
           );
@@ -1605,12 +1605,12 @@ export function createAccountPages(
       { class: "page auth-page" },
       pageHeader({
         icon: "inbox",
-        eyebrow: me.member_no ?? "Your account",
+        eyebrow: me.member_no ?? "Your Account",
         title: approved
           ? "You are approved"
           : waiting
-          ? "Waiting for approval"
-          : "Almost there",
+          ? "Waiting for Approval"
+          : "Almost There",
         description: approved
           ? "You can now use the app."
           : waiting
@@ -1637,7 +1637,7 @@ export function createAccountPages(
           "ul",
           { class: "steps" },
           step(true, "Signed in and password changed"),
-          step(profileDone, "Profile completed"),
+          step(profileDone, "Profile Completed"),
           step(approved, "Approved by the club"),
         ),
         approved
@@ -1647,7 +1647,7 @@ export function createAccountPages(
             h(
               "a",
               { class: "btn btn-primary", href: "#/" },
-              "Go to the home page",
+              "Go to the Home Page",
             ),
           )
           : h(
@@ -1656,7 +1656,7 @@ export function createAccountPages(
             h("a", {
               class: "btn" + (profileDone ? "" : " btn-primary"),
               href: "#/profile",
-            }, profileDone ? "Edit my profile" : "Complete my profile"),
+            }, profileDone ? "Edit My Profile" : "Complete My Profile"),
           ),
       ),
     );

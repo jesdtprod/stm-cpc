@@ -78,7 +78,7 @@ export function createCategoriesPages({ api, getOrgId }) {
       class: "input",
       id: "categories-search",
       placeholder: "Search categories...",
-      "aria-label": "Search categories",
+      "aria-label": "Search Categories",
       onInput: () => {
         state.term = search.value;
         state.page = 1;
@@ -152,7 +152,7 @@ export function createCategoriesPages({ api, getOrgId }) {
         { class: "form-grid" },
         catField(
           "cat-name",
-          "Category name *",
+          "Category Name *",
           nameInput,
           "layers",
           "Shown on rankings, divisions and brackets.",
@@ -171,7 +171,7 @@ export function createCategoriesPages({ api, getOrgId }) {
           { class: "form-grid-wide" },
           catField(
             "cat-order",
-            "Display order *",
+            "Display Order *",
             h("input", {
               class: "input",
               id: "cat-order",
@@ -227,13 +227,13 @@ export function createCategoriesPages({ api, getOrgId }) {
         h("div", { class: "form-grid-wide" }, error),
       );
       return openModal({
-        title: editing ? "Edit category" : "New category",
-        eyebrow: editing ? row.name : "Skill levels",
+        title: editing ? "Edit Category" : "New Category",
+        eyebrow: editing ? row.name : "Skill Levels",
         icon: "layers",
         description:
           "Set skill level details, eligibility notes and display order.",
         body,
-        confirmLabel: editing ? "Save changes" : "Add category",
+        confirmLabel: editing ? "Save Changes" : "Add Category",
         onConfirm: async (form) => {
           const name = String(form.get("name") ?? "").trim();
           const code = String(form.get("code") ?? "").trim();
@@ -497,7 +497,7 @@ export function createCategoriesPages({ api, getOrgId }) {
             disabled: inUse,
             onClick: () =>
               reasonModal(row, {
-                title: "Delete this category",
+                title: "Delete This Category",
                 verb: "Delete",
                 run: (reason, key) =>
                   api.rpc("soft_delete", {
@@ -538,15 +538,15 @@ export function createCategoriesPages({ api, getOrgId }) {
         {
           key: "description",
           label: "Description",
-          render: (r) => r.description || "Not specified",
+          render: (r) => r.description || "Not Specified",
         },
         {
           key: "ladder",
-          label: "Rank ladder",
+          label: "Rank Ladder",
           render: (r) =>
             liveLadders(r).length
-              ? badge("Set up", "success")
-              : badge("None yet", "neutral"),
+              ? badge("Set Up", "success")
+              : badge("None Yet", "neutral"),
         },
         {
           key: "status",
@@ -589,7 +589,7 @@ export function createCategoriesPages({ api, getOrgId }) {
           row.name,
           row.code,
           row.description,
-          liveLadders(row).length ? "Set up" : "None yet",
+          liveLadders(row).length ? "Set Up" : "None Yet",
           TABS.find((item) => item.id === tabOf(row))?.label,
         ].join(" "));
         return terms.every((term) => text.includes(term));
@@ -620,7 +620,7 @@ export function createCategoriesPages({ api, getOrgId }) {
           ? "No matching categories"
           : state.tab === "active"
           ? "No categories yet"
-          : (state.tab === "retired" ? "Nothing retired" : "Nothing deleted"),
+          : (state.tab === "retired" ? "Nothing Retired" : "Nothing Deleted"),
         emptyText: state.tab === "active"
           ? "Add the club's skill levels, for example Beginner, Novice, Intermediate and Advanced."
           : "Categories you retire or delete will be listed here.",
@@ -660,7 +660,7 @@ export function createCategoriesPages({ api, getOrgId }) {
           "The club's skill levels, in order. Each category has its own ranked steps.",
         actions: [
           button({
-            label: "New category",
+            label: "New Category",
             variant: "primary",
             icon: "plus",
             onClick: () => formModal(null),

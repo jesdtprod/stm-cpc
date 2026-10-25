@@ -33,10 +33,10 @@ const METHOD_LABEL = {
   cash: "Cash",
   gcash: "GCash",
   maya: "Maya",
-  bank_transfer: "Bank transfer",
+  bank_transfer: "Bank Transfer",
 };
 const REG_STATUS = {
-  requested: ["Waiting for approval", "warning"],
+  requested: ["Waiting for Approval", "warning"],
   confirmed: ["Confirmed", "success"],
   waitlisted: ["Waitlisted", "info"],
   withdrawn: ["Withdrawn", "neutral"],
@@ -226,7 +226,7 @@ export function createMemberEventsPages({ api, client, session }) {
             ? h(
               "div",
               { class: "stack" },
-              h("label", { for: "rg-term" }, "Doubles partner *"),
+              h("label", { for: "rg-term" }, "Doubles Partner *"),
               h(
                 "div",
                 { class: "actions" },
@@ -276,7 +276,7 @@ export function createMemberEventsPages({ api, client, session }) {
         hidden: true,
       });
       return openModal({
-        title: "Withdraw your registration",
+        title: "Withdraw Your Registration",
         eyebrow: `${r.event?.name ?? ""} · ${r.division?.name ?? ""}`,
         icon: "alert",
         confirmLabel: "Withdraw",
@@ -344,10 +344,10 @@ export function createMemberEventsPages({ api, client, session }) {
       });
       let uploaded = null;
       return openModal({
-        title: "Pay the registration fee",
+        title: "Pay the Registration Fee",
         eyebrow: `${r.event?.name ?? ""} · ${r.division?.name ?? ""}`,
         icon: "currency",
-        confirmLabel: "Send payment",
+        confirmLabel: "Send Payment",
         body: h(
           "div",
           { class: "stack" },
@@ -371,7 +371,7 @@ export function createMemberEventsPages({ api, client, session }) {
           h(
             "div",
             { class: "field" },
-            h("label", { for: "pay-ref" }, "Reference number"),
+            h("label", { for: "pay-ref" }, "Reference Number"),
             h("input", {
               class: "input",
               id: "pay-ref",
@@ -549,7 +549,7 @@ export function createMemberEventsPages({ api, client, session }) {
         rows: ev.divisions,
         state: "ready",
         ariaLabel: `Divisions of ${ev.name}`,
-        emptyTitle: "No divisions",
+        emptyTitle: "No Divisions",
         emptyText: "This event has no open divisions.",
       });
     }
@@ -694,7 +694,7 @@ export function createMemberEventsPages({ api, client, session }) {
         },
         rows: state.mine,
         state: state.status,
-        ariaLabel: "My registrations",
+        ariaLabel: "My Registrations",
         onRetry: refresh,
         emptyTitle: "No registrations yet",
         emptyText: "Register for an event and it will be listed here.",
@@ -705,8 +705,8 @@ export function createMemberEventsPages({ api, client, session }) {
       tabsHost.replaceChildren(tabs({
         activeId: state.tab,
         tabs: [
-          { id: "open", label: "Open events" },
-          { id: "mine", label: "My registrations" },
+          { id: "open", label: "Open Events" },
+          { id: "mine", label: "My Registrations" },
         ],
         onChange: (id) => {
           state.tab = id;

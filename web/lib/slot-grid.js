@@ -94,12 +94,14 @@ export function freeRun(slots, i, max = 4) {
   return n;
 }
 
-/** "08:00" style label for a Date, in Manila time. */
+/** "8:00 AM" style (12-hour) label for a Date, in Manila time. */
 export function timeLabel(date) {
-  return new Intl.DateTimeFormat("en-GB", {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Manila",
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
-    hour12: false,
-  }).format(date);
+    hour12: true,
+  }).formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("hour")}:${get("minute")} ${get("dayPeriod").toUpperCase()}`;
 }

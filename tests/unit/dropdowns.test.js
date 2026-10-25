@@ -2,6 +2,7 @@ import {
   dataTable,
   dateControl,
   dateTimeControl,
+  dropdownMenu,
   h,
   iconButton,
   inputWithIcon,
@@ -70,6 +71,9 @@ function withDom(run) {
     }
     getAttribute(key) {
       return this.attributes[key] ?? null;
+    }
+    hasAttribute(key) {
+      return key in this.attributes;
     }
     removeAttribute(key) {
       delete this.attributes[key];
@@ -714,7 +718,7 @@ Deno.test("grid pagination: filters the full list before paging and retains the 
       rows.filter((row) => !row.hidden).length === 2,
       "Only the first page should be visible",
     );
-    findButton(view, "Next page").click();
+    findButton(view, "Next Page").click();
     assert(
       rows[0].hidden && !rows[2].hidden && !rows[3].hidden,
       "Next must show the following records",
@@ -735,8 +739,8 @@ Deno.test("grid pagination: filters the full list before paging and retains the 
       "Search must include later pages and reset to page one",
     );
     assert(
-      findButton(view, "Next page").disabled &&
-        findButton(view, "Previous page").disabled,
+      findButton(view, "Next Page").disabled &&
+        findButton(view, "Previous Page").disabled,
       "A single search result must disable both navigation buttons",
     );
   }));
@@ -905,7 +909,7 @@ Deno.test("ranks page: New rule opens its dialog directly without changing the a
     );
     assert(view.value === "ladders", "Start in the ladder view");
     page.querySelectorAll("button").find((button) =>
-      button.textContent === "New rule"
+      button.textContent === "New Rule"
     ).click();
     const dialog = document.body.querySelector("dialog");
     assert(
@@ -913,7 +917,7 @@ Deno.test("ranks page: New rule opens its dialog directly without changing the a
       "New rule must open a modal",
     );
     assert(
-      dialog.querySelector("h2").textContent === "New rule",
+      dialog.querySelector("h2").textContent === "New Rule",
       "New rule must open its creation form",
     );
     assert(
@@ -967,7 +971,7 @@ Deno.test("pagination: shared default is ten records with correct range and navi
       "Default page size must be explicit",
     );
     pager.querySelectorAll("button").find((button) =>
-      button.getAttribute("aria-label") === "Next page"
+      button.getAttribute("aria-label") === "Next Page"
     ).click();
     assert(page === 2, "Next page must retain the shared navigation callback");
     const second = pagination({ page: 2, total: 80, onPage: () => {} });
@@ -988,7 +992,7 @@ Deno.test("scoring modal: shared sections preserve scoring fields, limits and ti
     document.body.append(page);
     await new Promise((resolve) => setTimeout(resolve, 0));
     page.querySelectorAll("button").find((button) =>
-      button.textContent === "New scoring rule"
+      button.textContent === "New Scoring Rule"
     ).click();
     const modal = document.body.querySelector("dialog");
     assert(
@@ -1073,7 +1077,7 @@ Deno.test("staff assignment modal: member selection, role defaults and audit rea
     document.body.append(page);
     await new Promise((resolve) => setTimeout(resolve, 0));
     page.querySelectorAll("button").find((button) =>
-      button.textContent === "Give someone a role"
+      button.textContent === "Give Someone a Role"
     ).click();
     const modal = document.body.querySelector("dialog");
     assert(
@@ -1126,3 +1130,61 @@ Deno.test("staff assignment modal: member selection, role defaults and audit rea
     );
     modal.close();
   }));
+
+Deno.test("shared controls: lists, dates, date-times and action menus flip upward near the viewport bottom", () => {
+  withDom((document) => {
+    document.defaultView = Object.assign(new EventTarget(), {
+      innerHeight: 800,
+    });
+    const cases = [
+      [
+        selectField({
+          id: "flip-list",
+          options: [{ value: "a", label: "Alpha" }],
+        }),
+        ".searchable-select-trigger",
+        ".searchable-select-dropdown",
+      ],
+      [
+        h("div", {}, dateControl({ id: "flip-date", value: "2026-10-25" })),
+        ".calendar-drop-trigger",
+        ".calendar-popover",
+      ],
+      [
+        h(
+          "div",
+          {},
+          dateTimeControl({ id: "flip-datetime", value: "2026-10-25T09:00" }),
+        ),
+        ".calendar-drop-trigger",
+        ".calendar-popover",
+      ],
+      [
+        dropdownMenu({
+          trigger: h("button", {}, "Actions"),
+          items: [{ label: "Edit" }],
+        }),
+        "button",
+        ".dropdown-menu-list",
+      ],
+    ];
+    for (const [control, triggerSelector, popupSelector] of cases) {
+      document.body.append(control);
+      const trigger = control.querySelector(triggerSelector);
+      const popup = control.querySelector(popupSelector);
+      trigger.getBoundingClientRect = () => ({ top: 700, bottom: 744 });
+      popup.offsetHeight = popup.scrollHeight = 300;
+      trigger.click();
+      assert(
+        popup.getAttribute("data-placement") === "top",
+        `${popupSelector} must open upward`,
+      );
+      assert(
+        popup.attributes["--dropdown-max-height"] === "686px",
+        "Every control must use the same viewport bounds",
+      );
+      trigger.click();
+      assert(popup.hidden, "The trigger must still close its popup");
+    }
+  });
+});

@@ -17,8 +17,8 @@ export function homePage() {
       "div",
       { class: "kpis" },
       kpiCard("Members", "—"),
-      kpiCard("Bookings today", "—"),
-      kpiCard("Open events", "—"),
+      kpiCard("Bookings Today", "—"),
+      kpiCard("Open Events", "—"),
     ),
   );
 }
@@ -72,7 +72,7 @@ export function notFoundPage() {
       title: "Page not found",
       description: "That page does not exist.",
     }),
-    h("a", { href: "#/" }, "Back to home"),
+    h("a", { href: "#/" }, "Back to Home"),
   );
 }
 
@@ -82,9 +82,9 @@ export function forbiddenPage() {
     { class: "page" },
     pageHeader({
       icon: "alert",
-      title: "No access",
+      title: "No Access",
       description: "Your account does not have permission to open this page.",
     }),
-    h("a", { href: "#/" }, "Back to home"),
+    h("a", { href: "#/" }, "Back to Home"),
   );
 }

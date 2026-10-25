@@ -19,23 +19,23 @@ import {
 import { can } from "./lib/permissions.js";
 
 const STAGE_LABEL = {
-  round_robin: "Round robin",
-  single_elimination: "Single elimination",
-  pool_play: "Pool play",
-  best_of_n_playoff: "Best-of playoff",
-  split_single_elimination: "Split single elimination",
+  round_robin: "Round Robin",
+  single_elimination: "Single Elimination",
+  pool_play: "Pool Play",
+  best_of_n_playoff: "Best-of Playoff",
+  split_single_elimination: "Split Single Elimination",
 };
 const MATCH_STATUS = {
   scheduled: ["Scheduled", "neutral"],
-  in_progress: ["In progress", "info"],
+  in_progress: ["In Progress", "info"],
   completed: ["Final", "success"],
   forfeited: ["Forfeit", "warning"],
   cancelled: ["Cancelled", "neutral"],
 };
 const STAGE_STATUS = {
-  pending: "Not started",
+  pending: "Not Started",
   drawn: "Drawn",
-  in_progress: "In progress",
+  in_progress: "In Progress",
   completed: "Completed",
   cancelled: "Cancelled",
 };
@@ -194,7 +194,7 @@ export function createBracketPages({ api }) {
         title: "Enter the score",
         eyebrow: `${m.a_name} v ${m.b_name}`,
         icon: "edit",
-        confirmLabel: "Save score",
+        confirmLabel: "Save Score",
         body: h(
           "div",
           { class: "stack" },
@@ -264,10 +264,10 @@ export function createBracketPages({ api }) {
     function forfeitModal(m) {
       const error = errorLine();
       return openModal({
-        title: "Record a forfeit",
+        title: "Record a Forfeit",
         eyebrow: `${m.a_name} v ${m.b_name}`,
         icon: "alert",
-        confirmLabel: "Record forfeit",
+        confirmLabel: "Record Forfeit",
         destructive: true,
         body: h(
           "div",
@@ -329,10 +329,10 @@ export function createBracketPages({ api }) {
       const error = errorLine();
       const max = maxGamesOf();
       return openModal({
-        title: "Correct the result",
+        title: "Correct the Result",
         eyebrow: `${m.a_name} v ${m.b_name}`,
         icon: "refresh",
-        confirmLabel: "Correct result",
+        confirmLabel: "Correct Result",
         destructive: true,
         body: h(
           "div",
@@ -431,7 +431,7 @@ export function createBracketPages({ api }) {
             },
             {
               key: "name",
-              label: "Player or team",
+              label: "Player or Team",
               render: (r) => r.entry_name ?? "—",
             },
             {
@@ -694,10 +694,10 @@ export function createBracketPages({ api }) {
     function finalizeDivisionModal() {
       const error = errorLine();
       return openModal({
-        title: "Finalize this division",
+        title: "Finalize This Division",
         eyebrow: state.division.name,
         icon: "medal",
-        confirmLabel: "Finalize division",
+        confirmLabel: "Finalize Division",
         destructive: true,
         body: h(
           "div",
@@ -739,7 +739,7 @@ export function createBracketPages({ api }) {
         },
         {
           key: "name",
-          label: "Player or team",
+          label: "Player or Team",
           render: (r) => r.entry_name ?? "—",
         },
         {
@@ -771,13 +771,13 @@ export function createBracketPages({ api }) {
       return h(
         "div",
         { class: "stack" },
-        h("h2", {}, "Final placements"),
+        h("h2", {}, "Final Placements"),
         dataTable({
           searchState: state,
           schema: { columns },
           rows: state.results,
           state: "ready",
-          ariaLabel: "Final placements",
+          ariaLabel: "Final Placements",
         }),
       );
     }
@@ -878,7 +878,7 @@ export function createBracketPages({ api }) {
               "div",
               { class: "actions" },
               button({
-                label: "Finalize division",
+                label: "Finalize Division",
                 icon: "medal",
                 variant: "primary",
                 onClick: finalizeDivisionModal,
