@@ -354,6 +354,20 @@ export function selectField(config) {
   return searchableSelect(config);
 }
 
+/** Reuse native input references and form contracts with a decorative leading icon. */
+export function inputWithIcon(control, iconName) {
+  return h(
+    "div",
+    { class: "input-wrap" },
+    h(
+      "span",
+      { class: "input-affix icon-leading", "aria-hidden": "true" },
+      icon(iconName),
+    ),
+    control,
+  );
+}
+
 /** Members-style search; returning the input preserves existing event/value code. */
 export function searchControl(props = {}) {
   const input = h("input", { ...props, type: "search" });
@@ -447,6 +461,28 @@ export function selectControl(props = {}, ...children) {
   };
   controlNodes.set(native, control);
   return native;
+}
+
+/** List status filter using the same searchable control as Members. */
+export function tableFilter(
+  { id, activeId, tabs: options = [], onChange, label = "Filter records" },
+) {
+  return h(
+    "div",
+    { class: "member-status-filter" },
+    selectField({
+      id,
+      value: activeId,
+      ariaLabel: label,
+      options: options.map((item) => ({
+        value: item.id,
+        label: item.badge === undefined
+          ? item.label
+          : `${item.label} (${item.badge})`,
+      })),
+      onChange: (event) => onChange?.(event.target.value),
+    }),
+  );
 }
 
 export function searchableSelect({
@@ -1027,6 +1063,7 @@ export function radioGroup(
 export function switchToggle(
   {
     id,
+    name = id,
     label,
     checked = false,
     disabled = false,
@@ -1038,7 +1075,7 @@ export function switchToggle(
     type: "checkbox",
     class: "switch-input",
     id,
-    name: id,
+    name,
     checked,
     disabled,
     onChange: (e) => onChange?.(e.target.checked, e),
@@ -2256,6 +2293,7 @@ export function dataTable(
     ariaLabel,
     searchable = true,
     searchPlaceholder,
+    filter,
     searchState,
     searchKey = ariaLabel ??
       schema.columns.map((column) => column.key).join(":"),
@@ -2489,11 +2527,6 @@ export function dataTable(
     saved = new Map();
     tableSearches.set(searchState, saved);
   }
-  const result = h("span", {
-    class: "data-grid-result muted",
-    role: "status",
-    "aria-live": "polite",
-  });
   const search = searchControl({
     class: "input",
     placeholder: searchPlaceholder ??
@@ -2529,18 +2562,18 @@ export function dataTable(
     }
     saved?.set(searchKey, search.value);
     empty.hidden = !records.length || visible > 0;
-    result.textContent = state === "loading"
-      ? "Loading\u2026"
-      : state === "error"
-      ? "Unable to load"
-      : `Showing ${visible} of ${rows.length}`;
   }
   applySearch();
   return h(
     "div",
-    { class: "data-grid" },
-    h("div", { class: "data-grid-toolbar" }, search, result),
-    scroll,
+    { class: "data-grid-layout" },
+    h(
+      "div",
+      { class: "toolbar admin-members-toolbar data-grid-toolbar" },
+      search,
+      filter,
+    ),
+    h("div", { class: "data-grid" }, scroll),
   );
 }
 
@@ -2716,6 +2749,10 @@ export function openModal(
   dialog.append(form);
   document.body.append(dialog);
   dialog.showModal();
+  const firstControl = dialog.querySelector(
+    ".modal-body input:not([type=hidden]):not(:disabled):not([readonly]), .modal-body textarea:not(:disabled):not([readonly]), .modal-body .searchable-select-trigger:not(:disabled)",
+  );
+  firstControl?.focus?.();
   return dialog;
 }
 

@@ -375,7 +375,9 @@ export function createBracketPages({ api }) {
               p_games: r.games,
             });
             toast("Result corrected.", { tone: "success" });
-            await loadStage();
+            // a finalized division is re-evaluated: show its new placements
+            if (state.division?.status === "finalized") await load();
+            else await loadStage();
           } catch (e) {
             return showError(
               error,

@@ -615,4 +615,92 @@ export const LUCIDE_SOLID = {
       },
     ],
   ],
+  grid: [
+    [
+      "rect",
+      {
+        "width": "7.5",
+        "height": "7.5",
+        "x": "3",
+        "y": "3",
+        "rx": "1.6",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "rect",
+      {
+        "width": "7.5",
+        "height": "7.5",
+        "x": "13.5",
+        "y": "3",
+        "rx": "1.6",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "rect",
+      {
+        "width": "7.5",
+        "height": "7.5",
+        "x": "13.5",
+        "y": "13.5",
+        "rx": "1.6",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "rect",
+      {
+        "width": "7.5",
+        "height": "7.5",
+        "x": "3",
+        "y": "13.5",
+        "rx": "1.6",
+        "fill": "currentColor",
+      },
+    ],
+  ],
+  home: [
+    [
+      "path",
+      {
+        "d":
+          "M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "path",
+      {
+        "d": "M15 21v-7a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v7",
+        "fill": CUTOUT,
+        "stroke": CUTOUT,
+        "stroke-width": "1.8",
+      },
+    ],
+  ],
+  edit: [
+    [
+      "path",
+      {
+        "d":
+          "M18.375 2.625a2.121 2.121 0 1 1 3 3L12.36 14.64a2 2 0 0 1-.853.505l-3.2.93a.5.5 0 0 1-.62-.62l.93-3.2a2 2 0 0 1 .506-.852Z",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "path",
+      {
+        "d": "M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7",
+        "fill": "none",
+        "stroke-width": "2.2",
+      },
+    ],
+  ],
+  plus: [
+    ["circle", { "cx": "12", "cy": "12", "r": "10", "fill": "currentColor" }],
+    ["path", { "d": "M8 12h8", "stroke": CUTOUT, "stroke-width": "2.4" }],
+    ["path", { "d": "M12 8v8", "stroke": CUTOUT, "stroke-width": "2.4" }],
+  ],
 };

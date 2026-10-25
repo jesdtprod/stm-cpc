@@ -1164,6 +1164,27 @@ button.slot-free:hover {
   flex-wrap: wrap;
   gap: var(--s2);
 }
+/* Badge content uses one alignment across public, account and admin surfaces. */
+.chip,
+.cpc-hero-badge,
+.cpc-phone-badge,
+.cpc-phone-court-badge,
+.cpc-phone-rank-badge,
+.cpc-price-badge,
+.auth-hero-badge,
+.dash-chip,
+.section-counter-badge,
+.card-status-pill,
+.calendar-legend-pill,
+.profile-member-id,
+.nav-link-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  vertical-align: middle;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -6535,8 +6556,23 @@ main:has(.dashboard-pattern) {
   background: transparent;
   box-shadow: none;
 }
+/* A shared grid toolbar sits outside its own bordered table panel. */
+.member-directory-card:has(.data-grid-layout) {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.member-directory-card:has(.data-grid-layout) .data-grid {
+  border: 1px solid rgba(223, 183, 86, 0.18);
+  border-radius: 18px;
+  background: var(--member-panel-background, var(--surface));
+}
 .member-directory-card .table-host {
   overflow-x: auto;
+}
+.member-directory-card:has(.data-grid-layout) .table-host {
+  overflow: visible;
 }
 .member-table-stack {
   display: flex;
@@ -7425,8 +7461,40 @@ dialog.modal:has(.member-decision) {
   height: 96px;
   border-radius: 999px;
   border: 3px solid #091B13;
-  background: #0D261B;
+  background: linear-gradient(135deg, #103524 0%, #091E14 100%);
+  color: #F4C430;
   font-size: 32px;
+}
+
+.profile-avatar-edit-btn {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #F4C430 0%, #D99B16 100%);
+  color: #07150E;
+  border: 2.5px solid #091B13;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+.profile-avatar-edit-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+  filter: brightness(1.08);
+}
+.profile-avatar-edit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.profile-avatar-edit-btn .icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.4;
 }
 
 .profile-identity-name {
@@ -7439,6 +7507,7 @@ dialog.modal:has(.member-decision) {
 }
 
 .profile-member-id {
+  min-height: 24px;
   display: inline-flex;
   align-items: center;
   padding: 3px 10px;
@@ -7463,11 +7532,23 @@ dialog.modal:has(.member-decision) {
 
 .profile-photo-box {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   padding: 16px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.035) 0%,
+    rgba(255, 255, 255, 0.015) 100%
+  );
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.profile-photo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .profile-photo-label {
@@ -7475,7 +7556,79 @@ dialog.modal:has(.member-decision) {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: #CBD5E1;
+}
+
+.profile-photo-format-pill {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #6EE7B7;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.24);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.profile-upload-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed rgba(52, 211, 153, 0.32);
+  background: rgba(8, 28, 19, 0.55);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s
+    ease;
+}
+.profile-upload-dropzone:hover:not(:disabled),
+.profile-upload-dropzone.is-dragover {
+  border-color: rgba(244, 196, 48, 0.55);
+  background: rgba(16, 48, 33, 0.65);
+}
+.profile-upload-dropzone:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.profile-upload-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(244, 196, 48, 0.18) 0%,
+    rgba(52, 211, 153, 0.14) 100%
+  );
+  border: 1px solid rgba(244, 196, 48, 0.3);
+  color: #F4C430;
+}
+
+.profile-upload-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile-upload-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #F8FAFC;
+  line-height: 1.25;
+}
+
+.profile-upload-sub {
+  font-size: 11.5px;
   color: #94A3B8;
+  line-height: 1.3;
 }
 
 .profile-photo-input.sr-only {
@@ -7492,14 +7645,21 @@ dialog.modal:has(.member-decision) {
 
 .profile-photo-actions {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.profile-photo-actions .btn {
+  width: 100%;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .profile-photo-note {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11.5px;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .profile-meta-list {

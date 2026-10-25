@@ -15,7 +15,7 @@ import {
   openModal,
   pagination,
   searchControl,
-  tabs,
+  tableFilter,
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
@@ -256,7 +256,7 @@ export function createBookingAdminPages({ api, client }) {
       class: "page admin-dashboard admin-members-page admin-bookings-page",
     });
     const kpis = h("div", { class: "home-grid kpis" });
-    const tabsHost = h("div", {});
+    const tabsHost = h("div", { class: "member-status-filter" });
     const tableHost = h("div", { class: "table-host" });
     const pagerHost = h("div", {});
     const directoryCard = h(
@@ -303,12 +303,13 @@ export function createBookingAdminPages({ api, client }) {
       },
     });
 
-    const searchBox = search;
+    const searchBox = h("div", { class: "grow" }, search);
 
     const toolbar = h(
       "div",
       { class: "toolbar admin-members-toolbar" },
       searchBox,
+      tabsHost,
     );
 
     async function refresh() {
@@ -1378,7 +1379,7 @@ export function createBookingAdminPages({ api, client }) {
         }),
       );
 
-      tabsHost.replaceChildren(tabs({
+      tabsHost.replaceChildren(tableFilter({
         activeId: state.tab,
         tabs: [
           {
@@ -1413,13 +1414,15 @@ export function createBookingAdminPages({ api, client }) {
       }));
 
       if (state.tab === "calendar") {
-        toolbar.hidden = true;
+        toolbar.hidden = false;
+        searchBox.hidden = true;
         tableHost.replaceChildren(calendarView());
         pagerHost.replaceChildren();
         return;
       }
 
       toolbar.hidden = false;
+      searchBox.hidden = false;
       const term = cleanTerm(state.term);
       const filtered = lists[state.tab]().filter((r) => matchesSearch(r, term));
       const total = filtered.length;
@@ -1541,7 +1544,6 @@ export function createBookingAdminPages({ api, client }) {
     page.append(
       hero,
       kpis,
-      tabsHost,
       toolbar,
       directoryCard,
     );
@@ -1555,7 +1557,7 @@ export function createBookingAdminPages({ api, client }) {
       class: "page admin-dashboard admin-members-page admin-payments-page",
     });
     attachPagePattern(page);
-    const tabsHost = h("div", {});
+    const tabsHost = h("div", { class: "member-status-filter" });
     const body = h("div", { class: "table-host" });
     const state = { tab: "check", status: "loading", rows: [], bookings: {} };
 
@@ -1790,7 +1792,7 @@ export function createBookingAdminPages({ api, client }) {
     };
 
     function draw() {
-      tabsHost.replaceChildren(tabs({
+      tabsHost.replaceChildren(tableFilter({
         activeId: state.tab,
         tabs: [
           {
@@ -1809,6 +1811,7 @@ export function createBookingAdminPages({ api, client }) {
       const [title, text] = EMPTY[state.tab];
       body.replaceChildren(dataTable({
         searchState: state,
+        filter: tabsHost,
         schema: { columns },
         rows: lists[state.tab](),
         state: state.status === "refreshing" ? "ready" : state.status,
@@ -1834,7 +1837,6 @@ export function createBookingAdminPages({ api, client }) {
           }),
         ],
       }),
-      tabsHost,
       h("div", { class: "member-directory-card" }, body),
     );
     refresh();

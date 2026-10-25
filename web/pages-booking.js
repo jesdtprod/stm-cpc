@@ -15,7 +15,7 @@ import {
   pageHeader,
   searchControl,
   selectControl,
-  tabs,
+  tableFilter,
   toast,
 } from "./ui.js";
 import { businessDate, formatDateTime } from "./lib/dates.js";
@@ -569,7 +569,7 @@ export function createBookingPages({ api, client, session }) {
   // ============================================================== my bookings
   function myBookingsPage() {
     const page = h("div", { class: "page" });
-    const tabsHost = h("div", {});
+    const tabsHost = h("div", { class: "member-status-filter" });
     const tableHost = h("div", { class: "card" });
     const state = {
       tab: "upcoming",
@@ -976,7 +976,7 @@ export function createBookingPages({ api, client, session }) {
       const rows = state.rows.filter((r) =>
         state.tab === "upcoming" ? isUpcoming(r) : !isUpcoming(r)
       );
-      tabsHost.replaceChildren(tabs({
+      tabsHost.replaceChildren(tableFilter({
         activeId: state.tab,
         tabs: [
           {
@@ -993,6 +993,7 @@ export function createBookingPages({ api, client, session }) {
       }));
       tableHost.replaceChildren(dataTable({
         searchState: state,
+        filter: tabsHost,
         schema,
         rows,
         state: state.status,
@@ -1022,7 +1023,6 @@ export function createBookingPages({ api, client, session }) {
           }),
         ],
       }),
-      tabsHost,
       tableHost,
     );
     load();

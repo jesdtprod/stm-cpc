@@ -3,10 +3,13 @@ import {
   dateControl,
   h,
   iconButton,
+  inputWithIcon,
   searchableSelect,
   searchControl,
   selectControl,
   selectField,
+  switchToggle,
+  tableFilter,
 } from "../../web/ui.js";
 
 // Small DOM fixture for component events; rendered browser checks remain separate.
@@ -504,5 +507,94 @@ Deno.test("table search: retains page-scoped query through refresh without dupli
       dataTable({ ...config, state: "loading" }).querySelector("input")
         .disabled,
       "Loading tables must keep search disabled",
+    );
+  }));
+
+Deno.test("grid controls: search and searchable list filter are siblings outside the table panel", () =>
+  withDom(() => {
+    let selected;
+    const filter = tableFilter({
+      activeId: "active",
+      tabs: [{ id: "active", label: "Active", badge: 2 }, {
+        id: "deleted",
+        label: "Deleted",
+      }],
+      onChange: (value) => selected = value,
+    });
+    const view = dataTable({
+      schema: { columns: [{ key: "name", label: "Name" }] },
+      rows: [{ name: "Sample" }],
+      filter,
+    });
+    const panel = view.querySelector(".data-grid");
+    const toolbar = view.querySelector(".data-grid-toolbar");
+    assert(
+      panel && toolbar && !panel.contains(toolbar),
+      "Controls must be outside the bordered table panel",
+    );
+    assert(toolbar.contains(filter), "Status filter must sit beside search");
+    filter.querySelector(".searchable-select-trigger").click();
+    filter.querySelectorAll(".searchable-select-item")[1].click();
+    assert(
+      selected === "deleted",
+      "Status selection must keep its original callback value",
+    );
+  }));
+
+Deno.test("icon inputs: preserve native validation attributes and existing handlers", () =>
+  withDom(() => {
+    let changes = 0;
+    const input = h("input", {
+      id: "court-name",
+      name: "name",
+      required: true,
+      maxlength: 60,
+      onInput: () => changes++,
+    });
+    const view = inputWithIcon(input, "grid");
+    assert(
+      view.querySelector("input") === input,
+      "Icon decoration must retain the native control",
+    );
+    assert(
+      input.getAttribute("name") === "name" &&
+        input.getAttribute("required") !== null,
+      "Form contract must be unchanged",
+    );
+    assert(
+      view.querySelector(".input-affix").getAttribute("aria-hidden") === "true",
+      "Decorative icon must not replace the input label",
+    );
+    input.value = "Court 1";
+    input.dispatchEvent(new Event("input"));
+    assert(
+      changes === 1,
+      "Existing code generation handler must still receive input",
+    );
+  }));
+
+Deno.test("switch: supports the existing indoor field name without changing other switches", () =>
+  withDom(() => {
+    const indoor = switchToggle({
+      id: "ct-indoor",
+      name: "indoor",
+      label: "Indoor court",
+      checked: true,
+    });
+    const standard = switchToggle({
+      id: "notifications",
+      label: "Notifications",
+    });
+    assert(
+      indoor.querySelector("input").getAttribute("name") === "indoor",
+      "Court submission must keep its indoor field name",
+    );
+    assert(
+      indoor.querySelector("input").getAttribute("checked") !== null,
+      "Editing must retain indoor state",
+    );
+    assert(
+      standard.querySelector("input").getAttribute("name") === "notifications",
+      "Existing switches must retain default names",
     );
   }));

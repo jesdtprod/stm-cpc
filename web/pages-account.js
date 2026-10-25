@@ -568,14 +568,19 @@ export function createAccountPages(
       me.gender,
       "Prefer not to say",
     );
-    const birth = field({
+    const metaBirthDd = h("dd", {}, formatDate(me.date_of_birth) || "—");
+    const birth = calendarDropdown({
       id: "pf-birth",
       label: "Date of birth",
-      value: formatDate(me.date_of_birth),
-      iconLeading: "calendar",
-      hint: "To change your date of birth, ask the club.",
+      value: me.date_of_birth ?? "",
+      min: "1920-01-01",
+      max: new Date().toISOString().slice(0, 10),
+      defaultView: me.date_of_birth ? me.date_of_birth.slice(0, 7) : "1990-01",
+      hint: "Select your date of birth.",
+      onChange: (iso) => {
+        metaBirthDd.textContent = formatDate(iso) || "—";
+      },
     });
-    birth.querySelector("input").disabled = true;
     for (const f of [lastName, firstName, middleName]) {
       f.querySelector("input").setAttribute("maxlength", "60");
     }
@@ -751,21 +756,26 @@ export function createAccountPages(
     );
 
     // ---- photo (Supabase Storage, private). The picture is cropped and shrunk here before it is uploaded.
+    let hasPhoto = Boolean(me.avatar_path);
     const photoFace = h("span", {
       class: "avatar-lg profile-avatar-ring",
       "aria-hidden": "true",
     });
+    const dropzoneTitle = h(
+      "span",
+      { class: "profile-upload-title" },
+      hasPhoto ? "Replace current photo" : "Click or drop photo here",
+    );
     const showFace = (url) => {
+      hasPhoto = Boolean(url);
+      dropzoneTitle.textContent = hasPhoto
+        ? "Replace current photo"
+        : "Click or drop photo here";
+      if (photoRemove) photoRemove.disabled = !hasPhoto;
       photoFace.replaceChildren(
         avatarImage(url, inputValue(display).trim() || me.display_name),
       );
     };
-    showFace(null);
-    if (me.avatar_path) {
-      signedAvatarUrls(client, [me.avatar_path]).then((urls) =>
-        showFace(urls.get(me.avatar_path) ?? null)
-      );
-    }
     const photoNote = h(
       "p",
       {
@@ -773,7 +783,7 @@ export function createAccountPages(
         id: "pf-photo-note",
         "aria-live": "polite",
       },
-      "JPG, PNG or WebP, up to 3 MB. Automatically cropped to a square.",
+      "Square crop · Max 3 MB · Private storage",
     );
     const photoInput = h("input", {
       class: "sr-only profile-photo-input",
@@ -783,21 +793,27 @@ export function createAccountPages(
       "aria-describedby": "pf-photo-note",
     });
     const photoUploadBtn = button({
-      label: "Upload photo",
+      label: "Upload",
       icon: "upload",
       variant: "secondary",
       size: "sm",
+      ariaLabel: "Upload photo",
       onClick: () => photoInput.click(),
     });
     const photoRemove = button({
-      label: "Remove photo",
+      label: "Remove",
       icon: "trash",
-      variant: "ghost",
+      variant: "danger",
       size: "sm",
+      ariaLabel: "Remove photo",
+      disabled: !hasPhoto,
       onClick: async () => {
         photoRemove.disabled = true;
         photoUploadBtn.disabled = true;
+        photoDropzone.disabled = true;
+        avatarQuickBtn.disabled = true;
         photoInput.disabled = true;
+        photoNote.textContent = "Removing photo...";
         try {
           await api.rpc("set_my_avatar", { p_path: null });
           showFace(null);
@@ -807,15 +823,68 @@ export function createAccountPages(
           await session.refresh();
         } catch {
           photoNote.textContent = "The photo could not be removed. Try again.";
+          photoRemove.disabled = !hasPhoto;
         } finally {
-          photoRemove.disabled = false;
           photoUploadBtn.disabled = false;
+          photoDropzone.disabled = false;
+          avatarQuickBtn.disabled = false;
           photoInput.disabled = false;
         }
       },
     });
-    photoInput.addEventListener("change", async () => {
-      const file = photoInput.files?.[0];
+    const avatarQuickBtn = h(
+      "button",
+      {
+        type: "button",
+        class: "profile-avatar-edit-btn",
+        "aria-label": "Upload new profile photo",
+        title: "Upload new profile photo",
+        onClick: () => photoInput.click(),
+      },
+      icon("upload"),
+    );
+    const photoDropzone = h(
+      "button",
+      {
+        type: "button",
+        class: "profile-upload-dropzone",
+        onClick: () => photoInput.click(),
+        onDragover: (e) => {
+          e.preventDefault();
+          photoDropzone.classList.add("is-dragover");
+        },
+        onDragleave: () => photoDropzone.classList.remove("is-dragover"),
+        onDrop: (e) => {
+          e.preventDefault();
+          photoDropzone.classList.remove("is-dragover");
+          const file = e.dataTransfer?.files?.[0];
+          if (file) handlePhotoFile(file);
+        },
+      },
+      h(
+        "span",
+        { class: "profile-upload-icon", "aria-hidden": "true" },
+        icon("upload"),
+      ),
+      h(
+        "span",
+        { class: "profile-upload-copy" },
+        dropzoneTitle,
+        h(
+          "span",
+          { class: "profile-upload-sub" },
+          "JPG, PNG or WebP up to 3 MB",
+        ),
+      ),
+    );
+    showFace(null);
+    if (me.avatar_path) {
+      signedAvatarUrls(client, [me.avatar_path]).then((urls) =>
+        showFace(urls.get(me.avatar_path) ?? null)
+      );
+    }
+
+    async function handlePhotoFile(file) {
       if (!file) return;
       const fileError = avatarFileError(file);
       if (fileError) {
@@ -825,6 +894,8 @@ export function createAccountPages(
       }
       photoInput.disabled = true;
       photoUploadBtn.disabled = true;
+      photoDropzone.disabled = true;
+      avatarQuickBtn.disabled = true;
       photoRemove.disabled = true;
       photoNote.textContent = "Saving your photo...";
       try {
@@ -845,12 +916,19 @@ export function createAccountPages(
       } catch {
         photoNote.textContent =
           "The photo could not be saved. Try another picture.";
+        photoRemove.disabled = !hasPhoto;
       } finally {
         photoInput.disabled = false;
         photoUploadBtn.disabled = false;
-        photoRemove.disabled = false;
+        photoDropzone.disabled = false;
+        avatarQuickBtn.disabled = false;
+        photoRemove.disabled = !hasPhoto;
         photoInput.value = "";
       }
+    }
+
+    photoInput.addEventListener("change", () => {
+      handlePhotoFile(photoInput.files?.[0]);
     });
 
     const identityName = h(
@@ -869,7 +947,12 @@ export function createAccountPages(
       h(
         "div",
         { class: "profile-identity-top" },
-        h("div", { class: "profile-avatar-stage" }, photoFace),
+        h(
+          "div",
+          { class: "profile-avatar-stage" },
+          photoFace,
+          avatarQuickBtn,
+        ),
         identityName,
         h(
           "span",
@@ -893,11 +976,17 @@ export function createAccountPages(
         "div",
         { class: "profile-photo-box" },
         h(
-          "label",
-          { class: "profile-photo-label", for: "pf-photo" },
-          "Profile Photo",
+          "div",
+          { class: "profile-photo-head" },
+          h(
+            "label",
+            { class: "profile-photo-label", for: "pf-photo" },
+            "Profile Photo",
+          ),
+          h("span", { class: "profile-photo-format-pill" }, "JPG · PNG · WEBP"),
         ),
         photoInput,
+        photoDropzone,
         h(
           "div",
           { class: "profile-photo-actions" },
@@ -919,7 +1008,7 @@ export function createAccountPages(
           "div",
           { class: "profile-meta-row" },
           h("dt", {}, "Date of birth"),
-          h("dd", {}, formatDate(me.date_of_birth) || "—"),
+          metaBirthDd,
         ),
         h(
           "div",
@@ -1136,8 +1225,9 @@ export function createAccountPages(
           missing.push("Choose your province, city and barangay.");
         }
         if (missing.length) return showError(error, missing);
+        const dobVal = inputValue(birth).trim() || null;
         try {
-          await api.rpc("update_my_profile", {
+          const payload = {
             p_display_name: inputValue(display),
             p_mobile: inputValue(mobile),
             p_email: inputValue(email) || null,
@@ -1151,7 +1241,24 @@ export function createAccountPages(
             p_emergency_name: inputValue(emName),
             p_emergency_relationship: inputValue(emRel),
             p_emergency_phone: inputValue(emPhone),
-          });
+          };
+          try {
+            await api.rpc("update_my_profile", {
+              ...payload,
+              p_date_of_birth: dobVal,
+            });
+          } catch (rpcErr) {
+            if (
+              rpcErr?.code === "PGRST202" ||
+              String(rpcErr?.cause?.message || rpcErr?.message || "").includes(
+                "p_date_of_birth",
+              )
+            ) {
+              await api.rpc("update_my_profile", payload);
+            } else {
+              throw rpcErr;
+            }
+          }
           await api.rpc("confirm_my_profile");
           await session.refresh();
           toast("Profile saved.", { tone: "success" });

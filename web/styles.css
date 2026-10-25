@@ -427,6 +427,80 @@ main[aria-busy="true"] {
   margin-top: 2px;
 }
 
+/* Shared compact modal forms. */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 18px;
+  row-gap: 18px;
+  align-items: start;
+}
+.form-grid > .field,
+.form-grid-wide > .field {
+  gap: 6px;
+  min-width: 0;
+}
+.form-grid > .field > label,
+.form-grid-wide > .field > label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #F8FAFC;
+  margin: 0;
+}
+.form-grid .field-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-2);
+  margin: 0;
+}
+.form-grid-wide {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+/* Hidden validation messages must not reserve an empty row and grid gap. */
+.form-grid-wide:has(> .form-error[hidden]) {
+  display: none;
+}
+.form-setting {
+  min-height: var(--control-h);
+  height: var(--control-h);
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-setting:focus-within {
+  border-color: var(--active-highlight);
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.16);
+}
+.form-setting .switch-wrap,
+.form-setting .switch-control {
+  width: 100%;
+}
+.form-setting-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.form-setting-label .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 16px;
+  }
+}
+
 /* Input affixes and password toggle */
 .input-wrap {
   position: relative;
@@ -436,6 +510,18 @@ main[aria-busy="true"] {
 }
 .input-wrap .input {
   width: 100%;
+}
+.input-wrap > .field {
+  width: 100%;
+  min-width: 0;
+}
+.input-wrap:has(textarea) .icon-leading {
+  top: 12px;
+}
+.input-wrap:has(textarea) .textarea {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 1.5;
 }
 .input-affix {
   display: flex;
@@ -453,7 +539,8 @@ main[aria-busy="true"] {
   font-size: 13px;
   font-weight: 600;
 }
-.input-wrap:has(.icon-leading) .input {
+.input-wrap:has(.icon-leading) .input,
+.input-wrap:has(.icon-leading) .searchable-select-trigger {
   padding-left: 40px;
 }
 .input-wrap:has(.prefix-text) .input {
@@ -1139,6 +1226,9 @@ textarea.input {
 .badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
+  vertical-align: middle;
   gap: 6px;
   height: 24px;
   padding: 0 10px;
@@ -1227,23 +1317,20 @@ textarea.input {
   background: var(--member-panel-background, var(--surface));
   overflow: hidden;
 }
+.data-grid-layout {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
 .data-grid-toolbar {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px 18px;
-  border-bottom: 1px solid var(--border);
+  padding: 0;
 }
 .data-grid-toolbar .search-box {
   flex: 1;
   min-width: 0;
-  max-width: 520px;
-}
-.data-grid-result {
-  margin-left: auto;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 .data-grid .table-scroll {
   border-radius: 0;
@@ -1269,16 +1356,13 @@ textarea.input {
 }
 @media (max-width: 600px) {
   .data-grid-toolbar {
-    padding: 12px;
+    padding: 0;
     flex-wrap: wrap;
     gap: 8px;
   }
   .data-grid-toolbar .search-box {
     flex-basis: 100%;
     max-width: none;
-  }
-  .data-grid-result {
-    margin-left: 0;
   }
 }
 .table-scroll {
@@ -1335,6 +1419,13 @@ textarea.input {
 .card:has(> .table-scroll) {
   padding: 0;
   overflow: hidden;
+}
+.card:has(> .data-grid-layout) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
 }
 .tbl.cols-2 {
   --n: 2;

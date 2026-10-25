@@ -12,10 +12,13 @@ import {
   dataTable,
   dateControl,
   h,
+  icon,
   iconButton,
+  inputWithIcon,
   openModal,
   selectControl,
-  tabs,
+  switchToggle,
+  tableFilter,
   toast,
 } from "./ui.js";
 import { businessDate, formatDateTime } from "./lib/dates.js";
@@ -81,7 +84,7 @@ export function createCourtsPages({ api, getOrgId }) {
       class: "page admin-dashboard admin-members-page admin-courts-page",
     });
     attachPagePattern(page);
-    const tabsHost = h("div", {});
+    const tabsHost = h("div", { class: "member-status-filter" });
     const body = h("div", { class: "courts-body" });
     const state = {
       tab: "courts",
@@ -293,12 +296,14 @@ export function createCourtsPages({ api, getOrgId }) {
         required: true,
         maxlength: 60,
         value: row?.name ?? "",
+        placeholder: "e.g. Court 1",
       });
       const codeInput = input("ct-code", "code", {
         required: true,
         maxlength: 32,
         value: row?.code ?? "",
         readonly: editing,
+        placeholder: "e.g. court-1",
       });
       let touched = editing;
       codeInput.addEventListener("input", () => (touched = true));
@@ -307,32 +312,47 @@ export function createCourtsPages({ api, getOrgId }) {
           if (!touched) codeInput.value = codeFrom(nameInput.value);
         });
       }
-      const indoor = h("input", {
-        type: "checkbox",
+      const indoor = switchToggle({
         id: "ct-indoor",
         name: "indoor",
+        label: h(
+          "span",
+          { class: "form-setting-label" },
+          icon("home"),
+          "Indoor court",
+        ),
         checked: row?.indoor ?? false,
       });
+      const courtField = (id, label, control, iconName, hint) =>
+        field(id, label, inputWithIcon(control, iconName), hint);
       const nextOrder =
         (Math.max(0, ...state.courts.map((c) => c.sort_order)) || 0) + 10;
       return openModal({
         title: editing ? "Edit court" : "New court",
         eyebrow: editing ? row.name : "Courts",
         icon: "grid",
+        description: "Set court details and booking availability.",
         confirmLabel: editing ? "Save changes" : "Add court",
         body: h(
           "div",
-          { class: "stack" },
-          field("ct-name", "Name *", nameInput),
-          field(
+          { class: "form-grid" },
+          courtField(
+            "ct-name",
+            "Court name *",
+            nameInput,
+            "grid",
+            "Shown on schedules and brackets.",
+          ),
+          courtField(
             "ct-code",
             "Code *",
             codeInput,
+            "idCard",
             editing
               ? "The code cannot be changed."
-              : "Made from the name. Lowercase letters, numbers, hyphen.",
+              : "Generated from the name; you can edit it.",
           ),
-          field(
+          courtField(
             "ct-status",
             "Status",
             select("ct-status", "status", [
@@ -340,35 +360,23 @@ export function createCourtsPages({ api, getOrgId }) {
               { value: "maintenance", label: "Maintenance (cannot be booked)" },
               { value: "closed", label: "Closed (cannot be booked)" },
             ], row?.status ?? "available"),
+            "checkCircle",
+            "Controls member booking availability.",
           ),
-          field(
+          courtField(
             "ct-surface",
             "Surface",
             input("ct-surface", "surface", {
               maxlength: 60,
               value: row?.surface ?? "",
+              placeholder: "e.g. Concrete or acrylic",
             }),
+            "layers",
+            "Optional playing surface material.",
           ),
-          h(
-            "div",
-            { class: "check" },
-            indoor,
-            h("label", { for: "ct-indoor" }, "Indoor court"),
-          ),
-          field(
-            "ct-notes",
-            "Notes",
-            h("textarea", {
-              class: "input textarea",
-              id: "ct-notes",
-              name: "notes",
-              rows: 2,
-              maxlength: 300,
-            }, row?.notes ?? ""),
-          ),
-          field(
+          courtField(
             "ct-order",
-            "Order",
+            "Display order *",
             input("ct-order", "sort_order", {
               type: "number",
               min: 0,
@@ -376,9 +384,34 @@ export function createCourtsPages({ api, getOrgId }) {
               required: true,
               value: row?.sort_order ?? nextOrder,
             }),
+            "layers",
             "Lower numbers come first.",
           ),
-          error,
+          field(
+            "ct-indoor",
+            "Environment",
+            h("div", { class: "form-setting" }, indoor),
+            "Covered or indoor playing area.",
+          ),
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            courtField(
+              "ct-notes",
+              "Notes",
+              h("textarea", {
+                class: "input textarea",
+                id: "ct-notes",
+                name: "notes",
+                rows: 3,
+                maxlength: 300,
+                placeholder: "Access, equipment or maintenance details...",
+              }, row?.notes ?? ""),
+              "file",
+              "Optional. Up to 300 characters.",
+            ),
+          ),
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const name = String(form.get("name") ?? "").trim();
@@ -440,19 +473,27 @@ export function createCourtsPages({ api, getOrgId }) {
     function courtsView() {
       return dataTable({
         searchState: state,
+        filter: tabsHost,
         schema: {
           columns: [
-            {
-              key: "order",
-              label: "Order",
-              align: "right",
-              render: (r) => String(r.sort_order),
-            },
             {
               key: "name",
               label: "Court",
               render: (r) =>
-                h("span", {}, r.name, h("span", { class: "sub" }, r.code)),
+                h(
+                  "div",
+                  { class: "member-cell" },
+                  h("span", {
+                    class: "member-avatar is-icon",
+                    "aria-hidden": "true",
+                  }, icon("grid")),
+                  h(
+                    "div",
+                    { class: "member-meta" },
+                    h("span", { class: "member-name" }, r.name),
+                    h("span", { class: "sub member-subtext" }, r.code),
+                  ),
+                ),
             },
             {
               key: "type",
@@ -529,20 +570,30 @@ export function createCourtsPages({ api, getOrgId }) {
         title: "New opening hours",
         eyebrow: "Opening hours",
         icon: "clock",
+        description: "Set the days and hours a court is open for bookings.",
         confirmLabel: "Add hours",
         body: h(
           "div",
-          { class: "stack" },
-          field(
-            "hr-court",
-            "Court",
-            select("hr-court", "court", courtOptions(), ""),
+          { class: "form-grid" },
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            field(
+              "hr-court",
+              "Court",
+              select("hr-court", "court", courtOptions(), ""),
+              'Specific court hours replace "All courts" hours for that day.',
+            ),
           ),
           h(
-            "fieldset",
-            { class: "settings-methods" },
-            h("legend", {}, "Days"),
-            ...days,
+            "div",
+            { class: "form-grid-wide" },
+            h(
+              "fieldset",
+              { class: "settings-methods" },
+              h("legend", {}, "Days"),
+              ...days,
+            ),
           ),
           field(
             "hr-open",
@@ -552,6 +603,7 @@ export function createCourtsPages({ api, getOrgId }) {
               required: true,
               value: "08:00",
             }),
+            "Opening time (Asia/Manila).",
           ),
           field(
             "hr-close",
@@ -561,6 +613,7 @@ export function createCourtsPages({ api, getOrgId }) {
               required: true,
               value: "21:00",
             }),
+            "Closing time (Asia/Manila).",
           ),
           field(
             "hr-from",
@@ -570,7 +623,7 @@ export function createCourtsPages({ api, getOrgId }) {
               required: true,
               value: businessDate(),
             }),
-            "Hours are dated, so a change never rewrites the past.",
+            "First day these hours apply.",
           ),
           field(
             "hr-to",
@@ -578,7 +631,7 @@ export function createCourtsPages({ api, getOrgId }) {
             input("hr-to", "valid_to", { type: "date" }),
             "Leave empty for no end date.",
           ),
-          error,
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const chosen = DAYS.filter((d) => form.get(`day${d.n}`) === "on");
@@ -648,6 +701,7 @@ export function createCourtsPages({ api, getOrgId }) {
         ),
         dataTable({
           searchState: state,
+          filter: tabsHost,
           schema: {
             columns: [
               {
@@ -731,25 +785,16 @@ export function createCourtsPages({ api, getOrgId }) {
         title: "New rate",
         eyebrow: "Rates",
         icon: "currency",
+        description: "Set the hourly booking rate for a court, day or time.",
         confirmLabel: "Add rate",
         body: h(
           "div",
-          { class: "stack" },
+          { class: "form-grid" },
           field(
             "rt-court",
             "Court",
             select("rt-court", "court", courtOptions(), ""),
-          ),
-          field(
-            "rt-rate",
-            "Rate per hour (PHP) *",
-            input("rt-rate", "rate", {
-              type: "number",
-              min: 0,
-              max: 100000,
-              step: "0.01",
-              required: true,
-            }),
+            "Choose a court or apply to all courts.",
           ),
           field(
             "rt-day",
@@ -762,11 +807,30 @@ export function createCourtsPages({ api, getOrgId }) {
               ),
               "",
             ),
+            "Specific day rates override every-day rates.",
+          ),
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            field(
+              "rt-rate",
+              "Rate per hour (PHP) *",
+              input("rt-rate", "rate", {
+                type: "number",
+                min: 0,
+                max: 100000,
+                step: "0.01",
+                required: true,
+                placeholder: "e.g. 250.00",
+              }),
+              "Past bookings keep the price they were booked at.",
+            ),
           ),
           field(
             "rt-from-t",
             "From time",
             input("rt-from-t", "from_time", { type: "time", value: "00:00" }),
+            "Start of rate window.",
           ),
           field(
             "rt-to-t",
@@ -782,7 +846,7 @@ export function createCourtsPages({ api, getOrgId }) {
               required: true,
               value: businessDate(),
             }),
-            "Bookings already made keep their price. The most specific rate wins: a court beats all courts, a day beats every day.",
+            "First day this rate applies.",
           ),
           field(
             "rt-to",
@@ -790,7 +854,7 @@ export function createCourtsPages({ api, getOrgId }) {
             input("rt-to", "valid_to", { type: "date" }),
             "Leave empty for no end date.",
           ),
-          error,
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const rate = Number(form.get("rate"));
@@ -859,6 +923,7 @@ export function createCourtsPages({ api, getOrgId }) {
         ),
         dataTable({
           searchState: state,
+          filter: tabsHost,
           schema: {
             columns: [
               {
@@ -944,14 +1009,21 @@ export function createCourtsPages({ api, getOrgId }) {
         title: "New blackout",
         eyebrow: "Blackouts",
         icon: "alert",
+        description:
+          "Block a court or all courts during maintenance or events.",
         confirmLabel: "Add blackout",
         body: h(
           "div",
-          { class: "stack" },
-          field(
-            "bo-court",
-            "Court",
-            select("bo-court", "court", courtOptions(), ""),
+          { class: "form-grid" },
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            field(
+              "bo-court",
+              "Court",
+              select("bo-court", "court", courtOptions(), ""),
+              "Choose a single court or block all courts.",
+            ),
           ),
           field(
             "bo-sd",
@@ -961,6 +1033,7 @@ export function createCourtsPages({ api, getOrgId }) {
               required: true,
               value: today,
             }),
+            "Start date of the closure.",
           ),
           field(
             "bo-st",
@@ -970,6 +1043,7 @@ export function createCourtsPages({ api, getOrgId }) {
               required: true,
               value: "08:00",
             }),
+            "Start time (Asia/Manila).",
           ),
           field(
             "bo-ed",
@@ -979,6 +1053,7 @@ export function createCourtsPages({ api, getOrgId }) {
               required: true,
               value: today,
             }),
+            "End date of the closure.",
           ),
           field(
             "bo-et",
@@ -988,18 +1063,23 @@ export function createCourtsPages({ api, getOrgId }) {
               required: true,
               value: "12:00",
             }),
-            "The court can be booked again from this time.",
+            "Bookings resume from this time.",
           ),
-          field(
-            "bo-reason",
-            "Reason *",
-            input("bo-reason", "reason", {
-              required: true,
-              maxlength: 200,
-              placeholder: "For example: resurfacing",
-            }),
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            field(
+              "bo-reason",
+              "Reason *",
+              input("bo-reason", "reason", {
+                required: true,
+                maxlength: 200,
+                placeholder: "For example: resurfacing",
+              }),
+              "Shown on the court schedule.",
+            ),
           ),
-          error,
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const start = `${form.get("start_date")}T${
@@ -1046,6 +1126,7 @@ export function createCourtsPages({ api, getOrgId }) {
       const now = Date.now();
       return dataTable({
         searchState: state,
+        filter: tabsHost,
         schema: {
           columns: [
             {
@@ -1122,8 +1203,9 @@ export function createCourtsPages({ api, getOrgId }) {
     addBtn.querySelector(".btn-label")?.replaceWith(addBtnLabel);
 
     function draw() {
-      tabsHost.replaceChildren(tabs({
+      tabsHost.replaceChildren(tableFilter({
         activeId: state.tab,
+        label: "View court records",
         tabs: TABS,
         onChange: (id) => {
           state.tab = id;
@@ -1161,10 +1243,10 @@ export function createCourtsPages({ api, getOrgId }) {
           }
           return content;
         })();
-      body.replaceChildren(
+      body.replaceChildren(...[
         disabled ? h("p", { class: "muted" }, "Add a court first.") : null,
         tableNode,
-      );
+      ].filter(Boolean));
     }
 
     page.append(
@@ -1175,7 +1257,6 @@ export function createCourtsPages({ api, getOrgId }) {
           "Courts, opening hours, rates and blackout times. All times are Asia/Manila.",
         actions: [addBtn],
       }),
-      tabsHost,
       body,
     );
     refresh();

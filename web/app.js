@@ -30,6 +30,7 @@ import { createEventsPages } from "./pages-events.js";
 import { createMemberEventsPages } from "./pages-events-member.js";
 import { createScoringPages } from "./pages-scoring.js";
 import { createBracketPages } from "./pages-bracket.js";
+import { createRankingPages } from "./pages-ranking.js";
 import { createImportPages } from "./pages-import.js";
 import { createRanksPages } from "./pages-ranks.js";
 import { createStaffPages } from "./pages-staff.js";
@@ -203,6 +204,9 @@ route("/admin/events", () => eventsPages.eventsPage(), "Events", {
 });
 
 const memberEventsPages = createMemberEventsPages({ api, client, session });
+
+const rankingPages = createRankingPages({ api });
+route("/ranking", () => rankingPages.rankingPage(), "Ranking", "signedIn");
 
 const bracketPages = createBracketPages({ api });
 route("/bracket", () => bracketPages.bracketPage(), "Bracket", "signedIn");
