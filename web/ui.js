@@ -1,5 +1,7 @@
 import { LUCIDE, LUCIDE_SOLID } from "./lib/lucide.js";
 import { buttonClasses } from "./lib/buttons.js";
+import { DEFAULT_PAGE_SIZE } from "./lib/paginate.js";
+export { DEFAULT_PAGE_SIZE } from "./lib/paginate.js";
 import { tableColumn, tableMinWidth, tableTracks } from "./lib/table-layout.js";
 
 // Shared UI components. Every dynamic value goes through textContent / text nodes,
@@ -8,6 +10,7 @@ import { tableColumn, tableMinWidth, tableTracks } from "./lib/table-layout.js";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const controlNodes = new WeakMap();
 const tableSearches = new WeakMap();
+const tablePages = new WeakMap();
 const selectSequence = { next: 0 };
 
 /** Create an element. Event handlers must be functions; string `on*` attributes are ignored. */
@@ -174,6 +177,20 @@ export function field(
 ) {
   if (type === "date") {
     return dateField({
+      id,
+      label,
+      value,
+      required,
+      disabled,
+      min,
+      max,
+      error,
+      hint,
+      onChange,
+    });
+  }
+  if (type === "datetime-local") {
+    return dateTimeField({
       id,
       label,
       value,
@@ -1263,34 +1280,39 @@ export function timeField(
   });
 }
 
-export function dateTimeField(
-  {
-    id,
-    label,
-    value = "",
-    min,
-    max,
-    error,
-    hint,
-    required,
-    disabled,
-    onChange,
-  },
-) {
-  return field({
-    id,
-    label,
-    type: "datetime-local",
-    value,
-    min,
-    max,
-    error,
-    hint,
-    required,
-    disabled,
-    iconTrailing: "calendar",
-    onChange,
+export function dateTimeControl(props = {}) {
+  const native = h("input", { ...props, type: "datetime-local" });
+  const control = calendarDropdown({
+    ...props,
+    includeTime: true,
+    ariaLabel: props.ariaLabel || props["aria-label"],
+    value: native.value,
+    nativeInput: native,
+    onChange: () =>
+      native.dispatchEvent(new Event("change", { bubbles: true })),
   });
+  for (const property of ["value", "disabled"]) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      property,
+    );
+    Object.defineProperty(native, property, {
+      get() {
+        return descriptor.get.call(this);
+      },
+      set(next) {
+        descriptor.set.call(this, next);
+        control.refreshFromNative();
+      },
+      configurable: true,
+    });
+  }
+  controlNodes.set(native, control);
+  return native;
+}
+
+export function dateTimeField(config) {
+  return controlNodes.get(dateTimeControl({ ...config, name: config.id }));
 }
 
 export function calendarDropdown(
@@ -1311,11 +1333,46 @@ export function calendarDropdown(
     disabled = false,
     defaultView = "",
     nativeInput = null,
+    includeTime = false,
   },
 ) {
   let selectedStart = range ? startValue : value;
   let selectedEnd = range ? endValue : "";
   let isOpen = false;
+
+  let selectedDate = "";
+  let selectedHour = "09";
+  let selectedMinute = "00";
+  let selectedPeriod = "AM";
+
+  const parseDateTime = (str) => {
+    if (!str) {
+      selectedDate = "";
+      selectedHour = "09";
+      selectedMinute = "00";
+      selectedPeriod = "AM";
+      return;
+    }
+    const [d, t] = String(str).split(/[T\s]/);
+    selectedDate = d || "";
+    if (t) {
+      const [hStr, mStr] = t.split(":");
+      let hNum = parseInt(hStr, 10);
+      if (!isNaN(hNum)) {
+        selectedPeriod = hNum >= 12 ? "PM" : "AM";
+        hNum = hNum % 12 || 12;
+        selectedHour = String(hNum).padStart(2, "0");
+      }
+      if (mStr !== undefined) {
+        selectedMinute = String(parseInt(mStr, 10) || 0).padStart(2, "0");
+      }
+    }
+  };
+
+  if (includeTime) {
+    parseDateTime(value);
+    selectedStart = selectedDate;
+  }
 
   const initialDate = selectedStart ? new Date(selectedStart) : new Date();
   let viewYear = isNaN(initialDate.getTime())
@@ -1347,7 +1404,22 @@ export function calendarDropdown(
   ];
   const DAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
+  const getFullDateTimeString = () => {
+    if (!selectedDate) return "";
+    let h24 = parseInt(selectedHour, 10) % 12;
+    if (selectedPeriod === "PM") h24 += 12;
+    return `${selectedDate}T${String(h24).padStart(2, "0")}:${selectedMinute}`;
+  };
+
   const formatDisplay = () => {
+    if (includeTime) {
+      if (!selectedDate) return "Select date & time";
+      const [y, m, d] = selectedDate.split("-");
+      const mName = MONTH_NAMES[parseInt(m, 10) - 1]?.slice(0, 3) || m;
+      return `${mName} ${
+        parseInt(d, 10)
+      }, ${y}  ${selectedHour}:${selectedMinute} ${selectedPeriod}`;
+    }
     if (range) {
       if (selectedStart && selectedEnd) {
         return `${selectedStart} → ${selectedEnd}`;
@@ -1369,7 +1441,8 @@ export function calendarDropdown(
       type: "button",
       class: "input calendar-drop-trigger",
       id,
-      "aria-label": ariaLabel || label || "Choose date",
+      "aria-label": ariaLabel || label ||
+        (includeTime ? "Choose date and time" : "Choose date"),
       "aria-haspopup": "dialog",
       "aria-expanded": "false",
       "aria-controls": `${id}-calendar`,
@@ -1382,7 +1455,7 @@ export function calendarDropdown(
     h(
       "span",
       { class: "calendar-drop-trigger-left" },
-      icon("calendar"),
+      icon(includeTime ? "clock" : "calendar"),
       displayText,
     ),
     icon("chevronDown"),
@@ -1390,9 +1463,10 @@ export function calendarDropdown(
 
   const popover = h("div", {
     id: `${id}-calendar`,
-    class: "calendar-popover",
+    class: `calendar-popover${includeTime ? " has-time" : ""}`,
     role: "dialog",
-    "aria-label": label || "Choose date",
+    "aria-label": label ||
+      (includeTime ? "Choose date and time" : "Choose date"),
     hidden: true,
   });
 
@@ -1400,8 +1474,26 @@ export function calendarDropdown(
     type: "hidden",
     id: `${id}-value`,
     name: id,
-    value: selectedStart || "",
+    value: includeTime ? getFullDateTimeString() : (selectedStart || ""),
   });
+
+  const emitDateTimeSelect = () => {
+    if (!selectedDate) {
+      selectedDate = new Date().toISOString().slice(0, 10);
+    }
+    const val = getFullDateTimeString();
+    hiddenInput.value = val;
+    displayText.textContent = formatDisplay();
+    if (onChange) {
+      const evt = {
+        target: { id, name: id, value: val },
+        currentTarget: { id, name: id, value: val },
+        value: val,
+        toString: () => val,
+      };
+      onChange(evt);
+    }
+  };
 
   const emitSingleSelect = (dStr) => {
     selectedStart = dStr;
@@ -1509,7 +1601,9 @@ export function calendarDropdown(
         String(day).padStart(2, "0")
       }`;
       const isToday = dStr === todayStr;
-      const isStart = dStr === selectedStart;
+      const isStart = includeTime
+        ? dStr === selectedDate
+        : dStr === selectedStart;
       const isEnd = dStr === selectedEnd;
       const inRange = range && selectedStart && selectedEnd &&
         dStr > selectedStart && dStr < selectedEnd;
@@ -1522,8 +1616,8 @@ export function calendarDropdown(
       const classes = [
         "calendar-day",
         isToday ? "is-today" : "",
-        isStart ? "is-selected is-range-start" : "",
-        isEnd ? "is-selected is-range-end" : "",
+        isStart ? `is-selected${range ? " is-range-start" : ""}` : "",
+        isEnd ? `is-selected${range ? " is-range-end" : ""}` : "",
         inRange ? "is-in-range" : "",
       ].filter(Boolean).join(" ");
 
@@ -1536,7 +1630,11 @@ export function calendarDropdown(
           disabled: isDateDisabled,
           onClick: (e) => {
             e.stopPropagation();
-            if (range) {
+            if (includeTime) {
+              selectedDate = dStr;
+              emitDateTimeSelect();
+              renderMonth();
+            } else if (range) {
               if (!selectedStart || (selectedStart && selectedEnd)) {
                 selectedStart = dStr;
                 selectedEnd = "";
@@ -1576,7 +1674,11 @@ export function calendarDropdown(
             const now = new Date();
             viewYear = now.getFullYear();
             viewMonth = now.getMonth();
-            if (range) {
+            if (includeTime) {
+              selectedDate = todayStr;
+              emitDateTimeSelect();
+              renderMonth();
+            } else if (range) {
               selectedStart = todayStr;
               selectedEnd = todayStr;
               hiddenInput.value = todayStr;
@@ -1598,29 +1700,45 @@ export function calendarDropdown(
           class: "preset-chip",
           onClick: (e) => {
             e.stopPropagation();
-            const now = new Date();
-            viewYear = now.getFullYear();
-            viewMonth = now.getMonth();
-            const first = new Date(viewYear, viewMonth, 1).toISOString().slice(
-              0,
-              10,
-            );
-            const last = new Date(viewYear, viewMonth + 1, 0).toISOString()
-              .slice(0, 10);
-            if (range) {
-              selectedStart = first;
-              selectedEnd = last;
-              hiddenInput.value = first;
-              displayText.textContent = formatDisplay();
+            if (includeTime) {
+              const now = new Date();
+              viewYear = now.getFullYear();
+              viewMonth = now.getMonth();
+              selectedDate = todayStr;
+              let nowH = now.getHours();
+              selectedPeriod = nowH >= 12 ? "PM" : "AM";
+              nowH = nowH % 12 || 12;
+              selectedHour = String(nowH).padStart(2, "0");
+              const nowM = Math.round(now.getMinutes() / 5) * 5;
+              selectedMinute = String(nowM >= 60 ? 55 : nowM).padStart(2, "0");
+              emitDateTimeSelect();
               renderMonth();
-              onChange?.({ start: selectedStart, end: selectedEnd });
-              setTimeout(() => toggleCalendar(false), 180);
             } else {
-              emitSingleSelect(first);
+              const now = new Date();
+              viewYear = now.getFullYear();
+              viewMonth = now.getMonth();
+              const first = new Date(viewYear, viewMonth, 1).toISOString()
+                .slice(
+                  0,
+                  10,
+                );
+              const last = new Date(viewYear, viewMonth + 1, 0).toISOString()
+                .slice(0, 10);
+              if (range) {
+                selectedStart = first;
+                selectedEnd = last;
+                hiddenInput.value = first;
+                displayText.textContent = formatDisplay();
+                renderMonth();
+                onChange?.({ start: selectedStart, end: selectedEnd });
+                setTimeout(() => toggleCalendar(false), 180);
+              } else {
+                emitSingleSelect(first);
+              }
             }
           },
         },
-        "This Month",
+        includeTime ? "Now" : "This Month",
       ),
       h(
         "button",
@@ -1629,21 +1747,173 @@ export function calendarDropdown(
           class: "preset-chip",
           onClick: (e) => {
             e.stopPropagation();
-            selectedStart = "";
-            selectedEnd = "";
-            hiddenInput.value = "";
-            displayText.textContent = formatDisplay();
-            renderMonth();
-            if (range) {
-              onChange?.({ start: "", end: "" });
+            if (includeTime) {
+              selectedDate = "";
+              hiddenInput.value = "";
+              displayText.textContent = formatDisplay();
+              renderMonth();
+              onChange?.({
+                target: { id, name: id, value: "" },
+                currentTarget: { id, name: id, value: "" },
+                value: "",
+                toString: () => "",
+              });
             } else {
-              emitSingleSelect("");
+              selectedStart = "";
+              selectedEnd = "";
+              hiddenInput.value = "";
+              displayText.textContent = formatDisplay();
+              renderMonth();
+              if (range) {
+                onChange?.({ start: "", end: "" });
+              } else {
+                emitSingleSelect("");
+              }
             }
           },
         },
         "Clear",
       ),
     );
+
+    if (includeTime) {
+      popover.classList.add("has-time");
+      const hours = [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11",
+        "12",
+      ];
+      const baseMinutes = [
+        "00",
+        "05",
+        "10",
+        "15",
+        "20",
+        "25",
+        "30",
+        "35",
+        "40",
+        "45",
+        "50",
+        "55",
+      ];
+      const minuteList = baseMinutes.includes(selectedMinute)
+        ? baseMinutes
+        : [...baseMinutes, selectedMinute].sort((a, b) =>
+          Number(a) - Number(b)
+        );
+
+      const hourBtns = hours.map((hStr) =>
+        h("button", {
+          type: "button",
+          class: `calendar-time-btn${
+            hStr === selectedHour ? " is-selected" : ""
+          }`,
+          onClick: (e) => {
+            e.stopPropagation();
+            selectedHour = hStr;
+            emitDateTimeSelect();
+            renderMonth();
+          },
+        }, hStr)
+      );
+
+      const minBtns = minuteList.map((mStr) =>
+        h("button", {
+          type: "button",
+          class: `calendar-time-btn${
+            mStr === selectedMinute ? " is-selected" : ""
+          }`,
+          onClick: (e) => {
+            e.stopPropagation();
+            selectedMinute = mStr;
+            emitDateTimeSelect();
+            renderMonth();
+          },
+        }, mStr)
+      );
+
+      const amBtn = h("button", {
+        type: "button",
+        class: `calendar-time-btn${
+          selectedPeriod === "AM" ? " is-selected" : ""
+        }`,
+        onClick: (e) => {
+          e.stopPropagation();
+          selectedPeriod = "AM";
+          emitDateTimeSelect();
+          renderMonth();
+        },
+      }, "AM");
+
+      const pmBtn = h("button", {
+        type: "button",
+        class: `calendar-time-btn${
+          selectedPeriod === "PM" ? " is-selected" : ""
+        }`,
+        onClick: (e) => {
+          e.stopPropagation();
+          selectedPeriod = "PM";
+          emitDateTimeSelect();
+          renderMonth();
+        },
+      }, "PM");
+
+      const timePane = h(
+        "div",
+        { class: "calendar-time-pane" },
+        h(
+          "div",
+          { class: "calendar-time-header" },
+          h("span", { class: "calendar-time-title" }, "Time"),
+          h(
+            "span",
+            { class: "calendar-time-display" },
+            `${selectedHour}:${selectedMinute} ${selectedPeriod}`,
+          ),
+        ),
+        h(
+          "div",
+          { class: "calendar-time-columns" },
+          h("div", { class: "calendar-time-col hours-col" }, ...hourBtns),
+          h("div", { class: "calendar-time-col minutes-col" }, ...minBtns),
+          h("div", { class: "calendar-time-col period-col" }, amBtn, pmBtn),
+        ),
+        h(
+          "div",
+          { class: "calendar-time-actions" },
+          button({
+            label: "Done",
+            variant: "primary",
+            size: "sm",
+            onClick: (e) => {
+              e.stopPropagation();
+              toggleCalendar(false);
+            },
+          }),
+        ),
+      );
+
+      const calendarMain = h(
+        "div",
+        { class: "calendar-main" },
+        header,
+        weekdaysRow,
+        daysGrid,
+        presetsBar,
+      );
+      popover.append(calendarMain, timePane);
+      return;
+    }
 
     if (pickMode === "years") {
       const minYear = min ? Number(min.slice(0, 4)) : viewYear - 100;
@@ -1717,7 +1987,17 @@ export function calendarDropdown(
       pickMode = "days";
       renderMonth();
       popover.hidden = false;
-      requestAnimationFrame(() => popover.classList.add("is-open"));
+      requestAnimationFrame(() => {
+        popover.classList.add("is-open");
+        if (includeTime) {
+          popover.querySelector(".hours-col .is-selected")?.scrollIntoView({
+            block: "center",
+          });
+          popover.querySelector(".minutes-col .is-selected")?.scrollIntoView({
+            block: "center",
+          });
+        }
+      });
       document.addEventListener("pointerdown", closeOutside);
       document.addEventListener("keydown", closeOnEscape);
     } else {
@@ -1759,7 +2039,9 @@ export function calendarDropdown(
     nativeInput.addEventListener("invalid", (event) => {
       event.preventDefault();
       errorEl.textContent = nativeInput.validationMessage ||
-        "Choose a valid date.";
+        (includeTime
+          ? "Choose a valid date and time."
+          : "Choose a valid date.");
       errorEl.hidden = false;
       triggerBtn.setAttribute("aria-invalid", "true");
       toggleCalendar(true);
@@ -1767,15 +2049,21 @@ export function calendarDropdown(
   }
   wrapper.refreshFromNative = () => {
     selectedStart = hiddenInput.value;
+    if (includeTime) {
+      parseDateTime(hiddenInput.value);
+    }
     displayText.textContent = formatDisplay();
     triggerBtn.disabled = hiddenInput.disabled;
     if (hiddenInput.disabled && isOpen) toggleCalendar(false);
   };
   wrapper.inputEl = hiddenInput;
   Object.defineProperty(wrapper, "value", {
-    get: () => selectedStart,
+    get: () => includeTime ? getFullDateTimeString() : selectedStart,
     set: (v) => {
       selectedStart = v;
+      if (includeTime) {
+        parseDateTime(v);
+      }
       hiddenInput.value = v;
       displayText.textContent = formatDisplay();
       renderMonth();
@@ -2295,6 +2583,7 @@ export function dataTable(
     searchPlaceholder,
     filter,
     searchState,
+    pageSize = 0,
     searchKey = ariaLabel ??
       schema.columns.map((column) => column.key).join(":"),
   },
@@ -2527,6 +2816,13 @@ export function dataTable(
     saved = new Map();
     tableSearches.set(searchState, saved);
   }
+  let savedPages = searchState ? tablePages.get(searchState) : null;
+  if (searchState && !savedPages) {
+    savedPages = new Map();
+    tablePages.set(searchState, savedPages);
+  }
+  let currentPage = savedPages?.get(searchKey) ?? 1;
+  const pagerHost = pageSize > 0 ? h("div", { class: "grid-pager" }) : null;
   const search = searchControl({
     class: "input",
     placeholder: searchPlaceholder ??
@@ -2534,7 +2830,10 @@ export function dataTable(
     "aria-label": `Search ${ariaLabel ?? "records"}`,
     value: saved?.get(searchKey) ?? "",
     disabled: state === "loading" || state === "error",
-    onInput: () => applySearch(),
+    onInput: () => {
+      currentPage = 1;
+      applySearch();
+    },
   });
   const empty = h(
     "div",
@@ -2547,6 +2846,7 @@ export function dataTable(
       icon: "x",
       onClick: () => {
         search.value = "";
+        currentPage = 1;
         applySearch();
         search.focus();
       },
@@ -2555,13 +2855,39 @@ export function dataTable(
   body.append(empty);
   function applySearch() {
     const terms = normalize(search.value).trim().split(/\s+/).filter(Boolean);
-    let visible = 0;
-    for (const record of records) {
-      record.node.hidden = !terms.every((term) => record.text.includes(term));
-      if (!record.node.hidden) visible++;
+    const matches = records.filter((record) =>
+      terms.every((term) => record.text.includes(term))
+    );
+    if (state !== "loading" && state !== "error") {
+      currentPage = Math.min(
+        Math.max(1, currentPage),
+        Math.max(
+          1,
+          Math.ceil(matches.length / (pageSize || matches.length || 1)),
+        ),
+      );
+      savedPages?.set(searchKey, currentPage);
     }
+    for (const record of records) record.node.hidden = true;
+    const visible = pageSize > 0
+      ? matches.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+      : matches;
+    for (const record of visible) record.node.hidden = false;
     saved?.set(searchKey, search.value);
-    empty.hidden = !records.length || visible > 0;
+    empty.hidden = !records.length || matches.length > 0;
+    if (pagerHost) {
+      pagerHost.replaceChildren(
+        ...(state === "loading" || state === "error" ? [] : [pagination({
+          page: currentPage,
+          pageSize,
+          total: matches.length,
+          onPage: (next) => {
+            currentPage = next;
+            applySearch();
+          },
+        })]),
+      );
+    }
   }
   applySearch();
   return h(
@@ -2573,17 +2899,24 @@ export function dataTable(
       search,
       filter,
     ),
-    h("div", { class: "data-grid" }, scroll),
+    h("div", { class: "data-grid" }, scroll, pagerHost),
   );
 }
 
 /** Footer with the visible range and total; never shows "1–0". */
-export function pagination({ page, pageSize, total, onPage }) {
+export function pagination(
+  { page = 1, pageSize = DEFAULT_PAGE_SIZE, total, onPage },
+) {
+  if (total <= 0) return h("div", { class: "pager", hidden: true });
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const current = Math.min(Math.max(page, 1), pages);
   const from = total === 0 ? 0 : (current - 1) * pageSize + 1;
   const to = Math.min(current * pageSize, total);
-  const nav = h("div", { class: "pages" });
+  const nav = h("div", {
+    class: "pages",
+    role: "navigation",
+    "aria-label": "Pagination",
+  });
   nav.append(
     h("button", {
       class: "btn btn-icon",
@@ -2619,8 +2952,16 @@ export function pagination({ page, pageSize, total, onPage }) {
     { class: "pager" },
     h(
       "span",
-      { class: "muted" },
-      total === 0 ? "No records" : `Showing ${from}–${to} of ${total}`,
+      { class: "pager-summary", role: "status", "aria-live": "polite" },
+      h(
+        "span",
+        { class: "pager-range" },
+        h("strong", {}, `${from}\u2013${to}`),
+        h("span", {}, "of"),
+        h("strong", {}, String(total)),
+        h("span", {}, total === 1 ? "record" : "records"),
+      ),
+      h("span", { class: "pager-size" }, `${pageSize} records per page`),
     ),
     nav,
   );
@@ -3005,6 +3346,14 @@ export function toast(
     ),
   );
 
+  const dismiss = () => {
+    if (el.classList.contains("toast-exit")) return;
+    el.classList.add("toast-exit");
+    setTimeout(() => {
+      if (el.parentNode) el.remove();
+    }, 220);
+  };
+
   if (actionLabel) {
     el.append(
       button({
@@ -3013,7 +3362,7 @@ export function toast(
         size: "sm",
         onClick: () => {
           onAction?.();
-          el.remove();
+          dismiss();
         },
       }),
     );
@@ -3026,7 +3375,7 @@ export function toast(
       type: "button",
       "aria-label": "Dismiss notification",
       title: "Dismiss",
-      onClick: () => el.remove(),
+      onClick: dismiss,
     },
     icon("x"),
   );
@@ -3040,7 +3389,7 @@ export function toast(
 
   if (timeout > 0 && !actionLabel) {
     setTimeout(() => {
-      if (el.parentNode) el.remove();
+      if (el.parentNode) dismiss();
     }, timeout);
   }
   return el;
@@ -3088,8 +3437,12 @@ export function alertBox(
         "aria-label": "Dismiss alert",
         title: "Dismiss",
         onClick: () => {
-          el.remove();
-          onDismiss?.();
+          if (el.classList.contains("alert-exit")) return;
+          el.classList.add("alert-exit");
+          setTimeout(() => {
+            el.remove();
+            onDismiss?.();
+          }, 200);
         },
       }, icon("x"))
       : null,

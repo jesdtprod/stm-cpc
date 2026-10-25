@@ -10,11 +10,17 @@ import {
   badge,
   button,
   dataTable,
+  DEFAULT_PAGE_SIZE,
   h,
+  icon,
   iconButton,
+  inputWithIcon,
   openModal,
+  pagination,
+  searchControl,
   selectControl,
-  tabs,
+  selectField,
+  switchToggle,
   toast,
 } from "./ui.js";
 
@@ -30,8 +36,8 @@ const RULE_SELECT =
   "id,name,conditions,action,levels,min_rank_id,max_rank_id,cooldown_days,exclude_forfeits,priority,is_active,version";
 
 const OVERFLOW = {
-  chain: "Moving past the top or bottom continues into the next category",
-  stop: "Movement stops at the top and bottom of this category",
+  chain: "Continue into the next category",
+  stop: "Stay within this category",
 };
 const ACTION_LABEL = { up: "Move up", down: "Move down", retain: "Stay" };
 
@@ -58,13 +64,66 @@ export function createRanksPages({ api, getOrgId }) {
       class: "page admin-dashboard admin-members-page admin-ranks-page",
     });
     attachPagePattern(page);
-    const tabsHost = h("div", {});
     const body = h("div", { class: "ranks-body" });
     const state = {
       tab: "ladders",
       cats: [],
       rules: [],
       status: "loading",
+      term: "",
+      category: "all",
+      page: 1,
+    };
+    const search = searchControl({
+      class: "input",
+      id: "ranks-search",
+      placeholder: "Search categories or ranks...",
+      "aria-label": "Search ranks",
+      onInput: () => {
+        state.term = search.value;
+        state.page = 1;
+        draw();
+      },
+    });
+    const viewFilter = selectField({
+      id: "ranks-view",
+      ariaLabel: "View rank management",
+      value: state.tab,
+      options: [{ value: "ladders", label: "Ladders and ranks" }, {
+        value: "rules",
+        label: "Movement rules",
+      }],
+      onChange: (event) => {
+        state.tab = event.target.value;
+        state.term = "";
+        search.value = "";
+        state.page = 1;
+        draw();
+      },
+    });
+    const categoryFilter = selectField({
+      id: "ranks-category",
+      ariaLabel: "Filter ladders by category",
+      value: state.category,
+      options: [{ value: "all", label: "All categories" }],
+      onChange: (event) => {
+        state.category = event.target.value;
+        draw();
+      },
+    });
+    const categoryHost = h(
+      "div",
+      { class: "member-status-filter" },
+      categoryFilter,
+    );
+    const matchesSearch = (value) => {
+      const normalize = (text) =>
+        String(text ?? "").normalize("NFKD").replace(/\p{M}/gu, "")
+          .toLocaleLowerCase();
+      const text = normalize(value);
+      return normalize(state.term).trim().split(/\s+/).filter(Boolean).every(
+        (term) => text.includes(term),
+      );
     };
 
     // ----------------------------------------------------------------- data
@@ -112,16 +171,34 @@ export function createRanksPages({ api, getOrgId }) {
       el.hidden = false;
       return false;
     };
-    const field = (id, label, input, hint) =>
-      h(
+    const field = (id, label, input, hint, iconName) => {
+      const resolvedIcon = iconName === undefined
+        ? (/code/.test(id)
+          ? "idCard"
+          : /cool/.test(id)
+          ? "clock"
+          : /reason/.test(id)
+          ? "file"
+          : /result/.test(id)
+          ? "trophy"
+          : /matches/.test(id)
+          ? "checkCircle"
+          : /action/.test(id)
+          ? "shuffle"
+          : /name|min|max|place/.test(id)
+          ? "medal"
+          : "layers")
+        : iconName;
+      return h(
         "div",
         { class: "field" },
         label ? h("label", { for: id }, label) : null,
-        input,
+        resolvedIcon ? inputWithIcon(input, resolvedIcon) : input,
         hint
           ? h("span", { class: "field-hint", id: `${id}-hint` }, hint)
           : null,
       );
+    };
     const select = (id, name, options, value) =>
       selectControl(
         { class: "input select-input", id, name },
@@ -141,6 +218,9 @@ export function createRanksPages({ api, getOrgId }) {
       const editing = Boolean(row);
       const key = row?.id ?? api.newKey();
       const ranks = liveRanks(ladder);
+      const rankIndex = editing ? ranks.findIndex((r) => r.id === row.id) : -1;
+      const sampleName = `${cat.name} Low`;
+      const sampleCode = codeFrom(sampleName) || "beginner-low";
       const error = errorLine();
       const nameInput = h("input", {
         class: "input",
@@ -149,6 +229,7 @@ export function createRanksPages({ api, getOrgId }) {
         required: true,
         maxlength: 60,
         value: row?.name ?? "",
+        placeholder: `e.g. ${sampleName}`,
       });
       const codeInput = h("input", {
         class: "input",
@@ -158,6 +239,7 @@ export function createRanksPages({ api, getOrgId }) {
         maxlength: 32,
         value: row?.code ?? "",
         readonly: editing,
+        placeholder: `e.g. ${sampleCode}`,
       });
       let touched = editing;
       codeInput.addEventListener("input", () => (touched = true));
@@ -166,15 +248,81 @@ export function createRanksPages({ api, getOrgId }) {
           if (!touched) codeInput.value = codeFrom(nameInput.value);
         });
       }
+      const autoStart = !editing && ranks.length === 0;
+      const alreadyStart = editing && Boolean(row.is_starting);
+      const startingToggle = switchToggle({
+        id: "rk-starting",
+        name: "is_starting",
+        label: h(
+          "span",
+          { class: "form-setting-label" },
+          icon("checkCircle"),
+          "Default starting rank",
+        ),
+        checked: autoStart || alreadyStart,
+        disabled: autoStart || alreadyStart,
+      });
       return openModal({
         title: editing ? "Edit rank" : "New rank",
         eyebrow: cat.name,
-        icon: "layers",
+        icon: "medal",
+        description:
+          "Set the rank name, unique code and starting status within this category.",
         confirmLabel: editing ? "Save changes" : "Add rank",
         body: h(
           "div",
-          { class: "stack" },
-          field("rk-name", "Name *", nameInput),
+          { class: "form-grid" },
+          h(
+            "div",
+            { class: "member-decision-subject form-grid-wide" },
+            h(
+              "span",
+              { class: "member-avatar is-icon", "aria-hidden": "true" },
+              icon(editing ? "medal" : "layers"),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "member-decision-name" },
+                h(
+                  "strong",
+                  { class: "member-name" },
+                  editing ? row.name : cat.name,
+                ),
+                editing
+                  ? badge(
+                    `Rank #${
+                      rankIndex >= 0 ? rankIndex + 1 : 1
+                    } of ${ranks.length}`,
+                    "info",
+                  )
+                  : badge(
+                    `${ranks.length} ${ranks.length === 1 ? "rank" : "ranks"}`,
+                    ranks.length ? "success" : "neutral",
+                  ),
+                alreadyStart ? badge("Starting rank", "success") : null,
+              ),
+              h(
+                "span",
+                { class: "sub member-subtext" },
+                editing
+                  ? `${cat.name} (${cat.code}) • ${
+                    OVERFLOW[ladder.overflow] ?? "Rank ladder"
+                  }`
+                  : `${cat.code} • ${
+                    OVERFLOW[ladder.overflow] ?? "Rank ladder"
+                  }`,
+              ),
+            ),
+          ),
+          field(
+            "rk-name",
+            "Rank name *",
+            nameInput,
+            "Shown on member profiles and brackets.",
+          ),
           field(
             "rk-code",
             "Code *",
@@ -182,17 +330,62 @@ export function createRanksPages({ api, getOrgId }) {
             editing
               ? "The code cannot be changed after the rank is created."
               : "Lowercase letters, numbers, hyphen. Made from the name.",
+            editing ? "lock" : "idCard",
           ),
-          editing ? null : h(
-            "p",
-            { class: "muted" },
-            "The new rank is added at the top of the ladder. Use the arrows to move it.",
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            field(
+              "rk-starting",
+              "Starting rank",
+              h("div", { class: "form-setting" }, startingToggle),
+              autoStart
+                ? "The first rank in a ladder automatically starts as the default rank."
+                : alreadyStart
+                ? "This rank is currently the default starting rank for this category."
+                : "Make this the initial rank assigned to new members in this category.",
+              false,
+            ),
           ),
-          error,
+          h(
+            "div",
+            {
+              class: `modal-callout ${
+                editing ? "" : "is-success "
+              }form-grid-wide`,
+            },
+            h(
+              "span",
+              { class: "modal-callout-icon", "aria-hidden": "true" },
+              icon(editing ? "info" : "layers"),
+            ),
+            h(
+              "div",
+              { class: "modal-callout-text" },
+              h(
+                "strong",
+                { class: "decision-impact-title" },
+                editing
+                  ? "Renaming preserves rank history"
+                  : autoStart
+                  ? "First step on the ladder"
+                  : "Added at the top of the ladder",
+              ),
+              h(
+                "p",
+                { class: "decision-impact-text" },
+                editing
+                  ? "Members who hold this rank and past tournament records will automatically display the updated name."
+                  : "The new rank is added at the top of the ladder. Use the arrows to move it.",
+              ),
+            ),
+          ),
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const name = String(form.get("name") ?? "").trim();
           const code = String(form.get("code") ?? "").trim();
+          const makeStarting = form.get("is_starting") === "on";
           if (!name) return showError(error, "Enter a name.");
           if (!CODE_RE.test(code)) {
             return showError(
@@ -214,6 +407,12 @@ export function createRanksPages({ api, getOrgId }) {
                   "Someone else changed this rank. Close this window and open it again.",
                 );
               }
+              if (makeStarting && !alreadyStart) {
+                await api.rpc("set_starting_rank", {
+                  p_rank_id: row.id,
+                  p_key: api.newKey(),
+                });
+              }
             } else {
               await api.create("ranks", key, {
                 org_id: getOrgId(),
@@ -223,8 +422,14 @@ export function createRanksPages({ api, getOrgId }) {
                 sort_order: ranks.length
                   ? ranks[ranks.length - 1].sort_order + 1
                   : 0,
-                is_starting: ranks.length === 0, // the first rank starts as the starting rank
+                is_starting: autoStart, // the first rank starts as the starting rank
               });
+              if (makeStarting && !autoStart) {
+                await api.rpc("set_starting_rank", {
+                  p_rank_id: key,
+                  p_key: api.newKey(),
+                });
+              }
             }
             toast(editing ? "Rank saved." : "Rank added.", { tone: "success" });
             await refresh();
@@ -241,6 +446,11 @@ export function createRanksPages({ api, getOrgId }) {
     function deleteModal(row, { table, title, note }) {
       const key = api.newKey();
       const error = errorLine();
+      const count = h("output", {
+        class: "decision-reason-count",
+        id: "rk-reason-count",
+        for: "rk-reason",
+      }, "0 / 500");
       return openModal({
         title,
         eyebrow: row.name,
@@ -249,19 +459,99 @@ export function createRanksPages({ api, getOrgId }) {
         confirmLabel: "Delete",
         body: h(
           "div",
-          { class: "stack" },
-          h("p", {}, note),
-          field(
-            "rk-reason",
-            "Reason *",
-            h("textarea", {
-              class: "input textarea",
-              id: "rk-reason",
-              name: "reason",
-              rows: 3,
-              maxlength: 500,
-              required: true,
-            }),
+          { class: "member-decision" },
+          h(
+            "div",
+            { class: "member-decision-subject" },
+            h(
+              "span",
+              { class: "member-avatar is-icon", "aria-hidden": "true" },
+              icon(table === "rank_rules" ? "layers" : "medal"),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "member-decision-name" },
+                h("strong", { class: "member-name" }, row.name),
+                row.is_starting
+                  ? badge("Starting rank", "success")
+                  : (row.is_active !== undefined
+                    ? badge(
+                      row.is_active ? "Active" : "Paused",
+                      row.is_active ? "success" : "neutral",
+                    )
+                    : null),
+              ),
+              h(
+                "span",
+                { class: "sub member-subtext" },
+                row.code ||
+                  (table === "rank_rules"
+                    ? "Movement rule"
+                    : table === "rank_ladders"
+                    ? "Rank ladder"
+                    : "Rank"),
+              ),
+            ),
+          ),
+          h(
+            "div",
+            { class: "stack" },
+            h(
+              "div",
+              { class: "modal-callout is-danger" },
+              h(
+                "span",
+                { class: "modal-callout-icon", "aria-hidden": "true" },
+                icon("trash"),
+              ),
+              h(
+                "div",
+                { class: "modal-callout-text" },
+                h(
+                  "strong",
+                  { class: "decision-impact-title" },
+                  "Remove this record",
+                ),
+                h("p", { class: "decision-impact-text" }, note),
+              ),
+            ),
+            h(
+              "div",
+              { class: "field" },
+              h(
+                "div",
+                { class: "decision-field-heading" },
+                h(
+                  "label",
+                  { for: "rk-reason" },
+                  "Reason",
+                  h("span", { class: "decision-required" }, " *"),
+                ),
+                count,
+              ),
+              h("textarea", {
+                class: "input textarea",
+                id: "rk-reason",
+                name: "reason",
+                rows: 4,
+                minlength: 3,
+                maxlength: 500,
+                required: true,
+                placeholder:
+                  "Provide context or explanation for this decision...",
+                "aria-describedby": "rk-reason-help rk-reason-count",
+                onInput: (event) => {
+                  count.textContent = `${event.target.value.length} / 500`;
+                },
+              }),
+              h("p", {
+                class: "muted decision-reason-help",
+                id: "rk-reason-help",
+              }, "At least 3 characters. Maximum 500 characters."),
+            ),
           ),
           error,
         ),
@@ -351,15 +641,26 @@ export function createRanksPages({ api, getOrgId }) {
         { class: "ladder-head" },
         h(
           "div",
-          {},
-          h("h2", { class: "settings-title" }, cat.name),
+          { class: "member-cell" },
           h(
             "span",
-            { class: "muted" },
-            cat.is_active
-              ? `Category order ${cat.sort_order}`
-              : "Retired category",
+            { class: "member-avatar is-icon", "aria-hidden": "true" },
+            icon("layers"),
           ),
+          h(
+            "div",
+            { class: "member-meta" },
+            h("h2", { class: "settings-title" }, cat.name),
+            h(
+              "span",
+              { class: "muted" },
+              cat.is_active ? cat.code : "Retired category",
+            ),
+          ),
+        ),
+        badge(
+          `${ranks.length} ${ranks.length === 1 ? "rank" : "ranks"}`,
+          ranks.length ? "success" : "neutral",
         ),
       );
       if (!ladder) {
@@ -370,7 +671,7 @@ export function createRanksPages({ api, getOrgId }) {
           h("p", { class: "muted" }, "This category has no rank ladder yet."),
           h(
             "div",
-            { class: "actions" },
+            { class: "actions ladder-actions" },
             button({
               label: "Set up ladder",
               icon: "plus",
@@ -406,10 +707,14 @@ export function createRanksPages({ api, getOrgId }) {
               h(
                 "span",
                 { class: "rank-name" },
-                r.name,
-                h("span", { class: "sub" }, r.code),
+                h("span", { class: "member-name" }, r.name),
+                h(
+                  "span",
+                  { class: "rank-meta" },
+                  h("span", { class: "sub member-subtext" }, r.code),
+                  r.is_starting ? badge("Starting rank", "success") : null,
+                ),
               ),
-              r.is_starting ? badge("Starting rank", "success") : null,
               h(
                 "span",
                 { class: "row-actions" },
@@ -478,8 +783,9 @@ export function createRanksPages({ api, getOrgId }) {
         head,
         field(
           `ov-${cat.id}`,
-          "At the top and bottom of the ladder",
+          "Boundary behavior",
           overflowSelect,
+          "How movement behaves at the highest and lowest rank.",
         ),
         h("div", { class: "ladder-order muted" }, "Highest rank first"),
         list,
@@ -492,7 +798,7 @@ export function createRanksPages({ api, getOrgId }) {
           : null,
         h(
           "div",
-          { class: "actions" },
+          { class: "actions ladder-actions" },
           button({
             label: "Add rank",
             icon: "plus",
@@ -563,43 +869,65 @@ export function createRanksPages({ api, getOrgId }) {
       };
       actionSel.addEventListener("change", sync);
       queueMicrotask(sync);
-      const forfeits = h("input", {
-        type: "checkbox",
+      const forfeits = switchToggle({
         id: "ru-forfeits",
         name: "exclude_forfeits",
+        label: h(
+          "span",
+          { class: "form-setting-label" },
+          icon("trophy"),
+          "Ignore forfeits",
+        ),
         checked: row?.exclude_forfeits ?? true,
       });
-      const activeBox = h("input", {
-        type: "checkbox",
+      const activeBox = switchToggle({
         id: "ru-active",
         name: "is_active",
+        label: h(
+          "span",
+          { class: "form-setting-label" },
+          icon("checkCircle"),
+          "Rule is active",
+        ),
         checked: row?.is_active ?? true,
       });
       return openModal({
         title: editing ? "Edit rule" : "New rule",
         eyebrow: editing ? row.name : "Rank movement",
         icon: "layers",
+        description:
+          "Choose the results that trigger a rank change and set its limits.",
         size: "lg",
         confirmLabel: editing ? "Save changes" : "Add rule",
         body: h(
           "div",
-          { class: "stack" },
-          field(
-            "ru-name",
-            "Name *",
-            h("input", {
-              class: "input",
-              id: "ru-name",
-              name: "name",
-              required: true,
-              maxlength: 80,
-              value: row?.name ?? "",
-            }),
+          { class: "form-grid" },
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            field(
+              "ru-name",
+              "Name *",
+              h("input", {
+                class: "input",
+                id: "ru-name",
+                name: "name",
+                required: true,
+                maxlength: 80,
+                value: row?.name ?? "",
+                placeholder: "e.g. Bracket champion promotion",
+              }),
+              "Shown in the movement rules list and rank history.",
+            ),
           ),
           h(
-            "h3",
-            { class: "settings-title" },
-            "When a member's final result is",
+            "div",
+            { class: "profile-subsection-divider form-grid-wide" },
+            h(
+              "span",
+              { class: "profile-subsection-label" },
+              "When a member's final result is",
+            ),
           ),
           field(
             "ru-tier",
@@ -609,6 +937,7 @@ export function createRanksPages({ api, getOrgId }) {
               { value: "H", label: "H bracket" },
               { value: "L", label: "L bracket" },
             ], c.bracket_tier),
+            "Filter by tournament bracket tier.",
           ),
           field(
             "ru-result",
@@ -618,6 +947,7 @@ export function createRanksPages({ api, getOrgId }) {
               { value: "won", label: "Won the bracket" },
               { value: "lost", label: "Lost (eliminated)" },
             ], c.bracket_result),
+            "Outcome required in the chosen bracket.",
           ),
           field(
             "ru-place",
@@ -631,6 +961,7 @@ export function createRanksPages({ api, getOrgId }) {
               max: 9999,
               step: 1,
               value: c.placement ?? "",
+              placeholder: "Any placement (e.g. 1)",
             }),
             "Leave empty for any placement. 1 is the champion.",
           ),
@@ -646,10 +977,21 @@ export function createRanksPages({ api, getOrgId }) {
               max: 999,
               step: 1,
               value: c.min_matches ?? "",
+              placeholder: "e.g. 3",
             }),
+            "Minimum completed matches required to qualify.",
           ),
-          h("h3", { class: "settings-title" }, "Then"),
-          field("ru-action", "Rank change", actionSel),
+          h(
+            "div",
+            { class: "profile-subsection-divider form-grid-wide" },
+            h("span", { class: "profile-subsection-label" }, "Then"),
+          ),
+          field(
+            "ru-action",
+            "Rank change",
+            actionSel,
+            "Direction to move on the rank ladder.",
+          ),
           field(
             "ru-levels",
             "By how many levels",
@@ -660,11 +1002,13 @@ export function createRanksPages({ api, getOrgId }) {
             "ru-min",
             "Never below",
             select("ru-min", "min_rank_id", rankOptions, row?.min_rank_id),
+            "Lowest rank where downward movement stops.",
           ),
           field(
             "ru-max",
             "Never above",
             select("ru-max", "max_rank_id", rankOptions, row?.max_rank_id),
+            "Highest rank where upward movement stops.",
           ),
           field(
             "ru-cool",
@@ -678,7 +1022,9 @@ export function createRanksPages({ api, getOrgId }) {
               max: 3650,
               step: 1,
               value: row?.cooldown_days ?? 0,
+              placeholder: "0",
             }),
+            "Cooldown period in days (0 for none).",
           ),
           field(
             "ru-prio",
@@ -692,26 +1038,25 @@ export function createRanksPages({ api, getOrgId }) {
               max: 100000,
               step: 1,
               value: row?.priority ?? 100,
+              placeholder: "100",
             }),
             "Lower numbers are checked first.",
           ),
-          h(
-            "div",
-            { class: "check" },
-            forfeits,
-            h(
-              "label",
-              { for: "ru-forfeits" },
-              "Ignore withdrawals and forfeits",
-            ),
+          field(
+            "ru-forfeits",
+            "Forfeits & withdrawals",
+            h("div", { class: "form-setting" }, forfeits),
+            "Exclude matches ended by walkover or forfeit.",
+            false,
           ),
-          h(
-            "div",
-            { class: "check" },
-            activeBox,
-            h("label", { for: "ru-active" }, "Rule is active"),
+          field(
+            "ru-active",
+            "Rule status",
+            h("div", { class: "form-setting" }, activeBox),
+            "Apply this rule when tournament results are posted.",
+            false,
           ),
-          error,
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const name = String(form.get("name") ?? "").trim();
@@ -778,6 +1123,12 @@ export function createRanksPages({ api, getOrgId }) {
                 ...fields,
               });
             }
+            if (!editing) {
+              state.tab = "rules";
+              state.term = "";
+              search.value = "";
+              state.page = 1;
+            }
             toast(editing ? "Rule saved." : "Rule added.", { tone: "success" });
             await refresh();
           } catch (e) {
@@ -796,12 +1147,28 @@ export function createRanksPages({ api, getOrgId }) {
       const schema = {
         columns: [
           {
-            key: "prio",
-            label: "Priority",
-            align: "right",
-            render: (r) => String(r.priority),
+            key: "name",
+            label: "Rule",
+            render: (r) =>
+              h(
+                "div",
+                { class: "member-cell" },
+                h("span", {
+                  class: "member-avatar is-icon",
+                  "aria-hidden": "true",
+                }, icon("medal")),
+                h(
+                  "div",
+                  { class: "member-meta" },
+                  h("span", { class: "member-name" }, r.name),
+                  h(
+                    "span",
+                    { class: "sub member-subtext" },
+                    `Priority ${r.priority}`,
+                  ),
+                ),
+              ),
           },
-          { key: "name", label: "Rule", render: (r) => r.name },
           {
             key: "when",
             label: "When",
@@ -884,6 +1251,21 @@ export function createRanksPages({ api, getOrgId }) {
           },
         ],
       };
+      const rows = state.rules.filter((rule) =>
+        matchesSearch([
+          rule.name,
+          conditionText(rule.conditions),
+          actionText(rule),
+          rankName(rule.min_rank_id),
+          rankName(rule.max_rank_id),
+          rule.is_active ? "Active" : "Off",
+          rule.priority,
+        ].join(" "))
+      );
+      state.page = Math.min(
+        state.page,
+        Math.max(1, Math.ceil(rows.length / DEFAULT_PAGE_SIZE)),
+      );
       return h(
         "div",
         { class: "stack" },
@@ -899,34 +1281,77 @@ export function createRanksPages({ api, getOrgId }) {
             "div",
             { class: "table-host" },
             dataTable({
-              searchState: state,
+              searchable: false,
+              hasFilters: Boolean(state.term.trim()),
+              onReset: () => {
+                state.term = "";
+                search.value = "";
+                state.page = 1;
+                draw();
+              },
               schema,
-              rows: state.rules,
+              rows: rows.slice(
+                (state.page - 1) * DEFAULT_PAGE_SIZE,
+                state.page * DEFAULT_PAGE_SIZE,
+              ),
               state: state.status,
               ariaLabel: "Rank rules",
               onRetry: refresh,
-              emptyTitle: "No rules yet",
+              emptyTitle: state.term.trim()
+                ? "No matching rules"
+                : "No rules yet",
               emptyText:
                 "Add a rule to say how results move members up or down.",
             }),
           ),
+          state.status === "loading" || state.status === "error"
+            ? null
+            : pagination({
+              page: state.page,
+              pageSize: DEFAULT_PAGE_SIZE,
+              total: rows.length,
+              onPage: (next) => {
+                state.page = next;
+                draw();
+              },
+            }),
         ),
       );
     }
 
     // ---------------------------------------------------------------- layout
     function draw() {
-      tabsHost.replaceChildren(tabs({
-        activeId: state.tab,
-        tabs: [
-          { id: "ladders", label: "Ladders and ranks" },
-          { id: "rules", label: "Movement rules" },
-        ],
-        onChange: (id) => {
-          state.tab = id;
-          draw();
-        },
-      }));
+      viewFilter.value = state.tab;
+      if (
+        state.category !== "all" &&
+        !state.cats.some((cat) => cat.id === state.category)
+      ) {
+        state.category = "all";
+        categoryFilter.value = "all";
+      }
+      categoryFilter.setOptions([
+        { value: "all", label: "All categories" },
+        ...state.cats.map((cat) => ({ value: cat.id, label: cat.name })),
+      ]);
+      categoryHost.hidden = state.tab !== "ladders";
+      search.setAttribute(
+        "placeholder",
+        state.tab === "ladders"
+          ? "Search categories or ranks..."
+          : "Search movement rules...",
+      );
+      const categories = state.cats.filter((cat) =>
+        (state.category === "all" || cat.id === state.category) &&
+        matchesSearch(
+          [
+            cat.name,
+            cat.code,
+            ...liveRanks(liveLadder(cat)).flatMap(
+              (rank) => [rank.name, rank.code],
+            ),
+          ].join(" "),
+        )
+      );
       if (state.status === "error") {
         body.replaceChildren(
           h(
@@ -954,12 +1379,31 @@ export function createRanksPages({ api, getOrgId }) {
       }
       body.replaceChildren(
         state.tab === "ladders"
-          ? (state.cats.length
-            ? h("div", { class: "stack" }, ...state.cats.map(ladderCard))
+          ? (categories.length
+            ? h("div", { class: "rank-grid" }, ...categories.map(ladderCard))
             : h(
               "div",
               { class: "member-panel" },
-              h("p", {}, "Add categories first, then set up their ladders."),
+              h(
+                "p",
+                {},
+                state.cats.length
+                  ? "No categories or ranks match these filters."
+                  : "Add categories first, then set up their ladders.",
+              ),
+              state.cats.length
+                ? button({
+                  label: "Clear filters",
+                  icon: "x",
+                  onClick: () => {
+                    state.term = "";
+                    state.category = "all";
+                    search.value = "";
+                    categoryFilter.value = "all";
+                    draw();
+                  },
+                })
+                : null,
             ))
           : rulesView(),
       );
@@ -976,15 +1420,17 @@ export function createRanksPages({ api, getOrgId }) {
             label: "New rule",
             variant: "primary",
             icon: "plus",
-            onClick: () => {
-              state.tab = "rules";
-              draw();
-              ruleModal(null);
-            },
+            onClick: () => ruleModal(null),
           }),
         ],
       }),
-      tabsHost,
+      h(
+        "div",
+        { class: "toolbar admin-members-toolbar" },
+        search,
+        categoryHost,
+        h("div", { class: "member-status-filter" }, viewFilter),
+      ),
       body,
     );
     refresh();

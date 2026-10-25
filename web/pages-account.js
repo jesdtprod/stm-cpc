@@ -119,7 +119,7 @@ export function createAccountPages(
               flank("left", "paddle", "ball"),
               h("img", {
                 class: "cpc-hero-logo cpc-top-logo",
-                src: "icons/cpc-logo.png",
+                src: "icons/cpc-logo-256.webp",
                 alt: "Capitol Pickleball Club",
                 width: "72",
                 height: "72",
@@ -136,12 +136,12 @@ export function createAccountPages(
                   { class: `auth-showcase-unit auth-showcase-unit-${side}` },
                   h("img", {
                     class: "auth-showcase-paddle",
-                    src: "icons/paddle.png",
+                    src: "icons/paddle-480.webp",
                     alt: "",
                   }),
                   h("img", {
                     class: "auth-showcase-ball",
-                    src: "icons/ball.png",
+                    src: "icons/ball-240.webp",
                     alt: "",
                   }),
                 )

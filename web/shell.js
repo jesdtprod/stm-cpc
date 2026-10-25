@@ -24,6 +24,7 @@ const GROUPS = [
       { path: "/book", label: "Book a court", icon: "calendar" },
       { path: "/bookings", label: "My bookings", icon: "clock" },
       { path: "/events", label: "Events", icon: "trophy" },
+      { path: "/notifications", label: "Notifications", icon: "inbox" },
       { path: "/ranking", label: "Ranking", icon: "medal" },
     ],
   },
@@ -52,6 +53,7 @@ const GROUPS = [
     items: [
       { path: "/admin/events", label: "Events", icon: "trophy" },
       { path: "/admin/scoring", label: "Scoring Rules", icon: "medal" },
+      { path: "/notifications", label: "Notifications", icon: "inbox" },
       { path: "/ranking", label: "Ranking", icon: "medal" },
     ],
   },
@@ -93,6 +95,14 @@ const initials = (name) =>
  * Needs these elements in index.html: #menu-btn, #side, #nav, #scrim, #account.
  * Returns { draw(path) }: call it on every route change and every sign-in or sign-out.
  */
+/** The unread count shown beside Notifications in the side menu (set by the live notification feed). */
+const unreadBadge = (path) => {
+  const n = Number(globalThis.__cpcUnread) || 0;
+  return path === "/notifications" && n > 0
+    ? (n > 99 ? "99+" : String(n))
+    : null;
+};
+
 export function createShell(
   { session, checkAccess, routeAccess, gatePages },
 ) {
@@ -517,7 +527,7 @@ export function createShell(
                 "div",
                 { class: "assistive-nav-menu-crest", "aria-hidden": "true" },
                 h("img", {
-                  src: "icons/cpc-logo.png",
+                  src: "icons/cpc-logo-256.webp",
                   alt: "",
                   class: "assistive-nav-menu-crest-img",
                 }),
@@ -680,7 +690,7 @@ export function createShell(
           },
           h("img", {
             class: "assistive-nav-logo",
-            src: "icons/cpc-logo.png",
+            src: "icons/cpc-logo-256.webp",
             alt: "",
             "aria-hidden": "true",
           }),
@@ -763,7 +773,13 @@ export function createShell(
               icon(n.icon),
             ),
             h("span", { class: "nav-link-label" }, n.label),
-            n.badge ? h("span", { class: "nav-link-badge" }, n.badge) : null,
+            (n.badge ?? unreadBadge(n.path))
+              ? h(
+                "span",
+                { class: "nav-link-badge" },
+                n.badge ?? unreadBadge(n.path),
+              )
+              : null,
           )
         ),
       ]),

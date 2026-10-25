@@ -20,6 +20,7 @@ import {
   dateField,
   dateRangePicker,
   dateTimeField,
+  DEFAULT_PAGE_SIZE,
   divider,
   dropdownAction,
   dropdownMenu,
@@ -2418,7 +2419,7 @@ export function componentsPage() {
       pagerDemo.replaceChildren(
         pagination({
           page: curPage,
-          pageSize: 10,
+          pageSize: DEFAULT_PAGE_SIZE,
           total: 48,
           onPage: (p) => {
             curPage = p;

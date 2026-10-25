@@ -9,6 +9,7 @@ import {
   badge,
   button,
   dataTable,
+  DEFAULT_PAGE_SIZE,
   h,
   icon,
   iconButton,
@@ -21,7 +22,7 @@ import {
 import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 const ISSUE_LABEL = {
   duplicate_member_no: "Shared member ID",
   invalid_member_no: "Member ID not in the right format",

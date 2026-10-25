@@ -1,9 +1,11 @@
 import {
   dataTable,
   dateControl,
+  dateTimeControl,
   h,
   iconButton,
   inputWithIcon,
+  pagination,
   searchableSelect,
   searchControl,
   selectControl,
@@ -11,10 +13,19 @@ import {
   switchToggle,
   tableFilter,
 } from "../../web/ui.js";
+import { createRanksPages } from "../../web/pages-ranks.js";
+import { createScoringPages } from "../../web/pages-scoring.js";
+import { createStaffPages } from "../../web/pages-staff.js";
 
 // Small DOM fixture for component events; rendered browser checks remain separate.
 function withDom(run) {
-  const keys = ["document", "Node", "HTMLSelectElement", "HTMLInputElement"];
+  const keys = [
+    "document",
+    "Node",
+    "HTMLSelectElement",
+    "HTMLInputElement",
+    "requestAnimationFrame",
+  ];
   const previous = Object.fromEntries(
     keys.map((key) => [key, globalThis[key]]),
   );
@@ -28,6 +39,30 @@ function withDom(run) {
       this.style = {
         setProperty: (key, value) => this.attributes[key] = value,
       };
+    }
+    get classList() {
+      return {
+        add: (name) => {
+          this.className = [
+            ...new Set(`${this.className ?? ""} ${name}`.trim().split(/\s+/)),
+          ].join(" ");
+        },
+        remove: (name) => {
+          this.className = (this.className ?? "").split(/\s+/).filter((value) =>
+            value !== name
+          ).join(" ");
+        },
+      };
+    }
+    prepend(...nodes) {
+      for (const node of [...nodes].reverse()) {
+        node.parent = this;
+        this.children.unshift(node);
+      }
+    }
+    appendChild(node) {
+      this.append(node);
+      return node;
     }
     setAttribute(key, value) {
       this.attributes[key] = String(value);
@@ -135,6 +170,20 @@ function withDom(run) {
     querySelector(selector) {
       return this.querySelectorAll(selector)[0] ?? null;
     }
+    showModal() {
+      this.setAttribute("open", "");
+    }
+    close() {
+      this.removeAttribute("open");
+      this.dispatchEvent(new Event("close"));
+    }
+    remove() {
+      if (this.parent) {
+        this.parent.children = this.parent.children.filter((child) =>
+          child !== this
+        );
+      }
+    }
     focus() {
       globalThis.document.activeElement = this;
     }
@@ -146,6 +195,8 @@ function withDom(run) {
     scrollIntoView() {}
   }
   const document = new Element("document");
+  document.body = new Element("body");
+  document.append(document.body);
   document.createElement = document.createElementNS = (...args) =>
     new Element(args.at(-1));
   document.createTextNode = (text) => {
@@ -157,13 +208,21 @@ function withDom(run) {
   globalThis.Node = Element;
   globalThis.HTMLSelectElement = Element;
   globalThis.HTMLInputElement = Element;
-  try {
-    run(document);
-  } finally {
+  globalThis.requestAnimationFrame = (callback) => callback();
+  const restore = () => {
     for (const key of keys) {
       if (previous[key] === undefined) delete globalThis[key];
       else globalThis[key] = previous[key];
     }
+  };
+  try {
+    const result = run(document);
+    if (result?.then) return result.finally(restore);
+    restore();
+    return result;
+  } catch (error) {
+    restore();
+    throw error;
   }
 }
 const assert = (condition, message) => {
@@ -408,6 +467,42 @@ Deno.test("date adapter: native name, constraints and value remain synchronized"
     );
   }));
 
+Deno.test("datetime adapter: native name, constraints and value remain synchronized with time pane", () =>
+  withDom(() => {
+    const dt = dateTimeControl({
+      id: "ev-opens",
+      name: "opens_at",
+      value: "2030-02-01T09:30",
+      required: true,
+    });
+    const parent = h("div", {}, dt);
+    assert(
+      dt.getAttribute("name") === "opens_at" &&
+        dt.getAttribute("required") !== null,
+      "Datetime form contract must be preserved",
+    );
+    assert(
+      parent.querySelector(".calendar-drop-val").textContent.includes("2030"),
+      "Calendar display must reflect formatted date",
+    );
+    assert(
+      parent.querySelector(".calendar-drop-val").textContent.includes(
+        "09:30 AM",
+      ),
+      "Calendar display must reflect formatted time",
+    );
+    const trigger = parent.querySelector(".calendar-drop-trigger");
+    trigger.click();
+    assert(
+      !parent.querySelector(".calendar-popover").hidden,
+      "Popover must open",
+    );
+    assert(
+      parent.querySelector(".calendar-time-pane") !== null,
+      "Time pane must be present",
+    );
+  }));
+
 Deno.test("table search: filters visible values, preserves actions, and clears no-results", () =>
   withDom(() => {
     let viewed = 0;
@@ -597,4 +692,437 @@ Deno.test("switch: supports the existing indoor field name without changing othe
       standard.querySelector("input").getAttribute("name") === "notifications",
       "Existing switches must retain default names",
     );
+  }));
+
+Deno.test("grid pagination: filters the full list before paging and retains the selected page on refresh", () =>
+  withDom(() => {
+    const searchState = {};
+    const config = {
+      schema: { columns: [{ key: "name", label: "Court" }] },
+      rows: Array.from({ length: 5 }, (_, i) => ({ name: `Court ${i + 1}` })),
+      pageSize: 2,
+      searchState,
+      ariaLabel: "Courts",
+    };
+    const view = dataTable(config);
+    const rows = view.querySelector(".tbl-body").querySelectorAll(".tbl-row");
+    const findButton = (root, label) =>
+      root.querySelectorAll("button").find((button) =>
+        button.getAttribute("aria-label") === label
+      );
+    assert(
+      rows.filter((row) => !row.hidden).length === 2,
+      "Only the first page should be visible",
+    );
+    findButton(view, "Next page").click();
+    assert(
+      rows[0].hidden && !rows[2].hidden && !rows[3].hidden,
+      "Next must show the following records",
+    );
+    const refreshed = dataTable(config);
+    assert(
+      refreshed.querySelector(".tbl-body").querySelectorAll(".tbl-row")[0]
+        .hidden,
+      "Refresh must preserve the selected page",
+    );
+    const search = view.querySelector(".data-grid-toolbar").querySelector(
+      "input",
+    );
+    search.value = "Court 5";
+    search.dispatchEvent(new Event("input"));
+    assert(
+      !rows[4].hidden && rows.slice(0, 4).every((row) => row.hidden),
+      "Search must include later pages and reset to page one",
+    );
+    assert(
+      findButton(view, "Next page").disabled &&
+        findButton(view, "Previous page").disabled,
+      "A single search result must disable both navigation buttons",
+    );
+  }));
+
+Deno.test("calendar: full seven-column month and single-date selection remain separate from range styling", () =>
+  withDom((document) => {
+    const native = dateControl({ id: "schedule-day", value: "2030-02-10" });
+    const view = h("div", {}, native);
+    const trigger = view.querySelector(".calendar-drop-trigger");
+    trigger.click();
+    assert(
+      !view.querySelector(".calendar-popover").hidden,
+      "Calendar must open",
+    );
+    assert(
+      view.querySelectorAll(".calendar-weekday").length === 7,
+      "Weekday row must retain seven columns",
+    );
+    assert(
+      view.querySelectorAll(".calendar-nav-btn").length === 2,
+      "Both month navigation controls must be present",
+    );
+    assert(
+      view.querySelector(".calendar-month-btn").textContent === "February 2030",
+      "Month and year must stay in one header control",
+    );
+    const selected = view.querySelector(".is-selected");
+    assert(
+      selected.textContent === "10" && !selected.matches(".is-range-start"),
+      "A single selected date must have full rounded corners",
+    );
+    assert(
+      view.querySelector(".calendar-presets").querySelectorAll("button")
+        .length === 3,
+      "Preset controls must retain all three actions",
+    );
+    const escape = new Event("keydown", { cancelable: true });
+    Object.defineProperty(escape, "key", { value: "Escape" });
+    document.dispatchEvent(escape);
+    assert(
+      view.querySelector(".calendar-popover").hidden,
+      "Escape must close the calendar",
+    );
+  }));
+
+Deno.test("ranks page: search keeps full ladder context and movement uses the original ordered IDs", () =>
+  withDom(async () => {
+    const cats = [
+      {
+        id: "category-a",
+        code: "beginner",
+        name: "Beginner",
+        is_active: true,
+        sort_order: 1,
+        ladders: [{
+          id: "ladder-a",
+          overflow: "chain",
+          version: 1,
+          ranks: [
+            {
+              id: "low",
+              name: "Beginner Low",
+              code: "beginner-low",
+              sort_order: 0,
+              is_starting: true,
+            },
+            {
+              id: "high",
+              name: "Beginner High",
+              code: "beginner-high",
+              sort_order: 1,
+            },
+            {
+              id: "elite",
+              name: "Beginner Elite",
+              code: "beginner-elite",
+              sort_order: 2,
+            },
+          ],
+        }],
+      },
+      {
+        id: "category-b",
+        code: "novice",
+        name: "Novice",
+        is_active: true,
+        sort_order: 2,
+        ladders: [],
+      },
+    ];
+    const rules = [{
+      id: "rule-a",
+      name: "Reward finalists",
+      priority: 1,
+      conditions: { placement: 1 },
+      action: "up",
+      levels: 1,
+      is_active: true,
+    }];
+    let reads = 0;
+    const calls = [];
+    const api = {
+      read: () => Promise.resolve(reads++ % 2 === 0 ? cats : rules),
+      newKey: () => "01K00000000000000000000000",
+      // Keep the mutation at the API boundary so this test checks the submitted order.
+      rpc: (name, args) => {
+        calls.push({ name, args });
+        return new Promise(() => {});
+      },
+    };
+    const page = createRanksPages({ api, getOrgId: () => "org-test" })
+      .ranksPage();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert(
+      page.querySelectorAll(".ladder-card").length === 2,
+      "Both categories should initially appear",
+    );
+    const search = page.querySelectorAll("input").find((input) =>
+      input.getAttribute("id") === "ranks-search"
+    );
+    search.value = "Low";
+    search.dispatchEvent(new Event("input"));
+    assert(
+      page.querySelectorAll(".ladder-card").length === 1,
+      "Search must find the matching category",
+    );
+    assert(
+      page.querySelectorAll(".rank-item").length === 3,
+      "Search must retain all ranks for reorder context",
+    );
+    page.querySelectorAll("button").find((button) =>
+      button.getAttribute("aria-label") === "Move Beginner Low up"
+    ).click();
+    assert(
+      calls[0].name === "reorder_ranks" &&
+        calls[0].args.p_rank_ids.join(",") === "high,low,elite",
+      "Movement must submit the full correctly reordered ladder",
+    );
+    const view = page.querySelectorAll("select").find((select) =>
+      select.getAttribute("name") === "ranks-view"
+    );
+    view.value = "rules";
+    view.dispatchEvent(new Event("change"));
+    assert(
+      page.querySelector(".tbl") && page.querySelector(".pager"),
+      "Rules view must use the shared table and pagination",
+    );
+    assert(
+      search.value === "",
+      "Changing views must reset the unrelated search",
+    );
+  }));
+
+Deno.test("ranks page: New rule opens its dialog directly without changing the active view", () =>
+  withDom(async (document) => {
+    const api = {
+      read: () => Promise.resolve([]),
+      newKey: () => "01K00000000000000000000000",
+    };
+    const page = createRanksPages({ api, getOrgId: () => "org-test" })
+      .ranksPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const view = page.querySelectorAll("select").find((select) =>
+      select.getAttribute("name") === "ranks-view"
+    );
+    assert(view.value === "ladders", "Start in the ladder view");
+    page.querySelectorAll("button").find((button) =>
+      button.textContent === "New rule"
+    ).click();
+    const dialog = document.body.querySelector("dialog");
+    assert(
+      dialog && dialog.getAttribute("open") !== null,
+      "New rule must open a modal",
+    );
+    assert(
+      dialog.querySelector("h2").textContent === "New rule",
+      "New rule must open its creation form",
+    );
+    assert(
+      view.value === "ladders",
+      "Opening a creation form must not redirect to the rule list",
+    );
+    dialog.close();
+    assert(
+      view.value === "ladders" && !document.body.querySelector("dialog"),
+      "Cancelling must close the form and retain the original view",
+    );
+  }));
+
+Deno.test("pagination: empty lists have no visible footer or controls", () =>
+  withDom(() => {
+    const pager = pagination({ page: 1, total: 0, onPage: () => {} });
+    assert(
+      pager.hidden && pager.querySelectorAll("button").length === 0,
+      "No-record lists must hide the entire pagination footer",
+    );
+    const grid = dataTable({
+      schema: { columns: [{ key: "name", label: "Name" }] },
+      rows: [],
+      pageSize: 10,
+    });
+    assert(
+      grid.querySelector(".pager").hidden,
+      "The shared grid must also hide empty pagination",
+    );
+    assert(
+      grid.querySelector(".pager").textContent === "",
+      "No records text must not remain in a redundant footer",
+    );
+  }));
+
+Deno.test("pagination: shared default is ten records with correct range and navigation", () =>
+  withDom(() => {
+    let page;
+    const pager = pagination({
+      page: 1,
+      total: 80,
+      onPage: (next) => page = next,
+    });
+    assert(
+      !pager.hidden &&
+        pager.querySelector(".pager-range").textContent.includes("1\u201310"),
+      "Default first page must cover ten records",
+    );
+    assert(
+      pager.querySelector(".pager-size").textContent === "10 records per page",
+      "Default page size must be explicit",
+    );
+    pager.querySelectorAll("button").find((button) =>
+      button.getAttribute("aria-label") === "Next page"
+    ).click();
+    assert(page === 2, "Next page must retain the shared navigation callback");
+    const second = pagination({ page: 2, total: 80, onPage: () => {} });
+    assert(
+      second.querySelector(".pager-range").textContent.includes("11\u201320"),
+      "Second page must use the same ten-record size",
+    );
+  }));
+
+Deno.test("scoring modal: shared sections preserve scoring fields, limits and tiebreak defaults", () =>
+  withDom(async (document) => {
+    const api = {
+      read: () => Promise.resolve([]),
+      newKey: () => "01K00000000000000000000000",
+    };
+    const page = createScoringPages({ api, getOrgId: () => "org-test" })
+      .scoringPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    page.querySelectorAll("button").find((button) =>
+      button.textContent === "New scoring rule"
+    ).click();
+    const modal = document.body.querySelector("dialog");
+    assert(
+      modal?.getAttribute("open") !== null,
+      "New scoring rule must open its modal",
+    );
+    assert(
+      modal.querySelectorAll(".form-section").length === 2,
+      "Scoring and tiebreak settings must have distinct groups",
+    );
+    assert(
+      modal.querySelectorAll(".input-affix").length === 10,
+      "Every scoring field must retain its icon wrapper",
+    );
+    const find = (name) =>
+      modal.querySelectorAll("input, select").find((input) =>
+        input.getAttribute("name") === name
+      );
+    assert(
+      find("games_to_win").value === "1" &&
+        find("games_to_win").getAttribute("max") === "5",
+      "Games-to-win defaults and limits must remain intact",
+    );
+    assert(
+      find("points_per_game").value === "11" && find("win_by").value === "2",
+      "Scoring defaults must remain unchanged",
+    );
+    assert(
+      find("point_cap").value === "" &&
+        find("point_cap").getAttribute("required") === null,
+      "The optional point cap must stay optional",
+    );
+    assert(
+      find("forfeit_score").value === "11" &&
+        find("forfeit_score").getAttribute("min") === "0",
+      "Forfeit form contract must be preserved",
+    );
+    assert(
+      find("tb0").value === "head_to_head" &&
+        find("tb1").value === "point_diff",
+      "Tiebreak priority must retain the existing defaults",
+    );
+    modal.close();
+  }));
+
+Deno.test("staff assignment modal: member selection, role defaults and audit reason stay intact", () =>
+  withDom(async (document) => {
+    const rows = [
+      {
+        member_id: "member-test",
+        display_name: "Test Member",
+        member_no: "CPC-2030-00001",
+        role_name: "Member",
+        role_code: "member",
+        is_self: false,
+      },
+      {
+        member_id: "admin-test",
+        display_name: "Test Admin",
+        member_no: "CPC-2030-00002",
+        role_name: "Admin",
+        role_code: "admin",
+        is_self: true,
+      },
+    ];
+    const api = {
+      newKey: () => "01K00000000000000000000000",
+      rpc: (name, args) =>
+        Promise.resolve(
+          name === "role_catalog"
+            ? [{ code: "member", name: "Member", permissions: [] }, {
+              code: "front_desk",
+              name: "Front desk",
+              permissions: [],
+            }]
+            : args?.p_only_staff
+            ? []
+            : rows,
+        ),
+    };
+    const page = createStaffPages({ api }).staffPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    page.querySelectorAll("button").find((button) =>
+      button.textContent === "Give someone a role"
+    ).click();
+    const modal = document.body.querySelector("dialog");
+    assert(
+      modal && modal.getAttribute("open") !== null,
+      "Assignment must open its modal",
+    );
+    assert(
+      modal.querySelector(".staff-selected-preview").children.length === 0,
+      "No member should be preselected",
+    );
+    const term = modal.querySelectorAll("input").find((input) =>
+      input.getAttribute("id") === "st-term"
+    );
+    term.value = "Test";
+    modal.querySelectorAll("button").find((button) =>
+      button.textContent === "Search"
+    ).click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const members = modal.querySelector(".staff-results").querySelectorAll(
+      "input",
+    );
+    assert(
+      members.length === 2 && members[1].disabled,
+      "Search must retain the self-assignment restriction",
+    );
+    members[0].dispatchEvent(new Event("change"));
+    assert(
+      modal.querySelector(".staff-selected-preview").textContent.includes(
+        "Test Member",
+      ),
+      "Selecting a member must update the shared identity preview",
+    );
+    assert(
+      modal.querySelector("select").value === "front_desk",
+      "The existing role default must remain unchanged",
+    );
+    const reason = modal.querySelector("textarea");
+    assert(
+      reason.getAttribute("name") === "reason" &&
+        reason.getAttribute("minlength") === "3" &&
+        reason.getAttribute("maxlength") === "500",
+      "Audit reason validation and field name must be retained",
+    );
+    reason.value = "Front desk support";
+    reason.dispatchEvent(new Event("input"));
+    assert(
+      modal.querySelector(".decision-reason-count").textContent ===
+        `${reason.value.length} / 500`,
+      "Audit reason count must update while typing",
+    );
+    modal.close();
   }));

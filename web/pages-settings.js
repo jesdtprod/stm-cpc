@@ -218,6 +218,27 @@ const GROUPS = [
     ],
   },
   {
+    id: "public",
+    label: "Public pages",
+    title: "Public pages",
+    items: [
+      {
+        key: "public.results_enabled",
+        type: "switch",
+        label: "Show finished divisions' podiums to everyone",
+        hint:
+          "Visitors who are not signed in see the top three of each recently finished division, with display names only.",
+      },
+      {
+        key: "public.leaderboard_enabled",
+        type: "switch",
+        label: "Show the leaderboard to everyone",
+        hint:
+          "Visitors who are not signed in see each ranked player's display name, category and rank. Nothing else.",
+      },
+    ],
+  },
+  {
     id: "security",
     label: "Security",
     title: "Security",

@@ -9,6 +9,7 @@ import {
   button,
   dataTable,
   dateField,
+  DEFAULT_PAGE_SIZE,
   h,
   icon,
   iconButton,
@@ -30,7 +31,7 @@ import {
 } from "./lib/slot-grid.js";
 import { bookingMessage } from "./pages-booking.js";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 const STATUS = {
   pending_approval: ["Waiting for approval", "warning"],
@@ -889,24 +890,37 @@ export function createBookingAdminPages({ api, client }) {
           { class: "booking-calendar-nav" },
           h(
             "div",
-            {
-              class: "calendar-date-stepper",
-              role: "group",
-              "aria-label": "Date navigation",
-            },
+            { class: "calendar-date-tools" },
             iconButton({
-              label: "Previous day",
-              icon: "chevronLeft",
-              size: "sm",
-              onClick: () => shift(-1),
+              label: "Back to bookings",
+              icon: "arrowLeft",
+              onClick: () => {
+                state.tab = "approve";
+                state.page = 1;
+                draw();
+              },
             }),
-            day,
-            iconButton({
-              label: "Next day",
-              icon: "chevronRight",
-              size: "sm",
-              onClick: () => shift(1),
-            }),
+            h(
+              "div",
+              {
+                class: "calendar-date-stepper",
+                role: "group",
+                "aria-label": "Date navigation",
+              },
+              iconButton({
+                label: "Previous day",
+                icon: "chevronLeft",
+                size: "sm",
+                onClick: () => shift(-1),
+              }),
+              day,
+              iconButton({
+                label: "Next day",
+                icon: "chevronRight",
+                size: "sm",
+                onClick: () => shift(1),
+              }),
+            ),
           ),
           h(
             "div",
@@ -958,25 +972,31 @@ export function createBookingAdminPages({ api, client }) {
           h(
             "div",
             { class: "booking-calendar-list" },
-            ...[1, 2].map(() =>
+            ...[1, 2, 3, 4, 5, 6].map(() =>
               h(
                 "section",
                 { class: "booking-calendar-court is-loading" },
                 h(
                   "div",
-                  { class: "ladder-head" },
+                  { class: "booking-calendar-court-head" },
                   h(
                     "div",
-                    { class: "sk-meta" },
-                    h("span", { class: "sk w-30" }),
-                    h("span", { class: "sk w-50 sk-sub" }),
+                    { class: "sk-member-cell" },
+                    h("span", { class: "sk sk-avatar round" }),
+                    h(
+                      "div",
+                      { class: "sk-meta" },
+                      h("span", { class: "sk w-50" }),
+                      h("span", { class: "sk w-70 sk-sub" }),
+                    ),
                   ),
+                  h("span", { class: "sk sk-pill" }),
                 ),
                 h(
                   "div",
                   { class: "slots slots-wide" },
                   ...Array.from(
-                    { length: 8 },
+                    { length: 4 },
                     () => h("span", { class: "sk sk-slot-pill" }),
                   ),
                 ),
@@ -1009,33 +1029,42 @@ export function createBookingAdminPages({ api, client }) {
         );
       }
       const cards = courtEntries.map(({ court, taken, slots }) => {
+        const bookedCount = slots.filter((s) => s.state === "booked").length;
+        const openCount = slots.filter((s) =>
+          s.state === "free" || s.state === "past"
+        ).length;
         return h(
           "section",
           { class: "booking-calendar-court", "aria-label": court.name },
           h(
             "div",
-            { class: "ladder-head" },
+            { class: "booking-calendar-court-head" },
             h(
               "div",
-              { class: "member-table-stack" },
-              h("h2", { class: "settings-title" }, court.name),
+              { class: "member-cell" },
               h(
                 "span",
-                { class: "sub" },
-                slots.length
-                  ? `${
-                    slots.filter((s) => s.state === "booked").length
-                  } booked · ${
-                    slots.filter((s) =>
-                      s.state === "free" || s.state === "past"
-                    ).length
-                  } open`
-                  : "Closed this day",
+                { class: "member-avatar is-icon", "aria-hidden": "true" },
+                icon("grid", { solid: true }),
+              ),
+              h(
+                "div",
+                { class: "member-meta" },
+                h("h2", { class: "settings-title" }, court.name),
+                h(
+                  "span",
+                  { class: "sub" },
+                  slots.length
+                    ? `${bookedCount} booked · ${openCount} open`
+                    : "No open slots today",
+                ),
               ),
             ),
             court.status === "available"
               ? badge("Available", "success")
-              : badge(court.status, "neutral"),
+              : (court.status === "maintenance"
+                ? badge("Maintenance", "warning")
+                : badge(court.status, "neutral")),
           ),
           slots.length
             ? h(
@@ -1060,7 +1089,19 @@ export function createBookingAdminPages({ api, client }) {
                 );
               }),
             )
-            : h("p", { class: "muted" }, "Closed this day."),
+            : h(
+              "div",
+              { class: "booking-calendar-closed" },
+              h(
+                "span",
+                {
+                  class: "booking-calendar-closed-icon",
+                  "aria-hidden": "true",
+                },
+                icon("clock"),
+              ),
+              h("span", { class: "muted" }, "Closed this day."),
+            ),
         );
       });
       return h(
@@ -1414,7 +1455,7 @@ export function createBookingAdminPages({ api, client }) {
       }));
 
       if (state.tab === "calendar") {
-        toolbar.hidden = false;
+        toolbar.hidden = true;
         searchBox.hidden = true;
         tableHost.replaceChildren(calendarView());
         pagerHost.replaceChildren();

@@ -1,7 +1,7 @@
 // App shell cache only. Bump CACHE on every release so activate removes the old one.
 // Only same-origin shell files are cached. Supabase and every other request
 // goes straight to the network, so no authenticated data ever reaches the cache.
-const CACHE = "cpc-shell-v179";
+const CACHE = "cpc-shell-v199";
 const SHELL = [
   "./",
   "index.html",
@@ -25,6 +25,10 @@ const SHELL = [
   "pages-scoring.js",
   "pages-bracket.js",
   "pages-ranking.js",
+  "pages-public.js",
+  "pages-notifications.js",
+  "lib/push.js",
+  "lib/notification-feed.js",
   "pages-import.js",
   "pages-staff.js",
   "pages-booking.js",
@@ -59,9 +63,10 @@ const SHELL = [
   "manifest.webmanifest",
   "fonts/inter-latin-wght-normal.woff2",
   "fonts/inter-latin-ext-wght-normal.woff2",
-  "icons/cpc-logo.png",
-  "icons/paddle.png",
-  "icons/ball.png",
+  "icons/cpc-logo-256.webp",
+  "icons/cpc-logo-64.png",
+  "icons/paddle-480.webp",
+  "icons/ball-240.webp",
   "icons/court-pattern.svg",
   "icons/icon-192.png",
   "icons/icon-512.png",
@@ -111,4 +116,69 @@ self.addEventListener("fetch", (event) => {
         caches.match(req).then((hit) => hit ?? caches.match("index.html"))
       ),
   );
+});
+
+// ---------------------------------------------------------------- push messages (PLAN 9.3)
+// A message from the club arrives even when the app is in the background or closed. If the app is open and in view, the page
+// already showed it (toast), so no second notification is raised.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {
+      title: "Capitol Pickleball Club",
+      body: event.data ? event.data.text() : "",
+    };
+  }
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    });
+    if (windows.some((c) => c.visibilityState === "visible" && c.focused)) {
+      return;
+    }
+    await self.registration.showNotification(
+      data.title || "Capitol Pickleball Club",
+      {
+        body: data.body || "",
+        icon: "icons/icon-192.png",
+        badge: "icons/icon-192.png",
+        tag: data.tag || "cpc",
+        renotify: true,
+        data: {
+          url: typeof data.url === "string" && data.url.startsWith("#/")
+            ? data.url
+            : "#/",
+        },
+      },
+    );
+  })());
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target =
+    new URL(event.notification.data?.url || "#/", self.registration.scope).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    });
+    for (const c of windows) {
+      if (c.url.startsWith(self.registration.scope)) {
+        await c.focus();
+        if ("navigate" in c) {
+          try {
+            await c.navigate(target);
+          } catch {
+            // the page keeps its current address
+          }
+        }
+        return;
+      }
+    }
+    await self.clients.openWindow(target);
+  })());
 });

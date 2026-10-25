@@ -31,6 +31,9 @@ import { createMemberEventsPages } from "./pages-events-member.js";
 import { createScoringPages } from "./pages-scoring.js";
 import { createBracketPages } from "./pages-bracket.js";
 import { createRankingPages } from "./pages-ranking.js";
+import { createPublicPages } from "./pages-public.js";
+import { createNotificationPages } from "./pages-notifications.js";
+import { createNotificationFeed } from "./lib/notification-feed.js";
 import { createImportPages } from "./pages-import.js";
 import { createRanksPages } from "./pages-ranks.js";
 import { createStaffPages } from "./pages-staff.js";
@@ -59,6 +62,16 @@ const main = document.getElementById("main");
 document.getElementById("skip").addEventListener("click", () => main.focus());
 
 const { client, api } = createClients();
+
+// Live messages for the open page: new notifications raise a toast and the unread count at once.
+const notificationFeed = createNotificationFeed({
+  client,
+  api,
+  toast,
+  onOpen: (n) => {
+    if (n.url) location.hash = n.url;
+  },
+});
 
 // Sign-in goes through the member-login Edge Function (step 3.1). On localhost the self-check page can also
 // sign in with an email address (credentials.email), which is not available anywhere else.
@@ -108,7 +121,10 @@ const session = createSession({
     dispatchEvent(new CustomEvent("cpc:session", { detail: s }));
     if (s.status === "signed_in") {
       setAuth({ signedIn: true, grants: s.grants, gate: s.gate });
+      if (s.gate) notificationFeed.stop();
+      else notificationFeed.start();
     } else {
+      notificationFeed.stop();
       clearAuth();
       if (s.reason === "idle") {
         toast("You were signed out because of inactivity.");
@@ -205,6 +221,25 @@ route("/admin/events", () => eventsPages.eventsPage(), "Events", {
 
 const memberEventsPages = createMemberEventsPages({ api, client, session });
 
+const notificationPages = createNotificationPages({
+  api,
+  feed: notificationFeed,
+});
+route(
+  "/notifications",
+  () => notificationPages.notificationsPage(),
+  "Notifications",
+  "signedIn",
+);
+
+const publicPages = createPublicPages({ api });
+route(
+  "/leaderboard",
+  () => publicPages.leaderboardPage(),
+  "Leaderboard",
+  "public",
+);
+
 const rankingPages = createRankingPages({ api });
 route("/ranking", () => rankingPages.rankingPage(), "Ranking", "signedIn");
 
@@ -269,6 +304,9 @@ const shell = createShell({
 // instead of being sent to the sign-in page and then home.
 // Startup failures are shown by bootstrap.js, without treating a saved session as signed out.
 await restoreSession(() => session.start());
+
+// the side menu shows the unread count as it changes
+addEventListener("cpc:unread", () => shell.draw(currentPath()));
 
 const router = start(main, {
   onChange: (path) => shell.draw(path),

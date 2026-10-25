@@ -1,5 +1,6 @@
 // Keyset pagination (DATABASE.md section 4): newest first by ULID, no offsets.
 // Query shape:  .order("id", { ascending: false }).limit(pageSize + 1)  [+ .lt("id", cursor)]
+export const DEFAULT_PAGE_SIZE = 10;
 export const MAX_PAGE_SIZE = 100;
 
 export function clampPageSize(n, fallback = 20) {

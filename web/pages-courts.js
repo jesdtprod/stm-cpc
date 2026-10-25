@@ -11,6 +11,7 @@ import {
   button,
   dataTable,
   dateControl,
+  DEFAULT_PAGE_SIZE,
   h,
   icon,
   iconButton,
@@ -179,30 +180,170 @@ export function createCourtsPages({ api, getOrgId }) {
         state.courts.map((c) => ({ value: c.id, label: c.name })),
       );
 
+    const reasonField = (label, required) => {
+      const count = h("output", {
+        class: "decision-reason-count",
+        id: "cr-reason-count",
+        for: "cr-reason",
+      }, "0 / 500");
+      return h(
+        "div",
+        { class: "field" },
+        h(
+          "div",
+          { class: "decision-field-heading" },
+          h(
+            "label",
+            { for: "cr-reason" },
+            label,
+            required ? h("span", { class: "decision-required" }, " *") : null,
+          ),
+          count,
+        ),
+        h("textarea", {
+          class: "input textarea",
+          id: "cr-reason",
+          name: "reason",
+          rows: 4,
+          maxlength: 500,
+          placeholder: "Provide context or explanation for this decision...",
+          required,
+          "aria-describedby": "cr-reason-help cr-reason-count",
+          onInput: (event) => {
+            count.textContent = `${event.target.value.length} / 500`;
+          },
+        }),
+        h(
+          "p",
+          { class: "muted decision-reason-help", id: "cr-reason-help" },
+          required
+            ? "At least 3 characters. Maximum 500 characters."
+            : "Optional. Maximum 500 characters.",
+        ),
+      );
+    };
+
+    const deleteSubject = (table, row, name) => {
+      if (table === "courts") {
+        return {
+          icon: "grid",
+          name: row.name,
+          badge: badge(...(STATUS[row.status] ?? [row.status, "neutral"])),
+          subtext: row.code,
+          metaLabel: "Type",
+          metaValue: [row.indoor ? "Indoor" : "Outdoor", row.surface]
+            .filter(Boolean).join(", "),
+          impactTitle: "Court will be hidden",
+        };
+      }
+      if (table === "court_hours") {
+        return {
+          icon: "clock",
+          name: courtName(row.court_id),
+          badge: badge(DAY_NAME[row.weekday], "info"),
+          subtext: `${hhmm(row.opens_at)} to ${hhmm(row.closes_at)}`,
+          metaLabel: "Applies",
+          metaValue: row.valid_to
+            ? `${row.valid_from} to ${row.valid_to}`
+            : `From ${row.valid_from}`,
+          impactTitle: "Hours will be removed",
+        };
+      }
+      if (table === "court_rates") {
+        return {
+          icon: "currency",
+          name: courtName(row.court_id),
+          badge: badge(
+            row.weekday == null ? "Every day" : DAY_NAME[row.weekday],
+            "info",
+          ),
+          subtext: row.valid_to
+            ? `${row.valid_from} to ${row.valid_to}`
+            : `From ${row.valid_from}`,
+          metaLabel: "Per hour",
+          metaValue: formatMoney(row.rate_per_hour),
+          impactTitle: "Rate will be removed",
+        };
+      }
+      return {
+        icon: "alert",
+        name: courtName(row.court_id),
+        badge: null,
+        subtext: row.reason ?? name,
+        metaLabel: "From and to",
+        metaValue: row.range?.[0]
+          ? `${formatDateTime(row.range[0])} to ${formatDateTime(row.range[1])}`
+          : null,
+        impactTitle: "Blackout will be removed",
+      };
+    };
+
     function deleteModal(table, row, { title, name, note }) {
       const key = api.newKey();
       const error = errorLine();
+      const subject = deleteSubject(table, row, name);
       return openModal({
         title,
-        eyebrow: name,
-        icon: "alert",
+        eyebrow: "Courts management",
+        icon: "trash",
+        tone: "danger",
         destructive: true,
         confirmLabel: "Delete",
+        cancelLabel: "Cancel",
         body: h(
           "div",
-          { class: "stack" },
-          h("p", {}, note),
-          field(
-            "cr-reason",
-            "Reason *",
-            h("textarea", {
-              class: "input textarea",
-              id: "cr-reason",
-              name: "reason",
-              rows: 3,
-              maxlength: 500,
-              required: true,
-            }),
+          { class: "member-decision" },
+          h(
+            "div",
+            { class: "member-decision-subject" },
+            h(
+              "span",
+              { class: "member-avatar is-icon", "aria-hidden": "true" },
+              icon(subject.icon, { solid: true }),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "member-decision-name" },
+                h("strong", { class: "member-name" }, subject.name),
+                subject.badge,
+              ),
+              h("span", { class: "sub member-subtext" }, subject.subtext),
+            ),
+            subject.metaValue
+              ? h(
+                "div",
+                { class: "member-decision-role" },
+                h("span", { class: "muted" }, subject.metaLabel),
+                h("span", {}, subject.metaValue),
+              )
+              : null,
+          ),
+          h(
+            "div",
+            { class: "stack" },
+            h(
+              "div",
+              { class: "modal-callout is-danger" },
+              h(
+                "span",
+                { class: "modal-callout-icon", "aria-hidden": "true" },
+                icon("trash"),
+              ),
+              h(
+                "div",
+                { class: "modal-callout-text" },
+                h(
+                  "strong",
+                  { class: "decision-impact-title" },
+                  subject.impactTitle,
+                ),
+                h("p", { class: "decision-impact-text" }, note),
+              ),
+            ),
+            reasonField("Reason", true),
           ),
           error,
         ),
@@ -474,6 +615,7 @@ export function createCourtsPages({ api, getOrgId }) {
       return dataTable({
         searchState: state,
         filter: tabsHost,
+        pageSize: DEFAULT_PAGE_SIZE,
         schema: {
           columns: [
             {
@@ -702,6 +844,7 @@ export function createCourtsPages({ api, getOrgId }) {
         dataTable({
           searchState: state,
           filter: tabsHost,
+          pageSize: DEFAULT_PAGE_SIZE,
           schema: {
             columns: [
               {
@@ -924,6 +1067,7 @@ export function createCourtsPages({ api, getOrgId }) {
         dataTable({
           searchState: state,
           filter: tabsHost,
+          pageSize: DEFAULT_PAGE_SIZE,
           schema: {
             columns: [
               {
@@ -1127,6 +1271,7 @@ export function createCourtsPages({ api, getOrgId }) {
       return dataTable({
         searchState: state,
         filter: tabsHost,
+        pageSize: DEFAULT_PAGE_SIZE,
         schema: {
           columns: [
             {

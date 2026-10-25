@@ -12,8 +12,11 @@ import {
   button,
   dataTable,
   dateControl,
+  dateTimeControl,
   h,
+  icon,
   iconButton,
+  inputWithIcon,
   openModal,
   selectControl,
   toast,
@@ -214,12 +217,12 @@ export function createEventsPages({ api }) {
       el.hidden = false;
       return false;
     };
-    const field = (id, label, input, hint) =>
+    const field = (id, label, control, hint, iconName) =>
       h(
         "div",
         { class: "field" },
         label ? h("label", { for: id }, label) : null,
-        input,
+        iconName ? inputWithIcon(control, iconName) : control,
         hint
           ? h("span", { class: "field-hint", id: `${id}-hint` }, hint)
           : null,
@@ -227,6 +230,8 @@ export function createEventsPages({ api }) {
     const input = (id, name, props = {}) =>
       props.type === "date"
         ? dateControl({ id, name, ...props })
+        : props.type === "datetime-local"
+        ? dateTimeControl({ id, name, ...props })
         : h("input", { class: "input", id, name, ...props });
     const select = (id, name, options, value) =>
       selectControl(
@@ -246,6 +251,11 @@ export function createEventsPages({ api }) {
     /** Asks for a reason, then runs the action. */
     function reasonModal({ title, eyebrow, note, confirmLabel, run, done }) {
       const error = errorLine();
+      const count = h("output", {
+        class: "decision-reason-count",
+        id: "ev-reason-count",
+        for: "ev-reason",
+      }, "0 / 500");
       return openModal({
         title,
         eyebrow,
@@ -254,20 +264,86 @@ export function createEventsPages({ api }) {
         destructive: true,
         body: h(
           "div",
-          { class: "stack" },
-          note ? h("p", {}, note) : null,
-          field(
-            "ev-reason",
-            "Reason *",
-            h("textarea", {
-              class: "input textarea",
-              id: "ev-reason",
-              name: "reason",
-              rows: 3,
-              maxlength: 500,
-              required: true,
-            }),
-            "Kept in the history. 3 to 500 characters.",
+          { class: "member-decision" },
+          eyebrow
+            ? h(
+              "div",
+              { class: "member-decision-subject" },
+              h(
+                "span",
+                { class: "member-avatar is-icon", "aria-hidden": "true" },
+                icon("trophy"),
+              ),
+              h(
+                "div",
+                { class: "member-meta" },
+                h(
+                  "div",
+                  { class: "member-decision-name" },
+                  h("strong", { class: "member-name" }, eyebrow),
+                ),
+                h("span", { class: "sub member-subtext" }, title),
+              ),
+            )
+            : null,
+          h(
+            "div",
+            { class: "stack" },
+            note
+              ? h(
+                "div",
+                { class: "modal-callout is-danger" },
+                h(
+                  "span",
+                  { class: "modal-callout-icon", "aria-hidden": "true" },
+                  icon("alert"),
+                ),
+                h(
+                  "div",
+                  { class: "modal-callout-text" },
+                  h(
+                    "strong",
+                    { class: "decision-impact-title" },
+                    "Action impact",
+                  ),
+                  h("p", { class: "decision-impact-text" }, note),
+                ),
+              )
+              : null,
+            h(
+              "div",
+              { class: "field" },
+              h(
+                "div",
+                { class: "decision-field-heading" },
+                h(
+                  "label",
+                  { for: "ev-reason" },
+                  "Reason",
+                  h("span", { class: "decision-required" }, " *"),
+                ),
+                count,
+              ),
+              h("textarea", {
+                class: "input textarea",
+                id: "ev-reason",
+                name: "reason",
+                rows: 4,
+                minlength: 3,
+                maxlength: 500,
+                required: true,
+                placeholder:
+                  "Provide context or explanation for this decision...",
+                "aria-describedby": "ev-reason-help ev-reason-count",
+                onInput: (event) => {
+                  count.textContent = `${event.target.value.length} / 500`;
+                },
+              }),
+              h("p", {
+                class: "muted decision-reason-help",
+                id: "ev-reason-help",
+              }, "Kept in the history. 3 to 500 characters."),
+            ),
           ),
           error,
         ),
@@ -299,18 +375,61 @@ export function createEventsPages({ api }) {
         title: editing ? "Edit event" : "New event",
         eyebrow: editing ? row.doc_no : "Events",
         icon: "trophy",
+        description:
+          "Set the tournament dates, location, entry fee and registration window.",
+        size: "lg",
         confirmLabel: editing ? "Save changes" : "Create event",
         body: h(
           "div",
-          { class: "stack" },
-          field(
-            "ev-name",
-            "Name *",
-            input("ev-name", "name", {
-              required: true,
-              maxlength: 120,
-              value: row?.name ?? "",
-            }),
+          { class: "form-grid" },
+          editing
+            ? h(
+              "div",
+              { class: "member-decision-subject form-grid-wide" },
+              h(
+                "span",
+                { class: "member-avatar is-icon", "aria-hidden": "true" },
+                icon("trophy"),
+              ),
+              h(
+                "div",
+                { class: "member-meta" },
+                h(
+                  "div",
+                  { class: "member-decision-name" },
+                  h("strong", { class: "member-name" }, row.name),
+                  badge(
+                    ...(EVENT_STATUS[row.status] ?? [row.status, "neutral"]),
+                  ),
+                ),
+                h("span", { class: "sub member-subtext" }, row.doc_no),
+              ),
+            )
+            : null,
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            field(
+              "ev-name",
+              "Name *",
+              input("ev-name", "name", {
+                required: true,
+                maxlength: 120,
+                value: row?.name ?? "",
+                placeholder: "e.g. Capitol Open Pickleball Championship",
+              }),
+              "Official tournament or club event title.",
+              "trophy",
+            ),
+          ),
+          h(
+            "div",
+            { class: "profile-subsection-divider form-grid-wide" },
+            h(
+              "span",
+              { class: "profile-subsection-label" },
+              "Schedule & venue",
+            ),
           ),
           field(
             "ev-start",
@@ -320,6 +439,7 @@ export function createEventsPages({ api }) {
               required: true,
               value: row?.starts_on ?? "",
             }),
+            "Opening day of the event (Asia/Manila).",
           ),
           field(
             "ev-end",
@@ -329,6 +449,7 @@ export function createEventsPages({ api }) {
               required: true,
               value: row?.ends_on ?? "",
             }),
+            "Final day of the event (Asia/Manila).",
           ),
           field(
             "ev-loc",
@@ -336,7 +457,10 @@ export function createEventsPages({ api }) {
             input("ev-loc", "location", {
               maxlength: 120,
               value: row?.location ?? "",
+              placeholder: "e.g. Capitol Pickleball Club Courts 1–4",
             }),
+            "Venue or court complex shown to members.",
+            "home",
           ),
           field(
             "ev-fee",
@@ -346,8 +470,19 @@ export function createEventsPages({ api }) {
               min: 0,
               step: "0.01",
               value: row ? String(row.fee) : "0",
+              placeholder: "0.00",
             }),
             "Zero means free. Members see this fee when they register.",
+            "currency",
+          ),
+          h(
+            "div",
+            { class: "profile-subsection-divider form-grid-wide" },
+            h(
+              "span",
+              { class: "profile-subsection-label" },
+              "Registration window",
+            ),
           ),
           field(
             "ev-opens",
@@ -367,7 +502,7 @@ export function createEventsPages({ api }) {
             }),
             "Optional. Manila time.",
           ),
-          error,
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const name = String(form.get("name") ?? "").trim();
@@ -645,23 +780,73 @@ export function createEventsPages({ api }) {
         title: editing ? "Edit division" : "New division",
         eyebrow: ev.name,
         icon: "layers",
+        description:
+          "Configure the skill category, play format, eligibility and bracket template.",
+        size: "lg",
         confirmLabel: editing ? "Save changes" : "Add division",
         body: h(
           "div",
-          { class: "stack" },
-          field(
-            "dv-name",
-            "Name *",
-            input("dv-name", "name", {
-              required: true,
-              maxlength: 120,
-              value: row?.name ?? "",
-            }),
-            "For example: Novice Men's Doubles.",
-          ),
+          { class: "form-grid" },
           editing
-            ? null
-            : field("dv-cat", "Category (skill level) *", category),
+            ? h(
+              "div",
+              { class: "member-decision-subject form-grid-wide" },
+              h(
+                "span",
+                { class: "member-avatar is-icon", "aria-hidden": "true" },
+                icon("layers"),
+              ),
+              h(
+                "div",
+                { class: "member-meta" },
+                h(
+                  "div",
+                  { class: "member-decision-name" },
+                  h("strong", { class: "member-name" }, row.name),
+                  badge(
+                    ...(DIVISION_STATUS[row.status] ?? [row.status, "neutral"]),
+                  ),
+                ),
+                h(
+                  "span",
+                  { class: "sub member-subtext" },
+                  `${ev.name} · ${describeDivision(row)}`,
+                ),
+              ),
+            )
+            : null,
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            field(
+              "dv-name",
+              "Division name *",
+              input("dv-name", "name", {
+                required: true,
+                maxlength: 120,
+                value: row?.name ?? "",
+                placeholder: "e.g. Novice Men's Doubles",
+              }),
+              "Name shown on tournament brackets and schedules.",
+              "trophy",
+            ),
+          ),
+          h(
+            "div",
+            { class: "profile-subsection-divider form-grid-wide" },
+            h(
+              "span",
+              { class: "profile-subsection-label" },
+              "Format & category",
+            ),
+          ),
+          editing ? null : field(
+            "dv-cat",
+            "Category (skill level) *",
+            category,
+            "Skill level required for this division.",
+            "layers",
+          ),
           editing ? null : field(
             "dv-format",
             "Singles or doubles *",
@@ -669,6 +854,8 @@ export function createEventsPages({ api }) {
               { value: "singles", label: "Singles" },
               { value: "doubles", label: "Doubles" },
             ], "singles"),
+            "Match team size.",
+            "user",
           ),
           field(
             "dv-gender",
@@ -679,58 +866,109 @@ export function createEventsPages({ api }) {
               { value: "female", label: "Women" },
               { value: "mixed", label: "Mixed" },
             ], row?.gender ?? ""),
+            "Participant gender requirement.",
+            "user",
           ),
           field(
             "dv-age",
             "Age group",
             input("dv-age", "age_group", {
               maxlength: 40,
-              placeholder: "For example 35+",
+              placeholder: "e.g. 35+",
               value: row?.age_group ?? "",
             }),
-            "Optional label shown to members.",
+            "Optional age eligibility label.",
+            "idCard",
           ),
-          field("dv-min", "Lowest rank allowed", minRank),
-          field("dv-max", "Highest rank allowed", maxRank),
+          h(
+            "div",
+            { class: "profile-subsection-divider form-grid-wide" },
+            h(
+              "span",
+              { class: "profile-subsection-label" },
+              "Rank limits & entries",
+            ),
+          ),
           field(
-            "dv-limit",
-            "Most entries",
-            input("dv-limit", "max_entries", {
-              type: "number",
-              min: 2,
-              max: 512,
-              step: 1,
-              value: row?.max_entries ?? "",
-            }),
-            "Leave empty for no limit.",
+            "dv-min",
+            "Lowest rank allowed",
+            minRank,
+            "Minimum player rank required.",
+            "medal",
+          ),
+          field(
+            "dv-max",
+            "Highest rank allowed",
+            maxRank,
+            "Maximum player rank allowed.",
+            "medal",
+          ),
+          h(
+            "div",
+            { class: editing ? "form-grid-wide" : "" },
+            field(
+              "dv-limit",
+              "Most entries",
+              input("dv-limit", "max_entries", {
+                type: "number",
+                min: 2,
+                max: 512,
+                step: 1,
+                value: row?.max_entries ?? "",
+                placeholder: "No limit",
+              }),
+              "Leave empty for no limit (2 to 512).",
+              "layers",
+            ),
           ),
           editing ? null : field(
             "dv-format-tpl",
-            "Format *",
+            "Format template *",
             select(
               "dv-format-tpl",
               "template_id",
               state.templates.map((t) => ({ value: t.id, label: t.name })),
               state.templates[0]?.id,
             ),
-            "The format is copied into the division. Later changes to the template do not affect it.",
+            "Copied to the division at creation.",
+            "settings",
           ),
           editing ? null : field(
             "dv-rule",
-            "Scoring",
+            "Scoring rule",
             select("dv-rule", "scoring_rule_id", [
               { value: "", label: "Club default" },
               ...state.rules.map((r) => ({ value: r.id, label: r.name })),
             ], ""),
+            "Match point and win-by configuration.",
+            "medal",
           ),
           editing
             ? h(
-              "p",
-              { class: "muted" },
-              "The category, singles or doubles, format and scoring are fixed once the division exists. Add another division to change them.",
+              "div",
+              { class: "modal-callout form-grid-wide" },
+              h(
+                "span",
+                { class: "modal-callout-icon", "aria-hidden": "true" },
+                icon("info"),
+              ),
+              h(
+                "div",
+                { class: "modal-callout-text" },
+                h(
+                  "strong",
+                  { class: "decision-impact-title" },
+                  "Format & rules locked",
+                ),
+                h(
+                  "p",
+                  { class: "decision-impact-text" },
+                  "Category, singles/doubles, format and scoring rules are fixed once a division is created.",
+                ),
+              ),
             )
             : null,
-          error,
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const name = String(form.get("name") ?? "").trim();
@@ -888,26 +1126,49 @@ export function createEventsPages({ api }) {
         title: "Format settings",
         eyebrow: `${state.open.name} · ${d.name}`,
         icon: "settings",
+        description:
+          "Configure bracket grouping and advancement rules for pool play.",
+        size: "lg",
         confirmLabel: "Save settings",
         body: h(
           "div",
-          { class: "stack" },
+          { class: "form-grid" },
           h(
-            "p",
-            { class: "muted" },
-            "Entries are split into Brackets A, B, C ... that each play a round robin; the best of each bracket enter a knockout. The settings are fixed once the draw is made.",
+            "div",
+            { class: "modal-callout form-grid-wide" },
+            h(
+              "span",
+              { class: "modal-callout-icon", "aria-hidden": "true" },
+              icon("info"),
+            ),
+            h(
+              "div",
+              { class: "modal-callout-text" },
+              h(
+                "strong",
+                { class: "decision-impact-title" },
+                "Pool play configuration",
+              ),
+              h(
+                "p",
+                { class: "decision-impact-text" },
+                "Entries are split into round-robin brackets. Settings are locked once the tournament draw is executed.",
+              ),
+            ),
           ),
           field(
             "fs-size",
-            "Players per bracket",
+            "Players per bracket *",
             input("fs-size", "target_group_size", {
               type: "number",
               min: 3,
               max: 12,
               step: 1,
+              required: true,
               value: cfg.target_group_size ?? 5,
             }),
-            "Used to work out the number of brackets, for example 20 players at 5 each make 4 brackets.",
+            "Target size (e.g. 20 players at 5 each make 4 brackets).",
+            "user",
           ),
           field(
             "fs-count",
@@ -918,19 +1179,24 @@ export function createEventsPages({ api }) {
               max: 26,
               step: 1,
               value: cfg.group_count ?? "",
+              placeholder: "Calculated automatically",
             }),
-            "Optional. Leave empty to use the players per bracket.",
+            "Optional override (1 to 26 brackets).",
+            "layers",
           ),
           field(
             "fs-adv",
-            "Advance from each bracket",
+            "Advance from each bracket *",
             input("fs-adv", "advance_per_group", {
               type: "number",
               min: 1,
               max: 4,
               step: 1,
+              required: true,
               value: cfg.advance_per_group ?? 2,
             }),
+            "Number of top finishers advancing to playoff.",
+            "trophy",
           ),
           field(
             "fs-assign",
@@ -942,8 +1208,10 @@ export function createEventsPages({ api }) {
                 label: "By rank (strongest spread evenly)",
               },
             ], cfg.group_assignment ?? "random"),
+            "Grouping strategy.",
+            "shuffle",
           ),
-          error,
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const countText = String(form.get("group_count") ?? "").trim();

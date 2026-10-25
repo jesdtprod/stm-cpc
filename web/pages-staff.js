@@ -9,7 +9,9 @@ import {
   button,
   dataTable,
   h,
+  icon,
   iconButton,
+  inputWithIcon,
   openModal,
   searchControl,
   selectControl,
@@ -83,25 +85,54 @@ export function createStaffPages({ api }) {
           h("option", { value: r.code, selected: r.code === value }, r.name)
         ),
       );
-    const reasonField = () =>
-      h(
+    const reasonField = () => {
+      const count = h("output", {
+        class: "decision-reason-count",
+        id: "st-reason-count",
+        for: "st-reason",
+      }, "0 / 500");
+      return h(
         "div",
         { class: "field" },
-        h("label", { for: "st-reason" }, "Reason *"),
-        h("textarea", {
-          class: "input textarea",
-          id: "st-reason",
-          name: "reason",
-          rows: 3,
-          maxlength: 500,
-          required: true,
-        }),
         h(
-          "span",
-          { class: "field-hint" },
-          "Kept in the audit log with the old and new role.",
+          "div",
+          { class: "decision-field-heading" },
+          h(
+            "label",
+            { for: "st-reason" },
+            "Reason",
+            h("span", { class: "decision-required" }, " *"),
+          ),
+          count,
+        ),
+        inputWithIcon(
+          h("textarea", {
+            class: "input textarea",
+            id: "st-reason",
+            name: "reason",
+            rows: 4,
+            minlength: 3,
+            maxlength: 500,
+            required: true,
+            placeholder:
+              "Provide context or explanation for this role assignment...",
+            "aria-describedby": "st-reason-help st-reason-count",
+            onInput: (event) => {
+              count.textContent = `${event.target.value.length} / 500`;
+            },
+          }),
+          "file",
+        ),
+        h(
+          "p",
+          {
+            class: "muted decision-reason-help",
+            id: "st-reason-help",
+          },
+          "Kept in the audit log with the old and new role. At least 3 characters.",
         ),
       );
+    };
 
     async function assign(memberId, form, key) {
       await api.rpc("assign_role", {
@@ -119,18 +150,70 @@ export function createStaffPages({ api }) {
         title: "Change role",
         eyebrow: `${row.display_name} · ${row.member_no}`,
         icon: "user",
+        description:
+          "Update staff permissions and assigned capabilities for this member.",
         confirmLabel: "Change role",
         body: h(
           "div",
-          { class: "stack" },
-          h("p", {}, `Now: ${row.role_name}.`),
+          { class: "member-decision" },
           h(
             "div",
-            { class: "field" },
-            h("label", { for: "st-role" }, "New role"),
-            roleSelect("st-role", row.role_code),
+            { class: "member-decision-subject" },
+            h(
+              "span",
+              { class: "member-avatar is-icon", "aria-hidden": "true" },
+              icon("user"),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "member-decision-name" },
+                h("strong", { class: "member-name" }, row.display_name),
+                badge(row.role_name, TONE[row.role_code] ?? "neutral"),
+              ),
+              h(
+                "span",
+                { class: "sub member-subtext" },
+                `Member ID: ${row.member_no}`,
+              ),
+            ),
           ),
-          reasonField(),
+          h(
+            "div",
+            { class: "stack" },
+            h(
+              "div",
+              { class: "modal-callout is-warning" },
+              h(
+                "span",
+                { class: "modal-callout-icon", "aria-hidden": "true" },
+                icon("alert"),
+              ),
+              h(
+                "div",
+                { class: "modal-callout-text" },
+                h(
+                  "strong",
+                  { class: "decision-impact-title" },
+                  "Permissions will update immediately",
+                ),
+                h(
+                  "p",
+                  { class: "decision-impact-text" },
+                  "Changing this member's role adjusts their access to administration tools and approval queues.",
+                ),
+              ),
+            ),
+            h(
+              "div",
+              { class: "field" },
+              h("label", { for: "st-role" }, "New role"),
+              inputWithIcon(roleSelect("st-role", row.role_code), "user"),
+            ),
+            reasonField(),
+          ),
           error,
         ),
         onConfirm: async (form) => {
@@ -158,6 +241,7 @@ export function createStaffPages({ api }) {
       const key = api.newKey();
       const error = errorLine();
       let chosen = null;
+      const previewHost = h("div", { class: "staff-selected-preview" });
       const results = h("div", {
         class: "staff-results",
         role: "radiogroup",
@@ -172,11 +256,50 @@ export function createStaffPages({ api }) {
       });
       const summary = h(
         "p",
-        { class: "muted", role: "status" },
-        "Search for an active member.",
+        {
+          class: "field-hint staff-search-summary",
+          role: "status",
+          "aria-live": "polite",
+        },
+        "Search by name or member ID. Active members only.",
       );
+
+      function updatePreview(member) {
+        chosen = member;
+        if (!member) {
+          previewHost.replaceChildren();
+          return;
+        }
+        previewHost.replaceChildren(
+          h(
+            "div",
+            { class: "member-decision-subject" },
+            h(
+              "span",
+              { class: "member-avatar is-icon", "aria-hidden": "true" },
+              icon("user"),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "member-decision-name" },
+                h("strong", { class: "member-name" }, member.display_name),
+                badge(member.role_name, TONE[member.role_code] ?? "neutral"),
+              ),
+              h(
+                "span",
+                { class: "sub member-subtext" },
+                `Member ID: ${member.member_no}`,
+              ),
+            ),
+          ),
+        );
+      }
+
       async function search() {
-        chosen = null;
+        updatePreview(null);
         const text = term.value.trim();
         if (text.length < 2) {
           summary.textContent = "Type at least 2 letters or numbers.";
@@ -190,7 +313,7 @@ export function createStaffPages({ api }) {
             p_only_staff: false,
           });
           summary.textContent = rows.length
-            ? `${rows.length} found. Choose one.`
+            ? `${rows.length} found. Choose one below.`
             : "Nobody active matches. A member must be active (approved) before getting a role.";
           results.replaceChildren(
             ...rows.map((r) =>
@@ -202,20 +325,23 @@ export function createStaffPages({ api }) {
                   name: "member",
                   value: r.member_id,
                   disabled: r.is_self,
-                  onChange: () => (chosen = r),
+                  onChange: () => updatePreview(r),
                 }),
+                h("span", {
+                  class: "member-avatar is-icon",
+                  "aria-hidden": "true",
+                }, icon("user")),
                 h(
                   "span",
-                  {},
-                  r.display_name,
+                  { class: "member-meta" },
+                  h("span", { class: "member-name" }, r.display_name),
                   h(
                     "span",
-                    { class: "sub" },
-                    `${r.member_no} · ${r.role_name}${
-                      r.is_self ? " (you)" : ""
-                    }`,
+                    { class: "sub member-subtext" },
+                    `${r.member_no}${r.is_self ? " (you)" : ""}`,
                   ),
                 ),
+                badge(r.role_name, TONE[r.role_code] ?? "neutral"),
               )
             ),
           );
@@ -233,31 +359,52 @@ export function createStaffPages({ api }) {
         title: "Give someone a role",
         eyebrow: "Staff",
         icon: "user",
+        description:
+          "Select a member, choose their role and record the reason.",
         confirmLabel: "Assign role",
         body: h(
           "div",
-          { class: "stack" },
+          { class: "form-grid" },
           h(
-            "div",
-            { class: "field" },
-            h("label", { for: "st-term" }, "Find a member"),
+            "section",
+            {
+              class: "form-section form-grid-wide",
+              "aria-label": "Member selection",
+            },
+            h(
+              "div",
+              { class: "decision-field-heading" },
+              h(
+                "label",
+                { for: "st-term", class: "form-setting-label" },
+                icon("user"),
+                "Find a member",
+              ),
+              badge("Active members", "success"),
+            ),
             h(
               "div",
               { class: "staff-search" },
               term,
               button({ label: "Search", icon: "search", onClick: search }),
             ),
+            summary,
+            results,
+            previewHost,
           ),
-          summary,
-          results,
           h(
             "div",
-            { class: "field" },
+            { class: "field form-grid-wide" },
             h("label", { for: "st-role" }, "Role"),
-            roleSelect("st-role", "front_desk"),
+            inputWithIcon(roleSelect("st-role", "front_desk"), "keyRound"),
+            h(
+              "span",
+              { class: "field-hint" },
+              "Controls the tools and permissions this member can access.",
+            ),
           ),
-          reasonField(),
-          error,
+          h("div", { class: "form-grid-wide" }, reasonField()),
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           if (!chosen) {

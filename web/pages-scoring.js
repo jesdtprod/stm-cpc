@@ -10,7 +10,9 @@ import {
   button,
   dataTable,
   h,
+  icon,
   iconButton,
+  inputWithIcon,
   openModal,
   selectControl,
   toast,
@@ -74,12 +76,12 @@ export function createScoringPages({ api, getOrgId }) {
       el.hidden = false;
       return false;
     };
-    const field = (id, label, control, hint) =>
+    const field = (id, label, control, hint, iconName) =>
       h(
         "div",
         { class: "field" },
         label ? h("label", { for: id }, label) : null,
-        control,
+        iconName ? inputWithIcon(control, iconName) : control,
         hint
           ? h("span", { class: "field-hint", id: `${id}-hint` }, hint)
           : null,
@@ -99,7 +101,7 @@ export function createScoringPages({ api, getOrgId }) {
       const slots = [0, 1, 2, 3].map((i) =>
         selectControl(
           { class: "input select-input", id: `sc-tb-${i}`, name: `tb${i}` },
-          h("option", { value: "" }, "—"),
+          h("option", { value: "" }, "— None —"),
           ...TIEBREAKS.map((t) =>
             h("option", {
               value: t.value,
@@ -112,92 +114,198 @@ export function createScoringPages({ api, getOrgId }) {
         title: editing ? "Edit scoring rule" : "New scoring rule",
         eyebrow: editing ? row.name : "Scoring rules",
         icon: "medal",
+        description:
+          "Configure match scoring and the order used to resolve tied standings.",
+        size: "lg",
         confirmLabel: editing ? "Save changes" : "Add rule",
         body: h(
           "div",
-          { class: "stack" },
-          field(
-            "sc-name",
-            "Name *",
-            input("sc-name", "name", {
-              required: true,
-              maxlength: 80,
-              value: row?.name ?? "",
-            }),
-            "For example: Best of 3 to 11.",
-          ),
-          field(
-            "sc-games",
-            "Games to win *",
-            input("sc-games", "games_to_win", {
-              type: "number",
-              min: 1,
-              max: 5,
-              step: 1,
-              required: true,
-              value: row?.games_to_win ?? 1,
-            }),
-            "1 = a single game, 2 = best of 3, 3 = best of 5.",
-          ),
-          field(
-            "sc-points",
-            "Points per game *",
-            input("sc-points", "points_per_game", {
-              type: "number",
-              min: 1,
-              max: 99,
-              step: 1,
-              required: true,
-              value: row?.points_per_game ?? 11,
-            }),
-          ),
-          field(
-            "sc-winby",
-            "Win by *",
-            input("sc-winby", "win_by", {
-              type: "number",
-              min: 1,
-              max: 5,
-              step: 1,
-              required: true,
-              value: row?.win_by ?? 2,
-            }),
-          ),
-          field(
-            "sc-cap",
-            "Point cap",
-            input("sc-cap", "point_cap", {
-              type: "number",
-              min: 1,
-              max: 99,
-              step: 1,
-              value: row?.point_cap ?? "",
-            }),
-            "Optional. The game ends when someone reaches the cap.",
-          ),
-          field(
-            "sc-forfeit",
-            "Forfeit score *",
-            input("sc-forfeit", "forfeit_score", {
-              type: "number",
-              min: 0,
-              max: 99,
-              step: 1,
-              required: true,
-              value: row?.forfeit_score ?? 11,
-            }),
-            "What the winner scores in each game of a forfeit; the other side scores 0.",
+          { class: "form-grid" },
+          editing
+            ? h(
+              "div",
+              { class: "member-decision-subject form-grid-wide" },
+              h("span", {
+                class: "member-avatar is-icon",
+                "aria-hidden": "true",
+              }, icon("medal")),
+              h(
+                "div",
+                { class: "member-meta" },
+                h(
+                  "div",
+                  { class: "member-decision-name" },
+                  h("strong", { class: "member-name" }, row.name),
+                  badge(
+                    row.is_active ? "Active" : "Inactive",
+                    row.is_active ? "success" : "neutral",
+                  ),
+                ),
+                h("span", { class: "sub member-subtext" }, describe(row)),
+              ),
+            )
+            : null,
+          h(
+            "div",
+            { class: "form-grid-wide" },
+            field(
+              "sc-name",
+              "Rule name *",
+              input("sc-name", "name", {
+                required: true,
+                maxlength: 80,
+                value: row?.name ?? "",
+                placeholder: "e.g. Best of 3 to 11",
+              }),
+              null,
+              "medal",
+            ),
           ),
           h(
-            "p",
-            { class: "muted" },
-            "Ties are split by wins first, then by these, in order. Head-to-head counts only the matches among those who are tied.",
+            "section",
+            { class: "form-section", "aria-label": "Match scoring" },
+            h(
+              "div",
+              { class: "form-section-head" },
+              h(
+                "span",
+                { class: "form-section-icon", "aria-hidden": "true" },
+                icon("trophy"),
+              ),
+              h(
+                "div",
+                {},
+                h("h3", { class: "form-section-title" }, "Match scoring"),
+                h(
+                  "p",
+                  { class: "form-section-description" },
+                  "Set the match length and winning score.",
+                ),
+              ),
+            ),
+            h(
+              "div",
+              { class: "form-grid" },
+              field(
+                "sc-games",
+                "Games to win *",
+                input("sc-games", "games_to_win", {
+                  type: "number",
+                  min: 1,
+                  max: 5,
+                  step: 1,
+                  required: true,
+                  value: row?.games_to_win ?? 1,
+                }),
+                "1 = single, 2 = best of 3, 3 = best of 5.",
+                "trophy",
+              ),
+              field(
+                "sc-points",
+                "Points per game *",
+                input("sc-points", "points_per_game", {
+                  type: "number",
+                  min: 1,
+                  max: 99,
+                  step: 1,
+                  required: true,
+                  value: row?.points_per_game ?? 11,
+                }),
+                null,
+                "layers",
+              ),
+              field(
+                "sc-winby",
+                "Win by *",
+                input("sc-winby", "win_by", {
+                  type: "number",
+                  min: 1,
+                  max: 5,
+                  step: 1,
+                  required: true,
+                  value: row?.win_by ?? 2,
+                }),
+                "Required lead in points.",
+                "checkCircle",
+              ),
+              field(
+                "sc-cap",
+                "Point cap",
+                input("sc-cap", "point_cap", {
+                  type: "number",
+                  min: 1,
+                  max: 99,
+                  step: 1,
+                  value: row?.point_cap ?? "",
+                  placeholder: "No cap",
+                }),
+                "Optional. Leave empty for no cap.",
+                "lock",
+              ),
+              h(
+                "div",
+                { class: "form-grid-wide" },
+                field(
+                  "sc-forfeit",
+                  "Forfeit score *",
+                  input("sc-forfeit", "forfeit_score", {
+                    type: "number",
+                    min: 0,
+                    max: 99,
+                    step: 1,
+                    required: true,
+                    value: row?.forfeit_score ?? 11,
+                  }),
+                  "Winner's points per game; the opponent receives 0.",
+                  "alertCircle",
+                ),
+              ),
+            ),
           ),
-          field("sc-tb-0", "Then by", slots[0]),
-          field("sc-tb-1", "Then by", slots[1]),
-          field("sc-tb-2", "Then by", slots[2]),
-          field("sc-tb-3", "Then by", slots[3]),
-          error,
+          h(
+            "section",
+            { class: "form-section", "aria-label": "Tiebreak order" },
+            h(
+              "div",
+              { class: "form-section-head" },
+              h(
+                "span",
+                { class: "form-section-icon", "aria-hidden": "true" },
+                icon("shuffle"),
+              ),
+              h(
+                "div",
+                {},
+                h("h3", { class: "form-section-title" }, "Tiebreak order"),
+                h(
+                  "p",
+                  { class: "form-section-description" },
+                  "Match wins come first, followed by these criteria.",
+                ),
+              ),
+            ),
+            h(
+              "div",
+              { class: "form-section-fields" },
+              ...slots.map((slot, index) =>
+                field(
+                  `sc-tb-${index}`,
+                  `${index + 1}. ${
+                    ["First", "Second", "Third", "Fourth"][index]
+                  } tiebreak`,
+                  slot,
+                  null,
+                  "shuffle",
+                )
+              ),
+              h(
+                "p",
+                { class: "field-hint" },
+                "Each criterion can be used once. Choose None to skip a position.",
+              ),
+            ),
+          ),
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           const name = String(form.get("name") ?? "").trim();
@@ -281,6 +389,11 @@ export function createScoringPages({ api, getOrgId }) {
     function deleteModal(row) {
       const key = api.newKey();
       const error = errorLine();
+      const count = h("output", {
+        class: "decision-reason-count",
+        id: "sc-reason-count",
+        for: "sc-reason",
+      }, "0 / 500");
       return openModal({
         title: "Delete this scoring rule",
         eyebrow: row.name,
@@ -289,23 +402,90 @@ export function createScoringPages({ api, getOrgId }) {
         confirmLabel: "Delete",
         body: h(
           "div",
-          { class: "stack" },
+          { class: "member-decision" },
           h(
-            "p",
-            {},
-            "Divisions that already use this rule keep their own copy. It will no longer be offered for new divisions.",
+            "div",
+            { class: "member-decision-subject" },
+            h(
+              "span",
+              { class: "member-avatar is-icon", "aria-hidden": "true" },
+              icon("medal"),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "member-decision-name" },
+                h("strong", { class: "member-name" }, row.name),
+                badge(
+                  row.is_active ? "Active" : "Inactive",
+                  row.is_active ? "success" : "neutral",
+                ),
+              ),
+              h("span", { class: "sub member-subtext" }, describe(row)),
+            ),
           ),
-          field(
-            "sc-reason",
-            "Reason *",
-            h("textarea", {
-              class: "input textarea",
-              id: "sc-reason",
-              name: "reason",
-              rows: 3,
-              maxlength: 500,
-              required: true,
-            }),
+          h(
+            "div",
+            { class: "stack" },
+            h(
+              "div",
+              { class: "modal-callout is-danger" },
+              h(
+                "span",
+                { class: "modal-callout-icon", "aria-hidden": "true" },
+                icon("trash"),
+              ),
+              h(
+                "div",
+                { class: "modal-callout-text" },
+                h(
+                  "strong",
+                  { class: "decision-impact-title" },
+                  "Rule will be removed",
+                ),
+                h(
+                  "p",
+                  { class: "decision-impact-text" },
+                  "Divisions already using this rule keep their own copy. It will no longer be offered for new divisions.",
+                ),
+              ),
+            ),
+            h(
+              "div",
+              { class: "field" },
+              h(
+                "div",
+                { class: "decision-field-heading" },
+                h(
+                  "label",
+                  { for: "sc-reason" },
+                  "Reason",
+                  h("span", { class: "decision-required" }, " *"),
+                ),
+                count,
+              ),
+              h("textarea", {
+                class: "input textarea",
+                id: "sc-reason",
+                name: "reason",
+                rows: 4,
+                minlength: 3,
+                maxlength: 500,
+                required: true,
+                placeholder:
+                  "Provide context or explanation for this decision...",
+                "aria-describedby": "sc-reason-help sc-reason-count",
+                onInput: (event) => {
+                  count.textContent = `${event.target.value.length} / 500`;
+                },
+              }),
+              h("p", {
+                class: "muted decision-reason-help",
+                id: "sc-reason-help",
+              }, "At least 3 characters. Maximum 500 characters."),
+            ),
           ),
           error,
         ),

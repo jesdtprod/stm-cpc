@@ -1045,6 +1045,176 @@ export function createHomePages({ session, api }) {
     });
   }
 
+  /**
+   * Public information below the welcome screen: upcoming events, the courts, and how to join. It comes from one narrow
+   * public function (public_landing_info) that returns only event names, dates, places, status and fees, and court names,
+   * settings and opening hours. It loads after the first screen is shown, so the page never waits for it.
+   */
+  function landingInfoSection() {
+    const section = h("section", {
+      class: "cpc-info",
+      "aria-label": "Events, courts and how to join",
+      hidden: true,
+    });
+    const WEEKDAY = {
+      registration_open: "Registration open",
+      registration_closed: "Registration closed",
+      drawn: "Draw made",
+      in_progress: "Under way",
+    };
+    const day = (iso) =>
+      new Date(`${iso}T00:00:00+08:00`).toLocaleDateString("en-PH", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "Asia/Manila",
+      });
+    const time = (hhmm) => {
+      const [hh, mm] = hhmm.split(":").map(Number);
+      return `${hh % 12 || 12}:${String(mm).padStart(2, "0")} ${
+        hh < 12 ? "AM" : "PM"
+      }`;
+    };
+    const card = (title, ...children) =>
+      h("article", { class: "cpc-info-card" }, h("h3", {}, title), ...children);
+
+    function render(info) {
+      const events = info?.events ?? [];
+      const courts = info?.courts ?? [];
+      section.replaceChildren(
+        h(
+          "div",
+          { class: "cpc-landing-container cpc-info-grid" },
+          h(
+            "div",
+            { class: "cpc-info-block" },
+            h("h2", {}, "Upcoming events"),
+            events.length
+              ? h(
+                "div",
+                { class: "cpc-info-list" },
+                ...events.map((e) =>
+                  card(
+                    e.name,
+                    h(
+                      "p",
+                      { class: "muted" },
+                      e.starts_on === e.ends_on
+                        ? day(e.starts_on)
+                        : `${day(e.starts_on)} – ${day(e.ends_on)}`,
+                      e.location ? ` · ${e.location}` : "",
+                    ),
+                    h(
+                      "p",
+                      {},
+                      WEEKDAY[e.status] ?? e.status,
+                      Number(e.fee) > 0
+                        ? ` · Fee ₱${Number(e.fee).toLocaleString("en-PH")}`
+                        : " · Free",
+                    ),
+                  )
+                ),
+              )
+              : h(
+                "p",
+                { class: "muted" },
+                "No events are scheduled yet. Check back soon.",
+              ),
+          ),
+          h(
+            "div",
+            { class: "cpc-info-block" },
+            h("h2", {}, "Our courts"),
+            courts.length
+              ? h(
+                "div",
+                { class: "cpc-info-list" },
+                ...courts.map((c) =>
+                  card(
+                    c.name,
+                    h(
+                      "p",
+                      { class: "muted" },
+                      [c.indoor ? "Indoor" : "Outdoor", c.surface].filter(
+                        Boolean,
+                      ).join(" · "),
+                    ),
+                    c.hours?.opens
+                      ? h(
+                        "p",
+                        {},
+                        `${time(c.hours.opens)} – ${time(c.hours.closes)}`,
+                        c.hours.days >= 7
+                          ? ", every day"
+                          : `, ${c.hours.days} days a week`,
+                      )
+                      : null,
+                  )
+                ),
+              )
+              : h(
+                "p",
+                { class: "muted" },
+                "Court details will be posted soon.",
+              ),
+          ),
+          h(
+            "div",
+            { class: "cpc-info-block" },
+            h("h2", {}, "How to join"),
+            h(
+              "ol",
+              { class: "cpc-info-steps" },
+              h(
+                "li",
+                {},
+                "Create your account with your name, birth date and contact details.",
+              ),
+              h(
+                "li",
+                {},
+                "The club checks your application and approves your membership.",
+              ),
+              h(
+                "li",
+                {},
+                "Then book a court, register for events and follow your ranking.",
+              ),
+            ),
+            h(
+              "div",
+              { class: "actions" },
+              h(
+                "a",
+                { class: "btn btn-primary", href: "#/signup" },
+                "Create an account",
+              ),
+              h("a", { class: "btn", href: "#/signin" }, "Sign in"),
+              info?.results_public || info?.leaderboard_public
+                ? h(
+                  "a",
+                  { class: "btn", href: "#/leaderboard" },
+                  "Leaderboard and results",
+                )
+                : null,
+            ),
+          ),
+        ),
+      );
+      section.hidden = false;
+    }
+
+    // after the first screen: never part of the first load
+    const start = () =>
+      api.rpc("public_landing_info").then(render).catch(() => {
+        // the welcome screen stands on its own
+      });
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(start, { timeout: 2500 });
+    } else setTimeout(start, 400);
+    return section;
+  }
+
   function welcomePage() {
     const canvasEl = h("canvas", {
       class: "cpc-hero-canvas",
@@ -1085,19 +1255,19 @@ export function createHomePages({ session, api }) {
                 "div",
                 { class: "cpc-top-flank cpc-top-flank-left" },
                 h("img", {
-                  src: "icons/paddle.png",
+                  src: "icons/paddle-480.webp",
                   alt: "Tournament Pickleball Paddle Left",
                   class: "cpc-top-paddle cpc-top-paddle-left",
                 }),
                 h("img", {
-                  src: "icons/ball.png",
+                  src: "icons/ball-240.webp",
                   alt: "Tournament Pickleball Left",
                   class: "cpc-top-ball cpc-top-ball-left",
                 }),
               ),
               h("img", {
                 class: "cpc-hero-logo cpc-top-logo",
-                src: "icons/cpc-logo.png",
+                src: "icons/cpc-logo-256.webp",
                 alt: "Capitol Pickleball Club",
                 width: "72",
                 height: "72",
@@ -1106,12 +1276,12 @@ export function createHomePages({ session, api }) {
                 "div",
                 { class: "cpc-top-flank cpc-top-flank-right" },
                 h("img", {
-                  src: "icons/ball.png",
+                  src: "icons/ball-240.webp",
                   alt: "Tournament Pickleball Right",
                   class: "cpc-top-ball cpc-top-ball-right",
                 }),
                 h("img", {
-                  src: "icons/paddle.png",
+                  src: "icons/paddle-480.webp",
                   alt: "Tournament Pickleball Paddle Right",
                   class: "cpc-top-paddle cpc-top-paddle-right",
                 }),
@@ -1182,13 +1352,13 @@ export function createHomePages({ session, api }) {
             { class: "cpc-hero-mockup-wrap" },
             h("img", {
               class: "cpc-paddle cpc-paddle-left",
-              src: "icons/paddle.png",
+              src: "icons/paddle-480.webp",
               alt: "",
               "aria-hidden": "true",
             }),
             h("img", {
               class: "cpc-ball cpc-ball-left",
-              src: "icons/ball.png",
+              src: "icons/ball-240.webp",
               alt: "",
               "aria-hidden": "true",
             }),
@@ -1385,13 +1555,13 @@ export function createHomePages({ session, api }) {
               ),
               h("img", {
                 class: "cpc-ball cpc-ball-right",
-                src: "icons/ball.png",
+                src: "icons/ball-240.webp",
                 alt: "",
                 "aria-hidden": "true",
               }),
               h("img", {
                 class: "cpc-paddle cpc-paddle-right",
-                src: "icons/paddle.png",
+                src: "icons/paddle-480.webp",
                 alt: "",
                 "aria-hidden": "true",
               }),
@@ -1405,6 +1575,7 @@ export function createHomePages({ session, api }) {
       "div",
       { class: "cpc-landing" },
       heroSection,
+      landingInfoSection(),
     );
 
     setupConvexPatternCanvas(canvasEl, landingEl, watermarkEl);

@@ -9,9 +9,13 @@ import {
   attachPagePattern,
   badge,
   dataTable,
+  DEFAULT_PAGE_SIZE,
   h,
+  icon,
   iconButton,
+  inputWithIcon,
   openModal,
+  pagination,
   searchControl,
   selectField,
   toast,
@@ -62,7 +66,14 @@ export function createCategoriesPages({ api, getOrgId }) {
     });
     attachPagePattern(page);
     const tableHost = h("div", { class: "table-host" });
-    const state = { rows: [], status: "loading", tab: "active", term: "" };
+    const pagerHost = h("div", {});
+    const state = {
+      rows: [],
+      status: "loading",
+      tab: "active",
+      term: "",
+      page: 1,
+    };
     const search = searchControl({
       class: "input",
       id: "categories-search",
@@ -70,6 +81,7 @@ export function createCategoriesPages({ api, getOrgId }) {
       "aria-label": "Search categories",
       onInput: () => {
         state.term = search.value;
+        state.page = 1;
         draw();
       },
     });
@@ -80,6 +92,7 @@ export function createCategoriesPages({ api, getOrgId }) {
       options: TABS.map((item) => ({ value: item.id, label: item.label })),
       onChange: (event) => {
         state.tab = event.target.value;
+        state.page = 1;
         draw();
       },
     });
@@ -102,6 +115,7 @@ export function createCategoriesPages({ api, getOrgId }) {
         required: true,
         maxlength: 60,
         value: row?.name ?? "",
+        placeholder: "e.g. Beginner",
       });
       const codeInput = h("input", {
         class: "input",
@@ -111,6 +125,7 @@ export function createCategoriesPages({ api, getOrgId }) {
         maxlength: 32,
         value: row?.code ?? "",
         readonly: editing,
+        placeholder: "e.g. beginner",
         "aria-describedby": "cat-code-hint",
       });
       let codeTouched = editing;
@@ -130,62 +145,93 @@ export function createCategoriesPages({ api, getOrgId }) {
             ? h("span", { class: "field-hint", id: `${id}-hint` }, hint)
             : null,
         );
+      const catField = (id, label, control, iconName, hint) =>
+        field(id, label, inputWithIcon(control, iconName), hint);
       const body = h(
         "div",
-        { class: "stack" },
-        field("cat-name", "Name *", nameInput),
-        field(
+        { class: "form-grid" },
+        catField(
+          "cat-name",
+          "Category name *",
+          nameInput,
+          "layers",
+          "Shown on rankings, divisions and brackets.",
+        ),
+        catField(
           "cat-code",
           "Code *",
           codeInput,
+          "idCard",
           editing
-            ? "The code cannot be changed after the category is created."
-            : "Lowercase letters, numbers, hyphen. Made from the name; you can change it now.",
+            ? "The code cannot be changed."
+            : "Generated from the name; you can edit it.",
         ),
-        field(
-          "cat-desc",
-          "Description",
-          h("textarea", {
-            class: "input textarea",
-            id: "cat-desc",
-            name: "description",
-            rows: 2,
-            maxlength: 300,
-          }, row?.description ?? ""),
+        h(
+          "div",
+          { class: "form-grid-wide" },
+          catField(
+            "cat-order",
+            "Display order *",
+            h("input", {
+              class: "input",
+              id: "cat-order",
+              name: "sort_order",
+              type: "number",
+              min: 0,
+              max: 100000,
+              step: 1,
+              required: true,
+              value: row?.sort_order ?? nextOrder,
+            }),
+            "layers",
+            "Lower numbers come first in lists and menus.",
+          ),
         ),
-        field(
-          "cat-elig",
-          "Who it is for (eligibility notes)",
-          h("textarea", {
-            class: "input textarea",
-            id: "cat-elig",
-            name: "eligibility_notes",
-            rows: 2,
-            maxlength: 300,
-          }, row?.eligibility_notes ?? ""),
+        h(
+          "div",
+          { class: "form-grid-wide" },
+          catField(
+            "cat-desc",
+            "Description",
+            h("textarea", {
+              class: "input textarea",
+              id: "cat-desc",
+              name: "description",
+              rows: 2,
+              maxlength: 300,
+              placeholder: "Skill level summary shown to members...",
+            }, row?.description ?? ""),
+            "file",
+            "Optional. Up to 300 characters.",
+          ),
         ),
-        field(
-          "cat-order",
-          "Order",
-          h("input", {
-            class: "input",
-            id: "cat-order",
-            name: "sort_order",
-            type: "number",
-            min: 0,
-            max: 100000,
-            step: 1,
-            required: true,
-            value: row?.sort_order ?? nextOrder,
-          }),
-          "Lower numbers come first in lists and menus.",
+        h(
+          "div",
+          { class: "form-grid-wide" },
+          catField(
+            "cat-elig",
+            "Who it is for (eligibility notes)",
+            h("textarea", {
+              class: "input textarea",
+              id: "cat-elig",
+              name: "eligibility_notes",
+              rows: 2,
+              maxlength: 300,
+              placeholder:
+                "Experience, tournament history or rating guidelines...",
+            }, row?.eligibility_notes ?? ""),
+            "info",
+            "Optional. Up to 300 characters.",
+          ),
         ),
-        error,
+        h("div", { class: "form-grid-wide" }, error),
       );
       return openModal({
         title: editing ? "Edit category" : "New category",
         eyebrow: editing ? row.name : "Skill levels",
         icon: "layers",
+        description:
+          "Set skill level details, eligibility notes and display order.",
         body,
         confirmLabel: editing ? "Save changes" : "Add category",
         onConfirm: async (form) => {
@@ -251,6 +297,11 @@ export function createCategoriesPages({ api, getOrgId }) {
         role: "alert",
         hidden: true,
       });
+      const count = h("output", {
+        class: "decision-reason-count",
+        id: "cat-reason-count",
+        for: "cat-reason",
+      }, "0 / 500");
       return openModal({
         title,
         eyebrow: row.name,
@@ -259,24 +310,90 @@ export function createCategoriesPages({ api, getOrgId }) {
         confirmLabel: verb,
         body: h(
           "div",
-          { class: "stack" },
+          { class: "member-decision" },
           h(
-            "p",
-            {},
-            "The category is hidden from lists. You can restore it later.",
+            "div",
+            { class: "member-decision-subject" },
+            h(
+              "span",
+              { class: "member-avatar is-icon", "aria-hidden": "true" },
+              icon("layers"),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "member-decision-name" },
+                h("strong", { class: "member-name" }, row.name),
+                badge(
+                  row.is_active ? "Active" : "Retired",
+                  row.is_active ? "success" : "neutral",
+                ),
+              ),
+              h("span", { class: "sub member-subtext" }, row.code),
+            ),
           ),
           h(
             "div",
-            { class: "field" },
-            h("label", { for: "cat-reason" }, "Reason *"),
-            h("textarea", {
-              class: "input textarea",
-              id: "cat-reason",
-              name: "reason",
-              rows: 3,
-              maxlength: 500,
-              required: true,
-            }),
+            { class: "stack" },
+            h(
+              "div",
+              { class: "modal-callout is-danger" },
+              h(
+                "span",
+                { class: "modal-callout-icon", "aria-hidden": "true" },
+                icon("trash"),
+              ),
+              h(
+                "div",
+                { class: "modal-callout-text" },
+                h(
+                  "strong",
+                  { class: "decision-impact-title" },
+                  "Category will be hidden",
+                ),
+                h(
+                  "p",
+                  { class: "decision-impact-text" },
+                  "The category is hidden from lists. You can restore it later.",
+                ),
+              ),
+            ),
+            h(
+              "div",
+              { class: "field" },
+              h(
+                "div",
+                { class: "decision-field-heading" },
+                h(
+                  "label",
+                  { for: "cat-reason" },
+                  "Reason",
+                  h("span", { class: "decision-required" }, " *"),
+                ),
+                count,
+              ),
+              h("textarea", {
+                class: "input textarea",
+                id: "cat-reason",
+                name: "reason",
+                rows: 4,
+                minlength: 3,
+                maxlength: 500,
+                required: true,
+                placeholder:
+                  "Provide context or explanation for this decision...",
+                "aria-describedby": "cat-reason-help cat-reason-count",
+                onInput: (event) => {
+                  count.textContent = `${event.target.value.length} / 500`;
+                },
+              }),
+              h("p", {
+                class: "muted decision-reason-help",
+                id: "cat-reason-help",
+              }, "At least 3 characters. Maximum 500 characters."),
+            ),
           ),
           error,
         ),
@@ -400,23 +517,29 @@ export function createCategoriesPages({ api, getOrgId }) {
     const schema = {
       columns: [
         {
-          key: "order",
-          label: "Order",
-          align: "right",
-          render: (r) => String(r.sort_order),
-        },
-        {
           key: "name",
           label: "Category",
           render: (r) =>
             h(
-              "span",
-              {},
-              r.name,
-              h("span", { class: "sub" }, r.description ?? r.code),
+              "div",
+              { class: "member-cell" },
+              h("span", {
+                class: "member-avatar is-icon",
+                "aria-hidden": "true",
+              }, icon("layers")),
+              h(
+                "div",
+                { class: "member-meta" },
+                h("span", { class: "member-name" }, r.name),
+                h("span", { class: "sub member-subtext" }, r.code),
+              ),
             ),
         },
-        { key: "code", label: "Code", render: (r) => r.code },
+        {
+          key: "description",
+          label: "Description",
+          render: (r) => r.description || "Not specified",
+        },
         {
           key: "ladder",
           label: "Rank ladder",
@@ -466,22 +589,30 @@ export function createCategoriesPages({ api, getOrgId }) {
           row.name,
           row.code,
           row.description,
-          row.sort_order,
           liveLadders(row).length ? "Set up" : "None yet",
           TABS.find((item) => item.id === tabOf(row))?.label,
         ].join(" "));
         return terms.every((term) => text.includes(term));
       });
+      state.page = Math.min(
+        state.page,
+        Math.max(1, Math.ceil(rows.length / DEFAULT_PAGE_SIZE)),
+      );
+      const pageRows = rows.slice(
+        (state.page - 1) * DEFAULT_PAGE_SIZE,
+        state.page * DEFAULT_PAGE_SIZE,
+      );
       tableHost.replaceChildren(dataTable({
         searchable: false,
         hasFilters: Boolean(state.term.trim()),
         onReset: () => {
           state.term = "";
           search.value = "";
+          state.page = 1;
           draw();
         },
         schema,
-        rows,
+        rows: pageRows,
         state: state.status,
         ariaLabel: "Categories",
         onRetry: refresh,
@@ -494,6 +625,19 @@ export function createCategoriesPages({ api, getOrgId }) {
           ? "Add the club's skill levels, for example Beginner, Novice, Intermediate and Advanced."
           : "Categories you retire or delete will be listed here.",
       }));
+      pagerHost.replaceChildren(
+        ...(state.status === "loading" || state.status === "error"
+          ? []
+          : [pagination({
+            page: state.page,
+            pageSize: DEFAULT_PAGE_SIZE,
+            total: rows.length,
+            onPage: (next) => {
+              state.page = next;
+              draw();
+            },
+          })]),
+      );
     }
 
     async function refresh() {
@@ -529,7 +673,12 @@ export function createCategoriesPages({ api, getOrgId }) {
         search,
         h("div", { class: "member-status-filter" }, statusFilter),
       ),
-      h("div", { class: "member-directory-card is-auto-grid" }, tableHost),
+      h(
+        "div",
+        { class: "member-directory-card is-auto-grid" },
+        tableHost,
+        pagerHost,
+      ),
     );
     refresh();
     return page;

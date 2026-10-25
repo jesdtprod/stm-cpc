@@ -33,6 +33,14 @@ have no shadows. Use `ui.js` components rather than new page-specific controls.
 - Badge contents are centered horizontally and vertically, including text, icons
   and status dots. Reuse the shared alignment for status, identity, counters and
   public-page badge variants; retain their semantic colors and size variants.
+- All grid pagination uses `DEFAULT_PAGE_SIZE` (10) from the shared pagination
+  module, including server query ranges and local slices. Hide the complete
+  footer when the filtered total is zero; the table empty state explains the
+  result. With records, show the range, total and page size in a compact footer.
+- Searchable grids may set `pageSize` to use the shared pagination footer.
+  Filter the full list before paging; reset to page one when search changes,
+  retain the current page on refresh, and clamp it when records are removed.
+  Categories, Courts, opening hours, rates and blackouts use 10 records per page.
 - Row actions and pagination: 36px square, 10px radius, 17px icons, and 8px action
   gaps. Provide an accessible action label and tooltip; use semantic colors.
   Declare `actionCount` for conditional actions so loading reserves their width.
@@ -59,6 +67,24 @@ have no shadows. Use `ui.js` components rather than new page-specific controls.
 - Searches: `searchControl` returns the input for existing handlers and renders
   the shared search icon and clear action. Clear is hidden when empty and rotates
   on hover, with reduced-motion support.
+- Rank management uses responsive category cards, shared identity icons and
+  compact rank rows with grouped actions. Keep the full ladder visible inside a
+  matching category so search never changes the rank order used for movement.
+  Search, category and view filters sit above the content; movement rules use
+  the shared grid and 10-row pagination. Rank and rule dialogs reuse icon fields,
+  compact form grids, switches and decision callouts.
+- Scoring-rule dialogs group Match scoring and Tiebreak order into balanced
+  `form-section` panels within the shared compact form grid. Panels stack on
+  mobile; every field uses the shared icon input or searchable dropdown.
+  Retain numeric constraints, optional caps and the saved tiebreak order.
+- Role-assignment dialogs use the shared member-selection panel, searchable
+  icon role selector and counted audit reason. Empty search/preview containers
+  must not reserve space. Preserve radio selection, self-assignment restrictions,
+  submitted field names and the reason requirement in both assignment/change flows.
+- Calendar popups use a 320px viewport-safe width independent of the trigger,
+  seven equal weekday/day columns, and 36px navigation, date, preset and
+  month/year controls. Keep the month/year heading on one line. A single date
+  has four rounded corners; only range endpoints use connected range styling.
 - Dates, modal actions, empty states, and pagination reuse `dateField`,
   `dateControl` (native-form adapter), `openModal`, `dataTable`, and `pagination`. Specialized calendar and tournament
   layouts retain their workflow while using the same controls.
