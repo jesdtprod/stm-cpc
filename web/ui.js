@@ -1254,34 +1254,39 @@ export function dateField(config) {
   return controlNodes.get(dateControl({ ...config, name: config.id }));
 }
 
-export function timeField(
-  {
-    id,
-    label,
-    value = "",
-    min,
-    max,
-    error,
-    hint,
-    required,
-    disabled,
-    onChange,
-  },
-) {
-  return field({
-    id,
-    label,
-    type: "time",
-    value,
-    min,
-    max,
-    error,
-    hint,
-    required,
-    disabled,
-    iconTrailing: "clock",
-    onChange,
+export function timeControl(props = {}) {
+  const native = h("input", { ...props, type: "time" });
+  const control = calendarDropdown({
+    ...props,
+    timeOnly: true,
+    ariaLabel: props.ariaLabel || props["aria-label"],
+    value: native.value,
+    nativeInput: native,
+    onChange: () =>
+      native.dispatchEvent(new Event("change", { bubbles: true })),
   });
+  for (const property of ["value", "disabled"]) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      property,
+    );
+    Object.defineProperty(native, property, {
+      get() {
+        return descriptor.get.call(this);
+      },
+      set(next) {
+        descriptor.set.call(this, next);
+        control.refreshFromNative();
+      },
+      configurable: true,
+    });
+  }
+  controlNodes.set(native, control);
+  return native;
+}
+
+export function timeField(config) {
+  return controlNodes.get(timeControl({ ...config, name: config.id }));
 }
 
 export function dateTimeControl(props = {}) {
@@ -1338,6 +1343,7 @@ export function calendarDropdown(
     defaultView = "",
     nativeInput = null,
     includeTime = false,
+    timeOnly = false,
   },
 ) {
   let selectedStart = range ? startValue : value;
@@ -1358,6 +1364,19 @@ export function calendarDropdown(
       return;
     }
     const [d, t] = String(str).split(/[T\s]/);
+    if (!t && /^\d{1,2}:\d{2}/.test(d)) {
+      const [hStr, mStr] = d.split(":");
+      let hNum = parseInt(hStr, 10);
+      if (!isNaN(hNum)) {
+        selectedPeriod = hNum >= 12 ? "PM" : "AM";
+        hNum = hNum % 12 || 12;
+        selectedHour = String(hNum).padStart(2, "0");
+      }
+      if (mStr !== undefined) {
+        selectedMinute = String(parseInt(mStr, 10) || 0).padStart(2, "0");
+      }
+      return;
+    }
     selectedDate = d || "";
     if (t) {
       const [hStr, mStr] = t.split(":");
@@ -1373,7 +1392,9 @@ export function calendarDropdown(
     }
   };
 
-  if (includeTime) {
+  if (timeOnly) {
+    parseDateTime(value);
+  } else if (includeTime) {
     parseDateTime(value);
     selectedStart = selectedDate;
   }
@@ -1408,6 +1429,12 @@ export function calendarDropdown(
   ];
   const DAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
+  const getTimeString = () => {
+    let h24 = parseInt(selectedHour, 10) % 12;
+    if (selectedPeriod === "PM") h24 += 12;
+    return `${String(h24).padStart(2, "0")}:${selectedMinute}`;
+  };
+
   const getFullDateTimeString = () => {
     if (!selectedDate) return "";
     let h24 = parseInt(selectedHour, 10) % 12;
@@ -1416,6 +1443,9 @@ export function calendarDropdown(
   };
 
   const formatDisplay = () => {
+    if (timeOnly) {
+      return `${selectedHour}:${selectedMinute} ${selectedPeriod}`;
+    }
     if (includeTime) {
       if (!selectedDate) return "Select date & time";
       const [y, m, d] = selectedDate.split("-");
@@ -1446,7 +1476,9 @@ export function calendarDropdown(
       class: "input calendar-drop-trigger",
       id,
       "aria-label": ariaLabel || label ||
-        (includeTime ? "Choose date and time" : "Choose Date"),
+        (timeOnly
+          ? "Choose Time"
+          : (includeTime ? "Choose date and time" : "Choose Date")),
       "aria-haspopup": "dialog",
       "aria-expanded": "false",
       "aria-controls": `${id}-calendar`,
@@ -1459,7 +1491,7 @@ export function calendarDropdown(
     h(
       "span",
       { class: "calendar-drop-trigger-left" },
-      icon(includeTime ? "clock" : "calendar"),
+      icon(timeOnly || includeTime ? "clock" : "calendar"),
       displayText,
     ),
     icon("chevronDown"),
@@ -1467,10 +1499,14 @@ export function calendarDropdown(
 
   const popover = h("div", {
     id: `${id}-calendar`,
-    class: `calendar-popover${includeTime ? " has-time" : ""}`,
+    class: `calendar-popover${
+      timeOnly ? " has-time is-time-only" : (includeTime ? " has-time" : "")
+    }`,
     role: "dialog",
     "aria-label": label ||
-      (includeTime ? "Choose date and time" : "Choose Date"),
+      (timeOnly
+        ? "Choose Time"
+        : (includeTime ? "Choose date and time" : "Choose Date")),
     hidden: true,
   });
 
@@ -1478,8 +1514,25 @@ export function calendarDropdown(
     type: "hidden",
     id: `${id}-value`,
     name: id,
-    value: includeTime ? getFullDateTimeString() : (selectedStart || ""),
+    value: timeOnly
+      ? getTimeString()
+      : (includeTime ? getFullDateTimeString() : (selectedStart || "")),
   });
+
+  const emitTimeSelect = () => {
+    const val = getTimeString();
+    hiddenInput.value = val;
+    displayText.textContent = formatDisplay();
+    if (onChange) {
+      const evt = {
+        target: { id, name: id, value: val },
+        currentTarget: { id, name: id, value: val },
+        value: val,
+        toString: () => val,
+      };
+      onChange(evt);
+    }
+  };
 
   const emitDateTimeSelect = () => {
     if (!selectedDate) {
@@ -1780,8 +1833,9 @@ export function calendarDropdown(
       ),
     );
 
-    if (includeTime) {
-      popover.classList.add("has-time");
+    if (includeTime || timeOnly) {
+      if (includeTime) popover.classList.add("has-time");
+      if (timeOnly) popover.classList.add("has-time", "is-time-only");
       const hours = [
         "01",
         "02",
@@ -1816,6 +1870,11 @@ export function calendarDropdown(
           Number(a) - Number(b)
         );
 
+      const emitTime = () => {
+        if (timeOnly) emitTimeSelect();
+        else emitDateTimeSelect();
+      };
+
       const hourBtns = hours.map((hStr) =>
         h("button", {
           type: "button",
@@ -1825,7 +1884,7 @@ export function calendarDropdown(
           onClick: (e) => {
             e.stopPropagation();
             selectedHour = hStr;
-            emitDateTimeSelect();
+            emitTime();
             renderMonth();
           },
         }, hStr)
@@ -1840,7 +1899,7 @@ export function calendarDropdown(
           onClick: (e) => {
             e.stopPropagation();
             selectedMinute = mStr;
-            emitDateTimeSelect();
+            emitTime();
             renderMonth();
           },
         }, mStr)
@@ -1854,7 +1913,7 @@ export function calendarDropdown(
         onClick: (e) => {
           e.stopPropagation();
           selectedPeriod = "AM";
-          emitDateTimeSelect();
+          emitTime();
           renderMonth();
         },
       }, "AM");
@@ -1867,7 +1926,7 @@ export function calendarDropdown(
         onClick: (e) => {
           e.stopPropagation();
           selectedPeriod = "PM";
-          emitDateTimeSelect();
+          emitTime();
           renderMonth();
         },
       }, "PM");
@@ -1906,6 +1965,11 @@ export function calendarDropdown(
           }),
         ),
       );
+
+      if (timeOnly) {
+        popover.append(timePane);
+        return;
+      }
 
       const calendarMain = h(
         "div",
@@ -1995,7 +2059,7 @@ export function calendarDropdown(
       position.start();
       requestAnimationFrame(() => {
         popover.classList.add("is-open");
-        if (includeTime) {
+        if (includeTime || timeOnly) {
           popover.querySelector(".hours-col .is-selected")?.scrollIntoView({
             block: "center",
           });
@@ -2046,9 +2110,11 @@ export function calendarDropdown(
     nativeInput.addEventListener("invalid", (event) => {
       event.preventDefault();
       errorEl.textContent = nativeInput.validationMessage ||
-        (includeTime
-          ? "Choose a valid date and time."
-          : "Choose a valid date.");
+        (timeOnly
+          ? "Choose a valid time."
+          : (includeTime
+            ? "Choose a valid date and time."
+            : "Choose a valid date."));
       errorEl.hidden = false;
       triggerBtn.setAttribute("aria-invalid", "true");
       toggleCalendar(true);
@@ -2056,7 +2122,7 @@ export function calendarDropdown(
   }
   wrapper.refreshFromNative = () => {
     selectedStart = hiddenInput.value;
-    if (includeTime) {
+    if (timeOnly || includeTime) {
       parseDateTime(hiddenInput.value);
     }
     displayText.textContent = formatDisplay();
@@ -2065,15 +2131,18 @@ export function calendarDropdown(
   };
   wrapper.inputEl = hiddenInput;
   Object.defineProperty(wrapper, "value", {
-    get: () => includeTime ? getFullDateTimeString() : selectedStart,
+    get: () =>
+      timeOnly
+        ? getTimeString()
+        : (includeTime ? getFullDateTimeString() : selectedStart),
     set: (v) => {
       selectedStart = v;
-      if (includeTime) {
+      if (timeOnly || includeTime) {
         parseDateTime(v);
       }
       hiddenInput.value = v;
       displayText.textContent = formatDisplay();
-      renderMonth();
+      if (isOpen) renderMonth();
     },
   });
 
@@ -2443,6 +2512,61 @@ export function adminHero({ title, description, chip, actions = [] }) {
           h("span", { class: "status-dot-pulse", "aria-hidden": "true" }),
           chip ?? title,
         ),
+      ),
+      h(
+        "h1",
+        { class: "dash-hero-title", id: "page-title", tabindex: "-1" },
+        title,
+      ),
+      description ? h("p", { class: "dash-hero-sub" }, description) : null,
+    ),
+    actions.length ? h("div", { class: "dash-hero-actions" }, actions) : null,
+  );
+}
+
+/**
+ * Member page banner shared across member screens (dash-hero styling): eyebrow role/section chip with icon,
+ * current Manila date chip, status pulse chip, page title, description, and optional actions.
+ */
+export function memberHero({
+  eyebrow = "Play",
+  title,
+  description,
+  chip = "Court Availability",
+  iconName = "calendar",
+  actions = [],
+}) {
+  return h(
+    "section",
+    { class: "dash-hero", "aria-label": title },
+    h(
+      "div",
+      { class: "dash-hero-copy" },
+      h(
+        "div",
+        { class: "dash-hero-chips" },
+        eyebrow
+          ? h(
+            "span",
+            { class: "dash-chip is-role" },
+            icon(iconName),
+            eyebrow,
+          )
+          : null,
+        h(
+          "span",
+          { class: "dash-chip is-date" },
+          icon("calendar"),
+          ADMIN_HERO_DATE.format(new Date()),
+        ),
+        chip
+          ? h(
+            "span",
+            { class: "dash-chip is-status" },
+            h("span", { class: "status-dot-pulse", "aria-hidden": "true" }),
+            chip,
+          )
+          : null,
       ),
       h(
         "h1",

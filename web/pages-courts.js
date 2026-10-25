@@ -20,6 +20,7 @@ import {
   selectControl,
   switchToggle,
   tableFilter,
+  timeControl,
   toast,
 } from "./ui.js";
 import { businessDate, formatDateTime } from "./lib/dates.js";
@@ -159,10 +160,11 @@ export function createCourtsPages({ api, getOrgId }) {
           ? h("span", { class: "field-hint", id: `${id}-hint` }, hint)
           : null,
       );
-    const input = (id, name, props = {}) =>
-      props.type === "date"
-        ? dateControl({ id, name, ...props })
-        : h("input", { class: "input", id, name, ...props });
+    const input = (id, name, props = {}) => {
+      if (props.type === "date") return dateControl({ id, name, ...props });
+      if (props.type === "time") return timeControl({ id, name, ...props });
+      return h("input", { class: "input", id, name, ...props });
+    };
     const select = (id, name, options, value) =>
       selectControl(
         { class: "input select-input", id, name },
@@ -740,7 +742,7 @@ export function createCourtsPages({ api, getOrgId }) {
               "fieldset",
               { class: "settings-methods" },
               h("legend", {}, "Days"),
-              ...days,
+              h("div", { class: "days-grid-2col" }, ...days),
             ),
           ),
           field(

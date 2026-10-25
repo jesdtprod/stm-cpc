@@ -13,8 +13,8 @@ import {
   h,
   icon,
   iconButton,
+  memberHero,
   openModal,
-  pageHeader,
   searchControl,
   selectControl,
   tableFilter,
@@ -182,9 +182,11 @@ export function createBookingPages({ api, client, session }) {
     // ------------------------------------------------------------- request
     function requestModal(court, slots, index) {
       const first = slots[index];
+      const maxBookingMinutes = 120; // max 2 hours only
+      const maxSlots = Math.floor(maxBookingMinutes / state.slotMinutes);
       const runLimit = Math.min(
-        freeRun(slots, index, 4),
-        Math.floor(240 / state.slotMinutes),
+        freeRun(slots, index, maxSlots),
+        maxSlots,
       );
       const players = new Map(); // member_id -> { member_no, display_name }
       const error = h("p", {
@@ -192,11 +194,61 @@ export function createBookingPages({ api, client, session }) {
         role: "alert",
         hidden: true,
       });
-      const quote = h(
-        "p",
-        { class: "muted", role: "status" },
-        "Checking the price…",
+
+      const subjectCard = h(
+        "div",
+        { class: "member-decision-subject" },
+        h(
+          "span",
+          { class: "member-avatar is-icon", "aria-hidden": "true" },
+          icon("grid", { solid: true }),
+        ),
+        h(
+          "div",
+          { class: "member-meta" },
+          h(
+            "div",
+            { class: "member-decision-name" },
+            h("strong", { class: "member-name" }, court.name),
+            badge("Available", "success"),
+          ),
+          h(
+            "span",
+            { class: "sub member-subtext" },
+            [court.indoor ? "Indoor" : "Outdoor", court.surface].filter(Boolean)
+              .join(" · "),
+          ),
+        ),
+        h(
+          "div",
+          { class: "member-decision-role" },
+          h("span", { class: "muted" }, "Session"),
+          h("span", {}, `${dayLabel(state.day)} · ${timeLabel(first.start)}`),
+        ),
       );
+
+      const quoteIcon = h(
+        "span",
+        { class: "modal-callout-icon", "aria-hidden": "true" },
+        icon("clock"),
+      );
+      const quoteTitle = h(
+        "strong",
+        { class: "quote-callout-title" },
+        "Checking price…",
+      );
+      const quoteBody = h(
+        "span",
+        { class: "quote-callout-body" },
+        "Calculating court fees and reservation rules.",
+      );
+      const quoteCallout = h(
+        "div",
+        { class: "modal-callout is-success quote-callout", role: "status" },
+        quoteIcon,
+        h("div", { class: "modal-callout-text" }, quoteTitle, quoteBody),
+      );
+
       const minutesSel = selectControl(
         { class: "input select-input", id: "bk-len", name: "minutes" },
         ...Array.from({ length: runLimit }, (_, i) => {
@@ -213,6 +265,19 @@ export function createBookingPages({ api, client, session }) {
           );
         }),
       );
+
+      const durationField = h(
+        "div",
+        { class: "field" },
+        h(
+          "div",
+          { class: "decision-field-heading" },
+          h("label", { for: "bk-len" }, "How Long"),
+          h("span", { class: "field-hint" }, "Max 2 hours per session"),
+        ),
+        minutesSel,
+      );
+
       const chosen = h("div", {
         class: "chips",
         "aria-label": "Players you added",
@@ -229,7 +294,12 @@ export function createBookingPages({ api, client, session }) {
         placeholder: "Name or member ID",
         autocomplete: "off",
       });
-      const summary = h("p", { class: "muted", role: "status" });
+      const playerCounter = h(
+        "span",
+        { class: "card-status-pill is-clean" },
+        `1 of ${state.maxPlayers} players`,
+      );
+      const summary = h("p", { class: "muted", role: "status", hidden: true });
 
       const minutes = () => Number(minutesSel.value);
       const signature = () =>
@@ -241,7 +311,10 @@ export function createBookingPages({ api, client, session }) {
         ].join("|");
 
       async function refreshQuote() {
-        quote.textContent = "Checking the price…";
+        quoteCallout.className = "modal-callout is-success quote-callout";
+        quoteIcon.replaceChildren(icon("clock"));
+        quoteTitle.textContent = "Checking price…";
+        quoteBody.textContent = "Calculating court fees and reservation rules.";
         try {
           const q = await api.rpc("quote_booking", {
             p_court_id: court.id,
@@ -249,13 +322,18 @@ export function createBookingPages({ api, client, session }) {
             p_minutes: minutes(),
           });
           if (!q.ok) {
-            quote.textContent = q.problem;
+            quoteCallout.className = "modal-callout is-danger quote-callout";
+            quoteIcon.replaceChildren(icon("alert"));
+            quoteTitle.textContent = "Cannot Book Slot";
+            quoteBody.textContent = q.problem ||
+              "This court slot cannot be requested.";
             return;
           }
           const price = Number(q.price);
-          quote.textContent = `${
-            price > 0 ? `Price: ${formatMoney(price)}.` : "No charge."
-          } ${
+          const priceText = price > 0
+            ? `Fee: ${formatMoney(price)}`
+            : "Free · No Charge";
+          const policyText = `${
             q.approval_required
               ? "An admin approves requests."
               : "Confirmed straight away."
@@ -264,20 +342,34 @@ export function createBookingPages({ api, client, session }) {
               ? " Payment must be verified first."
               : ""
           }`;
+          quoteCallout.className = price > 0
+            ? "modal-callout is-warning quote-callout"
+            : "modal-callout is-success quote-callout";
+          quoteIcon.replaceChildren(icon(price > 0 ? "currency" : "check"));
+          quoteTitle.textContent = priceText;
+          quoteBody.textContent = policyText;
         } catch (e) {
-          quote.textContent = bookingMessage(
+          quoteCallout.className = "modal-callout is-danger quote-callout";
+          quoteIcon.replaceChildren(icon("alert"));
+          quoteTitle.textContent = "Price Check Failed";
+          quoteBody.textContent = bookingMessage(
             e,
             "The price could not be checked.",
           );
         }
       }
+
       function drawChosen() {
         chosen.replaceChildren(
           ...[...players].map(([id, p]) =>
             h(
               "span",
-              { class: "chip" },
-              p.display_name,
+              { class: "chip booking-player-chip" },
+              icon("user"),
+              h("span", {}, p.display_name),
+              p.member_no
+                ? h("span", { class: "chip-id" }, `(${p.member_no})`)
+                : null,
               h("button", {
                 type: "button",
                 class: "chip-x",
@@ -290,50 +382,78 @@ export function createBookingPages({ api, client, session }) {
             )
           ),
         );
-        summary.textContent = `${
+        playerCounter.textContent = `${
           players.size + 1
-        } of ${state.maxPlayers} players including you.`;
+        } of ${state.maxPlayers} players`;
       }
+
       async function search() {
         const text = term.value.trim();
         if (text.length < 2) {
           summary.textContent = "Type at least 2 letters or numbers.";
+          summary.hidden = false;
           return;
         }
+        summary.hidden = true;
         try {
           const rows = await api.rpc("find_players", { p_term: text });
+          const candidates = (rows ?? []).filter((r) =>
+            !players.has(r.member_id)
+          );
           results.replaceChildren(
-            ...(rows ?? []).filter((r) => !players.has(r.member_id)).map((r) =>
+            ...candidates.map((r) =>
               h(
                 "button",
                 {
                   type: "button",
-                  class: "staff-result",
+                  class: "player-result",
                   onClick: () => {
                     if (players.size + 1 >= state.maxPlayers) {
                       summary.textContent =
-                        `At most ${state.maxPlayers} players.`;
+                        `At most ${state.maxPlayers} players allowed.`;
+                      summary.hidden = false;
                       return;
                     }
                     players.set(r.member_id, r);
                     results.replaceChildren();
+                    term.value = "";
                     drawChosen();
                   },
                 },
                 h(
+                  "div",
+                  { class: "member-cell" },
+                  h(
+                    "span",
+                    { class: "member-avatar is-icon", "aria-hidden": "true" },
+                    icon("user"),
+                  ),
+                  h(
+                    "div",
+                    { class: "member-meta" },
+                    h("span", { class: "member-name" }, r.display_name),
+                    h("span", { class: "sub member-subtext" }, r.member_no),
+                  ),
+                ),
+                h(
                   "span",
-                  {},
-                  r.display_name,
-                  h("span", { class: "sub" }, r.member_no),
+                  { class: "player-result-action" },
+                  icon("plus"),
+                  "Add",
                 ),
               )
             ),
           );
-          if (!rows?.length) summary.textContent = "Nobody active matches.";
+          if (!candidates.length) {
+            summary.textContent = "Nobody active matches.";
+            summary.hidden = false;
+          }
         } catch (e) {
           summary.textContent = bookingMessage(e, "The search did not work.");
+          summary.hidden = false;
         }
       }
+
       term.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
@@ -344,37 +464,46 @@ export function createBookingPages({ api, client, session }) {
       drawChosen();
       refreshQuote();
       return openModal({
-        title: "Request this court",
-        eyebrow: `${court.name} · ${dayLabel(state.day)} · ${
-          timeLabel(first.start)
-        }`,
+        title: "Request Court",
+        eyebrow: court.name.toUpperCase(),
         icon: "calendar",
+        tone: "success",
         confirmLabel: "Send Request",
         body: h(
           "div",
-          { class: "stack" },
+          { class: "member-decision court-booking-dialog" },
+          subjectCard,
           h(
             "div",
-            { class: "field" },
-            h("label", { for: "bk-len" }, "How Long"),
-            minutesSel,
-          ),
-          quote,
-          h(
-            "div",
-            { class: "field" },
-            h("label", { for: "bk-term" }, "Add players (optional)"),
+            { class: "stack" },
+            durationField,
+            quoteCallout,
             h(
               "div",
-              { class: "staff-search" },
-              term,
-              button({ label: "Search", icon: "search", onClick: search }),
+              { class: "field" },
+              h(
+                "div",
+                { class: "decision-field-heading" },
+                h("label", { for: "bk-term" }, "Add Players (Optional)"),
+                playerCounter,
+              ),
+              h(
+                "div",
+                { class: "staff-search" },
+                term,
+                button({ label: "Search", icon: "search", onClick: search }),
+              ),
+              h(
+                "span",
+                { class: "field-hint" },
+                "Search members by name or ID to add participants to your reservation.",
+              ),
             ),
+            results,
+            chosen,
+            summary,
+            error,
           ),
-          results,
-          chosen,
-          summary,
-          error,
         ),
         onConfirm: async () => {
           try {
@@ -388,7 +517,7 @@ export function createBookingPages({ api, client, session }) {
             toast(
               r.status === "confirmed"
                 ? `Booked: ${r.doc_no}.`
-                : `Request sent: ${r.doc_no}. You will see the decision in My bookings.`,
+                : `Request sent: ${r.doc_no}. You will see the decision in My Bookings.`,
               { tone: "success" },
             );
             await load();
@@ -726,19 +855,13 @@ export function createBookingPages({ api, client, session }) {
     }
 
     page.append(
-      pageHeader({
-        icon: "calendar",
+      memberHero({
         eyebrow: "Play",
         title: "Book a Court",
+        chip: "Court Availability",
+        iconName: "calendar",
         description:
           "Pick a day, then a free time. The club may need to approve your request.",
-        actions: [
-          button({
-            label: "My Bookings",
-            icon: "clock",
-            onClick: () => (location.hash = "#/bookings"),
-          }),
-        ],
       }),
       body,
     );
@@ -1189,10 +1312,11 @@ export function createBookingPages({ api, client, session }) {
     }
 
     page.append(
-      pageHeader({
-        icon: "clock",
+      memberHero({
+        iconName: "clock",
         eyebrow: "Play",
         title: "My Bookings",
+        chip: "Reservation History",
         description: "Your court requests, their status, and payment.",
         actions: [
           button({

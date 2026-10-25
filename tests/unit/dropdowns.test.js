@@ -6,6 +6,7 @@ import {
   h,
   iconButton,
   inputWithIcon,
+  memberHero,
   pagination,
   searchableSelect,
   searchControl,
@@ -13,6 +14,7 @@ import {
   selectField,
   switchToggle,
   tableFilter,
+  timeControl,
 } from "../../web/ui.js";
 import { createRanksPages } from "../../web/pages-ranks.js";
 import { createScoringPages } from "../../web/pages-scoring.js";
@@ -504,6 +506,51 @@ Deno.test("datetime adapter: native name, constraints and value remain synchroni
     assert(
       parent.querySelector(".calendar-time-pane") !== null,
       "Time pane must be present",
+    );
+  }));
+
+Deno.test("time adapter: native name, constraints and value remain synchronized with time-only popover", () =>
+  withDom(() => {
+    const t = timeControl({
+      id: "hr-open",
+      name: "opens",
+      value: "08:00",
+      required: true,
+    });
+    const parent = h("div", {}, t);
+    assert(
+      t.getAttribute("name") === "opens" &&
+        t.getAttribute("required") !== null,
+      "Time form contract must be preserved",
+    );
+    assert(
+      parent.querySelector(".calendar-drop-val").textContent.includes(
+        "08:00 AM",
+      ),
+      "Calendar display must reflect formatted time",
+    );
+    t.value = "21:00";
+    assert(
+      parent.querySelector(".calendar-drop-val").textContent.includes(
+        "09:00 PM",
+      ),
+      "Programmatic time change must update the display to PM format",
+    );
+    const trigger = parent.querySelector(".calendar-drop-trigger");
+    trigger.click();
+    assert(
+      !parent.querySelector(".calendar-popover").hidden,
+      "Popover must open",
+    );
+    assert(
+      parent.querySelector(".calendar-popover").className.includes(
+        "is-time-only",
+      ),
+      "Popover must be marked is-time-only",
+    );
+    assert(
+      parent.querySelector(".calendar-main") === null,
+      "Calendar month main view must NOT be present in time-only mode",
     );
   }));
 
@@ -1186,5 +1233,32 @@ Deno.test("shared controls: lists, dates, date-times and action menus flip upwar
       trigger.click();
       assert(popup.hidden, "The trigger must still close its popup");
     }
+  });
+});
+
+Deno.test("memberHero: renders dash-hero with chips, title, subtitle and respects actions", () => {
+  withDom(() => {
+    const hero = memberHero({
+      eyebrow: "Play",
+      title: "Book a Court",
+      chip: "Court Availability",
+      description: "Pick a day, then a free time.",
+    });
+    assert(hero.className.includes("dash-hero"), "Must use dash-hero class");
+    assert(
+      hero.querySelector(".dash-hero-title")?.textContent === "Book a Court",
+      "Must render title",
+    );
+    assert(
+      hero.querySelector(".dash-hero-sub")?.textContent ===
+        "Pick a day, then a free time.",
+      "Must render subtitle",
+    );
+    assert(
+      !hero.querySelector(".dash-hero-actions"),
+      "No actions container when actions array is empty",
+    );
+    const chips = hero.querySelectorAll(".dash-chip");
+    assert(chips.length >= 3, "Must render eyebrow, date and status chips");
   });
 });

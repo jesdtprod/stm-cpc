@@ -7070,6 +7070,89 @@ dialog.modal:has(.member-decision) {
   color: #DCFCE7;
 }
 
+/* Court Request Modal */
+.court-booking-dialog .member-decision-subject {
+  margin-bottom: var(--s2);
+}
+.quote-callout .quote-callout-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.quote-callout .quote-callout-body {
+  display: block;
+  font-size: 12.5px;
+  opacity: 0.9;
+}
+.player-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.player-result:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(223, 183, 86, 0.28);
+}
+.player-result .member-cell {
+  min-width: 0;
+  flex: 1;
+}
+.player-result-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.booking-player-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #DCFCE7;
+  font-size: 13px;
+  font-weight: 500;
+}
+.booking-player-chip .icon {
+  width: 14px;
+  height: 14px;
+  color: #4ADE80;
+}
+.booking-player-chip .chip-id {
+  color: var(--text-2);
+  font-size: 11px;
+}
+.booking-player-chip .chip-x {
+  margin-left: 2px;
+  background: none;
+  border: none;
+  color: #DCFCE7;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.12s ease;
+}
+.booking-player-chip .chip-x:hover {
+  opacity: 1;
+  color: #F87171;
+}
+
 /* Details Modal Member Profile Layout */
 .member-details-modal {
   display: flex;
@@ -8221,5 +8304,87 @@ dialog.modal:has(.member-decision) {
 @media (max-width: 600px) {
   .slots.slots-wide {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Court card head: the status badge lines up with the court name block, with even space around it and below the divider. */
+.booking-calendar-court-head {
+  align-items: center;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+.booking-calendar-court-head .member-meta {
+  display: grid;
+  gap: 3px;
+}
+.booking-calendar-court-head > .badge {
+  flex: 0 0 auto;
+  align-self: center;
+  white-space: nowrap;
+}
+
+/* Court card head: badge on the title row, the details on their own line below, so nothing can overlap. */
+.booking-court-id {
+  width: 100%;
+  align-items: center;
+}
+.booking-court-id .member-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.booking-court-titlerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.booking-court-titlerow .settings-title {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.booking-court-titlerow .badge {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.booking-calendar-court-head .sub {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+/* Phone: the Free / Taken / Closed counts share one row, and the date control spans the full width with the date centred. */
+@media (max-width: 600px) {
+  .calendar-legend-dock {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+  .calendar-legend-pill {
+    gap: 6px;
+    padding: 6px 6px;
+    justify-content: center;
+    min-width: 0;
+    font-size: 12px;
+  }
+  .calendar-legend-count {
+    min-width: 20px;
+    padding: 0 5px;
+  }
+  .calendar-date-stepper {
+    display: flex;
+    width: 100%;
+  }
+  .calendar-date-stepper .btn-icon {
+    flex: 0 0 40px;
+  }
+  .calendar-date-stepper > .field {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .calendar-date-stepper .calendar-drop-trigger {
+    width: 100%;
+    justify-content: center;
   }
 }
