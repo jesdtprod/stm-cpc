@@ -2,6 +2,7 @@
 // user's permissions. The menu is a convenience only; every page and every call is checked again
 // by the router and the database.
 import { button, h, icon, openModal } from "./ui.js";
+import { MEMBER_SHORTCUTS } from "./lib/member-shortcuts.js";
 import { isAdminAccount } from "./lib/permissions.js";
 
 // Each entry uses the access rule of its own route, so a user sees exactly the pages they can open.
@@ -21,8 +22,8 @@ const GROUPS = [
     label: "Play",
     view: "member",
     items: [
-      { path: "/book", label: "Book a court", icon: "calendar" },
-      { path: "/bookings", label: "My bookings", icon: "clock" },
+      { path: "/book", label: "Book a Court", icon: "calendar" },
+      { path: "/bookings", label: "My Bookings", icon: "clock" },
       { path: "/events", label: "Events", icon: "trophy" },
       { path: "/notifications", label: "Notifications", icon: "inbox" },
       { path: "/ranking", label: "Ranking", icon: "medal" },
@@ -33,7 +34,7 @@ const GROUPS = [
     view: "admin",
     items: [
       { path: "/admin/members", label: "Members", icon: "user" },
-      { path: "/admin/import", label: "Member import", icon: "upload" },
+      { path: "/admin/import", label: "Member Import", icon: "upload" },
       { path: "/admin/categories", label: "Categories", icon: "layers" },
       { path: "/admin/ranks", label: "Ranks", icon: "layers" },
     ],
@@ -68,16 +69,16 @@ const GROUPS = [
   {
     label: "Account",
     items: [
-      { path: "/profile", label: "My profile", icon: "user", gated: true },
+      { path: "/profile", label: "My Profile", icon: "user", gated: true },
       {
         path: "/password",
-        label: "Change password",
+        label: "Change Password",
         icon: "edit",
         gated: true,
       },
       {
         path: "/pending",
-        label: "Account status",
+        label: "Account Status",
         icon: "clock",
         gated: true,
         onlyGate: "pending",
@@ -289,7 +290,7 @@ export function createShell(
           onClick: () => setMenu(false),
         },
         icon("user"),
-        "My profile",
+        "My Profile",
       ),
       h(
         "a",
@@ -300,7 +301,7 @@ export function createShell(
           onClick: () => setMenu(false),
         },
         icon("edit"),
-        "Change password",
+        "Change Password",
       ),
       h(
         "button",
@@ -314,7 +315,7 @@ export function createShell(
           },
         },
         icon("logOut"),
-        "Sign out",
+        "Sign Out",
       ),
     );
     account.replaceChildren(toggle, panel);
@@ -495,25 +496,65 @@ export function createShell(
           "aria-hidden": "true",
           onClick: () => setMenuOpen(false),
         });
-        // The pages this person may open (members, bookings, settings ...), grouped as in the side panel on a computer.
-        const shown = new Set(["/", "/profile", "/admin"]);
-        const extraTabs = signedIn
+        // Members share their dashboard shortcuts; admin and gated menus retain their access-aware navigation.
+        const groupTabs = signedIn && !state.gate && viewOf(path) === "member"
+          ? [
+            tab({
+              label: "Home",
+              detail: "Club overview",
+              iconName: "home",
+              active: isHome,
+              href: "#/",
+            }),
+            ...MEMBER_SHORTCUTS.filter((item) =>
+              checkAccess(routeAccess(item.href.slice(1)), gatePages).allow
+            ).map((item) =>
+              tab({
+                label: item.label,
+                detail: item.desc,
+                iconName: item.icon,
+                active: path === item.href.slice(1),
+                href: item.href,
+              })
+            ),
+          ]
+          : signedIn
           ? visibleGroups(state, viewOf(path)).flatMap((g) =>
-            g.items.filter((n) => !shown.has(n.path)).map((n) =>
+            g.items.map((n) =>
               tab({
                 label: n.label,
                 detail: g.label,
                 iconName: n.icon,
-                active: path === n.path,
+                active: n.path === "/" ? isHome : path === n.path,
                 href: `#${n.path}`,
               })
             )
           )
           : [];
+        // The administrator's side menu has no account pages (they live in the account menu), so the floating menu adds Profile.
+        const adminProfileTab = signedIn && viewOf(path) === "admin"
+          ? tab({
+            label: "Profile",
+            detail: "Your club account",
+            iconName: "user",
+            active: isAccount,
+            href: "#/profile",
+          })
+          : null;
+        const qrTab = tab({
+          label: "QR Pass",
+          detail: "Open your member pass",
+          iconName: "qrScan",
+          active: isQr,
+          onClick: (e) => {
+            e.preventDefault();
+            openQrScanModal();
+          },
+        });
         const switchTab = signedIn && !state.gate && canOpenAdmin() &&
             !isAdminAccount()
           ? tab({
-            label: viewOf(path) === "admin" ? "Member view" : "Admin console",
+            label: viewOf(path) === "admin" ? "Member View" : "Admin Console",
             detail: viewOf(path) === "admin"
               ? "Back to your own home"
               : "Dashboard and club pages",
@@ -523,7 +564,7 @@ export function createShell(
           : null;
         const signOutTab = signedIn
           ? tab({
-            label: "Sign out",
+            label: "Sign Out",
             detail: "Leave this device",
             iconName: "x",
             onClick: () => session.signOut("manual"),
@@ -576,48 +617,44 @@ export function createShell(
           h(
             "div",
             { class: "assistive-nav-menu-items" },
-            tab({
-              label: "Home",
-              detail: isAdminAccount() ? "Admin dashboard" : "Club overview",
-              iconName: "home",
-              active: isAdminAccount() ? path === "/admin" : isHome,
-              href: isAdminAccount() ? "#/admin" : "#/",
-            }),
-            ...(isAdminAccount() ? [] : [
-              tab({
-                label: "Courts",
-                detail: "Book court time",
-                iconName: "calendar",
-                active: isBooking,
-                href: "#/booking",
-              }),
-              tab({
-                label: "QR pass",
-                detail: "Open your member pass",
-                iconName: "qrScan",
-                active: isQr,
-                onClick: (e) => {
-                  e.preventDefault();
-                  openQrScanModal();
-                },
-              }),
-              tab({
-                label: "Events",
-                detail: "Club events and play",
-                iconName: "trophy",
-                active: isEvents,
-                href: "#/events",
-              }),
-            ]),
-            tab({
-              label: "Profile",
-              detail: signedIn ? "Your club account" : "Sign in / Register",
-              iconName: "user",
-              active: isAccount,
-              href: signedIn ? "#/profile" : "#/signin",
-            }),
+            ...(signedIn
+              ? [
+                ...groupTabs,
+                adminProfileTab,
+                isAdminAccount() || viewOf(path) === "admin" ? null : qrTab,
+              ]
+              : [
+                tab({
+                  label: "Home",
+                  detail: "Club overview",
+                  iconName: "home",
+                  active: isHome,
+                  href: "#/",
+                }),
+                tab({
+                  label: "Courts",
+                  detail: "Book court time",
+                  iconName: "calendar",
+                  active: isBooking,
+                  href: "#/booking",
+                }),
+                qrTab,
+                tab({
+                  label: "Events",
+                  detail: "Club events and play",
+                  iconName: "trophy",
+                  active: isEvents,
+                  href: "#/events",
+                }),
+                tab({
+                  label: "Profile",
+                  detail: "Sign in / Register",
+                  iconName: "user",
+                  active: isAccount,
+                  href: "#/signin",
+                }),
+              ]),
             switchTab,
-            ...extraTabs,
             signOutTab,
           ),
           h(
@@ -834,7 +871,7 @@ export function createShell(
             onClick: () => session.signOut("manual"),
           },
           icon("logOut"),
-          "Sign out",
+          "Sign Out",
         ),
       ),
     ].filter(Boolean);

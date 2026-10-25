@@ -4149,13 +4149,53 @@ p.member-id,
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 @media (max-width: 600px) {
-  .dash-hero.is-plain {
+  /* Phone: the welcome stacks and centres (photo, badges, greeting, detail) and the cards go one per row. */
+  body .dash-hero.is-plain {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
     gap: 14px;
   }
+  body .dash-hero.is-plain .dash-hero-copy {
+    flex: 0 1 auto;
+    width: 100%;
+    justify-items: center;
+  }
+  body .dash-hero.is-plain .dash-hero-chips {
+    justify-content: center;
+  }
+  body .dash-hero.is-plain .dash-hero-actions {
+    margin-left: 0;
+    justify-content: center;
+  }
   .dash-hero-avatar {
-    width: 64px;
-    height: 64px;
-    font-size: 22px;
+    width: 96px;
+    height: 96px;
+    font-size: 30px;
+  }
+  body .dash-page .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body .dash-page .home-card.is-wide {
+    grid-column: auto;
+  }
+  /* Descriptions wrap to a second line instead of being cut, and the page never grows wider than the screen. */
+  body .dash-page {
+    min-width: 0;
+    max-width: 100%;
+  }
+  body .dash-page .home-section,
+  body .dash-page .home-section-head,
+  body .dash-page .home-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+  body .dash-page .home-section-desc,
+  body .dash-page .dash-hero-sub {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -4174,4 +4214,17 @@ p.member-id,
   .home-card.is-wide .home-card-value.is-text {
     white-space: normal;
   }
+}
+
+/* The member's section headings: the description sits below the title, on every screen size. */
+.dash-page:not(.admin-dashboard) .home-section-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.dash-page:not(.admin-dashboard) .home-section-desc {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }

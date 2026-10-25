@@ -4,6 +4,7 @@
 //   staff  : approvals, payment proofs, bookings to approve, today's bookings, events in progress
 import { attachPagePattern, h, icon } from "./ui.js";
 import { can, canAny, isAdminAccount } from "./lib/permissions.js";
+import { MEMBER_SHORTCUTS } from "./lib/member-shortcuts.js";
 import { isLocalDev } from "./dev.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 
@@ -299,14 +300,16 @@ const ADMIN_SHORTCUTS = [
   },
 ];
 
-function adminQuickTools() {
-  const tools = ADMIN_SHORTCUTS.filter((s) =>
-    !s.permission || can(s.permission)
-  );
+function quickTools(mode = "admin") {
+  const tools = (mode === "admin" ? ADMIN_SHORTCUTS : MEMBER_SHORTCUTS).filter((
+    s,
+  ) => !s.permission || can(s.permission));
   if (!tools.length) return null;
   return section(
-    "Management & Controls",
-    "Direct access to administrative management modules.",
+    mode === "admin" ? "Management & Controls" : "Quick Links",
+    mode === "admin"
+      ? "Direct access to administrative management modules."
+      : "Your court bookings and account, one tap away.",
     tools.map((t) =>
       h(
         "a",
@@ -332,84 +335,7 @@ function adminQuickTools() {
     h(
       "span",
       { class: "section-counter-badge is-neutral" },
-      `${tools.length} Modules`,
-    ),
-  );
-}
-
-const MEMBER_SHORTCUTS = [
-  {
-    label: "Book a court",
-    desc: "Pick a court, day and time",
-    icon: "calendar",
-    href: "#/book",
-    permission: "bookings.create",
-  },
-  {
-    label: "My bookings",
-    desc: "Requests, payments and cancellations",
-    icon: "clock",
-    href: "#/bookings",
-  },
-  {
-    label: "Events",
-    desc: "Join a division and follow your matches",
-    icon: "trophy",
-    href: "#/events",
-    permission: "events.register",
-  },
-  {
-    label: "Ranking",
-    desc: "The club ladder and your rank history",
-    icon: "medal",
-    href: "#/ranking",
-  },
-  {
-    label: "Notifications",
-    desc: "Messages and alerts on this device",
-    icon: "inbox",
-    href: "#/notifications",
-  },
-  {
-    label: "My profile",
-    desc: "Your details, photo and contact",
-    icon: "user",
-    href: "#/profile",
-  },
-];
-
-function quickLinks(items, title, description, noun) {
-  const tools = items.filter((s) => !s.permission || can(s.permission));
-  if (!tools.length) return null;
-  return section(
-    title,
-    description,
-    tools.map((t) =>
-      h(
-        "a",
-        { class: "admin-quick-card", href: t.href },
-        h(
-          "div",
-          { class: "admin-quick-icon", "aria-hidden": "true" },
-          icon(t.icon),
-        ),
-        h(
-          "div",
-          { class: "admin-quick-info" },
-          h("div", { class: "admin-quick-title" }, t.label),
-          h("div", { class: "admin-quick-desc" }, t.desc),
-        ),
-        h(
-          "div",
-          { class: "admin-quick-arrow", "aria-hidden": "true" },
-          icon("chevronRight"),
-        ),
-      )
-    ),
-    h(
-      "span",
-      { class: "section-counter-badge is-neutral" },
-      `${tools.length} ${noun}`,
+      `${tools.length} ${mode === "admin" ? "Modules" : "Pages"}`,
     ),
   );
 }
@@ -468,7 +394,7 @@ function dashboardView(data, mode = "member") {
         ),
       );
     }
-    const tools = adminQuickTools();
+    const tools = quickTools();
     if (tools) parts.push(tools);
   } else if (data.member) {
     const { activity, standing } = memberSections(data.member);
@@ -497,13 +423,6 @@ function dashboardView(data, mode = "member") {
         h("span", { class: "section-counter-badge is-neutral" }, "Rank"),
       ),
     );
-    const links = quickLinks(
-      MEMBER_SHORTCUTS,
-      "Quick Links",
-      "Everything you can do in the club, one tap away.",
-      "Pages",
-    );
-    if (links) parts.push(links);
   }
   if (!parts.length) {
     parts.push(
