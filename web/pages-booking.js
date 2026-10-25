@@ -278,9 +278,9 @@ export function createBookingPages({ api, client, session }) {
         minutesSel,
       );
 
-      const chosen = h("div", {
-        class: "chips",
-        "aria-label": "Players you added",
+      const chosen = h("ul", {
+        class: "booking-roster",
+        "aria-label": "Players on this booking",
       });
       const results = h("div", {
         class: "staff-results",
@@ -360,16 +360,53 @@ export function createBookingPages({ api, client, session }) {
       }
 
       function drawChosen() {
-        chosen.replaceChildren(
-          ...[...players].map(([id, p]) =>
+        const rosterRow = (n, body, extra = null, cls = "") =>
+          h(
+            "li",
+            { class: `booking-roster-row${cls}` },
+            h("span", { class: "booking-roster-no", "aria-hidden": "true" }, n),
+            body,
+            extra,
+          );
+        const rows = [
+          rosterRow(
+            "1",
             h(
               "span",
-              { class: "chip booking-player-chip" },
-              icon("user"),
-              h("span", {}, p.display_name),
-              p.member_no
-                ? h("span", { class: "chip-id" }, `(${p.member_no})`)
-                : null,
+              { class: "booking-roster-name" },
+              h("strong", {}, "You"),
+              h("span", { class: "sub" }, "Booking organiser"),
+            ),
+          ),
+        ];
+        const added = [...players];
+        for (let i = 0; i < state.maxPlayers - 1; i++) {
+          const found = added[i];
+          if (!found) {
+            rows.push(
+              rosterRow(
+                String(i + 2),
+                h(
+                  "span",
+                  { class: "booking-roster-name" },
+                  h("span", { class: "muted" }, "Open spot"),
+                ),
+                null,
+                " is-open",
+              ),
+            );
+            continue;
+          }
+          const [id, p] = found;
+          rows.push(
+            rosterRow(
+              String(i + 2),
+              h(
+                "span",
+                { class: "booking-roster-name" },
+                h("strong", {}, p.display_name),
+                p.member_no ? h("span", { class: "sub" }, p.member_no) : null,
+              ),
               h("button", {
                 type: "button",
                 class: "chip-x",
@@ -379,9 +416,10 @@ export function createBookingPages({ api, client, session }) {
                   drawChosen();
                 },
               }, "×"),
-            )
-          ),
-        );
+            ),
+          );
+        }
+        chosen.replaceChildren(...rows);
         playerCounter.textContent = `${
           players.size + 1
         } of ${state.maxPlayers} players`;
@@ -480,12 +518,20 @@ export function createBookingPages({ api, client, session }) {
             quoteCallout,
             h(
               "div",
-              { class: "field" },
+              { class: "field booking-players" },
               h(
                 "div",
                 { class: "decision-field-heading" },
-                h("label", { for: "bk-term" }, "Add Players (Optional)"),
+                h("span", { class: "field-label" }, "Players"),
                 playerCounter,
+              ),
+              chosen,
+              h(
+                "label",
+                { for: "bk-term", class: "field-hint booking-players-hint" },
+                `Add up to ${
+                  state.maxPlayers - 1
+                } more players by name or member ID (optional).`,
               ),
               h(
                 "div",
@@ -493,15 +539,9 @@ export function createBookingPages({ api, client, session }) {
                 term,
                 button({ label: "Search", icon: "search", onClick: search }),
               ),
-              h(
-                "span",
-                { class: "field-hint" },
-                "Search members by name or ID to add participants to your reservation.",
-              ),
+              results,
+              summary,
             ),
-            results,
-            chosen,
-            summary,
             error,
           ),
         ),
@@ -548,7 +588,7 @@ export function createBookingPages({ api, client, session }) {
           { class: "booking-calendar-court-head" },
           h(
             "div",
-            { class: "member-cell" },
+            { class: "member-cell booking-court-id" },
             h(
               "span",
               { class: "member-avatar is-icon", "aria-hidden": "true" },
@@ -557,7 +597,16 @@ export function createBookingPages({ api, client, session }) {
             h(
               "div",
               { class: "member-meta" },
-              h("h2", { class: "settings-title" }, court.name),
+              h(
+                "div",
+                { class: "booking-court-titlerow" },
+                h("h2", { class: "settings-title" }, court.name),
+                court.status === "available"
+                  ? badge("Available", "success")
+                  : (court.status === "maintenance"
+                    ? badge("Maintenance", "warning")
+                    : badge(court.status || "Closed", "neutral")),
+              ),
               h(
                 "span",
                 { class: "sub" },
@@ -569,11 +618,6 @@ export function createBookingPages({ api, client, session }) {
               ),
             ),
           ),
-          court.status === "available"
-            ? badge("Available", "success")
-            : (court.status === "maintenance"
-              ? badge("Maintenance", "warning")
-              : badge(court.status || "Closed", "neutral")),
         ),
         slots.length
           ? h(
