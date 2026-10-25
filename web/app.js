@@ -279,7 +279,7 @@ route("/admin/payments", () => bookingAdminPages.paymentsPage(), "Payments", {
   any: ["payments.verify", "payments.void"],
 });
 
-const homePages = createHomePages({ session, api });
+const homePages = createHomePages({ session, api, client });
 route("/", () => homePages.homePage(), "Home", "public");
 route("/admin", () => homePages.adminHomePage(), "Admin dashboard", {
   any: ADMIN_CODES,

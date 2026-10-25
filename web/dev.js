@@ -284,6 +284,31 @@ export function createDev({ client, api, session, reporter }) {
             onClick: () => session.signOut("manual"),
           }),
           button({
+            label: "Simulate Member Session",
+            onClick: () => {
+              session.mockSession({
+                grants: [
+                  "bookings.create",
+                  "events.register",
+                  "payments.submit",
+                ].map((code) => ({
+                  code,
+                  org_id: "org-1",
+                  unit_id: null,
+                })),
+                profile: { profile_id: "dev-member-1", org_id: "org-1" },
+                access: {
+                  display_name: "Kyle Marquez",
+                  member_no: "CPC-2026-00001",
+                  status: "active",
+                  must_change_password: false,
+                  profile_complete: true,
+                },
+              });
+              location.hash = "#/";
+            },
+          }),
+          button({
             label: "Simulate Admin Session",
             variant: "accent",
             onClick: () => {

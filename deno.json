@@ -10,6 +10,7 @@
     "members:create-admin": "deno run --allow-read --allow-env=USERPROFILE,HOME \"--allow-write=$USERPROFILE\" --allow-net=iohrwwrkhdkmzxntstuu.supabase.co scripts/create-admin.mjs",
     "db:advisors": "deno run --allow-run=npx scripts/check-advisors.mjs",
     "db:backup": "deno run --allow-read=. --allow-env=USERPROFILE,HOME \"--allow-write=$USERPROFILE/cpc-backups\" --allow-run=npx,git scripts/backup-db.mjs",
+    "dev": "deno run --allow-net=127.0.0.1:8099 --allow-read=web --allow-env=PORT scripts/dev-server.mjs",
     "test": "deno test --no-check --allow-read=web tests/unit",
     "lint": "deno lint",
     "fmt": "deno fmt --check"

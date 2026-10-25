@@ -4119,3 +4119,59 @@ p.member-id,
   font-size: 13px;
   color: var(--text-2);
 }
+
+/* A dashboard figure that is a name (for example a rank) instead of a number. */
+.home-card-value.is-text {
+  font-size: 22px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+/* The member's welcome: no card around it, a round photo (or initials) beside the greeting. */
+.dash-hero.is-plain {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 20px;
+  padding: 4px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.dash-hero.is-plain .dash-hero-actions {
+  margin-left: auto;
+}
+.dash-hero-avatar {
+  width: 88px;
+  height: 88px;
+  font-size: 28px;
+  border: 2px solid rgba(223, 183, 86, 0.55);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+@media (max-width: 600px) {
+  .dash-hero.is-plain {
+    gap: 14px;
+  }
+  .dash-hero-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 22px;
+  }
+}
+
+/* A card that needs more room (for example a rank name) spans two columns of the dashboard grid. */
+.home-card.is-wide {
+  grid-column: span 2;
+}
+.home-card.is-wide .home-card-value.is-text {
+  font-size: 28px;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .home-card.is-wide {
+    grid-column: auto;
+  }
+  .home-card.is-wide .home-card-value.is-text {
+    white-space: normal;
+  }
+}

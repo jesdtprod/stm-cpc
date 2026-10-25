@@ -324,6 +324,11 @@ export function createShell(
   // The member side (home, play, account) and the admin side (dashboard, club pages) have their own menus.
   // The administrator account has no member side at all: only the admin console.
   let lastView = "member";
+  let lastPath = "/";
+  // On a computer the member side uses the administrator's layout: the side panel with the account control at its foot and no
+  // top header. On a phone it keeps its own floating menu.
+  const wide = globalThis.matchMedia?.("(min-width: 901px)");
+  wide?.addEventListener?.("change", () => draw(lastPath));
   const viewOf = (path) =>
     isAdminAccount() || path === "/admin" || path.startsWith("/admin/") ||
       (["/profile", "/password", "/pending"].includes(path) &&
@@ -333,14 +338,19 @@ export function createShell(
   const canOpenAdmin = () =>
     checkAccess(routeAccess("/admin"), gatePages).allow;
 
-  function visibleGroups(state, view = "member") {
+  // inAccountMenu: the side panel already has the account menu at its foot, so My profile and Change password are left out of the list
+  // (the floating menu on a phone still lists them)
+  function visibleGroups(state, view = "member", inAccountMenu = false) {
     const gate = state.gate ?? null;
     return GROUPS
       .filter((g) => !g.view || g.view === view)
       .map((g) => ({
         label: g.label,
         items: g.items.filter((n) => {
-          if (view === "admin" && ["/profile", "/password"].includes(n.path)) {
+          if (
+            (view === "admin" || (inAccountMenu && !gate)) &&
+            ["/profile", "/password"].includes(n.path)
+          ) {
             return false;
           }
           if (n.onlyGate && n.onlyGate !== gate) return false;
@@ -369,11 +379,22 @@ export function createShell(
     document.documentElement.dataset.landing = String(isLanding);
 
     // Account pages retain the view they were opened from.
+    lastPath = path;
     const isAdminPath = signedIn && viewOf(path) === "admin";
     const isMemberView = !isAdminPath;
+    // the side-panel layout: the admin side always, the member side on a computer
+    const sidePanel = signedIn && (isAdminPath || Boolean(wide?.matches));
     lastView = isAdminPath ? "admin" : "member";
     document.body.dataset.memberView = String(isMemberView);
-    document.body.dataset.adminView = String(isAdminPath);
+    document.body.dataset.adminView = String(sidePanel);
+    const brand = document.querySelector(".admin-brand");
+    if (brand) {
+      brand.setAttribute("href", isAdminPath ? "#/admin" : "#/");
+      const small = brand.querySelector("small");
+      if (small) {
+        small.textContent = isAdminPath ? "Administration" : "Member area";
+      }
+    }
 
     updateHeaderScroll();
 
@@ -727,7 +748,7 @@ export function createShell(
       return;
     }
     const view = viewOf(path);
-    const groups = visibleGroups(state, view);
+    const groups = visibleGroups(state, view, sidePanel);
     // Staff can move between their own member home and the admin console.
     const viewSwitch = !state.gate && canOpenAdmin() && !isAdminAccount()
       ? h(
@@ -818,7 +839,7 @@ export function createShell(
       ),
     ].filter(Boolean);
     nav.replaceChildren(...navItems);
-    if (isAdminPath) nav.querySelector(".side-foot").replaceChildren(account);
+    if (sidePanel) nav.querySelector(".side-foot").replaceChildren(account);
   }
 
   return { draw };

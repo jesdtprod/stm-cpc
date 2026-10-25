@@ -5,6 +5,7 @@
 import { attachPagePattern, h, icon } from "./ui.js";
 import { can, canAny, isAdminAccount } from "./lib/permissions.js";
 import { isLocalDev } from "./dev.js";
+import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 
 // Anyone holding one of these may open the admin console.
 export const ADMIN_CODES = [
@@ -72,6 +73,11 @@ function statCard({
   href,
   attention = false,
   kind = null,
+  pillLabel = null,
+  attentionLabel = "Needs review",
+  clearLabel = "All clear",
+  goLabel = null,
+  wide = false,
 }) {
   const numValue = Number(value);
   const isAttention = attention || (kind === "pending" && numValue > 0);
@@ -81,16 +87,16 @@ function statCard({
         "span",
         { class: "card-status-pill is-attention" },
         h("span", { class: "pill-pulse-dot", "aria-hidden": "true" }),
-        "Needs review",
+        attentionLabel,
       )
       : h(
         "span",
         { class: "card-status-pill is-clean" },
         icon("check"),
-        "All clear",
+        clearLabel,
       ))
     : (kind === "activity"
-      ? h("span", { class: "card-status-pill is-info" }, "Active")
+      ? h("span", { class: "card-status-pill is-info" }, pillLabel ?? "Active")
       : null);
 
   const formattedValue = (typeof value === "number" ||
@@ -112,7 +118,15 @@ function statCard({
           h(
             "div",
             { class: "member-stat-copy" },
-            h("div", { class: "home-card-value" }, formattedValue),
+            h(
+              "div",
+              {
+                class: `home-card-value${
+                  typeof value === "string" && isNaN(numValue) ? " is-text" : ""
+                }`,
+              },
+              formattedValue,
+            ),
             h("span", { class: "home-card-label" }, label),
           ),
           statusBadge,
@@ -142,7 +156,7 @@ function statCard({
         ? h(
           "span",
           { class: "home-card-go" },
-          kind === "pending" ? "Open queue" : "View details",
+          goLabel ?? (kind === "pending" ? "Open queue" : "View details"),
           icon("chevronRight"),
         )
         : null,
@@ -152,10 +166,15 @@ function statCard({
     kind
       ? ` member-stat-card is-tone-${kind === "pending" ? "amber" : "emerald"}`
       : ""
-  }${isAttention ? " is-attention" : ""}`;
+  }${isAttention ? " is-attention" : ""}${wide ? " is-wide" : ""}`;
   return href
     ? h("a", { class: `${cls} is-link`, href }, ...body)
     : h("div", { class: cls }, ...body);
+}
+
+function memberSections(m) {
+  const cards = memberCards(m);
+  return { activity: cards.slice(1), standing: cards.slice(0, 1) };
 }
 
 function memberCards(m) {
@@ -173,7 +192,12 @@ function memberCards(m) {
       label: "Current rank",
       value: m.rank?.name ?? "Not ranked yet",
       hint: m.rank ? m.rank.category : "The club sets your starting rank.",
-      iconName: "layers",
+      iconName: "medal",
+      href: "#/ranking",
+      kind: "activity",
+      pillLabel: m.rank ? "Ranked" : "Not ranked",
+      goLabel: "See the ranking",
+      wide: true,
     }),
     statCard({
       label: "Upcoming bookings",
@@ -181,6 +205,8 @@ function memberCards(m) {
       hint: next,
       iconName: "calendar",
       href: "#/bookings",
+      kind: "activity",
+      pillLabel: Number(m.upcoming_bookings) > 0 ? "Upcoming" : "None",
     }),
     statCard({
       label: "Event registrations",
@@ -188,13 +214,23 @@ function memberCards(m) {
       hint: m.open_registrations
         ? "Events you have joined or are waiting for."
         : "You have not joined an event yet.",
-      iconName: "layers",
+      iconName: "trophy",
+      href: "#/events",
+      kind: "activity",
+      pillLabel: Number(m.open_registrations) > 0 ? "Joined" : "None",
     }),
     statCard({
-      label: "Notices",
+      label: "Unread notices",
       value: m.unread_notices,
-      hint: m.unread_notices ? "Unread" : "You are up to date.",
+      hint: m.unread_notices
+        ? "Messages from the club are waiting."
+        : "You are up to date.",
       iconName: "inbox",
+      href: "#/notifications",
+      kind: "pending",
+      attentionLabel: "Unread",
+      clearLabel: "All read",
+      goLabel: "Open notices",
     }),
   ];
 }
@@ -301,6 +337,83 @@ function adminQuickTools() {
   );
 }
 
+const MEMBER_SHORTCUTS = [
+  {
+    label: "Book a court",
+    desc: "Pick a court, day and time",
+    icon: "calendar",
+    href: "#/book",
+    permission: "bookings.create",
+  },
+  {
+    label: "My bookings",
+    desc: "Requests, payments and cancellations",
+    icon: "clock",
+    href: "#/bookings",
+  },
+  {
+    label: "Events",
+    desc: "Join a division and follow your matches",
+    icon: "trophy",
+    href: "#/events",
+    permission: "events.register",
+  },
+  {
+    label: "Ranking",
+    desc: "The club ladder and your rank history",
+    icon: "medal",
+    href: "#/ranking",
+  },
+  {
+    label: "Notifications",
+    desc: "Messages and alerts on this device",
+    icon: "inbox",
+    href: "#/notifications",
+  },
+  {
+    label: "My profile",
+    desc: "Your details, photo and contact",
+    icon: "user",
+    href: "#/profile",
+  },
+];
+
+function quickLinks(items, title, description, noun) {
+  const tools = items.filter((s) => !s.permission || can(s.permission));
+  if (!tools.length) return null;
+  return section(
+    title,
+    description,
+    tools.map((t) =>
+      h(
+        "a",
+        { class: "admin-quick-card", href: t.href },
+        h(
+          "div",
+          { class: "admin-quick-icon", "aria-hidden": "true" },
+          icon(t.icon),
+        ),
+        h(
+          "div",
+          { class: "admin-quick-info" },
+          h("div", { class: "admin-quick-title" }, t.label),
+          h("div", { class: "admin-quick-desc" }, t.desc),
+        ),
+        h(
+          "div",
+          { class: "admin-quick-arrow", "aria-hidden": "true" },
+          icon("chevronRight"),
+        ),
+      )
+    ),
+    h(
+      "span",
+      { class: "section-counter-badge is-neutral" },
+      `${tools.length} ${noun}`,
+    ),
+  );
+}
+
 /** mode "member": the member's own figures. mode "admin": what the club is waiting on. */
 function dashboardView(data, mode = "member") {
   const parts = [];
@@ -358,13 +471,39 @@ function dashboardView(data, mode = "member") {
     const tools = adminQuickTools();
     if (tools) parts.push(tools);
   } else if (data.member) {
+    const { activity, standing } = memberSections(data.member);
+    const unread = Number(data.member.unread_notices) || 0;
     parts.push(
       section(
-        "Your club",
-        "Your own bookings, events and rank.",
-        memberCards(data.member),
+        "Your Activity",
+        "Your court bookings, event registrations and unread messages from the club.",
+        activity,
+        unread > 0
+          ? h(
+            "span",
+            { class: "section-counter-badge is-warning" },
+            `${unread} Unread`,
+          )
+          : h(
+            "span",
+            { class: "section-counter-badge is-success" },
+            "Up to date",
+          ),
+      ),
+      section(
+        "Your Standing",
+        "Your current rank in the club.",
+        standing,
+        h("span", { class: "section-counter-badge is-neutral" }, "Rank"),
       ),
     );
+    const links = quickLinks(
+      MEMBER_SHORTCUTS,
+      "Quick Links",
+      "Everything you can do in the club, one tap away.",
+      "Pages",
+    );
+    if (links) parts.push(links);
   }
   if (!parts.length) {
     parts.push(
@@ -398,7 +537,7 @@ const greeting = () => {
 };
 
 /** The welcome banner: who you are, and the actions that matter most for this view. Same button design as the home and sign-in pages. */
-function heroView({ name, memberNo, role, mode = "member" }) {
+function heroView({ name, memberNo, role, mode = "member", avatar = null }) {
   const link = (cls, href, iconName, label) =>
     h("a", { class: `btn ${cls}`, href }, icon(iconName), label);
   const actions = mode === "admin"
@@ -422,11 +561,6 @@ function heroView({ name, memberNo, role, mode = "member" }) {
         : link("btn-secondary", "#/", "home", "Member view"),
     ]
     : [
-      can("bookings.create")
-        ? link("btn-accent", "#/book", "calendar", "Book a court")
-        : null,
-      link("btn-primary", "#/bookings", "clock", "My bookings"),
-      link("btn-secondary", "#/profile", "user", "My profile"),
       canAny(ADMIN_CODES)
         ? link("btn-secondary", "#/admin", "grid", "Admin console")
         : null,
@@ -442,9 +576,10 @@ function heroView({ name, memberNo, role, mode = "member" }) {
   return h(
     "section",
     {
-      class: `dash-hero${mode === "admin" ? " is-admin" : ""}`,
+      class: `dash-hero${mode === "admin" ? " is-admin" : " is-plain"}`,
       "aria-label": mode === "admin" ? "Admin dashboard overview" : "Welcome",
     },
+    avatar,
     h(
       "div",
       { class: "dash-hero-copy" },
@@ -496,7 +631,7 @@ function heroView({ name, memberNo, role, mode = "member" }) {
 }
 
 function loadingView(mode = "member") {
-  const admin = mode === "admin";
+  const admin = true; // the member's dashboard has the same sections and cards as the administrator's
   const line = (kind) => h("span", { class: `dash-sk dash-sk-${kind}` });
   const card = () =>
     h(
@@ -550,7 +685,7 @@ function loadingView(mode = "member") {
         "aria-busy": "true",
         "aria-label": "Loading admin dashboard",
       },
-      ...[3, 2].map((count) =>
+      ...(mode === "admin" ? [3, 2] : [3, 1]).map((count) =>
         h(
           "div",
           { class: "home-section", "aria-hidden": "true" },
@@ -586,7 +721,7 @@ function loadingView(mode = "member") {
   );
 }
 
-export function createHomePages({ session, api }) {
+export function createHomePages({ session, api, client }) {
   function renderMemberBadges(target, badges, fallbackInitials) {
     const initials = Array.isArray(badges)
       ? badges
@@ -1628,9 +1763,29 @@ export function createHomePages({ session, api }) {
 
     const name = (state.access?.display_name ?? "").split(/\s+/)[0];
     const host = h("div", { class: "home-body" }, loadingView(mode));
+    // the member's photo (private storage, shown through a short-lived link); the initials show until it arrives or if there is none
+    const avatar = mode === "member"
+      ? h(
+        "span",
+        { class: "avatar-lg dash-hero-avatar", "aria-hidden": "true" },
+        avatarImage(null, state.access?.display_name),
+      )
+      : null;
+    const photoPath = state.access?.avatar_path;
+    if (avatar && photoPath && client) {
+      signedAvatarUrls(client, [photoPath]).then((urls) => {
+        const url = urls.get(photoPath);
+        if (url && avatar.isConnected !== false) {
+          avatar.replaceChildren(
+            avatarImage(url, state.access?.display_name),
+          );
+        }
+      });
+    }
     const header = heroView({
       name,
       mode,
+      avatar,
       memberNo: state.access?.member_no ?? "",
       role: mode === "admin" ? "Admin console" : "Member",
     });
@@ -1640,12 +1795,20 @@ export function createHomePages({ session, api }) {
       header,
       host,
     );
-    if (mode === "admin") attachPagePattern(page);
+    attachPagePattern(page);
 
     async function load() {
       host.replaceChildren(loadingView(mode));
       try {
         const data = await api.rpc("my_dashboard");
+        if (mode === "member" && data?.member) {
+          try {
+            data.member.unread_notices =
+              Number(await api.rpc("my_unread_count")) || 0;
+          } catch {
+            // keep the figure the dashboard gave
+          }
+        }
         if (!page.isConnected && !host.isConnected) return;
         host.replaceChildren(...dashboardView(data ?? {}, mode));
         const role = header.querySelector(".dash-chip.is-role");

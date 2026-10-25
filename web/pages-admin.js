@@ -512,26 +512,131 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       role: "alert",
       hidden: true,
     });
-    const name = row.persons.display_name || row.member_no;
+    const name = row.persons?.display_name || row.member_no;
+    const roleValue = h("span", {}, "Loading…");
+
+    if (can("roles.manage")) {
+      api.rpc("staff_directory", {
+        p_term: row.member_no,
+        p_only_staff: row.status !== "active",
+      })
+        .then((members) => {
+          roleValue.textContent = members?.find((member) =>
+            member.member_id === row.id
+          )?.role_name || "Member";
+        }).catch(() => {
+          roleValue.textContent = "Member";
+        });
+    }
+
+    const memberSubject = h(
+      "div",
+      { class: "member-decision-subject" },
+      h(
+        "span",
+        { class: "member-avatar", "aria-hidden": "true" },
+        icon("user", { solid: true }),
+      ),
+      h(
+        "div",
+        { class: "member-meta" },
+        h(
+          "div",
+          { class: "member-decision-name" },
+          h("strong", { class: "member-name" }, name),
+          badge(
+            STATUS_LABEL[row.status] ?? row.status,
+            STATUS_TONE[row.status] ?? "neutral",
+          ),
+        ),
+        h("span", { class: "sub member-subtext" }, row.member_no),
+      ),
+      can("roles.manage")
+        ? h(
+          "div",
+          { class: "member-decision-role" },
+          h("span", { class: "muted" }, "Role"),
+          roleValue,
+        )
+        : null,
+    );
+
+    const callout = h(
+      "div",
+      { class: "modal-callout is-warning" },
+      h(
+        "span",
+        { class: "modal-callout-icon", "aria-hidden": "true" },
+        icon("alertTriangle"),
+      ),
+      h(
+        "div",
+        { class: "modal-callout-text" },
+        h(
+          "strong",
+          { class: "decision-impact-title" },
+          "First-password rule will be restored",
+        ),
+        h(
+          "p",
+          { class: "decision-impact-text" },
+          "The password goes back to the initial rule: the last 5 digits of the member ID followed by their birth date as MMDDYYYY.",
+        ),
+      ),
+    );
+
+    const impactList = h(
+      "div",
+      { class: "decision-impact-list" },
+      h(
+        "div",
+        { class: "decision-impact-item" },
+        icon("checkCircle"),
+        h(
+          "div",
+          {},
+          h("strong", {}, "Existing credentials expire: "),
+          "Active sessions end and current password stops working immediately.",
+        ),
+      ),
+      h(
+        "div",
+        { class: "decision-impact-item" },
+        icon("checkCircle"),
+        h(
+          "div",
+          {},
+          h("strong", {}, "Forced password change: "),
+          "The member must choose a new password and confirm profile details upon next sign-in.",
+        ),
+      ),
+      h(
+        "div",
+        { class: "decision-impact-item" },
+        icon("checkCircle"),
+        h(
+          "div",
+          {},
+          h("strong", {}, "Audit trail: "),
+          "This password reset action is permanently recorded in the administrative audit log.",
+        ),
+      ),
+    );
+
     return openModal({
       title: "Reset password",
-      eyebrow: `${name} · ${row.member_no}`,
+      eyebrow: "Member security",
       icon: "lock",
+      tone: "danger",
       confirmLabel: "Reset password",
+      cancelLabel: "Cancel",
       destructive: true,
       body: h(
         "div",
-        { class: "stack" },
-        h(
-          "p",
-          {},
-          "The password goes back to the first-password rule: the last 5 digits of the member ID followed by the birth date as MMDDYYYY.",
-        ),
-        h(
-          "p",
-          { class: "muted" },
-          "The member must choose a new password at the next sign-in, and confirm their profile and email. Their old password stops working now. This is recorded in the audit log.",
-        ),
+        { class: "member-decision" },
+        memberSubject,
+        callout,
+        impactList,
         error,
       ),
       onConfirm: async () => {
