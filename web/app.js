@@ -27,6 +27,7 @@ import { createCategoriesPages } from "./pages-categories.js";
 import { createCourtsPages } from "./pages-courts.js";
 import { createEventsPages } from "./pages-events.js";
 import { createMemberEventsPages } from "./pages-events-member.js";
+import { createScoringPages } from "./pages-scoring.js";
 import { createImportPages } from "./pages-import.js";
 import { createRanksPages } from "./pages-ranks.js";
 import { createStaffPages } from "./pages-staff.js";
@@ -190,6 +191,14 @@ route("/admin/events", () => eventsPages.eventsPage(), "Events", {
 });
 
 const memberEventsPages = createMemberEventsPages({ api, client, session });
+
+const scoringPages = createScoringPages({
+  api,
+  getOrgId: () => session.getState().profile?.org_id,
+});
+route("/admin/scoring", () => scoringPages.scoringPage(), "Scoring rules", {
+  permission: "events.manage",
+});
 
 const importPages = createImportPages({ api });
 route("/admin/import", () => importPages.importPage(), "Member import", {

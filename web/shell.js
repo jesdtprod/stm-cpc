@@ -43,6 +43,7 @@ const GROUPS = [
       { path: "/admin/ranks", label: "Ranks", icon: "layers" },
       { path: "/admin/courts", label: "Courts", icon: "grid" },
       { path: "/admin/events", label: "Events", icon: "trophy" },
+      { path: "/admin/scoring", label: "Scoring rules", icon: "medal" },
       { path: "/admin/settings", label: "Settings", icon: "filter" },
     ],
   },

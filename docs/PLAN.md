@@ -143,7 +143,7 @@ Each screen has list, create, edit, soft delete, restore, validation, idempotent
 
 | ID | Step | Done when |
 | --- | --- | --- |
-| [ ] 7.1 | Scoring rules, score entry, standings, tiebreaks, one final result per match | Tiebreak tests pass; second finalization is refused or idempotent |
+| [x] 7.1 | Scoring rules, score entry, standings, tiebreaks, one final result per match | Tiebreak tests pass; second finalization is refused or idempotent | *Verified: migration 1410 adds enter_score, finalize_match, forfeit_match, correct_match and stage_standings; 1420 lets scoring rules be deleted with a reason. Database tests 52/52: game rules (win by, cap), only the assigned referee or a scorer can enter, a referee can finalize but not correct, 11-10 is refused as unfinished, finalizing twice returns the same result with one final event, a forfeit gives the rule score 11-0, a correction voids and replaces the match with a reversing event and is refused when it would change an advanced winner, standings split ties by wins then head-to-head among the tied, point difference, points scored and coin toss, and unbroken ties share a place. Scoring rules screen added; match score-entry screens come with the bracket pages (7.3+). Not yet checked live in a browser.*
 | [ ] 7.2 | **Server-side random draw** (secure seed stored, reproducible, idempotent, audited redraw) | Same seed reproduces the same draw; second run returns the existing draw |
 | [ ] 7.3 | Round robin stage and its bracketing page | Game counts and standings correct for several sizes |
 | [ ] 7.4 | Single elimination stage (byes, rounds) and page | Correct for power-of-two and other sizes |
