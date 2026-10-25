@@ -19,6 +19,14 @@ import {
   problemMessages,
 } from "./lib/password-hints.js";
 import { suggestNameParts } from "./lib/names.js";
+import {
+  AVATAR_MAX_PICK_BYTES,
+  AVATAR_TYPES,
+  initialsOf,
+  resizeToJpeg,
+  signedAvatarUrls,
+} from "./lib/avatar.js";
+import { ulid } from "./lib/ulid.js";
 
 const NCR_REGION = "130000000";
 
@@ -26,6 +34,7 @@ const NCR_REGION = "130000000";
 export function nextHash(state) {
   if (state.status !== "signed_in") return "#/signin";
   if (state.gate === "password_change") return "#/password";
+  if (state.gate === "profile_update") return "#/profile";
   if (state.gate === "pending") {
     return state.access && !state.access.profile_complete &&
         state.access.status !== "pending_approval"
@@ -53,7 +62,7 @@ function showError(box, messages) {
 }
 
 export function createAccountPages(
-  { session, api, authApi, getAccessToken, renderTurnstile },
+  { session, api, client, authApi, getAccessToken, renderTurnstile },
 ) {
   const go = (hash) => {
     if (location.hash !== hash) location.hash = hash;
@@ -547,9 +556,12 @@ export function createAccountPages(
     mobile.querySelector("input").setAttribute("inputmode", "tel");
     const email = field({
       id: "pf-email",
-      label: "Email (optional)",
+      label: "Email",
       type: "email",
       value: me.email ?? "",
+      required: true,
+      hint:
+        "Required. The club uses it to reach you and you can sign in with it.",
     });
     email.querySelector("input").setAttribute("autocomplete", "email");
 
@@ -662,6 +674,94 @@ export function createAccountPages(
         ),
     );
 
+    // ---- photo (Supabase Storage, private). The picture is cropped and shrunk here before it is uploaded.
+    const photoFace = h("span", { class: "avatar-lg", "aria-hidden": "true" });
+    const showFace = (url) => {
+      photoFace.replaceChildren(
+        url
+          ? h("img", { src: url, alt: "" })
+          : document.createTextNode(initialsOf(me.display_name)),
+      );
+    };
+    showFace(null);
+    if (me.avatar_path) {
+      signedAvatarUrls(client, [me.avatar_path]).then((urls) =>
+        showFace(urls.get(me.avatar_path) ?? null)
+      );
+    }
+    const photoNote = h(
+      "p",
+      { class: "muted", id: "pf-photo-note", "aria-live": "polite" },
+      "A square picture of your face works best. JPG, PNG or WebP.",
+    );
+    const photoInput = h("input", {
+      class: "input",
+      id: "pf-photo",
+      type: "file",
+      accept: AVATAR_TYPES.join(","),
+      "aria-describedby": "pf-photo-note",
+    });
+    photoInput.addEventListener("change", async () => {
+      const file = photoInput.files?.[0];
+      if (!file) return;
+      if (!AVATAR_TYPES.includes(file.type)) {
+        photoNote.textContent = "Choose a JPG, PNG or WebP picture.";
+        return;
+      }
+      if (file.size > AVATAR_MAX_PICK_BYTES) {
+        photoNote.textContent =
+          "That picture is too large. Choose one under 12 MB.";
+        return;
+      }
+      photoNote.textContent = "Saving your photo...";
+      try {
+        const blob = await resizeToJpeg(file);
+        const ids = session.getState().profile ?? {};
+        const path = `${ids.org_id}/${ids.profile_id}/${ulid()}.jpg`;
+        const { error: upErr } = await client.storage.from("avatars").upload(
+          path,
+          blob,
+          { contentType: "image/jpeg", upsert: false },
+        );
+        if (upErr) throw upErr;
+        await api.rpc("set_my_avatar", { p_path: path });
+        showFace(URL.createObjectURL(blob));
+        photoNote.textContent = "Photo saved.";
+        await session.refresh();
+      } catch {
+        photoNote.textContent =
+          "The photo could not be saved. Try another picture.";
+      }
+    });
+    const photoRemove = button({
+      label: "Remove photo",
+      size: "sm",
+      onClick: async () => {
+        try {
+          await api.rpc("set_my_avatar", { p_path: null });
+          showFace(null);
+          photoInput.value = "";
+          photoNote.textContent = "Photo removed.";
+          await session.refresh();
+        } catch {
+          photoNote.textContent = "The photo could not be removed. Try again.";
+        }
+      },
+    });
+    const photoBlock = h(
+      "div",
+      { class: "photo-field" },
+      photoFace,
+      h(
+        "div",
+        { class: "stack" },
+        h("label", { for: "pf-photo" }, "Profile photo (optional)"),
+        photoInput,
+        photoNote,
+        photoRemove,
+      ),
+    );
+
     const submit = button({
       label: "Save profile",
       variant: "primary",
@@ -671,6 +771,15 @@ export function createAccountPages(
     const form = h(
       "form",
       { class: "stack", novalidate: true, onSubmit: (e) => e.preventDefault() },
+      state.gate === "profile_update"
+        ? h(
+          "p",
+          { class: "card", role: "status" },
+          "An administrator reset your password. Please check your details and make sure your email is correct, then save.",
+        )
+        : null,
+      h("h2", { class: "form-section" }, "Photo"),
+      photoBlock,
       h("h2", { class: "form-section" }, "Name"),
       lastName,
       firstName,
@@ -706,6 +815,9 @@ export function createAccountPages(
         if (inputValue(display).trim().length < 2) {
           missing.push("Enter the display name you want to use.");
         }
+        if (!inputValue(email).trim()) {
+          missing.push("Enter your email address.");
+        }
         if (inputValue(mobile).replace(/\D/g, "").length < 10) {
           missing.push("Enter a valid mobile number, for example 09171234567.");
         }
@@ -734,11 +846,16 @@ export function createAccountPages(
             p_emergency_relationship: inputValue(emRel),
             p_emergency_phone: inputValue(emPhone),
           });
+          await api.rpc("confirm_my_profile");
           await session.refresh();
           toast("Profile saved.");
           go(nextHash(session.getState()));
         } catch (e) {
-          showError(error, e.message || "Your profile could not be saved.");
+          const own = ["22023", "23505"].includes(e?.code) && e.cause?.message;
+          showError(
+            error,
+            own || e.message || "Your profile could not be saved.",
+          );
         }
       }),
     );

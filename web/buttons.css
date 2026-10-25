@@ -1,0 +1,323 @@
+/* Shared flat button design. Use .btn with one semantic variant. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background-color: var(--surface-2);
+  color: var(--text);
+  font: 600 15px var(--font);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color
+    0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+}
+.btn:hover {
+  background-color: var(--surface-3);
+}
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-on-primary, #ffffff);
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: var(--text-on-primary, #ffffff);
+}
+.btn-primary:active:not(:disabled) {
+  background-color: var(--primary-active, #14532d);
+}
+.btn-accent,
+.btn-amber {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent, #0b1210);
+  font-weight: 700;
+}
+.btn-accent:hover:not(:disabled),
+.btn-amber:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--text-on-accent, #0b1210);
+}
+.btn-secondary {
+  background-color: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn-secondary:hover {
+  background-color: var(--surface-3);
+}
+.btn-outline {
+  background-color: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn-outline:hover {
+  background-color: var(--surface-2);
+  border-color: var(--text-2);
+}
+.btn-ghost {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--text-2);
+}
+.btn-ghost:hover {
+  background-color: var(--surface-2);
+  color: var(--text);
+}
+.btn-link {
+  background-color: transparent;
+  border: none;
+  color: var(--accent);
+  padding: 0 var(--s2);
+  min-height: auto;
+  height: auto;
+}
+.btn-link:hover {
+  text-decoration: underline;
+}
+.btn-danger {
+  background-color: var(--danger-bg);
+  border-color: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover {
+  background-color: color-mix(in srgb, var(--danger) 70%, #000);
+}
+.btn-sm {
+  min-height: 36px;
+  padding: 0 var(--s3);
+  font-size: 13px;
+  border-radius: 10px;
+}
+.btn-lg {
+  min-height: var(--control-h-lg);
+  padding: 0 var(--s5);
+  font-size: 15px;
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn[data-pending="true"]::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+.btn-success {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-on-primary);
+}
+.btn-success:hover {
+  background-color: var(--primary-hover);
+}
+.btn-info {
+  --button-tone: #38BDF8;
+}
+.btn-warning {
+  --button-tone: #FBBF24;
+}
+.btn-archive {
+  --button-tone: #C084FC;
+}
+.btn-restore {
+  --button-tone: #2DD4BF;
+}
+.btn-edit {
+  --button-tone: var(--accent);
+}
+.btn-info,
+.btn-warning,
+.btn-archive,
+.btn-restore,
+.btn-edit {
+  background-color: color-mix(in srgb, var(--button-tone) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--button-tone) 40%, transparent);
+  color: var(--button-tone);
+}
+.btn-info:hover,
+.btn-warning:hover,
+.btn-archive:hover,
+.btn-restore:hover,
+.btn-edit:hover {
+  background-color: color-mix(in srgb, var(--button-tone) 22%, var(--surface));
+  border-color: var(--button-tone);
+}
+.btn-secondary {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.btn:where(:not(.row-actions .btn-icon):not(.pager .btn)):hover:not(:disabled):not([aria-disabled="true"]):not([data-pending="true"]) {
+  transform: none;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.btn:disabled,
+.btn[aria-disabled="true"],
+.btn[data-pending="true"] {
+  pointer-events: none;
+  transform: none;
+}
+.btn .icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
+  flex-shrink: 0;
+}
+.btn-icon,
+.btn-icon.btn-sm {
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.btn-icon.btn-lg {
+  width: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  height: 48px;
+}
+/* Table controls retain their compact, flat design. */
+.pager .btn {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+  font-size: 14px;
+}
+.pager .btn:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+.pager .btn[aria-current="page"],
+.pager .btn[aria-current="page"]:hover {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-on-primary);
+}
+.row-actions .btn-icon {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+.row-actions .btn-info {
+  --action-rgb: 56, 189, 248;
+}
+.row-actions .btn-warning {
+  --action-rgb: 251, 191, 36;
+}
+.row-actions .btn-archive {
+  --action-rgb: 192, 132, 252;
+}
+.row-actions .btn-success {
+  --action-rgb: 34, 197, 94;
+}
+.row-actions .btn-danger {
+  --action-rgb: 248, 113, 113;
+}
+.row-actions .btn-restore {
+  --action-rgb: 45, 212, 191;
+}
+.row-actions .btn-edit {
+  --action-rgb: 223, 183, 86;
+}
+.row-actions .btn-icon:is(.btn-info, .btn-warning, .btn-archive, .btn-success, .btn-danger, .btn-restore, .btn-edit) {
+  background: rgba(var(--action-rgb), 0.1);
+  border-color: rgba(var(--action-rgb), 0.32);
+  color: rgb(var(--action-rgb));
+}
+.row-actions .btn-icon:hover:not(:disabled) {
+  transform: none;
+}
+.row-actions .btn-icon:is(.btn-info, .btn-warning, .btn-archive, .btn-success, .btn-danger, .btn-restore, .btn-edit):hover:not(:disabled) {
+  background: rgba(var(--action-rgb), 0.2);
+  border-color: rgba(var(--action-rgb), 0.6);
+}
+.row-actions .btn-icon .icon {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.1;
+  transition: transform 0.2s ease;
+}
+.row-actions .btn-icon:hover .icon {
+  transform: scale(1.12);
+}
+.row-actions .btn-icon:active:not(:disabled) {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+  .btn:where(:not(.row-actions .btn-icon):not(.pager .btn)):hover:not(:disabled):not([aria-disabled="true"]):not([data-pending="true"]),
+  .row-actions .btn-icon:hover:not(:disabled),
+  .row-actions .btn-icon:active:not(:disabled),
+  .row-actions .btn-icon:hover .icon {
+    transform: none;
+  }
+  .btn[data-pending="true"]::after {
+    animation: none;
+  }
+}
+
+/* Joined controls keep their shared outer corners. */
+.btn-group {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.btn-group > .btn {
+  border-radius: 0;
+  margin-left: -1px;
+}
+.btn-group > .btn:first-child {
+  border-top-left-radius: var(--r-control);
+  border-bottom-left-radius: var(--r-control);
+  margin-left: 0;
+}
+.btn-group > .btn:last-child {
+  border-top-right-radius: var(--r-control);
+  border-bottom-right-radius: var(--r-control);
+}
+.btn-group > .btn:focus-visible {
+  z-index: 1;
+}
+
+/* Flat finish applies to every button, including specialized controls and all states.
+   Important prevents component-specific hover rules from restoring elevation. */
+button,
+.btn,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Summary cards use the same panel surface as the member table. */
+button:not(.member-stat-card),
+.btn,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  background-image: none !important;
+}

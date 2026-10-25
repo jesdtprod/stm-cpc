@@ -3,14 +3,16 @@
 // through the web; this page shows the counts and the row numbers and codes it left behind. Marking an issue as
 // reviewed goes through resolve_import_issue (permissioned, idempotent, audited).
 import {
+  adminHero,
+  adminStatCard,
+  attachPagePattern,
   badge,
   button,
   dataTable,
   h,
+  icon,
   iconButton,
-  kpiCard,
   openModal,
-  pageHeader,
   pagination,
   tabs,
   toast,
@@ -43,11 +45,15 @@ export function createImportPages({ api }) {
       status: "loading",
       latest: null,
       openCount: null,
+      summaryReady: false,
     };
-    const page = h("div", { class: "page" });
-    const kpis = h("div", { class: "kpis" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-import-page",
+    });
+    attachPagePattern(page);
+    const kpis = h("div", { class: "home-grid kpis is-quad" });
     const tabsHost = h("div", {});
-    const tableHost = h("div", { class: "card" });
+    const tableHost = h("div", { class: "table-host" });
     const pagerHost = h("div", {});
 
     async function load() {
@@ -122,19 +128,73 @@ export function createImportPages({ api }) {
         );
         state.openCount = openResult?.count ?? null;
       } catch { /* the summary is optional */ }
+      state.summaryReady = true;
       drawKpis();
     }
 
     function drawKpis() {
       const l = state.latest;
+      const loading = !state.summaryReady;
+      const problems = l
+        ? l.skipped_count + l.held_back_count + l.failed_count
+        : null;
       kpis.replaceChildren(
-        kpiCard("Last import", l ? formatDateTime(l.created_at) : "—"),
-        kpiCard("Rows in the file", l?.row_count ?? "—"),
-        kpiCard("Members created", l?.created_count ?? "—"),
-        kpiCard(
-          "Skipped, held back or failed",
-          l ? l.skipped_count + l.held_back_count + l.failed_count : "—",
-        ),
+        adminStatCard({
+          label: "Last import",
+          value: l ? formatDateTime(l.created_at) : "—",
+          hint: l ? "Most recent import run" : "No import has run yet",
+          iconName: "calendar",
+          tone: "teal",
+          text: true,
+          loading,
+          pill: h("span", { class: "card-status-pill is-clean" }, "Latest"),
+        }),
+        adminStatCard({
+          label: "Rows in the file",
+          value: l?.row_count ?? "—",
+          hint: "Rows read from the member file",
+          iconName: "file",
+          tone: "emerald",
+          loading,
+          pill: h("span", { class: "card-status-pill is-clean" }, "Rows"),
+        }),
+        adminStatCard({
+          label: "Members created",
+          value: l?.created_count ?? "—",
+          hint: "Accounts made by the import",
+          iconName: "user",
+          tone: "emerald",
+          loading,
+          pill: h(
+            "span",
+            { class: "card-status-pill is-clean" },
+            icon("check"),
+            "Created",
+          ),
+        }),
+        adminStatCard({
+          label: "Skipped, held back or failed",
+          value: problems ?? "—",
+          hint: problems
+            ? "Rows that did not become members"
+            : "Every row was handled",
+          iconName: "alert",
+          tone: problems ? "amber" : "emerald",
+          loading,
+          pill: problems
+            ? h(
+              "span",
+              { class: "card-status-pill is-attention" },
+              h("span", { class: "pill-pulse-dot", "aria-hidden": "true" }),
+              "Needs a look",
+            )
+            : h(
+              "span",
+              { class: "card-status-pill is-clean" },
+              icon("check"),
+              "All clear",
+            ),
+        }),
       );
     }
 
@@ -242,6 +302,8 @@ export function createImportPages({ api }) {
               ? iconButton({
                 label: `Mark row ${r.source_row} as reviewed`,
                 icon: "check",
+                size: "sm",
+                variant: "success",
                 onClick: () => resolveModal(r),
               })
               : "—",
@@ -349,24 +411,28 @@ export function createImportPages({ api }) {
     }
 
     page.append(
-      pageHeader({
-        icon: "upload",
-        eyebrow: "Admin",
+      adminHero({
         title: "Member import",
+        chip: "Import Management",
         description:
           "What the import did, and the rows that need a look. The member file is imported with the secure import tool, not through the web.",
         actions: [
           button({
             label: "Members",
             icon: "user",
+            variant: "secondary",
             onClick: () => (location.hash = "#/admin/members"),
           }),
         ],
       }),
       kpis,
       tabsHost,
-      tableHost,
-      pagerHost,
+      h(
+        "div",
+        { class: "member-directory-card is-auto-grid" },
+        tableHost,
+        pagerHost,
+      ),
     );
     drawKpis();
     load();

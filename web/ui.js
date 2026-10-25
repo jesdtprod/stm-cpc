@@ -1,4 +1,5 @@
-import { LUCIDE } from "./lib/lucide.js";
+import { LUCIDE, LUCIDE_SOLID } from "./lib/lucide.js";
+import { buttonClasses } from "./lib/buttons.js";
 
 // Shared UI components. Every dynamic value goes through textContent / text nodes,
 // never innerHTML, so output is escaped by construction.
@@ -27,12 +28,13 @@ export function h(tag, props = {}, ...children) {
   return el;
 }
 
-export function icon(name) {
+export function icon(name, { solid = false } = {}) {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("class", "icon");
+  svg.setAttribute("class", solid ? "icon icon-solid" : "icon");
   svg.setAttribute("aria-hidden", "true");
-  for (const [tag, attrs] of LUCIDE[name] ?? LUCIDE.info) {
+  const shapes = (solid && LUCIDE_SOLID[name]) || LUCIDE[name] || LUCIDE.info;
+  for (const [tag, attrs] of shapes) {
     const node = document.createElementNS(SVG_NS, tag);
     for (const [key, value] of Object.entries(attrs)) {
       node.setAttribute(key, value);
@@ -70,20 +72,7 @@ export function button(
     loading = false,
   },
 ) {
-  const variantClass = variant === "primary"
-    ? "btn-primary"
-    : variant === "danger" || variant === "destructive"
-    ? "btn-danger"
-    : variant === "outline"
-    ? "btn-outline"
-    : variant === "ghost"
-    ? "btn-ghost"
-    : variant === "link"
-    ? "btn-link"
-    : "btn-secondary";
-
-  const sizeClass = size === "sm" ? "btn-sm" : size === "lg" ? "btn-lg" : "";
-  const cls = ["btn", variantClass, sizeClass].filter(Boolean).join(" ");
+  const cls = buttonClasses({ variant, size });
 
   const iconEl = iconName ? icon(iconName) : null;
   const children = iconPosition === "right" ? [label, iconEl] : [iconEl, label];
@@ -112,25 +101,18 @@ export function iconButton(
     icon: iconName,
     onClick,
     variant = "secondary",
+    tone,
     size = "default",
     disabled = false,
     title,
+    class: customClass = "",
   },
 ) {
   if (!label) throw new Error("iconButton needs a label");
-  const variantClass = variant === "primary"
-    ? "btn-primary"
-    : variant === "danger" || variant === "destructive"
-    ? "btn-danger"
-    : variant === "outline"
-    ? "btn-outline"
-    : variant === "ghost"
-    ? "btn-ghost"
-    : "";
-  const sizeClass = size === "sm" ? "btn-sm" : size === "lg" ? "btn-lg" : "";
-  const cls = ["btn btn-icon", variantClass, sizeClass].filter(Boolean).join(
-    " ",
-  );
+  const cls = [
+    buttonClasses({ variant: tone ?? variant, size, iconOnly: true }),
+    customClass,
+  ].filter(Boolean).join(" ");
   return h("button", {
     class: cls,
     type: "button",
@@ -347,101 +329,78 @@ export function textareaField(
   );
 }
 
-export function selectField(
-  {
-    id,
-    label,
-    options = [],
-    value = "",
-    error,
-    hint,
-    required,
-    disabled,
-    onChange,
-  },
-) {
-  const describedBy = [error ? `${id}-err` : null, hint ? `${id}-hint` : null]
-    .filter(Boolean).join(" ");
-  const selectEl = h(
-    "select",
-    {
-      class: "input select-input",
-      id,
-      name: id,
-      required,
-      disabled,
-      "aria-invalid": error ? "true" : null,
-      "aria-describedby": describedBy || null,
-      onChange,
-    },
-    ...options.map((opt) => {
-      const optVal = typeof opt === "object" ? opt.value : opt;
-      const optLbl = typeof opt === "object" ? opt.label : opt;
-      const isSelected = String(optVal) === String(value);
-      const isOptDisabled = typeof opt === "object" ? opt.disabled : false;
-      return h(
-        "option",
-        { value: optVal, selected: isSelected, disabled: isOptDisabled },
-        optLbl,
-      );
-    }),
-  );
-
-  return h(
-    "div",
-    { class: `field${error ? " field-error-state" : ""}` },
-    label ? h("label", { for: id }, label, required ? " *" : "") : null,
-    h("div", { class: "select-wrap" }, selectEl, icon("chevronDown")),
-    hint ? h("span", { class: "field-hint", id: `${id}-hint` }, hint) : null,
-    error ? h("span", { class: "field-error", id: `${id}-err` }, error) : null,
-  );
+/** All single-choice dropdowns use the searchable component. */
+export function selectField(config) {
+  return searchableSelect(config);
 }
 
-export function searchableSelect(
-  {
-    id,
-    label,
-    options = [],
-    value = "",
-    placeholder = "Select option...",
-    error,
-    hint,
-    required,
-    disabled,
-    onSelect,
-    searchable = true,
-  },
-) {
-  let selected =
-    options.find((o) => (typeof o === "object" ? o.value : o) === value) ??
-      null;
+export function searchableSelect({
+  id,
+  label,
+  ariaLabel,
+  name = id,
+  options = [],
+  value = "",
+  placeholder = "Select option...",
+  error,
+  hint,
+  required,
+  disabled,
+  onSelect,
+  onChange,
+  searchable = true,
+}) {
+  const optionValue = (item) => typeof item === "object" ? item.value : item;
+  const optionLabel = (item) =>
+    String(typeof item === "object" ? item.label : item);
+  const findOption = (next) =>
+    options.find((item) => String(optionValue(item)) === String(next)) ?? null;
+  let selected = findOption(value);
   let isOpen = false;
   let filtered = [...options];
-
-  const triggerText = h(
-    "span",
-    { class: "searchable-select-text" },
-    selected
-      ? (typeof selected === "object" ? selected.label : selected)
-      : placeholder,
-  );
-  const searchInput = h("input", {
-    type: "search",
-    class: "input input-sm",
-    placeholder: "Search...",
-    onInput: (e) => {
-      const q = e.target.value.toLowerCase();
-      filtered = options.filter((o) => {
-        const text = (typeof o === "object" ? o.label : o).toLowerCase();
-        return text.includes(q);
-      });
-      renderList();
-    },
-  });
-
+  const description = [hint ? `${id}-hint` : null, `${id}-err`].filter(Boolean)
+    .join(" ");
+  const triggerText = h("span", { class: "searchable-select-text" });
+  const validation = h("span", {
+    class: "field-error",
+    id: `${id}-err`,
+    hidden: !error,
+  }, error);
   const listEl = h("div", {
     class: "searchable-select-options",
     role: "listbox",
+    id: `${id}-options`,
+    "aria-label": ariaLabel || label || "Options",
+  });
+  const native = h("select", {
+    class: "searchable-select-native",
+    name,
+    required,
+    disabled,
+    tabindex: "-1",
+    "aria-hidden": "true",
+    onChange,
+    onInvalid: (event) => {
+      event.preventDefault();
+      validation.textContent = error || "Please select an option.";
+      validation.hidden = false;
+      triggerBtn.setAttribute("aria-invalid", "true");
+      toggle(true);
+    },
+  });
+  const searchInput = h("input", {
+    type: "search",
+    class: "input input-sm",
+    placeholder: "Search options...",
+    "aria-label": `Search ${ariaLabel || label || "options"}`,
+    autocomplete: "off",
+    onInput: () => {
+      const query = searchInput.value.trim().toLocaleLowerCase();
+      filtered = options.filter((item) =>
+        optionLabel(item).toLocaleLowerCase().includes(query)
+      );
+      renderList();
+    },
   });
   const dropdown = h(
     "div",
@@ -450,56 +409,82 @@ export function searchableSelect(
     listEl,
   );
 
-  const renderList = () => {
-    listEl.replaceChildren();
-    if (filtered.length === 0) {
+  function sync() {
+    native.replaceChildren(...options.map((item) =>
+      h("option", {
+        value: optionValue(item),
+        disabled: typeof item === "object" && item.disabled,
+      }, optionLabel(item))
+    ));
+    native.value = selected === null ? "" : String(optionValue(selected));
+    triggerText.textContent = selected === null
+      ? placeholder
+      : optionLabel(selected);
+  }
+  function choose(item) {
+    selected = item;
+    sync();
+    validation.hidden = !error;
+    triggerBtn.setAttribute("aria-invalid", error ? "true" : "false");
+    toggle(false, true);
+    native.dispatchEvent(new Event("change", { bubbles: true }));
+    onSelect?.(optionValue(item), item);
+  }
+  function renderList() {
+    listEl.replaceChildren(...filtered.map((item) => {
+      const active = selected !== null &&
+        String(optionValue(selected)) === String(optionValue(item));
+      return h(
+        "button",
+        {
+          class: `searchable-select-item${active ? " is-selected" : ""}`,
+          type: "button",
+          role: "option",
+          tabindex: "-1",
+          disabled: typeof item === "object" && item.disabled,
+          "aria-selected": String(active),
+          onClick: (event) => {
+            event.stopPropagation();
+            choose(item);
+          },
+        },
+        h("span", {}, optionLabel(item)),
+        active ? icon("check") : null,
+      );
+    }));
+    if (!filtered.length) {
       listEl.append(
         h(
           "div",
-          { class: "searchable-select-empty muted" },
+          { class: "searchable-select-empty muted", role: "status" },
           "No options match",
         ),
       );
-      return;
     }
-    filtered.forEach((opt) => {
-      const val = typeof opt === "object" ? opt.value : opt;
-      const lbl = typeof opt === "object" ? opt.label : opt;
-      const isSelected = selected &&
-        (typeof selected === "object" ? selected.value : selected) === val;
-      const itemBtn = h(
-        "button",
-        {
-          class: `searchable-select-item${isSelected ? " is-selected" : ""}`,
-          type: "button",
-          role: "option",
-          "aria-selected": isSelected ? "true" : "false",
-          onClick: (e) => {
-            e.stopPropagation();
-            selected = opt;
-            triggerText.textContent = lbl;
-            toggle(false);
-            onSelect?.(val, opt);
-          },
-        },
-        h("span", {}, lbl),
-        isSelected ? icon("check") : null,
-      );
-      listEl.append(itemBtn);
-    });
-  };
-
-  const toggle = (force) => {
+  }
+  function outside(event) {
+    if (!wrap.contains(event.target)) toggle(false);
+  }
+  function toggle(open, restoreFocus = false, focusSearch = true) {
     if (disabled) return;
-    isOpen = force ?? !isOpen;
-    dropdown.hidden = !isOpen;
-    triggerBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
-    if (isOpen) {
+    isOpen = open;
+    dropdown.hidden = !open;
+    triggerBtn.setAttribute("aria-expanded", String(open));
+    if (open) {
+      searchInput.value = "";
+      filtered = [...options];
       renderList();
-      if (searchable) setTimeout(() => searchInput.focus(), 10);
+      document.addEventListener("pointerdown", outside);
+      if (focusSearch) {
+        (searchable ? searchInput : listEl.querySelector(
+          ".is-selected:not(:disabled), button:not(:disabled)",
+        ))?.focus();
+      }
+    } else {
+      document.removeEventListener("pointerdown", outside);
+      if (restoreFocus) triggerBtn.focus();
     }
-  };
-
+  }
   const triggerBtn = h(
     "button",
     {
@@ -507,42 +492,96 @@ export function searchableSelect(
       type: "button",
       id,
       disabled,
+      "aria-label": ariaLabel || label || placeholder,
       "aria-haspopup": "listbox",
       "aria-expanded": "false",
-      onClick: () => toggle(),
+      "aria-controls": `${id}-options`,
+      "aria-required": required ? "true" : null,
+      "aria-invalid": error ? "true" : "false",
+      "aria-describedby": description,
+      onClick: () => toggle(!isOpen),
     },
     triggerText,
     icon("chevronDown"),
   );
-
   const wrap = h(
     "div",
     { class: "searchable-select-wrap" },
+    native,
     triggerBtn,
     dropdown,
   );
-
-  document.addEventListener("click", (e) => {
-    if (!wrap.contains(e.target) && isOpen) toggle(false);
+  wrap.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && isOpen) {
+      event.preventDefault();
+      event.stopPropagation();
+      toggle(false, true);
+      return;
+    }
+    if (event.key === "Tab") {
+      toggle(false);
+      return;
+    }
+    if (event.key === "Enter" && event.target === searchInput && isOpen) {
+      event.preventDefault();
+      listEl.querySelector("button:not(:disabled)")?.click();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    if (["Home", "End"].includes(event.key) && event.target === searchInput) {
+      return;
+    }
+    event.preventDefault();
+    if (!isOpen) toggle(true, false, false);
+    const items = [...listEl.querySelectorAll("button:not(:disabled)")];
+    if (!items.length) return;
+    const current = items.indexOf(document.activeElement);
+    const index = event.key === "Home"
+      ? 0
+      : event.key === "End"
+      ? items.length - 1
+      : event.key === "ArrowDown"
+      ? (current + 1) % items.length
+      : current <= 0
+      ? items.length - 1
+      : current - 1;
+    items[index].focus();
+    items[index].scrollIntoView({ block: "nearest" });
   });
-
+  wrap.addEventListener("focusout", (event) => {
+    if (isOpen && !wrap.contains(event.relatedTarget)) toggle(false);
+  });
   const fieldEl = h(
     "div",
     { class: `field${error ? " field-error-state" : ""}` },
     label ? h("label", { for: id }, label, required ? " *" : "") : null,
     wrap,
     hint ? h("span", { class: "field-hint", id: `${id}-hint` }, hint) : null,
-    error ? h("span", { class: "field-error", id: `${id}-err` }, error) : null,
+    validation,
   );
-  // the chosen value, so a form can read it without a native <select>
+  fieldEl.setValue = (next) => {
+    selected = findOption(next);
+    sync();
+    if (isOpen) renderList();
+  };
+  fieldEl.setOptions = (next) => {
+    const previous = selected === null ? "" : optionValue(selected);
+    options = next;
+    selected = findOption(previous);
+    sync();
+    filtered = options.filter((item) =>
+      optionLabel(item).toLocaleLowerCase().includes(
+        searchInput.value.trim().toLocaleLowerCase(),
+      )
+    );
+    if (isOpen) renderList();
+  };
+  fieldEl.close = () => toggle(false);
   Object.defineProperty(fieldEl, "value", {
-    get: () =>
-      selected == null
-        ? ""
-        : typeof selected === "object"
-        ? selected.value
-        : selected,
+    get: () => selected === null ? "" : optionValue(selected),
+    set: (next) => fieldEl.setValue(next),
   });
+  sync();
   return fieldEl;
 }
 
@@ -1856,11 +1895,104 @@ export function pageHeader(
   );
 }
 
-export function kpiCard(label, value) {
+const ADMIN_HERO_DATE = new Intl.DateTimeFormat("en-PH", {
+  timeZone: "Asia/Manila",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+/**
+ * Admin page banner shared by every admin screen (same markup as the Members page): role, date and status chips,
+ * the page title (the focus target for route changes), a short description and the page's primary actions.
+ * `chip` is the status chip text, for example "Courts Management".
+ */
+export function adminHero({ title, description, chip, actions = [] }) {
+  return h(
+    "section",
+    { class: "dash-hero is-admin", "aria-label": title },
+    h(
+      "div",
+      { class: "dash-hero-copy" },
+      h(
+        "div",
+        { class: "dash-hero-chips" },
+        h("span", { class: "dash-chip is-role" }, icon("medal"), "Admin Console"),
+        h(
+          "span",
+          { class: "dash-chip is-date" },
+          icon("calendar"),
+          ADMIN_HERO_DATE.format(new Date()),
+        ),
+        h(
+          "span",
+          { class: "dash-chip is-status" },
+          h("span", { class: "status-dot-pulse", "aria-hidden": "true" }),
+          chip ?? title,
+        ),
+      ),
+      h(
+        "h1",
+        { class: "dash-hero-title", id: "page-title", tabindex: "-1" },
+        title,
+      ),
+      description ? h("p", { class: "dash-hero-sub" }, description) : null,
+    ),
+    actions.length ? h("div", { class: "dash-hero-actions" }, actions) : null,
+  );
+}
+
+/**
+ * Summary card with the Members page look, for numbers that are not filters (no link). `tone` is "emerald", "amber",
+ * "teal" or "rose"; `text` shrinks the value for dates and words; `loading` shows a skeleton instead of the value.
+ */
+export function adminStatCard(
+  { label, value, hint, iconName, tone = "emerald", pill, text = false, loading = false },
+) {
   return h(
     "div",
-    { class: "card kpi" },
-    h("div", { class: "label" }, label),
+    {
+      class: `home-card member-stat-card is-tone-${tone}${text ? " is-text" : ""}`,
+      "aria-busy": loading ? "true" : "false",
+    },
+    h(
+      "div",
+      { class: "member-stat-main" },
+      h("span", { class: "home-card-icon", "aria-hidden": "true" }, icon(iconName)),
+      h(
+        "div",
+        { class: "member-stat-copy" },
+        loading
+          ? h("span", { class: "sk sk-stat-value" })
+          : h("span", { class: "home-card-value" }, String(value ?? "—")),
+        h("span", { class: "home-card-label" }, label),
+      ),
+      loading ? null : pill,
+    ),
+    h("div", { class: "home-card-bottom" }, h("div", { class: "home-card-hint" }, hint)),
+  );
+}
+
+export function kpiCard(label, value, opts = {}) {
+  const iconName = opts.icon;
+  const tone = opts.tone ? ` kpi-${opts.tone}` : "";
+  const alert = opts.alert ? " is-alert" : "";
+  return h(
+    "div",
+    { class: `card kpi${tone}${alert}` },
+    h(
+      "div",
+      { class: "kpi-header" },
+      h("div", { class: "label" }, label),
+      iconName
+        ? h(
+          "span",
+          { class: `kpi-icon${opts.tone ? ` ${opts.tone}` : ""}` },
+          icon(iconName),
+        )
+        : null,
+    ),
     h("div", { class: "value" }, value),
   );
 }
@@ -1902,7 +2034,10 @@ const PHP = new Intl.NumberFormat("en-PH", {
 /**
  * Grid table. `schema.columns` drives the header, the rows, and the skeleton,
  * so all three share one column definition.
- * column: { key, label, align?: "left"|"right"|"center", kind?: "text"|"money", render?(row) }
+ * column: { key, label, align?: "left"|"right"|"center", kind?: "text"|"money", render?(row),
+ *   skeleton?: "member"|"badge"|"text"|"date"|"stack"|"badge-stack"|"actions", actionCount?: number }
+ *   `skeleton` says what the loading placeholder looks like (default: from key/label); `actionCount` is how many
+ *   icon buttons the Action column shows, so the placeholder reserves the same number.
  * schema.actions: array of { label, icon, onClick(row) } rendered icon-only.
  * state: "loading" | "error" | "ready"
  */
@@ -1930,6 +2065,7 @@ export function dataTable(
     role: "table",
     "aria-label": ariaLabel ?? "Data table",
     "aria-busy": state === "loading" ? "true" : "false",
+    style: schema.gridTemplate ? `--tbl-grid: ${schema.gridTemplate};` : null,
   });
 
   const head = h("div", { class: "tbl-row tbl-head", role: "row" });
@@ -1958,15 +2094,65 @@ export function dataTable(
         "aria-hidden": "true",
       });
       for (const c of cols) {
-        const bar = h("span", {
-          class: `sk ${
-            c.kind === "money" || c.align === "right"
-              ? "r w-30"
-              : i % 2
-              ? "w-50"
-              : "w-70"
-          }`,
-        });
+        let bar;
+        const shape = c.skeleton ??
+          (c.key === "name" || c.key === "member" || c.label === "Member"
+            ? "member"
+            : c.key === "status" || c.label === "Status"
+            ? "badge"
+            : c.key === "actions" || c.label === "Action"
+            ? "actions"
+            : null);
+        if (shape === "member") {
+          bar = h(
+            "div",
+            { class: "sk-member-cell" },
+            h("span", { class: "sk sk-avatar round" }),
+            h(
+              "div",
+              { class: "sk-meta" },
+              h("span", { class: `sk ${i % 2 ? "w-70" : "w-50"}` }),
+              h("span", { class: "sk w-30 sk-sub" }),
+            ),
+          );
+        } else if (shape === "stack") {
+          bar = h(
+            "div",
+            { class: "sk-meta" },
+            h("span", { class: `sk ${i % 2 ? "w-70" : "w-50"}` }),
+            h("span", { class: "sk w-30 sk-sub" }),
+          );
+        } else if (shape === "badge-stack") {
+          bar = h(
+            "div",
+            { class: "sk-meta" },
+            h("span", { class: "sk sk-pill" }),
+            h("span", { class: "sk w-30 sk-sub" }),
+          );
+        } else if (shape === "badge") {
+          bar = h("span", { class: "sk sk-pill" });
+        } else if (shape === "actions") {
+          bar = h(
+            "div",
+            { class: "row-actions" },
+            ...Array.from(
+              { length: c.actionCount ?? 2 },
+              () => h("span", { class: "sk round" }),
+            ),
+          );
+        } else if (shape === "date") {
+          bar = h("span", { class: "sk w-50" });
+        } else {
+          bar = h("span", {
+            class: `sk ${
+              c.kind === "money" || c.align === "right"
+                ? "r w-30"
+                : i % 2
+                ? "w-50"
+                : "w-70"
+            }`,
+          });
+        }
         row.append(
           h("div", {
             class: `tbl-cell ${c.align ?? ""}`,
@@ -2118,27 +2304,65 @@ export function openModal(
     confirmLabel = "Save",
     cancelLabel = "Cancel",
     destructive = false,
+    tone,
     onConfirm,
   },
 ) {
   const opener = document.activeElement;
   const titleId = `modal-title-${Math.random().toString(36).slice(2, 8)}`;
+  const effectiveTone = tone || (destructive ? "danger" : "neutral");
   const dialog = h("dialog", {
-    class: `modal modal-${size}`,
+    class: `modal modal-${size} modal-tone-${effectiveTone}`,
     "aria-labelledby": titleId,
   });
-  const confirm = h("button", {
-    class: destructive ? "btn btn-danger" : "btn btn-primary",
-    type: "submit",
-  }, confirmLabel);
+
+  const confirmBtnClass = buttonClasses({
+    variant: destructive || effectiveTone === "danger"
+      ? "danger"
+      : ["warning", "archive", "success"].includes(effectiveTone)
+      ? effectiveTone
+      : "primary",
+  });
+
+  const isDuplicateClose = Boolean(
+    confirmLabel &&
+      cancelLabel &&
+      String(confirmLabel).trim().toLowerCase() ===
+        String(cancelLabel).trim().toLowerCase(),
+  );
+
+  const confirm = confirmLabel
+    ? h("button", {
+      class: confirmBtnClass,
+      type: "submit",
+    }, confirmLabel)
+    : null;
+
   const close = () => dialog.close();
+
+  const cancelBtn = (cancelLabel && !isDuplicateClose)
+    ? h(
+      "button",
+      {
+        class: buttonClasses({ variant: "outline" }),
+        type: "button",
+        onClick: close,
+      },
+      cancelLabel,
+    )
+    : null;
+
   const form = h(
     "form",
     { class: "modal-form", method: "dialog" },
     h(
       "div",
       { class: "modal-head" },
-      h("span", { class: "badge-icon" }, icon(iconName)),
+      h(
+        "span",
+        { class: `badge-icon is-${effectiveTone}` },
+        icon(iconName, { solid: true }),
+      ),
       h(
         "div",
         { class: "grow" },
@@ -2147,7 +2371,7 @@ export function openModal(
         description ? h("p", { class: "muted" }, description) : null,
       ),
       h("button", {
-        class: "btn btn-icon",
+        class: "modal-close-btn",
         type: "button",
         "aria-label": "Close modal",
         title: "Close",
@@ -2158,25 +2382,27 @@ export function openModal(
     h(
       "div",
       { class: "modal-foot" },
-      h(
-        "button",
-        { class: "btn btn-outline", type: "button", onClick: close },
-        cancelLabel,
-      ),
+      cancelBtn,
       confirm,
     ),
   );
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!confirm) {
+      dialog.close();
+      return;
+    }
     if (confirm.dataset.pending === "true") return;
     confirm.dataset.pending = "true";
     confirm.setAttribute("aria-busy", "true");
+    confirm.disabled = true;
     try {
       const keepOpen = await onConfirm?.(new FormData(form));
       if (keepOpen !== false) dialog.close();
     } finally {
       delete confirm.dataset.pending;
       confirm.removeAttribute("aria-busy");
+      confirm.disabled = false;
     }
   });
   dialog.addEventListener("click", (e) => {
@@ -3154,6 +3380,26 @@ export function createCourtWatermarkSvg(
       "fill-opacity": "0.3",
     }),
   );
+}
+
+/** Shared animated page background, disposed when its route is removed. */
+export function attachPagePattern(page) {
+  const canvas = h("canvas", {
+    class: "dashboard-pattern",
+    "aria-hidden": "true",
+  });
+  page.prepend(canvas);
+  requestAnimationFrame(() => {
+    if (!page.isConnected) return;
+    const stopPattern = setupConvexPatternCanvas(canvas, page);
+    const observer = new MutationObserver(() => {
+      if (!page.isConnected) {
+        stopPattern();
+        observer.disconnect();
+      }
+    });
+    observer.observe(page.parentNode, { childList: true });
+  });
 }
 
 export function setupConvexPatternCanvas(canvas, containerEl, watermarkEl) {

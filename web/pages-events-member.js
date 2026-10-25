@@ -93,7 +93,7 @@ export function createMemberEventsPages({ api, client, session }) {
           api.rpc("my_event_options"),
           api.read((c) =>
             c.from("registrations").select(
-              "id,status,status_reason,fee_snapshot,meta,division:divisions(name,status),event:events(name,starts_on)",
+              "id,status,status_reason,fee_snapshot,meta,division:divisions(id,name,status),event:events(name,starts_on)",
             ).order("created_at", { ascending: false }).limit(100)
           ),
           loadSettings([
@@ -655,6 +655,17 @@ export function createMemberEventsPages({ api, client, session }) {
                       label: "Pay",
                       size: "sm",
                       onClick: () => payModal(r),
+                    })
+                    : null,
+                  r.division && ["drawn", "in_progress", "finalized"].includes(
+                      r.division.status,
+                    )
+                    ? button({
+                      label: "Bracket",
+                      size: "sm",
+                      onClick: () => {
+                        location.hash = `#/bracket?division=${r.division.id}`;
+                      },
                     })
                     : null,
                   live && r.division?.status === "open"

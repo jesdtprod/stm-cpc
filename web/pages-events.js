@@ -944,6 +944,15 @@ export function createEventsPages({ api }) {
                     : null,
                   ["drawn", "in_progress", "finalized"].includes(r.status)
                     ? iconButton({
+                      label: `Open the bracket for ${r.name}`,
+                      icon: "trophy",
+                      onClick: () => {
+                        location.hash = `#/bracket?division=${r.id}`;
+                      },
+                    })
+                    : null,
+                  ["drawn", "in_progress", "finalized"].includes(r.status)
+                    ? iconButton({
                       label: `View the draw for ${r.name}`,
                       icon: "eye",
                       onClick: () => drawModal(r),

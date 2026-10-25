@@ -4,7 +4,8 @@
 // Sign-in goes through the `member-login` Edge Function (step 3.1): login(credentials, captchaToken)
 // must resolve to { access_token, refresh_token }. loadAccess() resolves to { grants, profile, access }, where
 // `access` is the member's own state from my_access_state() (status, must_change_password, profile_complete).
-// resolveGate(grants, access) decides which gate holds the user: "password_change" first, then "pending".
+// resolveGate(grants, access) decides which gate holds the user: "password_change" first, then "profile_update"
+// (after an administrator reset: confirm the profile and email), then "pending".
 const CHANNEL = "cpc-session";
 
 export function createSession({
@@ -14,6 +15,8 @@ export function createSession({
   resolveGate = (grants, access) =>
     access?.must_change_password
       ? "password_change"
+      : access?.must_confirm_profile
+      ? "profile_update"
       : (grants.length === 0 ? "pending" : null),
   channel = null,
   storage = null,
@@ -197,6 +200,17 @@ export function createSession({
     refresh,
     activity,
     ensureFreshAuth,
+    mockSession(patch = {}) {
+      emit({
+        status: "signed_in",
+        grants: [],
+        profile: null,
+        access: null,
+        gate: null,
+        reason: null,
+        ...patch,
+      });
+    },
     getState: () => state,
     CHANNEL,
   };

@@ -28,6 +28,8 @@ const MESSAGES = {
     "For your security, please sign in again, then change your password.",
   too_many_attempts: "Too many attempts. Please try again in a few minutes.",
   closed: "New sign-ups are closed right now. Please ask the club.",
+  email_taken:
+    "That email is already used by another member. Sign in with it, or use a different email.",
   existing_member_claim:
     "Sign-up is for new members only. If you are already a member, sign in with your member ID.",
 };
@@ -92,6 +94,17 @@ export async function changePassword(
   fetchFn = fetch,
 ) {
   await post("member-password", { new_password: newPassword }, {
+    authorization: `Bearer ${accessToken}`,
+  }, fetchFn);
+}
+
+/** An administrator resets a member's password to the first-password rule. Rejects with AuthFlowError (.message is plain). */
+export async function adminResetPassword(
+  memberId,
+  accessToken,
+  fetchFn = fetch,
+) {
+  await post("member-reset", { member_id: memberId }, {
     authorization: `Bearer ${accessToken}`,
   }, fetchFn);
 }

@@ -5,12 +5,13 @@
 //   * edit checks the row's version, so two admins cannot silently overwrite each other
 //   * delete and restore go through soft_delete / restore_row (reason required, audited)
 import {
+  adminHero,
+  attachPagePattern,
   badge,
   dataTable,
   h,
   iconButton,
   openModal,
-  pageHeader,
   tabs,
   toast,
 } from "./ui.js";
@@ -55,9 +56,12 @@ export function createCategoriesPages({ api, getOrgId }) {
   }
 
   function categoriesPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-categories-page",
+    });
+    attachPagePattern(page);
     const tabsHost = h("div", {});
-    const tableHost = h("div", {});
+    const tableHost = h("div", { class: "table-host" });
     const state = { rows: [], status: "loading", tab: "active" };
 
     // ---------------------------------------------------------------- form
@@ -322,6 +326,8 @@ export function createCategoriesPages({ api, getOrgId }) {
           iconButton({
             label: `Restore ${row.name}`,
             icon: "refresh",
+            size: "sm",
+            variant: "restore",
             onClick: () => restore(row),
           }),
         );
@@ -331,6 +337,8 @@ export function createCategoriesPages({ api, getOrgId }) {
           iconButton({
             label: `Edit ${row.name}`,
             icon: "edit",
+            size: "sm",
+            variant: "edit",
             onClick: () => formModal(row),
           }),
           iconButton({
@@ -338,6 +346,8 @@ export function createCategoriesPages({ api, getOrgId }) {
               ? `Retire ${row.name}`
               : `Make ${row.name} active again`,
             icon: tab === "active" ? "eye" : "check",
+            size: "sm",
+            variant: tab === "active" ? "warning" : "success",
             onClick: () => setActive(row, tab !== "active"),
           }),
           iconButton({
@@ -345,6 +355,7 @@ export function createCategoriesPages({ api, getOrgId }) {
               ? `${row.name} has a rank ladder and cannot be deleted`
               : `Delete ${row.name}`,
             icon: "trash",
+            size: "sm",
             variant: "danger",
             disabled: inUse,
             onClick: () =>
@@ -458,10 +469,9 @@ export function createCategoriesPages({ api, getOrgId }) {
     }
 
     page.append(
-      pageHeader({
-        icon: "layers",
-        eyebrow: "Admin",
+      adminHero({
         title: "Categories",
+        chip: "Categories Management",
         description:
           "The club's skill levels, in order. Each category has its own ranked steps.",
         actions: [
@@ -474,7 +484,7 @@ export function createCategoriesPages({ api, getOrgId }) {
         ],
       }),
       tabsHost,
-      tableHost,
+      h("div", { class: "member-directory-card is-auto-grid" }, tableHost),
     );
     refresh();
     return page;

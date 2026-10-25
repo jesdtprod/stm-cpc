@@ -5,6 +5,7 @@ import { button, field, h, pageHeader, toast } from "./ui.js";
 import { renderTurnstile } from "./lib/turnstile.js";
 import { can } from "./lib/permissions.js";
 import { ulid } from "./lib/ulid.js";
+import { ADMIN_CODES } from "./pages-home.js";
 
 export const isLocalDev = ["localhost", "127.0.0.1"].includes(
   location.hostname,
@@ -281,6 +282,27 @@ export function createDev({ client, api, session, reporter }) {
           button({
             label: "Sign out",
             onClick: () => session.signOut("manual"),
+          }),
+          button({
+            label: "Simulate Admin Session",
+            variant: "accent",
+            onClick: () => {
+              session.mockSession({
+                grants: ADMIN_CODES.map((code) => ({
+                  code,
+                  org_id: "org-1",
+                  unit_id: null,
+                })),
+                profile: { profile_id: "dev-admin-1", org_id: "org-1" },
+                access: {
+                  display_name: "Admin User",
+                  member_no: "CPC-2026-00001",
+                  must_change_password: false,
+                  profile_complete: true,
+                },
+              });
+              location.hash = "#/admin";
+            },
           }),
         ),
         status,

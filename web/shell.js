@@ -27,23 +27,37 @@ const GROUPS = [
     ],
   },
   {
-    label: "Club",
+    label: "Members",
     view: "admin",
     items: [
       { path: "/admin/members", label: "Members", icon: "user" },
+      { path: "/admin/import", label: "Member import", icon: "upload" },
+      { path: "/admin/categories", label: "Categories", icon: "layers" },
+      { path: "/admin/ranks", label: "Ranks", icon: "layers" },
+    ],
+  },
+  {
+    label: "Court Operations",
+    view: "admin",
+    items: [
+      { path: "/admin/courts", label: "Courts", icon: "grid" },
       { path: "/admin/bookings", label: "Bookings", icon: "calendar" },
       { path: "/admin/payments", label: "Payments", icon: "currency" },
-      {
-        path: "/admin/categories",
-        label: "Categories",
-        icon: "layers",
-      },
-      { path: "/admin/staff", label: "Staff and roles", icon: "user" },
-      { path: "/admin/import", label: "Member import", icon: "upload" },
-      { path: "/admin/ranks", label: "Ranks", icon: "layers" },
-      { path: "/admin/courts", label: "Courts", icon: "grid" },
+    ],
+  },
+  {
+    label: "Competitions",
+    view: "admin",
+    items: [
       { path: "/admin/events", label: "Events", icon: "trophy" },
-      { path: "/admin/scoring", label: "Scoring rules", icon: "medal" },
+      { path: "/admin/scoring", label: "Scoring Rules", icon: "medal" },
+    ],
+  },
+  {
+    label: "Administration",
+    view: "admin",
+    items: [
+      { path: "/admin/staff", label: "Staff and Roles", icon: "user" },
       { path: "/admin/settings", label: "Settings", icon: "filter" },
     ],
   },
@@ -66,14 +80,6 @@ const GROUPS = [
       },
     ],
   },
-  {
-    label: "Developer",
-    dev: true,
-    items: [
-      { path: "/components", label: "Components", icon: "grid" },
-      { path: "/dev", label: "Self-check", icon: "check" },
-    ],
-  },
 ];
 
 const initials = (name) =>
@@ -81,12 +87,12 @@ const initials = (name) =>
     .map((w) => w[0]).join("").toUpperCase() || "?";
 
 /**
- * createShell({ session, checkAccess, routeAccess, gatePages, isDev })
+ * createShell({ session, checkAccess, routeAccess, gatePages })
  * Needs these elements in index.html: #menu-btn, #side, #nav, #scrim, #account.
  * Returns { draw(path) }: call it on every route change and every sign-in or sign-out.
  */
 export function createShell(
-  { session, checkAccess, routeAccess, gatePages, isDev = false },
+  { session, checkAccess, routeAccess, gatePages },
 ) {
   const el = (id) => document.getElementById(id);
   const menuBtn = el("menu-btn");
@@ -95,7 +101,6 @@ export function createShell(
   const scrim = el("scrim");
   const account = el("account");
   const header = document.querySelector(".app-header");
-  const adminMenuBtn = el("admin-menu-btn");
   const mobileNav = el("mobile-bottom-nav");
   const centerNav = el("header-center-nav");
   let closeAssistiveMenu = null;
@@ -175,12 +180,9 @@ export function createShell(
     scrim.hidden = !open;
     menuBtn.setAttribute("aria-expanded", String(open));
     menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-    adminMenuBtn?.setAttribute("aria-expanded", String(open));
-    adminMenuBtn?.setAttribute("aria-label", open ? "Close menu" : "Open menu");
     if (open) side.querySelector("a")?.focus();
     else if (side.contains(document.activeElement)) {
-      (document.body.dataset.adminView === "true" ? adminMenuBtn : menuBtn)
-        ?.focus();
+      menuBtn?.focus();
     }
   }
   menuBtn.addEventListener(
@@ -188,10 +190,6 @@ export function createShell(
     () => setDrawer(!side.hasAttribute("data-open")),
   );
   scrim.addEventListener("click", () => setDrawer(false));
-  adminMenuBtn?.addEventListener(
-    "click",
-    () => setDrawer(!side.hasAttribute("data-open")),
-  );
   side.addEventListener("click", (e) => {
     if (e.target.closest("a")) setDrawer(false);
   });
@@ -255,15 +253,27 @@ export function createShell(
         h("span", { class: "account-name" }, name),
         memberNo ? h("span", { class: "account-no" }, memberNo) : null,
       ),
+      h(
+        "span",
+        { class: "account-chevron", "aria-hidden": "true" },
+        icon("chevr"),
+      ),
     );
     panel = h(
       "div",
       { class: "account-menu", id: "account-menu", role: "menu", hidden: true },
       h(
+        "div",
+        { class: "account-menu-header" },
+        h("span", { class: "account-menu-name" }, name),
+        memberNo ? h("span", { class: "account-menu-no" }, memberNo) : null,
+      ),
+      h(
         "a",
         {
           href: "#/profile",
           role: "menuitem",
+          class: "account-menu-item",
           onClick: () => setMenu(false),
         },
         icon("user"),
@@ -274,6 +284,7 @@ export function createShell(
         {
           href: "#/password",
           role: "menuitem",
+          class: "account-menu-item",
           onClick: () => setMenu(false),
         },
         icon("edit"),
@@ -284,12 +295,13 @@ export function createShell(
         {
           type: "button",
           role: "menuitem",
+          class: "account-menu-item is-signout",
           onClick: () => {
             setMenu(false);
             session.signOut("manual");
           },
         },
-        icon("x"),
+        icon("logOut"),
         "Sign out",
       ),
     );
@@ -312,7 +324,6 @@ export function createShell(
   function visibleGroups(state, view = "member") {
     const gate = state.gate ?? null;
     return GROUPS
-      .filter((g) => !g.dev || isDev)
       .filter((g) => !g.view || g.view === view)
       .map((g) => ({
         label: g.label,
@@ -732,7 +743,7 @@ export function createShell(
         ),
       )
       : null;
-    nav.replaceChildren(
+    const navItems = [
       viewSwitch,
       ...groups.flatMap((g) => [
         h("div", { class: "nav-heading" }, g.label),
@@ -744,8 +755,13 @@ export function createShell(
               href: `#${n.path}`,
               "aria-current": n.path === path ? "page" : null,
             },
-            icon(n.icon),
-            n.label,
+            h(
+              "span",
+              { class: "nav-link-icon", "aria-hidden": "true" },
+              icon(n.icon),
+            ),
+            h("span", { class: "nav-link-label" }, n.label),
+            n.badge ? h("span", { class: "nav-link-badge" }, n.badge) : null,
           )
         ),
       ]),
@@ -782,7 +798,8 @@ export function createShell(
           "Sign out",
         ),
       ),
-    );
+    ].filter(Boolean);
+    nav.replaceChildren(...navItems);
     if (isAdminPath) nav.querySelector(".side-foot").replaceChildren(account);
   }
 

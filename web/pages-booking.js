@@ -525,10 +525,14 @@ export function createBookingPages({ api, client, session }) {
             { class: "stack" },
             h(
               "div",
-              { class: "slot-legend muted", "aria-hidden": "true" },
-              h("span", { class: "slot slot-free" }, "Free"),
-              h("span", { class: "slot slot-booked" }, "Taken"),
-              h("span", { class: "slot slot-closed" }, "Closed"),
+              {
+                class: "slot-legend",
+                role: "group",
+                "aria-label": "Court availability legend",
+              },
+              badge("Free", "success"),
+              badge("Taken", "danger"),
+              badge("Closed", "neutral"),
             ),
             ...state.courts.map(courtCard),
           )

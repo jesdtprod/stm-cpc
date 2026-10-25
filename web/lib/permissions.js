@@ -2,7 +2,7 @@
 // The database checks every permission again; hiding a button is convenience, not security.
 let grants = []; // rows from my_permissions(): { org_id, unit_id, code }
 let signedIn = false;
-let gate = null; // null | "pending" | "password_change" | "suspended"
+let gate = null; // null | "pending" | "password_change" | "profile_update" | "suspended"
 const listeners = new Set();
 
 export function setAuth({ signedIn: s, grants: g = [], gate: gt = null }) {

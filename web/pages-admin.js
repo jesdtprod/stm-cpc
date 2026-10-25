@@ -3,18 +3,20 @@
 // (one per intent, reused if the request is retried), and writes the audit row. The buttons shown here follow the
 // caller's permissions, but that is convenience only: the database decides.
 import {
+  attachPagePattern,
   badge,
+  button,
   dataTable,
   h,
+  icon,
   iconButton,
-  kpiCard,
   openModal,
-  pageHeader,
   pagination,
-  tabs,
+  selectField,
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
+import { initialsOf, signedAvatarUrls } from "./lib/avatar.js";
 import { formatDateTime } from "./lib/dates.js";
 
 const PAGE_SIZE = 25;
@@ -90,13 +92,15 @@ const FLAG_SHORT = {
 
 const SELECT =
   "id,member_no,status,status_reason,joined_on,created_at,profile_id,deleted_at,delete_reason," +
-  "persons!inner(display_name,mobile,email,gender,date_of_birth,address_text,emergency_name,emergency_relationship,emergency_phone)," +
+  "persons!inner(display_name,avatar_path,mobile,email,gender,date_of_birth,address_text,emergency_name,emergency_relationship,emergency_phone)," +
   "flags:member_review_flags!member_review_flags_member_id_fkey(kind,resolved_at)";
 
 const openFlags = (row) => (row.flags ?? []).filter((f) => !f.resolved_at);
+/** First letter upper case; the rest is left as typed (reasons are free text). */
+const sentence = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const cleanTerm = (t) => t.replace(/[%_,()*]/g, " ").trim().slice(0, 60);
 
-export function createAdminPages({ client, api }) {
+export function createAdminPages({ client, api, adminResetPassword }) {
   async function countOf(statuses) {
     const { count, error } = await client.from("members").select("id", {
       count: "exact",
@@ -121,24 +125,59 @@ export function createAdminPages({ client, api }) {
     }
     const { data, error, count } = await q;
     if (error) throw error;
-    return { rows: data ?? [], total: count ?? 0 };
+    const rows = data ?? [];
+    // Photos are private: each visible one is shown through a short-lived signed link.
+    const urls = await signedAvatarUrls(
+      client,
+      rows.map((r) => r.persons?.avatar_path),
+    );
+    for (const r of rows) r._avatar = urls.get(r.persons?.avatar_path) ?? null;
+    return { rows, total: count ?? 0 };
   }
 
   // ------------------------------------------------------------------ modals
-  const reasonField = (label, required) =>
-    h(
+  const reasonField = (label, required) => {
+    const count = h("output", {
+      class: "decision-reason-count",
+      id: "decision-reason-count",
+      for: "decision-reason",
+    }, "0 / 500");
+    return h(
       "div",
       { class: "field" },
-      h("label", { for: "decision-reason" }, label + (required ? " *" : "")),
+      h(
+        "div",
+        { class: "decision-field-heading" },
+        h(
+          "label",
+          { for: "decision-reason" },
+          label,
+          required ? h("span", { class: "decision-required" }, " *") : null,
+        ),
+        count,
+      ),
       h("textarea", {
         class: "input textarea",
         id: "decision-reason",
         name: "reason",
-        rows: 3,
+        rows: 4,
         maxlength: 500,
+        placeholder: "Provide context or explanation for this decision...",
         required,
+        "aria-describedby": "decision-reason-help decision-reason-count",
+        onInput: (event) => {
+          count.textContent = `${event.target.value.length} / 500`;
+        },
       }),
+      h(
+        "p",
+        { class: "muted decision-reason-help", id: "decision-reason-help" },
+        required
+          ? "At least 3 characters. Maximum 500 characters."
+          : "Optional. Maximum 500 characters.",
+      ),
     );
+  };
 
   /** Runs a decision; on failure the message is shown inside the modal and it stays open. */
   function decide(
@@ -148,6 +187,8 @@ export function createAdminPages({ client, api }) {
       title,
       verb,
       destructive = false,
+      icon: iconName,
+      tone,
       body,
       extra = () => ({}),
       call = null,
@@ -161,12 +202,51 @@ export function createAdminPages({ client, api }) {
       role: "alert",
       hidden: true,
     });
-    return openModal({
+    const roleValue = h("span", {}, "Loading…");
+    const dialog = openModal({
       title,
-      eyebrow: `${row.persons.display_name} · ${row.member_no}`,
-      icon: destructive ? "alert" : "check",
-      body: h("div", { class: "stack" }, body, error),
+      eyebrow: "Member management",
+      icon: iconName || (destructive ? "alert" : "check"),
+      tone: tone || (destructive ? "danger" : "info"),
+      body: h(
+        "div",
+        { class: "member-decision" },
+        h(
+          "div",
+          { class: "member-decision-subject" },
+          h(
+            "span",
+            { class: "member-avatar", "aria-hidden": "true" },
+            icon("user", { solid: true }),
+          ),
+          h(
+            "div",
+            { class: "member-meta" },
+            h(
+              "div",
+              { class: "member-decision-name" },
+              h("strong", { class: "member-name" }, row.persons.display_name),
+              badge(
+                STATUS_LABEL[row.status] ?? row.status,
+                STATUS_TONE[row.status] ?? "neutral",
+              ),
+            ),
+            h("span", { class: "sub member-subtext" }, row.member_no),
+          ),
+          can("roles.manage")
+            ? h(
+              "div",
+              { class: "member-decision-role" },
+              h("span", { class: "muted" }, "Role"),
+              roleValue,
+            )
+            : null,
+        ),
+        body,
+        error,
+      ),
       confirmLabel: verb,
+      cancelLabel: "Cancel",
       destructive,
       onConfirm: async (form) => {
         const reason = String(form.get("reason") ?? "").trim();
@@ -200,6 +280,20 @@ export function createAdminPages({ client, api }) {
         }
       },
     });
+    if (can("roles.manage")) {
+      api.rpc("staff_directory", {
+        p_term: row.member_no,
+        p_only_staff: row.status !== "active",
+      })
+        .then((members) => {
+          roleValue.textContent = members?.find((member) =>
+            member.member_id === row.id
+          )?.role_name || "Unavailable";
+        }).catch(() => {
+          roleValue.textContent = "Unavailable";
+        });
+    }
+    return dialog;
   }
 
   async function approveModal(row, onDone) {
@@ -232,33 +326,51 @@ export function createAdminPages({ client, api }) {
       row,
       title: "Approve this member",
       verb: "Approve",
+      icon: "check",
+      tone: "success",
       onDone,
       reasonRequired: false,
       body: h(
         "div",
         { class: "stack" },
         h(
-          "p",
-          {},
-          "They will be able to book courts and join events right away.",
+          "div",
+          { class: "modal-callout is-success" },
+          h(
+            "span",
+            { class: "modal-callout-icon", "aria-hidden": "true" },
+            icon("check"),
+          ),
+          h(
+            "div",
+            { class: "modal-callout-text" },
+            "They will be able to book courts and join events right away.",
+          ),
         ),
         flags.length
           ? h(
             "div",
-            { class: "alert-box" },
-            h("strong", {}, "Review flags"),
+            { class: "modal-callout is-warning" },
+            h("strong", {}, "Review flags:"),
             h(
               "ul",
-              {},
+              { style: "margin: 6px 0 10px 18px; padding: 0;" },
               flags.map((f) => h("li", {}, FLAG_LABEL[f.kind] ?? f.kind)),
             ),
             h(
               "div",
-              { class: "check" },
+              {
+                class: "check",
+                style:
+                  "display: flex; align-items: center; gap: 8px; margin-top: 6px;",
+              },
               ack,
               h(
                 "label",
-                { for: "decision-ack" },
+                {
+                  for: "decision-ack",
+                  style: "font-weight: 600; cursor: pointer;",
+                },
                 "I have reviewed these flags.",
               ),
             ),
@@ -285,36 +397,48 @@ export function createAdminPages({ client, api }) {
         title: "Reject this application",
         verb: "Reject",
         destructive: true,
+        icon: "x",
+        tone: "danger",
         label: "Reason (the member is not shown this)",
       },
       reconsider: {
         title: "Reconsider this application",
         verb: "Reconsider",
         destructive: false,
+        icon: "refresh",
+        tone: "restore",
         label: "Reason",
       },
       suspend: {
         title: "Suspend this member",
         verb: "Suspend",
         destructive: true,
+        icon: "alert",
+        tone: "warning",
         label: "Reason",
       },
       restore: {
         title: "Restore this member",
         verb: "Restore",
         destructive: false,
+        icon: "refresh",
+        tone: "restore",
         label: "Reason",
       },
       archive: {
         title: "Archive this member",
         verb: "Archive",
         destructive: true,
+        icon: "inbox",
+        tone: "archive",
         label: "Reason",
       },
       delete: {
         title: "Delete this member record",
         verb: "Delete",
         destructive: true,
+        icon: "trash",
+        tone: "danger",
         label: "Reason",
       },
     }[action];
@@ -340,101 +464,342 @@ export function createAdminPages({ client, api }) {
       title: copy.title,
       verb: copy.verb,
       destructive: copy.destructive,
+      icon: copy.icon,
+      tone: copy.tone,
       call,
       reasonRequired: true,
       onDone,
       body: h(
         "div",
         { class: "stack" },
-        h("p", {}, text),
+        h(
+          "div",
+          { class: `modal-callout is-${copy.tone}` },
+          h(
+            "span",
+            { class: "modal-callout-icon", "aria-hidden": "true" },
+            icon(copy.icon),
+          ),
+          h(
+            "div",
+            { class: "modal-callout-text" },
+            h(
+              "strong",
+              { class: "decision-impact-title" },
+              {
+                suspend: "Access will be paused",
+                archive: "This action is final",
+                reject: "Application will be rejected",
+                reconsider: "Application will be reviewed again",
+                restore: "Access will be restored",
+                delete: "Record will be hidden",
+              }[action],
+            ),
+            h("p", { class: "decision-impact-text" }, text),
+          ),
+        ),
         reasonField(copy.label, true),
       ),
     });
   }
 
+  /** Puts the member back on the first-password rule. Nothing is shown or sent: the member only needs their ID and birth date. */
+  function resetPasswordModal(row) {
+    const error = h("p", {
+      class: "field-error form-error",
+      role: "alert",
+      hidden: true,
+    });
+    const name = row.persons.display_name || row.member_no;
+    return openModal({
+      title: "Reset password",
+      eyebrow: `${name} · ${row.member_no}`,
+      icon: "lock",
+      confirmLabel: "Reset password",
+      destructive: true,
+      body: h(
+        "div",
+        { class: "stack" },
+        h(
+          "p",
+          {},
+          "The password goes back to the first-password rule: the last 5 digits of the member ID followed by the birth date as MMDDYYYY.",
+        ),
+        h(
+          "p",
+          { class: "muted" },
+          "The member must choose a new password at the next sign-in, and confirm their profile and email. Their old password stops working now. This is recorded in the audit log.",
+        ),
+        error,
+      ),
+      onConfirm: async () => {
+        try {
+          const token = (await client.auth.getSession()).data.session
+            ?.access_token;
+          await adminResetPassword(row.id, token);
+          toast(`${name}: password reset.`, { tone: "success" });
+        } catch (e) {
+          error.textContent = e?.message ||
+            "The password could not be reset. Please try again.";
+          error.hidden = false;
+          return false;
+        }
+      },
+    });
+  }
+
   function detailsModal(row) {
     const p = row.persons;
-    const line = (label, value) =>
-      h("div", { class: "kv" }, h("dt", {}, label), h("dd", {}, value || "—"));
+    const kv = (label, value, wide = false) =>
+      h(
+        "dl",
+        { class: `kv-item${wide ? " kv-item-wide" : ""}` },
+        h("dt", { class: "kv-label" }, label),
+        h("dd", { class: "kv-val" }, value || "—"),
+      );
+
     const flags = row.flags ?? [];
-    const history = h("div", { class: "muted" }, "Loading history…");
-    const rank = h("span", {}, "Loading…");
+    const history = h(
+      "div",
+      { class: "timeline-empty muted" },
+      "Loading history…",
+    );
+    const rankEl = h("div", {}, badge("Loading…", "neutral"));
+
+    const statusBadge = badge(
+      STATUS_LABEL[row.status] ?? row.status,
+      STATUS_TONE[row.status] ?? "neutral",
+    );
+
+    const accountBadge = row.profile_id
+      ? badge("Active Account", "success")
+      : badge("No Account Yet", "neutral");
+
     openModal({
       title: p.display_name,
       eyebrow: row.member_no,
       icon: "user",
+      size: "lg",
+      tone: "info",
       confirmLabel: "Close",
-      cancelLabel: "Close",
+      cancelLabel: null,
       body: h(
-        "dl",
-        { class: "details" },
-        line("Status", STATUS_LABEL[row.status] ?? row.status),
-        line("Reason on record", row.status_reason),
-        line("Mobile", p.mobile),
-        line("Email", p.email),
-        line("Date of birth", p.date_of_birth),
-        line("Gender", p.gender),
-        line("Address", p.address_text),
-        line(
-          "Emergency contact",
-          [p.emergency_name, p.emergency_relationship, p.emergency_phone]
-            .filter(Boolean).join(" · "),
+        "div",
+        { class: "member-details-modal" },
+        // One summary row; the member number is already in the modal header.
+        h(
+          "div",
+          { class: "member-banner" },
+          h(
+            "div",
+            { class: "member-summary-item" },
+            h("span", { class: "kv-label" }, "Membership"),
+            statusBadge,
+          ),
+          h(
+            "div",
+            { class: "member-summary-item" },
+            h("span", { class: "kv-label" }, "Account"),
+            accountBadge,
+          ),
+          h(
+            "div",
+            { class: "member-summary-item" },
+            h("span", { class: "kv-label" }, "Club ranking"),
+            rankEl,
+          ),
         ),
-        line(
-          "Account",
-          row.profile_id
-            ? "has an account"
-            : "no account yet (waiting for a birth date)",
-        ),
-        line(
-          "Review flags",
-          flags.length
-            ? flags.map((f) =>
-              `${FLAG_LABEL[f.kind] ?? f.kind}${
-                f.resolved_at ? " (resolved)" : ""
-              }`
-            ).join("; ")
-            : "none",
+        // Structured Profile Section Cards
+        h(
+          "div",
+          { class: "member-profile-sections" },
+          h(
+            "div",
+            { class: "member-section-card" },
+            h(
+              "h3",
+              {},
+              h(
+                "span",
+                { class: "section-icon", "aria-hidden": "true" },
+                icon("phone"),
+              ),
+              "Contact Information",
+            ),
+            h(
+              "div",
+              { class: "member-details-grid" },
+              kv(
+                "Mobile",
+                p.mobile
+                  ? h(
+                    "a",
+                    { href: `tel:${p.mobile}`, class: "details-link" },
+                    p.mobile,
+                  )
+                  : "—",
+              ),
+              kv(
+                "Email",
+                p.email
+                  ? h(
+                    "a",
+                    { href: `mailto:${p.email}`, class: "details-link" },
+                    p.email,
+                  )
+                  : "—",
+              ),
+              kv("Address", p.address_text || "—", true),
+            ),
+          ),
+          h(
+            "div",
+            { class: "member-section-card" },
+            h(
+              "h3",
+              {},
+              h(
+                "span",
+                { class: "section-icon", "aria-hidden": "true" },
+                icon("user"),
+              ),
+              "Personal & Profile",
+            ),
+            h(
+              "div",
+              { class: "member-details-grid" },
+              kv("Date of Birth", p.date_of_birth || "—"),
+              kv(
+                "Gender",
+                p.gender
+                  ? p.gender.replace(/\b[a-z]/g, (c) => c.toUpperCase())
+                  : "—",
+              ),
+              kv(
+                "Emergency Contact",
+                [p.emergency_name, p.emergency_relationship, p.emergency_phone]
+                  .filter(Boolean)
+                  .join(" · ") || "—",
+                true,
+              ),
+            ),
+          ),
         ),
         h(
           "div",
-          { class: "kv" },
-          h("dt", {}, "Current rank"),
-          h("dd", {}, rank),
+          { class: "member-section-card" },
+          h(
+            "h3",
+            {},
+            h(
+              "span",
+              { class: "section-icon", "aria-hidden": "true" },
+              icon("file"),
+            ),
+            "Membership & Audit",
+          ),
+          h(
+            "div",
+            { class: "member-details-grid" },
+            kv("Reason on Record", sentence(row.status_reason) || "—"),
+            kv(
+              "Review Flags",
+              flags.length
+                ? h(
+                  "span",
+                  { class: "badges" },
+                  flags.map((f) =>
+                    badge(FLAG_SHORT[f.kind] ?? f.kind, "warning")
+                  ),
+                )
+                : h("span", { class: "muted" }, "None"),
+            ),
+            row.deleted_at
+              ? kv(
+                "Deleted Record",
+                `Deleted: ${row.delete_reason ?? "No reason"}`,
+              )
+              : null,
+          ),
         ),
-        row.deleted_at
-          ? line("Record", `deleted: ${row.delete_reason ?? ""}`)
-          : null,
+        // Activity Timeline Card
         h(
           "div",
-          { class: "kv kv-wide" },
-          h("dt", {}, "History"),
-          h("dd", {}, history),
+          { class: "member-section-card" },
+          h(
+            "h3",
+            {},
+            h(
+              "span",
+              { class: "section-icon", "aria-hidden": "true" },
+              icon("calendar"),
+            ),
+            "Status & Activity History",
+          ),
+          history,
         ),
       ),
       onConfirm: () => {},
     });
-    loadRank(row).then((text) => (rank.textContent = text)).catch(
-      () => (rank.textContent = "—"),
-    );
+
+    loadRank(row).then((text) => {
+      rankEl.replaceChildren(
+        text && text !== "—"
+          ? h("span", { class: "badge badge-accent" }, text)
+          : h("span", { class: "badge badge-neutral" }, "Unranked"),
+      );
+    }).catch(() => {
+      rankEl.replaceChildren(h("span", { class: "badge badge-neutral" }, "—"));
+    });
+
     loadHistory(row).then((items) => {
-      history.className = "";
+      if (!items.length) {
+        history.replaceChildren(
+          h("div", { class: "muted timeline-empty" }, "No changes recorded."),
+        );
+        return;
+      }
+      history.className = "timeline-list";
       history.replaceChildren(
-        ...(items.length
-          ? items.map((e) =>
+        ...items.map((e) => {
+          const fromLabel = e.from_status
+            ? STATUS_LABEL[e.from_status] ?? e.from_status
+            : null;
+          const toLabel = STATUS_LABEL[e.to_status] ?? e.to_status;
+          const toTone = STATUS_TONE[e.to_status] ?? "neutral";
+          return h(
+            "div",
+            { class: "timeline-item" },
+            h("div", { class: `timeline-node is-${toTone}` }),
             h(
               "div",
-              {},
-              `${formatDateTime(e.occurred_at)}: ${
-                e.from_status
-                  ? `${STATUS_LABEL[e.from_status] ?? e.from_status} to `
-                  : ""
-              }${STATUS_LABEL[e.to_status] ?? e.to_status}${
-                e.reason ? ` (${e.reason})` : ""
-              }`,
-            )
-          )
-          : ["No changes recorded."]),
+              { class: "timeline-content" },
+              h(
+                "div",
+                { class: "timeline-meta" },
+                h(
+                  "span",
+                  { class: "timeline-time" },
+                  formatDateTime(e.occurred_at),
+                ),
+                h(
+                  "span",
+                  { class: "timeline-transition" },
+                  fromLabel
+                    ? [
+                      badge(fromLabel, "neutral"),
+                      h("span", { class: "state-arrow" }, "→"),
+                    ]
+                    : null,
+                  badge(toLabel, toTone),
+                ),
+              ),
+              e.reason
+                ? h("p", { class: "timeline-reason" }, `“${e.reason}”`)
+                : null,
+            ),
+          );
+        }),
       );
     }).catch(() => {
       history.textContent = "The history could not be loaded.";
@@ -473,13 +838,52 @@ export function createAdminPages({ client, api }) {
       status: "loading",
     };
     const counts = { pending: null, active: null, suspended: null };
-    const root = h("div", { class: "page" });
+    const root = h("div", { class: "page admin-dashboard admin-members-page" });
+    attachPagePattern(root);
 
-    const kpis = h("div", { class: "kpis" });
-    const tabsHost = h("div", {});
-    const tableHost = h("div", { class: "card" });
+    const kpis = h("div", { class: "home-grid kpis" });
+    const tableHost = h("div", { class: "table-host" });
     const pagerHost = h("div", {});
     let timer = null;
+    const statusField = selectField({
+      id: "members-status",
+      value: state.tab,
+      ariaLabel: "Filter members by status",
+      options: TABS.map((item) => ({ value: item.id, label: item.label })),
+      onChange: (event) => {
+        clearTimeout(timer);
+        state.tab = event.target.value;
+        state.term = search.value;
+        state.page = 1;
+        load();
+      },
+    });
+    const statusFilter = h(
+      "div",
+      { class: "member-status-filter" },
+      statusField,
+    );
+
+    const clearBtn = h(
+      "button",
+      {
+        class: "search-box-clear",
+        type: "button",
+        "aria-label": "Clear search input",
+        title: "Clear search",
+        hidden: true,
+        onClick: () => {
+          clearTimeout(timer);
+          search.value = "";
+          state.term = "";
+          clearBtn.hidden = true;
+          state.page = 1;
+          search.focus();
+          load();
+        },
+      },
+      icon("x"),
+    );
 
     const search = h("input", {
       class: "input",
@@ -488,6 +892,7 @@ export function createAdminPages({ client, api }) {
       placeholder: "Search by name or member ID…",
       "aria-label": "Search members",
       onInput: (e) => {
+        clearBtn.hidden = e.target.value.length === 0;
         clearTimeout(timer);
         timer = setTimeout(() => {
           state.term = e.target.value;
@@ -497,14 +902,40 @@ export function createAdminPages({ client, api }) {
       },
     });
 
+    const searchBox = h(
+      "div",
+      { class: "search-box grow" },
+      h(
+        "span",
+        { class: "search-box-icon", "aria-hidden": "true" },
+        icon("search"),
+      ),
+      search,
+      clearBtn,
+    );
+
     const actionsFor = (row) => {
       const buttons = [
         iconButton({
           label: "View details",
           icon: "info",
+          size: "sm",
+          variant: "info",
           onClick: () => detailsModal(row),
         }),
       ];
+      if (
+        can("members.reset_password") && row.profile_id && !row.deleted_at &&
+        ["active", "invited", "pending_approval"].includes(row.status)
+      ) {
+        buttons.push(iconButton({
+          label: "Reset password",
+          icon: "lock",
+          size: "sm",
+          variant: "edit",
+          onClick: () => resetPasswordModal(row),
+        }));
+      }
       const approve = can("members.approve");
       const suspend = can("members.suspend");
       const edit = can("members.update");
@@ -513,6 +944,8 @@ export function createAdminPages({ client, api }) {
           buttons.push(iconButton({
             label: "Restore the record",
             icon: "refresh",
+            size: "sm",
+            variant: "restore",
             onClick: async () => {
               try {
                 await api.rpc("restore_row", {
@@ -539,11 +972,15 @@ export function createAdminPages({ client, api }) {
           iconButton({
             label: "Approve",
             icon: "check",
+            size: "sm",
+            variant: "success",
             onClick: () => approveModal(row, refresh),
           }),
           iconButton({
             label: "Reject",
             icon: "x",
+            size: "sm",
+            variant: "danger",
             onClick: () =>
               reasonModal(
                 "reject",
@@ -558,6 +995,8 @@ export function createAdminPages({ client, api }) {
         buttons.push(iconButton({
           label: "Reconsider",
           icon: "refresh",
+          size: "sm",
+          variant: "restore",
           onClick: () =>
             reasonModal(
               "reconsider",
@@ -571,6 +1010,8 @@ export function createAdminPages({ client, api }) {
         buttons.push(iconButton({
           label: "Suspend",
           icon: "alert",
+          size: "sm",
+          variant: "warning",
           onClick: () =>
             reasonModal(
               "suspend",
@@ -584,6 +1025,8 @@ export function createAdminPages({ client, api }) {
         buttons.push(iconButton({
           label: "Restore",
           icon: "refresh",
+          size: "sm",
+          variant: "restore",
           onClick: () =>
             reasonModal("restore", row, "They get their access back.", refresh),
         }));
@@ -592,6 +1035,8 @@ export function createAdminPages({ client, api }) {
         buttons.push(iconButton({
           label: "Archive",
           icon: "inbox",
+          size: "sm",
+          variant: "archive",
           onClick: () =>
             reasonModal(
               "archive",
@@ -608,6 +1053,7 @@ export function createAdminPages({ client, api }) {
         buttons.push(iconButton({
           label: "Delete the record",
           icon: "trash",
+          size: "sm",
           variant: "danger",
           onClick: () =>
             reasonModal(
@@ -622,85 +1068,296 @@ export function createAdminPages({ client, api }) {
     };
 
     const schema = {
+      // Column widths live in the directory card CSS, shared by header, rows and skeleton.
       columns: [
         {
           key: "name",
           label: "Member",
-          render: (r) =>
-            h(
-              "span",
-              {},
-              r.persons.display_name,
-              h("span", { class: "sub" }, r.member_no),
-            ),
+          render: (r) => {
+            const name = r.persons.display_name || "Unknown";
+            const initials = initialsOf(name);
+            return h(
+              "div",
+              { class: "member-cell" },
+              h(
+                "span",
+                { class: "member-avatar", "aria-hidden": "true" },
+                r._avatar ? h("img", { src: r._avatar, alt: "" }) : initials,
+              ),
+              h(
+                "div",
+                { class: "member-meta" },
+                h("span", { class: "member-name" }, name),
+                h("span", { class: "sub member-subtext" }, r.member_no || "—"),
+              ),
+            );
+          },
         },
         {
           key: "mobile",
-          label: "Mobile",
-          render: (r) => r.persons.mobile ?? "—",
+          label: "Contact",
+          skeleton: "stack",
+          render: (r) =>
+            h(
+              "div",
+              { class: "member-table-stack" },
+              r.persons.mobile ?? "—",
+              h("span", { class: "sub" }, r.persons.email ?? "No email"),
+            ),
         },
         {
           key: "status",
           label: "Status",
+          skeleton: "badge-stack",
           render: (r) =>
-            badge(
-              STATUS_LABEL[r.status] ?? r.status,
-              STATUS_TONE[r.status] ?? "neutral",
+            h(
+              "div",
+              { class: "member-table-stack" },
+              badge(
+                STATUS_LABEL[r.status] ?? r.status,
+                STATUS_TONE[r.status] ?? "neutral",
+              ),
+              h(
+                "span",
+                { class: "sub" },
+                r.deleted_at
+                  ? "Deleted"
+                  : ((sentence(r.status_reason) ?? "").toLowerCase() !==
+                      (STATUS_LABEL[r.status] ?? r.status).toLowerCase()
+                    ? sentence(r.status_reason)
+                    : "") ||
+                    (r.profile_id ? "Has an account" : "No account yet"),
+              ),
             ),
         },
         {
           key: "flags",
           label: "Review",
+          skeleton: "badge-stack",
           render: (r) => {
             const open = openFlags(r);
             return open.length
               ? h(
-                "span",
-                { class: "badges" },
-                open.map((f) => badge(FLAG_SHORT[f.kind] ?? f.kind, "warning")),
+                "div",
+                { class: "member-table-stack" },
+                h(
+                  "span",
+                  { class: "badges" },
+                  open.map((f) =>
+                    badge(FLAG_SHORT[f.kind] ?? f.kind, "warning")
+                  ),
+                ),
+                h(
+                  "span",
+                  { class: "sub" },
+                  `${open.length} to review`,
+                ),
               )
-              : "—";
+              : h(
+                "div",
+                { class: "member-table-stack" },
+                "Clear",
+                h("span", { class: "sub" }, "No review flags"),
+              );
           },
         },
         {
           key: "joined",
-          label: "Added",
-          render: (r) => (r.joined_on ?? r.created_at ?? "").slice(0, 10),
+          label: "Membership dates",
+          skeleton: "stack",
+          render: (r) =>
+            h(
+              "div",
+              { class: "member-table-stack" },
+              `Added ${
+                (r.created_at ?? r.joined_on ?? "").slice(0, 10) || "—"
+              }`,
+              h(
+                "span",
+                { class: "sub" },
+                r.joined_on
+                  ? `Joined ${r.joined_on.slice(0, 10)}`
+                  : "Not joined yet",
+              ),
+            ),
         },
         {
           key: "actions",
           label: "Action",
           align: "center",
+          actionCount: 4,
           render: actionsFor,
         },
       ],
     };
 
-    function drawTabs() {
-      tabsHost.replaceChildren(tabs({
-        activeId: state.tab,
-        tabs: TABS.map((t) => ({
-          id: t.id,
-          label: t.label,
-          badge: counts[t.id] ? String(counts[t.id]) : undefined,
-        })),
-        onChange: (id) => {
-          state.tab = id;
-          state.page = 1;
-          load();
-        },
+    function drawStatusFilter() {
+      statusField.setOptions(TABS.map((item) => {
+        const count = counts[item.id];
+        return {
+          value: item.id,
+          label: count == null ? item.label : `${item.label} (${count})`,
+        };
       }));
+      statusField.value = state.tab;
+    }
+
+    function memberStatCard({
+      label,
+      value,
+      hint,
+      iconName,
+      pill,
+      isAttention,
+      tone = "emerald",
+      tabId,
+    }) {
+      return h(
+        "button",
+        {
+          type: "button",
+          class: `home-card member-stat-card is-link is-tone-${tone}${
+            isAttention ? " is-attention" : ""
+          }`,
+          onClick: () => {
+            state.tab = tabId;
+            state.page = 1;
+            drawStatusFilter();
+            load();
+          },
+        },
+        h(
+          "div",
+          { class: "member-stat-main" },
+          h(
+            "span",
+            { class: "home-card-icon", "aria-hidden": "true" },
+            icon(iconName),
+          ),
+          h(
+            "div",
+            { class: "member-stat-copy" },
+            h("span", { class: "home-card-value" }, String(value ?? "0")),
+            h("span", { class: "home-card-label" }, label),
+          ),
+          pill,
+        ),
+        h(
+          "div",
+          { class: "home-card-bottom" },
+          h("div", { class: "home-card-hint" }, hint),
+          h(
+            "span",
+            { class: "home-card-go" },
+            tabId === "pending" ? "Review applications" : "View members",
+            icon("chevronRight"),
+          ),
+        ),
+      );
     }
 
     function drawKpis() {
+      const pCount = Number(counts.pending) || 0;
+      const sCount = Number(counts.suspended) || 0;
+      const aCount = Number(counts.active) || 0;
+
       kpis.replaceChildren(
-        kpiCard("Waiting for approval", counts.pending ?? "—"),
-        kpiCard("Active members", counts.active ?? "—"),
-        kpiCard("Suspended", counts.suspended ?? "—"),
+        memberStatCard({
+          label: "Waiting for approval",
+          value: counts.pending ?? "—",
+          hint: pCount > 0
+            ? "Requires administrator review"
+            : "Approval queue is clear",
+          iconName: "clock",
+          isAttention: pCount > 0,
+          tone: "amber",
+          tabId: "pending",
+          pill: pCount > 0
+            ? h(
+              "span",
+              { class: "card-status-pill is-attention" },
+              h("span", { class: "pill-pulse-dot", "aria-hidden": "true" }),
+              "Needs review",
+            )
+            : h(
+              "span",
+              { class: "card-status-pill is-clean" },
+              icon("check"),
+              "All clear",
+            ),
+        }),
+        memberStatCard({
+          label: "Active members",
+          value: counts.active ?? "—",
+          hint: `${aCount} registered member${aCount === 1 ? "" : "s"} in club`,
+          iconName: "user",
+          isAttention: false,
+          tone: "emerald",
+          tabId: "active",
+          pill: h(
+            "span",
+            { class: "card-status-pill is-clean" },
+            icon("check"),
+            "Active",
+          ),
+        }),
+        memberStatCard({
+          label: "Suspended",
+          value: counts.suspended ?? "—",
+          hint: sCount > 0
+            ? "Accounts restricted from play"
+            : "Zero account suspensions",
+          iconName: "alert",
+          isAttention: sCount > 0,
+          tone: "rose",
+          tabId: "suspended",
+          pill: sCount > 0
+            ? h(
+              "span",
+              { class: "card-status-pill is-attention" },
+              "Restricted",
+            )
+            : h(
+              "span",
+              { class: "card-status-pill is-clean" },
+              icon("check"),
+              "Clean",
+            ),
+        }),
       );
     }
 
     function draw() {
+      let emptyTitle = "Nobody here";
+      let emptyText = "Members will appear in this list.";
+      if (state.term) {
+        emptyTitle = `No members match "${state.term}"`;
+        emptyText = "Try a different name or member ID, or clear your search.";
+      } else if (state.tab === "pending") {
+        emptyTitle = "No members waiting for approval";
+        emptyText =
+          "When new members sign up, their applications will show up here for review.";
+      } else if (state.tab === "active") {
+        emptyTitle = "No active members yet";
+        emptyText = "Approved members will appear here.";
+      } else if (state.tab === "suspended") {
+        emptyTitle = "No suspended members";
+        emptyText = "Suspended member accounts will appear here.";
+      } else if (state.tab === "rejected") {
+        emptyTitle = "No rejected members";
+        emptyText = "Rejected membership applications will appear here.";
+      } else if (state.tab === "archived") {
+        emptyTitle = "No archived members";
+        emptyText = "Archived members will appear here.";
+      } else if (state.tab === "new") {
+        emptyTitle = "No pending invitations";
+        emptyText =
+          "Imported or invited members who have not signed in yet will appear here.";
+      } else if (state.tab === "deleted") {
+        emptyTitle = "No deleted members";
+        emptyText = "Soft-deleted member records will appear here.";
+      }
+
       tableHost.replaceChildren(dataTable({
         schema,
         rows: state.rows,
@@ -708,19 +1365,20 @@ export function createAdminPages({ client, api }) {
         hasFilters: Boolean(state.term),
         onRetry: load,
         onReset: () => {
+          clearTimeout(timer);
           search.value = "";
           state.term = "";
+          clearBtn.hidden = true;
+          state.page = 1;
           load();
         },
-        emptyTitle: state.term ? "No members match your search" : "Nobody here",
-        emptyText: state.term
-          ? "Try a different name or ID."
-          : "Members will appear in this list.",
+        emptyTitle,
+        emptyText,
         resetLabel: "Clear search",
         ariaLabel: "Members",
       }));
       pagerHost.replaceChildren(
-        state.status === "ready" && state.total > PAGE_SIZE
+        state.status === "ready"
           ? pagination({
             page: state.page,
             pageSize: PAGE_SIZE,
@@ -743,7 +1401,7 @@ export function createAdminPages({ client, api }) {
         ]);
       } catch { /* the numbers are a convenience */ }
       drawKpis();
-      drawTabs();
+      drawStatusFilter();
     }
 
     async function load() {
@@ -769,31 +1427,81 @@ export function createAdminPages({ client, api }) {
       await Promise.all([load(), loadCounts()]);
     }
 
-    root.append(
-      pageHeader({
-        icon: "user",
-        eyebrow: "Admin",
-        title: "Members",
-        description:
-          "Approve new members, and suspend or restore existing ones. Every decision is recorded.",
-      }),
-      kpis,
-      tabsHost,
+    const manilaDate = new Intl.DateTimeFormat("en-PH", {
+      timeZone: "Asia/Manila",
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date());
+
+    const hero = h(
+      "section",
+      {
+        class: "dash-hero is-admin",
+        "aria-label": "Members Directory",
+      },
       h(
         "div",
-        { class: "toolbar" },
+        { class: "dash-hero-copy" },
         h(
           "div",
-          { class: "grow field" },
-          h("label", { for: "members-search", class: "muted" }, "Search"),
-          search,
+          { class: "dash-hero-chips" },
+          h(
+            "span",
+            { class: "dash-chip is-role" },
+            icon("medal"),
+            "Admin Console",
+          ),
+          h(
+            "span",
+            { class: "dash-chip is-date" },
+            icon("calendar"),
+            manilaDate,
+          ),
+          h(
+            "span",
+            { class: "dash-chip is-status" },
+            h("span", { class: "status-dot-pulse", "aria-hidden": "true" }),
+            "Members Management",
+          ),
+        ),
+        h(
+          "h1",
+          { class: "dash-hero-title", id: "page-title", tabindex: "-1" },
+          "Members Directory",
+        ),
+        h(
+          "p",
+          { class: "dash-hero-sub" },
+          "Approve new members, and suspend or restore existing ones. Every decision is recorded.",
         ),
       ),
-      tableHost,
-      pagerHost,
+      h(
+        "div",
+        { class: "dash-hero-actions" },
+        button({
+          label: "Refresh List",
+          icon: "refresh",
+          variant: "secondary",
+          onClick: refresh,
+        }),
+      ),
+    );
+
+    root.append(
+      hero,
+      kpis,
+      h(
+        "div",
+        { class: "toolbar admin-members-toolbar" },
+        searchBox,
+        statusFilter,
+      ),
+      h("div", { class: "member-directory-card" }, tableHost, pagerHost),
     );
     drawKpis();
-    drawTabs();
+    drawStatusFilter();
     draw();
     refresh();
     return root;

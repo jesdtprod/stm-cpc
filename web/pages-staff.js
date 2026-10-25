@@ -3,13 +3,14 @@
 // demoted; a reason is required; idempotent; audited). The role list is a read-only reference: what each role may
 // do is set up with the club and checked by the database on every call.
 import {
+  adminHero,
+  attachPagePattern,
   badge,
   button,
   dataTable,
   h,
   iconButton,
   openModal,
-  pageHeader,
   tabs,
   toast,
 } from "./ui.js";
@@ -31,10 +32,20 @@ const messageOf = (e, fallback) =>
 
 export function createStaffPages({ api }) {
   function staffPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-staff-page",
+    });
+    attachPagePattern(page);
     const tabsHost = h("div", {});
     const body = h("div", { class: "staff-body" });
     const state = { tab: "staff", status: "loading", staff: [], roles: [] };
+    const addBtn = button({
+      label: "Give someone a role",
+      icon: "plus",
+      variant: "primary",
+      disabled: true,
+      onClick: () => addModal(),
+    });
 
     async function refresh() {
       state.status = state.roles.length ? "refreshing" : "loading";
@@ -312,6 +323,8 @@ export function createStaffPages({ api }) {
                     ? "You cannot change your own role"
                     : `Change the role of ${r.display_name}`,
                   icon: "edit",
+                  size: "sm",
+                  variant: "edit",
                   disabled: r.is_self,
                   onClick: () => changeModal(r),
                 }),
@@ -339,7 +352,7 @@ export function createStaffPages({ api }) {
         ...state.roles.map((r) =>
           h(
             "div",
-            { class: "card role-card" },
+            { class: "member-panel role-card" },
             h(
               "div",
               { class: "ladder-head" },
@@ -386,6 +399,7 @@ export function createStaffPages({ api }) {
           draw();
         },
       }));
+      addBtn.disabled = state.status !== "ready";
       if (state.status === "error") {
         body.replaceChildren(
           h(
@@ -401,31 +415,20 @@ export function createStaffPages({ api }) {
         state.tab === "staff"
           ? h(
             "div",
-            { class: "stack" },
-            h(
-              "div",
-              { class: "actions courts-actions" },
-              button({
-                label: "Give someone a role",
-                icon: "plus",
-                variant: "primary",
-                disabled: state.status !== "ready",
-                onClick: addModal,
-              }),
-            ),
-            staffView(),
+            { class: "member-directory-card is-auto-grid" },
+            h("div", { class: "table-host" }, staffView()),
           )
           : rolesView(),
       );
     }
 
     page.append(
-      pageHeader({
-        icon: "user",
-        eyebrow: "Admin",
-        title: "Staff and roles",
+      adminHero({
+        title: "Staff and Roles",
+        chip: "Staff Management",
         description:
           "Who works for the club and what each role may do. Only an admin can change roles, and nobody can change their own.",
+        actions: [addBtn],
       }),
       tabsHost,
       body,

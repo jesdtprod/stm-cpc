@@ -431,7 +431,7 @@ export function createScoringPages({ api, getOrgId }) {
       pageHeader({
         icon: "medal",
         eyebrow: "Admin",
-        title: "Scoring rules",
+        title: "Scoring Rules",
         description:
           "How a match is scored and how ties in a table are split. Divisions keep a copy of the rule they were created with.",
       }),

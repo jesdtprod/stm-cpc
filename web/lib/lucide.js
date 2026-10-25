@@ -280,3 +280,339 @@ export const LUCIDE = {
     { "points": "16 17 21 12 16 7" },
   ], ["line", { "x1": "21", "x2": "9", "y1": "12", "y2": "12" }]],
 };
+
+const CUTOUT = "var(--surface, #0E2218)";
+
+export const LUCIDE_SOLID = {
+  user: [
+    [
+      "path",
+      {
+        "d": "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2Z",
+        "fill": "currentColor",
+      },
+    ],
+    ["circle", { "cx": "12", "cy": "7", "r": "4", "fill": "currentColor" }],
+  ],
+  info: [
+    ["circle", { "cx": "12", "cy": "12", "r": "10", "fill": "currentColor" }],
+    ["path", { "d": "M12 16v-4", "stroke": CUTOUT, "stroke-width": "2.4" }],
+    ["path", { "d": "M12 8h.01", "stroke": CUTOUT, "stroke-width": "2.6" }],
+  ],
+  alert: [
+    [
+      "path",
+      {
+        "d":
+          "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z",
+        "fill": "currentColor",
+      },
+    ],
+    ["path", { "d": "M12 9v4", "stroke": CUTOUT, "stroke-width": "2.4" }],
+    ["path", { "d": "M12 17h.01", "stroke": CUTOUT, "stroke-width": "2.6" }],
+  ],
+  alertTriangle: [
+    [
+      "path",
+      {
+        "d":
+          "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z",
+        "fill": "currentColor",
+      },
+    ],
+    ["path", { "d": "M12 9v4", "stroke": CUTOUT, "stroke-width": "2.4" }],
+    ["path", { "d": "M12 17h.01", "stroke": CUTOUT, "stroke-width": "2.6" }],
+  ],
+  check: [
+    ["circle", { "cx": "12", "cy": "12", "r": "10", "fill": "currentColor" }],
+    [
+      "path",
+      {
+        "d": "m9 12 2 2 4-4",
+        "fill": "none",
+        "stroke": CUTOUT,
+        "stroke-width": "2.5",
+      },
+    ],
+  ],
+  checkCircle: [
+    ["circle", { "cx": "12", "cy": "12", "r": "10", "fill": "currentColor" }],
+    [
+      "path",
+      {
+        "d": "m9 12 2 2 4-4",
+        "fill": "none",
+        "stroke": CUTOUT,
+        "stroke-width": "2.5",
+      },
+    ],
+  ],
+  x: [
+    ["circle", { "cx": "12", "cy": "12", "r": "10", "fill": "currentColor" }],
+    [
+      "path",
+      {
+        "d": "m15 9-6 6",
+        "fill": "none",
+        "stroke": CUTOUT,
+        "stroke-width": "2.4",
+      },
+    ],
+    [
+      "path",
+      {
+        "d": "m9 9 6 6",
+        "fill": "none",
+        "stroke": CUTOUT,
+        "stroke-width": "2.4",
+      },
+    ],
+  ],
+  calendar: [
+    ["path", { "d": "M8 2v4", "stroke-width": "2.4" }],
+    ["path", { "d": "M16 2v4", "stroke-width": "2.4" }],
+    [
+      "rect",
+      {
+        "width": "18",
+        "height": "18",
+        "x": "3",
+        "y": "4",
+        "rx": "2",
+        "fill": "currentColor",
+      },
+    ],
+    ["path", { "d": "M3 10h18", "stroke": CUTOUT, "stroke-width": "2.2" }],
+    [
+      "circle",
+      {
+        "cx": "8.5",
+        "cy": "15",
+        "r": "1.25",
+        "fill": CUTOUT,
+        "stroke": "none",
+      },
+    ],
+    [
+      "circle",
+      { "cx": "12", "cy": "15", "r": "1.25", "fill": CUTOUT, "stroke": "none" },
+    ],
+    [
+      "circle",
+      {
+        "cx": "15.5",
+        "cy": "15",
+        "r": "1.25",
+        "fill": CUTOUT,
+        "stroke": "none",
+      },
+    ],
+  ],
+  lock: [
+    [
+      "rect",
+      {
+        "width": "18",
+        "height": "11",
+        "x": "3",
+        "y": "11",
+        "rx": "2",
+        "ry": "2",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "path",
+      {
+        "d": "M7 11V7a5 5 0 0 1 10 0v4",
+        "fill": "none",
+        "stroke-width": "2.4",
+      },
+    ],
+    [
+      "circle",
+      {
+        "cx": "12",
+        "cy": "16.5",
+        "r": "1.4",
+        "fill": CUTOUT,
+        "stroke": "none",
+      },
+    ],
+  ],
+  trash: [
+    ["path", { "d": "M3 6h18", "stroke-width": "2.4" }],
+    [
+      "path",
+      {
+        "d": "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2",
+        "fill": "none",
+        "stroke-width": "2.2",
+      },
+    ],
+    [
+      "path",
+      {
+        "d": "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6Z",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "line",
+      {
+        "x1": "10",
+        "x2": "10",
+        "y1": "11",
+        "y2": "17",
+        "stroke": CUTOUT,
+        "stroke-width": "2.2",
+      },
+    ],
+    [
+      "line",
+      {
+        "x1": "14",
+        "x2": "14",
+        "y1": "11",
+        "y2": "17",
+        "stroke": CUTOUT,
+        "stroke-width": "2.2",
+      },
+    ],
+  ],
+  inbox: [
+    [
+      "path",
+      {
+        "d":
+          "M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "polyline",
+      {
+        "points": "22 12 16 12 14 15 10 15 8 12 2 12",
+        "fill": "none",
+        "stroke": CUTOUT,
+        "stroke-width": "2.2",
+      },
+    ],
+  ],
+  layers: [
+    [
+      "path",
+      {
+        "d":
+          "M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "path",
+      {
+        "d":
+          "M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12",
+        "fill": "none",
+        "stroke-width": "2.4",
+      },
+    ],
+    [
+      "path",
+      {
+        "d":
+          "M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17",
+        "fill": "none",
+        "stroke-width": "2.4",
+      },
+    ],
+  ],
+  trophy: [
+    [
+      "path",
+      {
+        "d": "M6 9H4.5a2.5 2.5 0 0 1 0-5H6",
+        "fill": "none",
+        "stroke-width": "2.2",
+      },
+    ],
+    [
+      "path",
+      {
+        "d": "M18 9h1.5a2.5 2.5 0 0 0 0-5H18",
+        "fill": "none",
+        "stroke-width": "2.2",
+      },
+    ],
+    ["path", { "d": "M4 22h16", "stroke-width": "2.4" }],
+    [
+      "path",
+      {
+        "d":
+          "M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22h10c0-1.76-.85-3.25-2.03-3.79A1.07 1.07 0 0 1 14 17v-2.34",
+        "fill": "currentColor",
+      },
+    ],
+    ["path", { "d": "M18 2H6v7a6 6 0 0 0 12 0V2Z", "fill": "currentColor" }],
+  ],
+  medal: [
+    [
+      "path",
+      {
+        "d":
+          "M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15",
+        "fill": "none",
+        "stroke-width": "2.2",
+      },
+    ],
+    ["circle", { "cx": "12", "cy": "17", "r": "5", "fill": "currentColor" }],
+    ["path", { "d": "M12 18v-2h-.5", "stroke": CUTOUT, "stroke-width": "2.2" }],
+  ],
+  currency: [
+    [
+      "rect",
+      {
+        "width": "20",
+        "height": "12",
+        "x": "2",
+        "y": "6",
+        "rx": "2",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "circle",
+      { "cx": "12", "cy": "12", "r": "2.5", "fill": CUTOUT, "stroke": "none" },
+    ],
+  ],
+  clock: [
+    ["circle", { "cx": "12", "cy": "12", "r": "10", "fill": "currentColor" }],
+    [
+      "polyline",
+      {
+        "points": "12 6 12 12 16 14",
+        "fill": "none",
+        "stroke": CUTOUT,
+        "stroke-width": "2.4",
+      },
+    ],
+  ],
+  file: [
+    [
+      "path",
+      {
+        "d": "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z",
+        "fill": "currentColor",
+      },
+    ],
+    [
+      "path",
+      {
+        "d": "M14 2v4a2 2 0 0 0 2 2h4",
+        "fill": "none",
+        "stroke": CUTOUT,
+        "stroke-width": "2.2",
+      },
+    ],
+  ],
+};

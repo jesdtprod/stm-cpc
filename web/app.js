@@ -17,6 +17,7 @@ import {
   setAuth,
 } from "./lib/permissions.js";
 import { CHANNEL, createSession } from "./lib/session.js";
+import { restoreSession } from "./lib/startup.js";
 import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
@@ -28,18 +29,28 @@ import { createCourtsPages } from "./pages-courts.js";
 import { createEventsPages } from "./pages-events.js";
 import { createMemberEventsPages } from "./pages-events-member.js";
 import { createScoringPages } from "./pages-scoring.js";
+import { createBracketPages } from "./pages-bracket.js";
 import { createImportPages } from "./pages-import.js";
 import { createRanksPages } from "./pages-ranks.js";
 import { createStaffPages } from "./pages-staff.js";
 import { createSettingsPages } from "./pages-settings.js";
 import { createShell } from "./shell.js";
-import { changePassword, memberLogin, memberSignup } from "./lib/auth-api.js";
+import {
+  adminResetPassword,
+  changePassword,
+  memberLogin,
+  memberSignup,
+} from "./lib/auth-api.js";
 import { renderTurnstile } from "./lib/turnstile.js";
 
 const APP_VERSION = "0.1.0";
 
 // Where a user held at a gate is sent (the pages arrive in step 3.4).
-const GATE_PAGES = { pending: "#/pending", password_change: "#/password" };
+const GATE_PAGES = {
+  pending: "#/pending",
+  password_change: "#/password",
+  profile_update: "#/profile",
+};
 
 route("/components", componentsPage, "Components", "public");
 
@@ -130,6 +141,7 @@ if (isLocalDev) {
 const accountPages = createAccountPages({
   session,
   api,
+  client,
   authApi: { changePassword, memberSignup },
   renderTurnstile,
   getAccessToken: async () =>
@@ -146,7 +158,7 @@ route("/password", () => accountPages.passwordPage(), "Password", "gated");
 route("/profile", () => accountPages.profilePage(), "Profile", "gated");
 route("/pending", () => accountPages.pendingPage(), "Account status", "gated");
 
-const adminPages = createAdminPages({ client, api });
+const adminPages = createAdminPages({ client, api, adminResetPassword });
 route("/admin/members", () => adminPages.membersPage(), "Members", {
   any: ["members.approve", "members.suspend", "members.read"],
 });
@@ -192,11 +204,14 @@ route("/admin/events", () => eventsPages.eventsPage(), "Events", {
 
 const memberEventsPages = createMemberEventsPages({ api, client, session });
 
+const bracketPages = createBracketPages({ api });
+route("/bracket", () => bracketPages.bracketPage(), "Bracket", "signedIn");
+
 const scoringPages = createScoringPages({
   api,
   getOrgId: () => session.getState().profile?.org_id,
 });
-route("/admin/scoring", () => scoringPages.scoringPage(), "Scoring rules", {
+route("/admin/scoring", () => scoringPages.scoringPage(), "Scoring Rules", {
   permission: "events.manage",
 });
 
@@ -206,7 +221,7 @@ route("/admin/import", () => importPages.importPage(), "Member import", {
 });
 
 const staffPages = createStaffPages({ api });
-route("/admin/staff", () => staffPages.staffPage(), "Staff and roles", {
+route("/admin/staff", () => staffPages.staffPage(), "Staff and Roles", {
   permission: "roles.manage",
 });
 
@@ -244,16 +259,12 @@ const shell = createShell({
   checkAccess,
   routeAccess,
   gatePages: GATE_PAGES,
-  isDev: isLocalDev,
 });
 
 // Restore a saved session before the first page is chosen, so a reload stays on the same page
 // instead of being sent to the sign-in page and then home.
-// (waits at most 8 seconds, so a slow network cannot keep the page blank)
-await Promise.race([
-  session.start().catch(() => {}),
-  new Promise((resolve) => setTimeout(resolve, 8000)),
-]);
+// Startup failures are shown by bootstrap.js, without treating a saved session as signed out.
+await restoreSession(() => session.start());
 
 const router = start(main, {
   onChange: (path) => shell.draw(path),
@@ -272,26 +283,37 @@ for (const type of ["pointerdown", "keydown", "scroll", "visibilitychange"]) {
   addEventListener(type, () => session.activity(), { passive: true });
 }
 
-// Service worker: app shell only. A waiting worker stays quiet and is applied on a later reload.
+// Service worker: app shell only. On local development, unregister and clear caches to prevent stale bundles.
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js").then((reg) => {
-    const announce = () => {};
-    if (reg.waiting && navigator.serviceWorker.controller) {
-      announce(reg.waiting);
+  if (isLocalDev) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const r of regs) r.unregister();
+    });
+    if (globalThis.caches) {
+      caches.keys().then((keys) =>
+        Promise.all(keys.map((k) => caches.delete(k)))
+      );
     }
-    reg.addEventListener("updatefound", () => {
-      const worker = reg.installing;
-      worker?.addEventListener("statechange", () => {
-        if (
-          worker.state === "installed" && navigator.serviceWorker.controller
-        ) announce(worker);
+  } else {
+    navigator.serviceWorker.register("./service-worker.js").then((reg) => {
+      const announce = () => {};
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        announce(reg.waiting);
+      }
+      reg.addEventListener("updatefound", () => {
+        const worker = reg.installing;
+        worker?.addEventListener("statechange", () => {
+          if (
+            worker.state === "installed" && navigator.serviceWorker.controller
+          ) announce(worker);
+        });
       });
     });
-  });
-  let reloading = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloading) return;
-    reloading = true;
-    location.reload();
-  });
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloading) return;
+      reloading = true;
+      location.reload();
+    });
+  }
 }

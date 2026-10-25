@@ -3,17 +3,21 @@
 // permission, takes an idempotency key (made when the window opens, reused if the click is repeated), changes the state
 // and writes the audit row. The buttons shown follow the caller's permissions, but the database decides.
 import {
+  adminHero,
+  attachPagePattern,
   badge,
   button,
   dataTable,
   h,
+  icon,
   iconButton,
   openModal,
-  pageHeader,
+  pagination,
   tabs,
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
+import { initialsOf, signedAvatarUrls } from "./lib/avatar.js";
 import { businessDate, formatDateTime } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 import {
@@ -23,6 +27,8 @@ import {
   timeLabel,
 } from "./lib/slot-grid.js";
 import { bookingMessage } from "./pages-booking.js";
+
+const PAGE_SIZE = 25;
 
 const STATUS = {
   pending_approval: ["Waiting for approval", "warning"],
@@ -49,10 +55,19 @@ const METHOD_LABEL = {
 };
 const BOOKING_SELECT =
   "id,doc_no,court_id,court_name_snapshot,during,status,status_reason,cancel_reason,price_snapshot,expires_at,created_at," +
-  "requester:members!bookings_requested_by_member_id_fkey(member_no,persons(display_name))";
+  "requester:members!bookings_requested_by_member_id_fkey(member_no,persons(display_name,avatar_path,mobile,email))";
 
 const who = (m) => m?.persons?.display_name ?? "Member";
 const sub = (text) => h("span", { class: "sub" }, text);
+const cleanTerm = (t) => t.replace(/[%_,()*]/g, " ").trim().slice(0, 60);
+const dayLabel = (day) =>
+  new Intl.DateTimeFormat("en-PH", {
+    timeZone: "Asia/Manila",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${day}T12:00:00+08:00`));
 
 export function createBookingAdminPages({ api, client }) {
   // ---------------------------------------------------------------- shared
@@ -64,14 +79,60 @@ export function createBookingAdminPages({ api, client }) {
     return false;
   };
 
+  const reasonField = (label, required) => {
+    const count = h("output", {
+      class: "decision-reason-count",
+      id: "act-reason-count",
+      for: "act-reason",
+    }, "0 / 500");
+    return h(
+      "div",
+      { class: "field" },
+      h(
+        "div",
+        { class: "decision-field-heading" },
+        h(
+          "label",
+          { for: "act-reason" },
+          label,
+          required ? h("span", { class: "decision-required" }, " *") : null,
+        ),
+        count,
+      ),
+      h("textarea", {
+        class: "input textarea",
+        id: "act-reason",
+        name: "reason",
+        rows: 4,
+        maxlength: 500,
+        placeholder: "Provide context or explanation for this decision...",
+        required,
+        "aria-describedby": "act-reason-help act-reason-count",
+        onInput: (event) => {
+          count.textContent = `${event.target.value.length} / 500`;
+        },
+      }),
+      h(
+        "p",
+        { class: "muted decision-reason-help", id: "act-reason-help" },
+        required
+          ? "At least 3 characters. Maximum 500 characters."
+          : "Optional. Maximum 500 characters.",
+      ),
+    );
+  };
+
   /** A window with an optional reason; the call gets (reason, key). Stays open and shows the message on failure. */
   function actionModal(
     {
       title,
       eyebrow,
-      icon = "check",
+      icon: iconName = "check",
+      tone,
       verb,
       destructive = false,
+      subject = null,
+      impactTitle = null,
       note,
       reasonLabel,
       reasonRequired = false,
@@ -81,35 +142,81 @@ export function createBookingAdminPages({ api, client }) {
   ) {
     const key = api.newKey();
     const error = errorLine();
+    const effectiveTone = tone || (destructive ? "danger" : "info");
+    const effectiveIcon = iconName || (destructive ? "alert" : "check");
     return openModal({
       title,
       eyebrow,
-      icon: destructive ? "alert" : icon,
+      icon: effectiveIcon,
+      tone: effectiveTone,
       destructive,
       confirmLabel: verb,
+      cancelLabel: "Cancel",
       body: h(
         "div",
-        { class: "stack" },
-        note ? h("p", {}, note) : null,
-        reasonLabel
+        { class: "member-decision" },
+        subject
           ? h(
             "div",
-            { class: "field" },
+            { class: "member-decision-subject" },
             h(
-              "label",
-              { for: "act-reason" },
-              reasonLabel + (reasonRequired ? " *" : ""),
+              "span",
+              { class: "member-avatar", "aria-hidden": "true" },
+              subject.avatar
+                ? h("img", { src: subject.avatar, alt: "" })
+                : (subject.initials || icon("user", { solid: true })),
             ),
-            h("textarea", {
-              class: "input textarea",
-              id: "act-reason",
-              name: "reason",
-              rows: 3,
-              maxlength: 500,
-              required: reasonRequired,
-            }),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "member-decision-name" },
+                h("strong", { class: "member-name" }, subject.name),
+                subject.statusLabel
+                  ? badge(subject.statusLabel, subject.statusTone ?? "neutral")
+                  : null,
+              ),
+              h("span", { class: "sub member-subtext" }, subject.subtext),
+            ),
+            subject.metaValue
+              ? h(
+                "div",
+                { class: "member-decision-role" },
+                h("span", { class: "muted" }, subject.metaLabel || "Court"),
+                h("span", {}, subject.metaValue),
+              )
+              : null,
           )
           : null,
+        h(
+          "div",
+          { class: "stack" },
+          note
+            ? h(
+              "div",
+              { class: `modal-callout is-${effectiveTone}` },
+              h(
+                "span",
+                { class: "modal-callout-icon", "aria-hidden": "true" },
+                icon(effectiveIcon),
+              ),
+              h(
+                "div",
+                { class: "modal-callout-text" },
+                impactTitle
+                  ? h(
+                    "strong",
+                    { class: "decision-impact-title" },
+                    impactTitle,
+                  )
+                  : null,
+                h("p", { class: "decision-impact-text" }, note),
+              ),
+            )
+            : null,
+          reasonLabel ? reasonField(reasonLabel, reasonRequired) : null,
+        ),
         error,
       ),
       onConfirm: async (form) => {
@@ -143,12 +250,25 @@ export function createBookingAdminPages({ api, client }) {
 
   // =============================================================== bookings
   function bookingsPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-bookings-page",
+    });
+    const kpis = h("div", { class: "home-grid kpis" });
     const tabsHost = h("div", {});
-    const body = h("div", { class: "booking-admin-body" });
+    const tableHost = h("div", { class: "table-host" });
+    const pagerHost = h("div", {});
+    const directoryCard = h(
+      "div",
+      { class: "member-directory-card" },
+      tableHost,
+      pagerHost,
+    );
     const state = {
       tab: "approve",
+      term: "",
+      page: 1,
       status: "loading",
+      loaded: false,
       active: [],
       history: [],
       pays: {},
@@ -163,6 +283,63 @@ export function createBookingAdminPages({ api, client }) {
         status: "idle",
       },
     };
+    let timer = null;
+
+    const clearBtn = h(
+      "button",
+      {
+        class: "search-box-clear",
+        type: "button",
+        "aria-label": "Clear search input",
+        title: "Clear search",
+        hidden: true,
+        onClick: () => {
+          clearTimeout(timer);
+          search.value = "";
+          state.term = "";
+          clearBtn.hidden = true;
+          state.page = 1;
+          search.focus();
+          draw();
+        },
+      },
+      icon("x"),
+    );
+
+    const search = h("input", {
+      class: "input",
+      id: "bookings-search",
+      type: "search",
+      placeholder: "Search by member, member ID, court, or booking no…",
+      "aria-label": "Search bookings",
+      onInput: (e) => {
+        clearBtn.hidden = e.target.value.length === 0;
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          state.term = e.target.value;
+          state.page = 1;
+          draw();
+        }, 250);
+      },
+    });
+
+    const searchBox = h(
+      "div",
+      { class: "search-box grow" },
+      h(
+        "span",
+        { class: "search-box-icon", "aria-hidden": "true" },
+        icon("search"),
+      ),
+      search,
+      clearBtn,
+    );
+
+    const toolbar = h(
+      "div",
+      { class: "toolbar admin-members-toolbar" },
+      searchBox,
+    );
 
     async function refresh() {
       state.status = state.active.length ? "refreshing" : "loading";
@@ -199,9 +376,19 @@ export function createBookingAdminPages({ api, client }) {
         state.settings = Object.fromEntries(
           (settings ?? []).map((s) => [s.key, s.value]),
         );
-        state.pays = await totalsFor(
-          [...state.active, ...state.history].map((b) => b.id),
-        );
+        const allRows = [...state.active, ...state.history];
+        const [pays, urls] = await Promise.all([
+          totalsFor(allRows.map((b) => b.id)),
+          signedAvatarUrls(
+            client,
+            allRows.map((r) => r.requester?.persons?.avatar_path),
+          ),
+        ]);
+        state.pays = pays;
+        for (const r of allRows) {
+          r._avatar = urls.get(r.requester?.persons?.avatar_path) ?? null;
+        }
+        state.loaded = true;
         state.status = "ready";
       } catch {
         state.status = "error";
@@ -225,13 +412,39 @@ export function createBookingAdminPages({ api, client }) {
         p_key: key,
       });
 
+    const subjectOf = (r) => {
+      const name = who(r.requester);
+      const [statusLabel, statusTone] = STATUS[r.status] ?? [
+        r.status,
+        "neutral",
+      ];
+      return {
+        name,
+        initials: initialsOf(name),
+        avatar: r._avatar ?? null,
+        statusLabel,
+        statusTone,
+        subtext: `${r.requester?.member_no ?? "—"} · ${r.doc_no}`,
+        metaLabel: "Court",
+        metaValue: r.court_name_snapshot,
+      };
+    };
+
     function actionsFor(r) {
-      const b = [];
       const x = range(r);
       const approve = can("bookings.approve");
       const front = can("bookings.checkin");
       const cancelAny = can("bookings.cancel_any");
       const label = `${r.doc_no}, ${who(r.requester)}`;
+      const b = [
+        iconButton({
+          label: `View details for ${label}`,
+          icon: "info",
+          size: "sm",
+          variant: "info",
+          onClick: () => detailsModal(r),
+        }),
+      ];
       if (r.status === "pending_approval" && approve) {
         const blocked = payRequired() && Number(r.price_snapshot) > 0 &&
           paid(r) < Number(r.price_snapshot);
@@ -241,13 +454,19 @@ export function createBookingAdminPages({ api, client }) {
               ? `Approve ${label} (payment not verified yet)`
               : `Approve ${label}`,
             icon: "check",
+            size: "sm",
+            variant: "success",
             disabled: blocked,
             onClick: () =>
               actionModal({
                 title: "Approve this booking",
-                eyebrow: label,
+                eyebrow: "Booking management",
+                icon: "check",
+                tone: "success",
                 verb: "Approve",
-                note: `${r.court_name_snapshot}, ${formatDateTime(x?.start)}.`,
+                subject: subjectOf(r),
+                impactTitle: "Reservation will be confirmed",
+                note: `${r.court_name_snapshot} · ${formatDateTime(x?.start)}.`,
                 reasonLabel: "Note (optional)",
                 run: decide(r, "approve"),
                 done: refresh,
@@ -256,12 +475,18 @@ export function createBookingAdminPages({ api, client }) {
           iconButton({
             label: `Reject ${label}`,
             icon: "x",
+            size: "sm",
+            variant: "danger",
             onClick: () =>
               actionModal({
                 title: "Reject this request",
-                eyebrow: label,
+                eyebrow: "Booking management",
+                icon: "x",
+                tone: "danger",
                 verb: "Reject",
                 destructive: true,
+                subject: subjectOf(r),
+                impactTitle: "Request will be declined",
                 note: "The time is released for other members.",
                 reasonLabel: "Reason (shown to the member)",
                 reasonRequired: true,
@@ -278,11 +503,20 @@ export function createBookingAdminPages({ api, client }) {
             iconButton({
               label: `Check in ${label}`,
               icon: "check",
+              size: "sm",
+              variant: "success",
               onClick: () =>
                 actionModal({
                   title: "Check in",
-                  eyebrow: label,
+                  eyebrow: "Booking management",
+                  icon: "check",
+                  tone: "success",
                   verb: "Check in",
+                  subject: subjectOf(r),
+                  impactTitle: "Member arrival confirmed",
+                  note: `${r.court_name_snapshot} · ${
+                    formatDateTime(x?.start)
+                  }.`,
                   run: decide(r, "check_in"),
                   done: refresh,
                 }),
@@ -293,13 +527,18 @@ export function createBookingAdminPages({ api, client }) {
           b.push(iconButton({
             label: `Mark ${label} as a no-show`,
             icon: "alert",
-            variant: "danger",
+            size: "sm",
+            variant: "warning",
             onClick: () =>
               actionModal({
                 title: "Mark as a no-show",
-                eyebrow: label,
+                eyebrow: "Booking management",
+                icon: "alert",
+                tone: "warning",
                 verb: "Mark no-show",
                 destructive: true,
+                subject: subjectOf(r),
+                impactTitle: "Session will be marked as no-show",
                 note:
                   "The no-show fee, if the club has one, is charged to the member.",
                 reasonLabel: "Note (optional)",
@@ -313,11 +552,18 @@ export function createBookingAdminPages({ api, client }) {
         b.push(iconButton({
           label: `Complete ${label}`,
           icon: "check",
+          size: "sm",
+          variant: "success",
           onClick: () =>
             actionModal({
               title: "Complete this booking",
-              eyebrow: label,
+              eyebrow: "Booking management",
+              icon: "check",
+              tone: "success",
               verb: "Complete",
+              subject: subjectOf(r),
+              impactTitle: "Court session will be completed",
+              note: `${r.court_name_snapshot} · ${formatDateTime(x?.start)}.`,
               run: decide(r, "complete"),
               done: refresh,
             }),
@@ -327,13 +573,18 @@ export function createBookingAdminPages({ api, client }) {
         b.push(iconButton({
           label: `Cancel ${label}`,
           icon: "trash",
+          size: "sm",
           variant: "danger",
           onClick: () =>
             actionModal({
               title: "Cancel this booking",
-              eyebrow: label,
+              eyebrow: "Booking management",
+              icon: "trash",
+              tone: "danger",
               verb: "Cancel booking",
               destructive: true,
+              subject: subjectOf(r),
+              impactTitle: "Booking will be cancelled",
               note:
                 "The member is told and no late fee is charged. A confirmed booking's charge is reversed.",
               reasonLabel: "Reason",
@@ -343,77 +594,124 @@ export function createBookingAdminPages({ api, client }) {
             }),
         }));
       }
-      return h("span", { class: "row-actions" }, ...b);
+      return h("div", { class: "row-actions" }, ...b);
     }
 
     const columns = [
       {
         key: "who",
         label: "Member",
-        render: (r) =>
-          h(
-            "span",
-            {},
-            who(r.requester),
-            sub(`${r.requester?.member_no ?? ""} · ${r.doc_no}`),
-          ),
+        skeleton: "member",
+        render: (r) => {
+          const name = who(r.requester);
+          const initials = initialsOf(name);
+          return h(
+            "div",
+            { class: "member-cell" },
+            h(
+              "span",
+              { class: "member-avatar", "aria-hidden": "true" },
+              r._avatar ? h("img", { src: r._avatar, alt: "" }) : initials,
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h("span", { class: "member-name" }, name),
+              h(
+                "span",
+                { class: "sub member-subtext" },
+                `${r.requester?.member_no ?? "—"} · ${r.doc_no}`,
+              ),
+            ),
+          );
+        },
       },
       {
         key: "when",
         label: "Court and time",
+        skeleton: "stack",
         render: (r) => {
           const x = range(r);
           return h(
-            "span",
-            {},
+            "div",
+            { class: "member-table-stack" },
             r.court_name_snapshot,
-            sub(x ? `${formatDateTime(x.start)} to ${timeLabel(x.end)}` : ""),
+            sub(x ? `${formatDateTime(x.start)} to ${timeLabel(x.end)}` : "—"),
           );
         },
       },
       {
         key: "status",
         label: "Status",
+        skeleton: "badge-stack",
         render: (r) =>
           h(
-            "span",
-            {},
+            "div",
+            { class: "member-table-stack" },
             badge(...(STATUS[r.status] ?? [r.status, "neutral"])),
-            r.status === "pending_approval" && r.expires_at
-              ? sub(`Expires ${formatDateTime(r.expires_at)}`)
-              : null,
-            r.cancel_reason ||
-              (["rejected", "no_show", "expired"].includes(r.status)
-                ? r.status_reason
-                : null)
-              ? sub(r.cancel_reason || r.status_reason)
-              : null,
+            sub(
+              r.status === "pending_approval" && r.expires_at
+                ? `Expires ${formatDateTime(r.expires_at)}`
+                : (r.cancel_reason ||
+                  (["rejected", "no_show", "expired"].includes(r.status)
+                    ? r.status_reason
+                    : null) ||
+                  `Requested ${(r.created_at ?? "").slice(0, 10) || "—"}`),
+            ),
           ),
       },
       {
         key: "price",
         label: "Price",
         align: "right",
+        kind: "money",
         render: (r) =>
           Number(r.price_snapshot) > 0 ? formatMoney(r.price_snapshot) : "Free",
       },
       {
         key: "pay",
         label: "Payment",
+        skeleton: "badge-stack",
         render: (r) => {
-          if (!(Number(r.price_snapshot) > 0)) return "—";
+          if (!(Number(r.price_snapshot) > 0)) {
+            return h(
+              "div",
+              { class: "member-table-stack" },
+              badge("No charge", "neutral"),
+              sub("Complimentary"),
+            );
+          }
           if (paid(r) >= Number(r.price_snapshot)) {
-            return badge("Paid", "success");
+            return h(
+              "div",
+              { class: "member-table-stack" },
+              badge("Paid", "success"),
+              sub(`${formatMoney(paid(r))} verified`),
+            );
           }
           return h(
-            "span",
-            {},
-            paid(r) ? `${formatMoney(paid(r))} paid` : "Not paid",
-            waiting(r) ? sub(`${formatMoney(waiting(r))} to check`) : null,
+            "div",
+            { class: "member-table-stack" },
+            waiting(r)
+              ? badge("Waiting to check", "warning")
+              : badge("Not paid", "neutral"),
+            sub(
+              waiting(r)
+                ? `${formatMoney(waiting(r))} to check`
+                : paid(r)
+                ? `${formatMoney(paid(r))} paid`
+                : `${formatMoney(r.price_snapshot)} due`,
+            ),
           );
         },
       },
-      { key: "actions", label: "Action", align: "center", render: actionsFor },
+      {
+        key: "actions",
+        label: "Action",
+        align: "center",
+        actionCount: 4,
+        render: actionsFor,
+      },
     ];
 
     const startOfToday = () => manilaDate(businessDate(), "00:00").getTime();
@@ -456,6 +754,19 @@ export function createBookingAdminPages({ api, client }) {
       ],
     };
 
+    const matchesSearch = (r, q) => {
+      if (!q) return true;
+      const needle = q.toLowerCase();
+      const hay = [
+        who(r.requester),
+        r.requester?.member_no,
+        r.doc_no,
+        r.court_name_snapshot,
+        (STATUS[r.status] ?? [r.status])[0],
+      ].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(needle);
+    };
+
     // ------------------------------------------------------------- calendar
     async function loadCalendar() {
       const cal = state.calendar;
@@ -492,10 +803,18 @@ export function createBookingAdminPages({ api, client }) {
             ).overlaps("during", window)
           ),
         ]);
+        const bks = bookings ?? [];
+        const urls = await signedAvatarUrls(
+          client,
+          bks.map((r) => r.requester?.persons?.avatar_path),
+        );
+        for (const r of bks) {
+          r._avatar = urls.get(r.requester?.persons?.avatar_path) ?? null;
+        }
         Object.assign(cal, {
           courts: courts ?? [],
           hours: hours ?? [],
-          bookings: bookings ?? [],
+          bookings: bks,
           blackouts: blackouts ?? [],
           slotMinutes: Number(state.settings["booking.slot_minutes"]) || 60,
           status: "ready",
@@ -509,8 +828,10 @@ export function createBookingAdminPages({ api, client }) {
     function calendarView() {
       const cal = state.calendar;
       const today = businessDate();
+      const isToday = cal.day === today;
+      const isLoading = cal.status === "loading" || cal.status === "idle";
       const day = h("input", {
-        class: "input",
+        class: "input calendar-date-input",
         id: "cal-day",
         type: "date",
         value: cal.day,
@@ -528,45 +849,189 @@ export function createBookingAdminPages({ api, client }) {
         cal.day = businessDate(d);
         loadCalendar();
       };
+
+      let freeTotal = 0;
+      let bookedTotal = 0;
+      let closedTotal = 0;
+      const courtEntries = cal.status === "ready"
+        ? cal.courts.map((court) => {
+          const taken = [
+            ...cal.bookings.filter((b) => b.court_id === court.id).map((b) => {
+              const x = range(b);
+              return x &&
+                {
+                  start: x.start,
+                  end: x.end,
+                  kind: "booked",
+                  label: `${who(b.requester)} (${
+                    (STATUS[b.status] ?? [b.status])[0]
+                  })`,
+                  booking: b,
+                };
+            }),
+            ...cal.blackouts.filter((b) =>
+              b.court_id == null || b.court_id === court.id
+            ).map((b) => {
+              const x = parseRange(b.during);
+              return x &&
+                { start: x.start, end: x.end, kind: "closed", label: b.reason };
+            }),
+          ].filter(Boolean);
+          const slots = buildSlots({
+            day: cal.day,
+            courtId: court.id,
+            hours: cal.hours,
+            slotMinutes: cal.slotMinutes,
+            taken,
+            now: new Date(0),
+            advanceDays: 100000,
+          });
+          for (const s of slots) {
+            if (s.state === "booked") bookedTotal += 1;
+            else if (s.state === "closed") closedTotal += 1;
+            else freeTotal += 1;
+          }
+          return { court, taken, slots };
+        })
+        : [];
+
+      const legendPill = (tone, label, count) =>
+        h(
+          "div",
+          { class: `calendar-legend-pill is-${tone}` },
+          h("span", { class: "calendar-legend-swatch", "aria-hidden": "true" }),
+          h("span", { class: "calendar-legend-label" }, label),
+          isLoading
+            ? h("span", {
+              class: "sk calendar-legend-sk",
+              "aria-hidden": "true",
+            })
+            : h(
+              "span",
+              { class: "calendar-legend-count" },
+              String(count),
+            ),
+        );
+
       const bar = h(
         "div",
-        { class: "book-day" },
-        iconButton({
-          label: "Previous day",
-          icon: "chevronLeft",
-          onClick: () => shift(-1),
-        }),
-        day,
-        iconButton({
-          label: "Next day",
-          icon: "chevronRight",
-          onClick: () => shift(1),
-        }),
-        cal.day === today ? null : button({
-          label: "Today",
-          onClick: () => {
-            cal.day = today;
-            loadCalendar();
+        { class: "book-day booking-calendar-bar" },
+        h(
+          "div",
+          { class: "booking-calendar-nav" },
+          h(
+            "div",
+            {
+              class: "calendar-date-stepper",
+              role: "group",
+              "aria-label": "Date navigation",
+            },
+            iconButton({
+              label: "Previous day",
+              icon: "chevronLeft",
+              size: "sm",
+              onClick: () => shift(-1),
+            }),
+            day,
+            iconButton({
+              label: "Next day",
+              icon: "chevronRight",
+              size: "sm",
+              onClick: () => shift(1),
+            }),
+          ),
+          h(
+            "div",
+            { class: "calendar-date-heading" },
+            h(
+              "div",
+              { class: "calendar-date-eyebrow-row" },
+              h(
+                "span",
+                {
+                  class: `calendar-date-eyebrow${isToday ? " is-today" : ""}`,
+                },
+                isToday ? "Today's Schedule" : "Selected Schedule",
+              ),
+              isToday ? null : h(
+                "button",
+                {
+                  type: "button",
+                  class: "calendar-today-btn",
+                  onClick: () => {
+                    cal.day = today;
+                    loadCalendar();
+                  },
+                },
+                icon("calendar"),
+                h("span", {}, "Jump to Today"),
+              ),
+            ),
+            h("strong", { class: "book-day-label" }, dayLabel(cal.day)),
+          ),
+        ),
+        h(
+          "div",
+          {
+            class: "slot-legend calendar-legend-dock",
+            role: "group",
+            "aria-label": "Court availability legend",
           },
-        }),
+          legendPill("free", "Free", freeTotal),
+          legendPill("booked", "Booked", bookedTotal),
+          legendPill("closed", "Closed", closedTotal),
+        ),
       );
-      if (cal.status === "loading" || cal.status === "idle") {
+      if (isLoading) {
         return h(
           "div",
-          { class: "stack" },
+          { class: "booking-calendar-wrap", "aria-busy": "true" },
           bar,
-          h("p", { class: "muted", "aria-busy": "true" }, "Loading…"),
+          h(
+            "div",
+            { class: "booking-calendar-list" },
+            ...[1, 2].map(() =>
+              h(
+                "section",
+                { class: "booking-calendar-court is-loading" },
+                h(
+                  "div",
+                  { class: "ladder-head" },
+                  h(
+                    "div",
+                    { class: "sk-meta" },
+                    h("span", { class: "sk w-30" }),
+                    h("span", { class: "sk w-50 sk-sub" }),
+                  ),
+                ),
+                h(
+                  "div",
+                  { class: "slots slots-wide" },
+                  ...Array.from(
+                    { length: 8 },
+                    () => h("span", { class: "sk sk-slot-pill" }),
+                  ),
+                ),
+              )
+            ),
+          ),
         );
       }
       if (cal.status === "error") {
         return h(
           "div",
-          { class: "stack" },
+          { class: "booking-calendar-wrap" },
           bar,
           h(
             "div",
-            { class: "card home-error", role: "alert" },
-            h("p", {}, "The calendar could not be loaded."),
+            { class: "tbl-state error", role: "alert" },
+            h("span", { class: "badge-icon" }, icon("alert")),
+            h("h2", {}, "The calendar could not be loaded"),
+            h(
+              "p",
+              {},
+              "Check your connection and try loading the courts again.",
+            ),
             button({
               label: "Try again",
               icon: "refresh",
@@ -575,52 +1040,34 @@ export function createBookingAdminPages({ api, client }) {
           ),
         );
       }
-      const cards = cal.courts.map((court) => {
-        const taken = [
-          ...cal.bookings.filter((b) => b.court_id === court.id).map((b) => {
-            const x = range(b);
-            return x &&
-              {
-                start: x.start,
-                end: x.end,
-                kind: "booked",
-                label: `${who(b.requester)} (${
-                  (STATUS[b.status] ?? [b.status])[0]
-                })`,
-                booking: b,
-              };
-          }),
-          ...cal.blackouts.filter((b) =>
-            b.court_id == null || b.court_id === court.id
-          ).map((b) => {
-            const x = parseRange(b.during);
-            return x &&
-              { start: x.start, end: x.end, kind: "closed", label: b.reason };
-          }),
-        ].filter(Boolean);
-        const slots = buildSlots({
-          day: cal.day,
-          courtId: court.id,
-          hours: cal.hours,
-          slotMinutes: cal.slotMinutes,
-          taken,
-          now: new Date(0),
-          advanceDays: 100000,
-        });
+      const cards = courtEntries.map(({ court, taken, slots }) => {
         return h(
           "section",
-          { class: "card book-court", "aria-label": court.name },
+          { class: "booking-calendar-court", "aria-label": court.name },
           h(
             "div",
             { class: "ladder-head" },
             h(
               "div",
-              {},
+              { class: "member-table-stack" },
               h("h2", { class: "settings-title" }, court.name),
-              court.status === "available"
-                ? null
-                : h("span", { class: "muted" }, court.status),
+              h(
+                "span",
+                { class: "sub" },
+                slots.length
+                  ? `${
+                    slots.filter((s) => s.state === "booked").length
+                  } booked · ${
+                    slots.filter((s) =>
+                      s.state === "free" || s.state === "past"
+                    ).length
+                  } open`
+                  : "Closed this day",
+              ),
             ),
+            court.status === "available"
+              ? badge("Available", "success")
+              : badge(court.status, "neutral"),
           ),
           slots.length
             ? h(
@@ -650,98 +1097,485 @@ export function createBookingAdminPages({ api, client }) {
       });
       return h(
         "div",
-        { class: "stack" },
+        { class: "booking-calendar-wrap" },
         bar,
-        ...(cards.length
-          ? cards
-          : [h("div", { class: "card" }, h("p", {}, "No courts yet."))]),
+        cards.length
+          ? h("div", { class: "booking-calendar-list" }, ...cards)
+          : h(
+            "div",
+            { class: "tbl-state" },
+            h("span", { class: "badge-icon" }, icon("calendar")),
+            h("h2", {}, "No courts yet"),
+            h("p", {}, "Courts added in the Courts screen appear here."),
+          ),
       );
     }
 
     function detailsModal(r) {
       const x = range(r);
-      return openModal({
-        title: `${who(r.requester)} · ${r.doc_no}`,
-        eyebrow: r.court_name_snapshot,
-        icon: "calendar",
-        confirmLabel: "Close",
-        cancelLabel: "Close",
-        body: h(
+      const p = r.requester?.persons ?? {};
+      const kv = (label, value, wide = false) =>
+        h(
           "dl",
-          { class: "details" },
-          ...[
-            [
-              "When",
-              x ? `${formatDateTime(x.start)} to ${timeLabel(x.end)}` : "—",
-            ],
-            ["Member", `${who(r.requester)} (${r.requester?.member_no ?? ""})`],
-            ["Status", (STATUS[r.status] ?? [r.status])[0]],
-            [
-              "Price",
-              Number(r.price_snapshot) > 0
-                ? formatMoney(r.price_snapshot)
-                : "Free",
-            ],
-          ].map(([k, v]) =>
-            h("div", { class: "kv" }, h("dt", {}, k), h("dd", {}, v))
+          { class: `kv-item${wide ? " kv-item-wide" : ""}` },
+          h("dt", { class: "kv-label" }, label),
+          h("dd", { class: "kv-val" }, value || "—"),
+        );
+
+      const statusBadge = badge(...(STATUS[r.status] ?? [r.status, "neutral"]));
+      const paymentBadge = !(Number(r.price_snapshot) > 0)
+        ? badge("No charge", "neutral")
+        : paid(r) >= Number(r.price_snapshot)
+        ? badge("Paid", "success")
+        : waiting(r) > 0
+        ? badge("Waiting to check", "warning")
+        : badge("Not paid", "neutral");
+      const priceBadge = badge(
+        Number(r.price_snapshot) > 0 ? formatMoney(r.price_snapshot) : "Free",
+        "neutral",
+      );
+
+      return openModal({
+        title: who(r.requester),
+        eyebrow: `${r.doc_no} · ${r.court_name_snapshot}`,
+        icon: "calendar",
+        size: "lg",
+        tone: "info",
+        confirmLabel: "Close",
+        cancelLabel: null,
+        body: h(
+          "div",
+          { class: "member-details-modal" },
+          h(
+            "div",
+            { class: "member-banner" },
+            h(
+              "div",
+              { class: "member-summary-item" },
+              h("span", { class: "kv-label" }, "Booking status"),
+              statusBadge,
+            ),
+            h(
+              "div",
+              { class: "member-summary-item" },
+              h("span", { class: "kv-label" }, "Payment status"),
+              paymentBadge,
+            ),
+            h(
+              "div",
+              { class: "member-summary-item" },
+              h("span", { class: "kv-label" }, "Court fee"),
+              priceBadge,
+            ),
+          ),
+          h(
+            "div",
+            { class: "member-profile-sections" },
+            h(
+              "div",
+              { class: "member-section-card" },
+              h(
+                "h3",
+                {},
+                h(
+                  "span",
+                  { class: "section-icon", "aria-hidden": "true" },
+                  icon("calendar"),
+                ),
+                "Reservation & Schedule",
+              ),
+              h(
+                "div",
+                { class: "member-details-grid" },
+                kv("Court", r.court_name_snapshot),
+                kv("Booking No.", r.doc_no),
+                kv(
+                  "Scheduled Time",
+                  x ? `${formatDateTime(x.start)} to ${timeLabel(x.end)}` : "—",
+                  true,
+                ),
+                kv(
+                  "Requested On",
+                  r.created_at ? formatDateTime(r.created_at) : "—",
+                ),
+                r.expires_at && r.status === "pending_approval"
+                  ? kv("Decision Due", formatDateTime(r.expires_at))
+                  : null,
+              ),
+            ),
+            h(
+              "div",
+              { class: "member-section-card" },
+              h(
+                "h3",
+                {},
+                h(
+                  "span",
+                  { class: "section-icon", "aria-hidden": "true" },
+                  icon("user"),
+                ),
+                "Member & Contact",
+              ),
+              h(
+                "div",
+                { class: "member-details-grid" },
+                kv("Member Name", who(r.requester)),
+                kv("Member ID", r.requester?.member_no || "—"),
+                kv(
+                  "Mobile",
+                  p.mobile
+                    ? h(
+                      "a",
+                      { href: `tel:${p.mobile}`, class: "details-link" },
+                      p.mobile,
+                    )
+                    : "—",
+                ),
+                kv(
+                  "Email",
+                  p.email
+                    ? h(
+                      "a",
+                      { href: `mailto:${p.email}`, class: "details-link" },
+                      p.email,
+                    )
+                    : "—",
+                ),
+              ),
+            ),
+          ),
+          h(
+            "div",
+            { class: "member-section-card" },
+            h(
+              "h3",
+              {},
+              h(
+                "span",
+                { class: "section-icon", "aria-hidden": "true" },
+                icon("file"),
+              ),
+              "Payment & Audit",
+            ),
+            h(
+              "div",
+              { class: "member-details-grid" },
+              kv(
+                "Verified Paid",
+                Number(r.price_snapshot) > 0 ? formatMoney(paid(r)) : "Free",
+              ),
+              kv(
+                "Pending Verification",
+                waiting(r) > 0 ? formatMoney(waiting(r)) : "None",
+              ),
+              kv(
+                "Reason / Note on Record",
+                r.cancel_reason || r.status_reason || "—",
+                true,
+              ),
+            ),
           ),
         ),
         onConfirm: () => {},
       });
     }
 
+    function bookingStatCard({
+      label,
+      value,
+      hint,
+      iconName,
+      pill,
+      isAttention,
+      tone = "emerald",
+      tabId,
+    }) {
+      return h(
+        "button",
+        {
+          type: "button",
+          class: `home-card member-stat-card is-link is-tone-${tone}${
+            isAttention ? " is-attention" : ""
+          }`,
+          onClick: () => {
+            state.tab = tabId;
+            state.page = 1;
+            draw();
+          },
+        },
+        h(
+          "div",
+          { class: "member-stat-main" },
+          h(
+            "span",
+            { class: "home-card-icon", "aria-hidden": "true" },
+            icon(iconName),
+          ),
+          h(
+            "div",
+            { class: "member-stat-copy" },
+            h("span", { class: "home-card-value" }, String(value ?? "—")),
+            h("span", { class: "home-card-label" }, label),
+          ),
+          pill,
+        ),
+        h(
+          "div",
+          { class: "home-card-bottom" },
+          h("div", { class: "home-card-hint" }, hint),
+          h(
+            "span",
+            { class: "home-card-go" },
+            tabId === "approve" ? "Review requests" : "View bookings",
+            icon("chevronRight"),
+          ),
+        ),
+      );
+    }
+
     // ---------------------------------------------------------------- layout
     function draw() {
+      const approveList = lists.approve();
+      const todayList = lists.today();
+      const upcomingList = lists.upcoming();
+      const historyList = lists.history();
       const counts = {
-        approve: lists.approve().length,
-        today: lists.today().length,
+        approve: approveList.length,
+        today: todayList.length,
+        upcoming: upcomingList.length,
+        history: historyList.length,
       };
+
+      const pCount = counts.approve;
+      const tCount = counts.today;
+      const uCount = counts.upcoming;
+
+      kpis.replaceChildren(
+        bookingStatCard({
+          label: "Waiting for approval",
+          value: state.loaded ? pCount : "—",
+          hint: pCount > 0
+            ? "Requires administrator review"
+            : "Approval queue is clear",
+          iconName: "clock",
+          isAttention: pCount > 0,
+          tone: "amber",
+          tabId: "approve",
+          pill: pCount > 0
+            ? h(
+              "span",
+              { class: "card-status-pill is-attention" },
+              h("span", { class: "pill-pulse-dot", "aria-hidden": "true" }),
+              "Needs review",
+            )
+            : h(
+              "span",
+              { class: "card-status-pill is-clean" },
+              icon("check"),
+              "All clear",
+            ),
+        }),
+        bookingStatCard({
+          label: "Bookings today",
+          value: state.loaded ? tCount : "—",
+          hint: `${tCount} court session${
+            tCount === 1 ? "" : "s"
+          } scheduled today`,
+          iconName: "calendar",
+          isAttention: false,
+          tone: "emerald",
+          tabId: "today",
+          pill: h(
+            "span",
+            { class: "card-status-pill is-clean" },
+            icon("check"),
+            "Today",
+          ),
+        }),
+        bookingStatCard({
+          label: "Upcoming bookings",
+          value: state.loaded ? uCount : "—",
+          hint: `${uCount} confirmed session${
+            uCount === 1 ? "" : "s"
+          } after today`,
+          iconName: "check",
+          isAttention: false,
+          tone: "teal",
+          tabId: "upcoming",
+          pill: h(
+            "span",
+            { class: "card-status-pill is-clean" },
+            icon("check"),
+            "Confirmed",
+          ),
+        }),
+      );
+
       tabsHost.replaceChildren(tabs({
         activeId: state.tab,
         tabs: [
           {
             id: "approve",
-            label: "To approve",
-            badge: counts.approve || undefined,
+            label: "Waiting for approval",
+            badge: counts.approve ? String(counts.approve) : undefined,
           },
-          { id: "today", label: "Today", badge: counts.today || undefined },
-          { id: "upcoming", label: "Upcoming" },
+          {
+            id: "today",
+            label: "Today",
+            badge: counts.today ? String(counts.today) : undefined,
+          },
+          {
+            id: "upcoming",
+            label: "Upcoming",
+            badge: counts.upcoming ? String(counts.upcoming) : undefined,
+          },
           { id: "calendar", label: "Calendar" },
-          { id: "history", label: "History" },
+          {
+            id: "history",
+            label: "History",
+            badge: counts.history ? String(counts.history) : undefined,
+          },
         ],
         onChange: (id) => {
           state.tab = id;
+          state.page = 1;
           if (id === "calendar" && state.calendar.status === "idle") {
             loadCalendar();
           } else draw();
         },
       }));
+
       if (state.tab === "calendar") {
-        body.replaceChildren(calendarView());
+        toolbar.hidden = true;
+        tableHost.replaceChildren(calendarView());
+        pagerHost.replaceChildren();
         return;
       }
-      const [title, text] = EMPTY[state.tab];
-      body.replaceChildren(dataTable({
+
+      toolbar.hidden = false;
+      const term = cleanTerm(state.term);
+      const filtered = lists[state.tab]().filter((r) => matchesSearch(r, term));
+      const total = filtered.length;
+      const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      if (state.page > maxPage) state.page = maxPage;
+      const pageRows = filtered.slice(
+        (state.page - 1) * PAGE_SIZE,
+        state.page * PAGE_SIZE,
+      );
+
+      let [emptyTitle, emptyText] = EMPTY[state.tab];
+      if (term) {
+        emptyTitle = `No bookings match "${term}"`;
+        emptyText =
+          "Try a different member name, member ID, court, or booking number, or clear your search.";
+      }
+
+      const tableState = state.status === "refreshing" ? "ready" : state.status;
+      tableHost.replaceChildren(dataTable({
         schema: { columns },
-        rows: lists[state.tab](),
-        state: state.status === "refreshing" ? "ready" : state.status,
+        rows: pageRows,
+        state: tableState,
+        hasFilters: Boolean(term),
         ariaLabel: "Bookings",
         onRetry: refresh,
-        emptyTitle: title,
-        emptyText: text,
+        onReset: () => {
+          clearTimeout(timer);
+          search.value = "";
+          state.term = "";
+          clearBtn.hidden = true;
+          state.page = 1;
+          draw();
+        },
+        resetLabel: "Clear search",
+        emptyTitle,
+        emptyText,
       }));
+      pagerHost.replaceChildren(
+        tableState === "ready"
+          ? pagination({
+            page: state.page,
+            pageSize: PAGE_SIZE,
+            total,
+            onPage: (p) => {
+              state.page = p;
+              draw();
+            },
+          })
+          : "",
+      );
     }
 
-    page.append(
-      pageHeader({
-        icon: "calendar",
-        eyebrow: "Admin",
-        title: "Bookings",
-        description:
+    const manilaDateText = new Intl.DateTimeFormat("en-PH", {
+      timeZone: "Asia/Manila",
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date());
+
+    const hero = h(
+      "section",
+      {
+        class: "dash-hero is-admin",
+        "aria-label": "Court Bookings",
+      },
+      h(
+        "div",
+        { class: "dash-hero-copy" },
+        h(
+          "div",
+          { class: "dash-hero-chips" },
+          h(
+            "span",
+            { class: "dash-chip is-role" },
+            icon("medal"),
+            "Admin Console",
+          ),
+          h(
+            "span",
+            { class: "dash-chip is-date" },
+            icon("calendar"),
+            manilaDateText,
+          ),
+          h(
+            "span",
+            { class: "dash-chip is-status" },
+            h("span", { class: "status-dot-pulse", "aria-hidden": "true" }),
+            "Bookings Management",
+          ),
+        ),
+        h(
+          "h1",
+          { class: "dash-hero-title", id: "page-title", tabindex: "-1" },
+          "Court Bookings",
+        ),
+        h(
+          "p",
+          { class: "dash-hero-sub" },
           "Approve court requests, check members in, and see the day's courts. All times are Asia/Manila.",
-      }),
+        ),
+      ),
+      h(
+        "div",
+        { class: "dash-hero-actions" },
+        button({
+          label: "Refresh List",
+          icon: "refresh",
+          variant: "secondary",
+          onClick: () => {
+            if (state.tab === "calendar") loadCalendar();
+            refresh();
+          },
+        }),
+      ),
+    );
+
+    page.append(
+      hero,
+      kpis,
       tabsHost,
-      body,
+      toolbar,
+      directoryCard,
     );
     refresh();
     return page;
@@ -749,9 +1583,12 @@ export function createBookingAdminPages({ api, client }) {
 
   // =============================================================== payments
   function paymentsPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page admin-payments-page",
+    });
+    attachPagePattern(page);
     const tabsHost = h("div", {});
-    const body = h("div", { class: "booking-admin-body" });
+    const body = h("div", { class: "table-host" });
     const state = { tab: "check", status: "loading", rows: [], bookings: {} };
 
     async function refresh() {
@@ -817,6 +1654,9 @@ export function createBookingAdminPages({ api, client }) {
           iconButton({
             label: `View the proof for ${label}`,
             icon: "eye",
+            variant: "info",
+            size: "sm",
+            variant: "info",
             onClick: () => viewProof(p),
           }),
         );
@@ -826,6 +1666,9 @@ export function createBookingAdminPages({ api, client }) {
           iconButton({
             label: `Verify ${label}`,
             icon: "check",
+            variant: "success",
+            size: "sm",
+            variant: "success",
             onClick: () =>
               actionModal({
                 title: "Verify this payment",
@@ -847,6 +1690,9 @@ export function createBookingAdminPages({ api, client }) {
           iconButton({
             label: `Reject ${label}`,
             icon: "x",
+            variant: "danger",
+            size: "sm",
+            variant: "danger",
             onClick: () =>
               actionModal({
                 title: "Reject this payment",
@@ -872,6 +1718,7 @@ export function createBookingAdminPages({ api, client }) {
           label: `Void ${label}`,
           icon: "trash",
           variant: "danger",
+          size: "sm",
           onClick: () =>
             actionModal({
               title: "Void this payment",
@@ -1001,15 +1848,22 @@ export function createBookingAdminPages({ api, client }) {
     }
 
     page.append(
-      pageHeader({
-        icon: "currency",
-        eyebrow: "Admin",
+      adminHero({
         title: "Payments",
+        chip: "Payments Management",
         description:
           "Check the proof members send for their bookings. A payment counts only after you verify it.",
+        actions: [
+          button({
+            label: "Refresh List",
+            icon: "refresh",
+            variant: "secondary",
+            onClick: refresh,
+          }),
+        ],
       }),
       tabsHost,
-      body,
+      h("div", { class: "member-directory-card" }, body),
     );
     refresh();
     return page;

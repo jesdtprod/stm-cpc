@@ -2,8 +2,9 @@
 // sections the caller is allowed to see; this page just draws what it receives.
 //   member : own rank, upcoming bookings, event registrations, unread notices
 //   staff  : approvals, payment proofs, bookings to approve, today's bookings, events in progress
-import { h, icon } from "./ui.js";
+import { attachPagePattern, h, icon } from "./ui.js";
 import { can, canAny, isAdminAccount } from "./lib/permissions.js";
+import { isLocalDev } from "./dev.js";
 
 // Anyone holding one of these may open the admin console.
 export const ADMIN_CODES = [
@@ -63,21 +64,95 @@ const STAFF_CARDS = [
   },
 ];
 
-function statCard({ label, value, hint, iconName, href, attention = false }) {
+function statCard({
+  label,
+  value,
+  hint,
+  iconName,
+  href,
+  attention = false,
+  kind = null,
+}) {
+  const numValue = Number(value);
+  const isAttention = attention || (kind === "pending" && numValue > 0);
+  const statusBadge = kind === "pending"
+    ? (numValue > 0
+      ? h(
+        "span",
+        { class: "card-status-pill is-attention" },
+        h("span", { class: "pill-pulse-dot", "aria-hidden": "true" }),
+        "Needs review",
+      )
+      : h(
+        "span",
+        { class: "card-status-pill is-clean" },
+        icon("check"),
+        "All clear",
+      ))
+    : (kind === "activity"
+      ? h("span", { class: "card-status-pill is-info" }, "Active")
+      : null);
+
+  const formattedValue = (typeof value === "number" ||
+      (!isNaN(numValue) && typeof value === "string" && value.trim() !== ""))
+    ? new Intl.NumberFormat("en-PH").format(numValue)
+    : (value ?? "0");
+
   const body = [
+    ...(kind
+      ? [
+        h(
+          "div",
+          { class: "member-stat-main" },
+          h(
+            "span",
+            { class: "home-card-icon", "aria-hidden": "true" },
+            icon(iconName),
+          ),
+          h(
+            "div",
+            { class: "member-stat-copy" },
+            h("div", { class: "home-card-value" }, formattedValue),
+            h("span", { class: "home-card-label" }, label),
+          ),
+          statusBadge,
+        ),
+      ]
+      : [
+        h(
+          "div",
+          { class: "home-card-top" },
+          h("span", { class: "home-card-label" }, label),
+          statusBadge || h("span", { class: "home-card-icon" }, icon(iconName)),
+        ),
+        h(
+          "div",
+          { class: "home-card-middle" },
+          h("div", { class: "home-card-value" }, formattedValue),
+          statusBadge
+            ? h("span", { class: "home-card-icon" }, icon(iconName))
+            : null,
+        ),
+      ]),
     h(
       "div",
-      { class: "home-card-top" },
-      h("span", { class: "home-card-label" }, label),
-      h("span", { class: "home-card-icon" }, icon(iconName)),
+      { class: "home-card-bottom" },
+      hint ? h("div", { class: "home-card-hint" }, hint) : null,
+      href
+        ? h(
+          "span",
+          { class: "home-card-go" },
+          kind === "pending" ? "Open queue" : "View details",
+          icon("chevronRight"),
+        )
+        : null,
     ),
-    h("div", { class: "home-card-value" }, value),
-    hint ? h("div", { class: "home-card-hint" }, hint) : null,
-    href
-      ? h("span", { class: "home-card-go" }, "Open", icon("chevronRight"))
-      : null,
   ];
-  const cls = `home-card${attention ? " is-attention" : ""}`;
+  const cls = `home-card${
+    kind
+      ? ` member-stat-card is-tone-${kind === "pending" ? "amber" : "emerald"}`
+      : ""
+  }${isAttention ? " is-attention" : ""}`;
   return href
     ? h("a", { class: `${cls} is-link`, href }, ...body)
     : h("div", { class: cls }, ...body);
@@ -124,17 +199,105 @@ function memberCards(m) {
   ];
 }
 
-function section(title, description, cards) {
+function section(title, description, cards, meta = null) {
   return h(
     "section",
     { class: "home-section", "aria-label": title },
     h(
       "div",
       { class: "home-section-head" },
-      h("h2", { class: "home-section-title" }, title),
+      h(
+        "div",
+        { class: "home-section-titles" },
+        h("h2", { class: "home-section-title" }, title),
+        meta,
+      ),
       description ? h("p", { class: "home-section-desc" }, description) : null,
     ),
     h("div", { class: "home-grid" }, ...cards),
+  );
+}
+
+const ADMIN_SHORTCUTS = [
+  {
+    label: "Members",
+    desc: "Directory, approvals & roles",
+    icon: "user",
+    href: "#/admin/members",
+    permission: "members.read",
+  },
+  {
+    label: "Bookings",
+    desc: "Court reservations & check-ins",
+    icon: "calendar",
+    href: "#/admin/bookings",
+    permission: "bookings.read_all",
+  },
+  {
+    label: "Payments",
+    desc: "Payment receipts & verification",
+    icon: "currency",
+    href: "#/admin/payments",
+    permission: "payments.verify",
+  },
+  {
+    label: "Categories",
+    desc: "Skill ladders & divisions",
+    icon: "layers",
+    href: "#/admin/categories",
+    permission: "categories.manage",
+  },
+  {
+    label: "Courts",
+    desc: "Courts, hours & pricing",
+    icon: "grid",
+    href: "#/admin/courts",
+    permission: "courts.manage",
+  },
+  {
+    label: "Settings",
+    desc: "Club & system policies",
+    icon: "filter",
+    href: "#/admin/settings",
+    permission: "settings.manage",
+  },
+];
+
+function adminQuickTools() {
+  const tools = ADMIN_SHORTCUTS.filter((s) =>
+    !s.permission || can(s.permission)
+  );
+  if (!tools.length) return null;
+  return section(
+    "Management & Controls",
+    "Direct access to administrative management modules.",
+    tools.map((t) =>
+      h(
+        "a",
+        { class: "admin-quick-card", href: t.href },
+        h(
+          "div",
+          { class: "admin-quick-icon", "aria-hidden": "true" },
+          icon(t.icon),
+        ),
+        h(
+          "div",
+          { class: "admin-quick-info" },
+          h("div", { class: "admin-quick-title" }, t.label),
+          h("div", { class: "admin-quick-desc" }, t.desc),
+        ),
+        h(
+          "div",
+          { class: "admin-quick-arrow", "aria-hidden": "true" },
+          icon("chevronRight"),
+        ),
+      )
+    ),
+    h(
+      "span",
+      { class: "section-counter-badge is-neutral" },
+      `${tools.length} Modules`,
+    ),
   );
 }
 
@@ -143,7 +306,7 @@ function dashboardView(data, mode = "member") {
   const parts = [];
   if (mode === "admin") {
     const available = STAFF_CARDS.filter((c) => data[c.key] != null);
-    const cards = (items) =>
+    const cards = (items, kind) =>
       items.map((c) =>
         statCard({
           label: c.label,
@@ -153,28 +316,47 @@ function dashboardView(data, mode = "member") {
           href: c.href,
           attention: c.key !== "todays_bookings" && c.key !== "active_events" &&
             Number(data[c.key]) > 0,
+          kind,
         })
       );
     const approvals = available.filter((c) => c.key.startsWith("pending_"));
     const activity = available.filter((c) => !c.key.startsWith("pending_"));
+    const totalPending = approvals.reduce(
+      (sum, c) => sum + (Number(data[c.key]) || 0),
+      0,
+    );
     if (approvals.length) {
       parts.push(
         section(
-          "Approval queue",
-          "Membership, booking and payment requests.",
-          cards(approvals),
+          "Approval Queue",
+          "Membership, court booking, and payment requests awaiting administrator action.",
+          cards(approvals, "pending"),
+          totalPending > 0
+            ? h(
+              "span",
+              { class: "section-counter-badge is-warning" },
+              `${totalPending} Pending`,
+            )
+            : h(
+              "span",
+              { class: "section-counter-badge is-success" },
+              "Queue Clear",
+            ),
         ),
       );
     }
     if (activity.length) {
       parts.push(
         section(
-          "Club activity",
-          "Today's bookings and events in progress.",
-          cards(activity),
+          "Club Activity",
+          "Today's confirmed court bookings and tournament events currently in progress.",
+          cards(activity, "activity"),
+          h("span", { class: "section-counter-badge is-neutral" }, "Today"),
         ),
       );
     }
+    const tools = adminQuickTools();
+    if (tools) parts.push(tools);
   } else if (data.member) {
     parts.push(
       section(
@@ -249,9 +431,20 @@ function heroView({ name, memberNo, role, mode = "member" }) {
         ? link("btn-secondary", "#/admin", "grid", "Admin console")
         : null,
     ];
+  const manilaDate = new Intl.DateTimeFormat("en-PH", {
+    timeZone: "Asia/Manila",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date());
+
   return h(
     "section",
-    { class: "dash-hero", "aria-label": "Welcome" },
+    {
+      class: `dash-hero${mode === "admin" ? " is-admin" : ""}`,
+      "aria-label": mode === "admin" ? "Admin dashboard overview" : "Welcome",
+    },
     h(
       "div",
       { class: "dash-hero-copy" },
@@ -259,15 +452,30 @@ function heroView({ name, memberNo, role, mode = "member" }) {
         "div",
         { class: "dash-hero-chips" },
         h("span", { class: "dash-chip is-role" }, icon("medal"), role),
-        memberNo
-          ? h("span", { class: "dash-chip" }, icon("idCard"), memberNo)
+        mode === "admin"
+          ? h(
+            "span",
+            { class: "dash-chip is-date" },
+            icon("calendar"),
+            manilaDate,
+          )
+          : (memberNo
+            ? h("span", { class: "dash-chip" }, icon("idCard"), memberNo)
+            : null),
+        mode === "admin"
+          ? h(
+            "span",
+            { class: "dash-chip is-status" },
+            h("span", { class: "status-dot-pulse", "aria-hidden": "true" }),
+            "Console Active",
+          )
           : null,
       ),
       h(
         "h1",
         { class: "dash-hero-title", id: "page-title", tabindex: "-1" },
         mode === "admin"
-          ? "Admin dashboard"
+          ? "Club Administration"
           : `${greeting()}${name ? ", " : ""}`,
         mode === "admin"
           ? null
@@ -279,7 +487,7 @@ function heroView({ name, memberNo, role, mode = "member" }) {
         "p",
         { class: "dash-hero-sub" },
         mode === "admin"
-          ? "Approvals, payments and bookings waiting on the club."
+          ? "Operational queue, booking authorizations, and real-time club metrics."
           : "Here is what is happening at Capitol Pickleball Club today.",
       ),
     ),
@@ -287,19 +495,94 @@ function heroView({ name, memberNo, role, mode = "member" }) {
   );
 }
 
-function loadingView() {
-  return h(
-    "div",
-    { class: "home-grid", "aria-busy": "true", "aria-label": "Loading" },
-    ...[1, 2, 3, 4].map(() =>
+function loadingView(mode = "member") {
+  const admin = mode === "admin";
+  const line = (kind) => h("span", { class: `dash-sk dash-sk-${kind}` });
+  const card = () =>
+    h(
+      "div",
+      {
+        class: `home-card is-loading${admin ? " member-stat-card" : ""}`,
+        "aria-hidden": "true",
+      },
+      ...(admin
+        ? [
+          h(
+            "div",
+            { class: "member-stat-main" },
+            line("icon"),
+            h(
+              "div",
+              { class: "member-stat-copy" },
+              line("value"),
+              line("label"),
+            ),
+            line("pill"),
+          ),
+        ]
+        : [
+          h(
+            "div",
+            { class: "home-card-top" },
+            line("label"),
+            line(admin ? "pill" : "icon"),
+          ),
+          h(
+            "div",
+            { class: "home-card-middle" },
+            line("value"),
+            admin ? line("icon") : null,
+          ),
+        ]),
       h(
         "div",
-        { class: "home-card is-loading" },
-        h("span", { class: "sk-line" }),
-        h("span", { class: "sk-line sk-wide" }),
-        h("span", { class: "sk-line sk-short" }),
-      )
-    ),
+        { class: "home-card-bottom" },
+        line("hint"),
+        admin ? line("link") : null,
+      ),
+    );
+  if (admin) {
+    return h(
+      "div",
+      {
+        class: "dash-skeleton",
+        role: "status",
+        "aria-busy": "true",
+        "aria-label": "Loading admin dashboard",
+      },
+      ...[3, 2].map((count) =>
+        h(
+          "div",
+          { class: "home-section", "aria-hidden": "true" },
+          h(
+            "div",
+            { class: "home-section-head" },
+            h(
+              "div",
+              { class: "home-section-titles" },
+              line("title"),
+              line("pill"),
+            ),
+            line("description"),
+          ),
+          h(
+            "div",
+            { class: "home-grid" },
+            ...Array.from({ length: count }, card),
+          ),
+        )
+      ),
+    );
+  }
+  return h(
+    "div",
+    {
+      class: "home-grid",
+      role: "status",
+      "aria-busy": "true",
+      "aria-label": "Loading dashboard",
+    },
+    ...Array.from({ length: 4 }, card),
   );
 }
 
@@ -1173,7 +1456,7 @@ export function createHomePages({ session, api }) {
     if (state.gate) return gatePage(state.gate);
 
     const name = (state.access?.display_name ?? "").split(/\s+/)[0];
-    const host = h("div", { class: "home-body" }, loadingView());
+    const host = h("div", { class: "home-body" }, loadingView(mode));
     const header = heroView({
       name,
       mode,
@@ -1186,9 +1469,10 @@ export function createHomePages({ session, api }) {
       header,
       host,
     );
+    if (mode === "admin") attachPagePattern(page);
 
     async function load() {
-      host.replaceChildren(loadingView());
+      host.replaceChildren(loadingView(mode));
       try {
         const data = await api.rpc("my_dashboard");
         if (!page.isConnected && !host.isConnected) return;
@@ -1198,19 +1482,64 @@ export function createHomePages({ session, api }) {
           role.replaceChildren(icon("medal"), data.role_name);
         }
       } catch (error) {
-        host.replaceChildren(
+        const errorCard = h(
+          "div",
+          { class: "card home-error", role: "alert" },
+          h("p", {}, error?.message ?? "We could not load your home page."),
           h(
             "div",
-            { class: "card home-error", role: "alert" },
-            h("p", {}, error?.message ?? "We could not load your home page."),
+            {
+              class: "actions",
+              style: "display: flex; gap: 8px; flex-wrap: wrap;",
+            },
             h(
               "button",
               { class: "btn btn-secondary", type: "button", onClick: load },
               icon("refresh"),
               "Try again",
             ),
+            isLocalDev
+              ? h(
+                "button",
+                {
+                  class: "btn btn-accent",
+                  type: "button",
+                  onClick: () => {
+                    const mockData = mode === "admin"
+                      ? {
+                        role_code: "admin",
+                        role_name: "Club Administrator",
+                        pending_members: 3,
+                        pending_proofs: 2,
+                        pending_bookings: 5,
+                        todays_bookings: 14,
+                        active_events: 2,
+                      }
+                      : {
+                        role_code: "member",
+                        role_name: "Member",
+                        member: {
+                          rank: { category: "Advanced", name: "Level 4.0" },
+                          upcoming_bookings: 2,
+                          next_booking: {
+                            court: "Court 1",
+                            starts_at: new Date().toISOString(),
+                            status: "confirmed",
+                          },
+                          open_registrations: 1,
+                          unread_notices: 0,
+                        },
+                      };
+                    host.replaceChildren(...dashboardView(mockData, mode));
+                  },
+                },
+                icon("check"),
+                "Preview with sample figures",
+              )
+              : null,
           ),
         );
+        host.replaceChildren(errorCard);
       }
     }
     load();

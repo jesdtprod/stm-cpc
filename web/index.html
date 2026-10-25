@@ -15,8 +15,49 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="shell.css" />
+    <link rel="stylesheet" href="buttons.css" />
   </head>
-  <body data-landing="true">
+  <body data-landing="true" data-booting="true">
+    <section id="startup" class="startup-screen" role="status"
+      aria-live="polite">
+      <canvas id="startup-pattern" class="cpc-hero-canvas"
+        aria-hidden="true"></canvas>
+      <svg id="startup-court" class="cpc-hero-court-watermark"
+        viewBox="0 0 900 420" fill="none" aria-hidden="true">
+        <rect x="30" y="30" width="840" height="360" rx="8" stroke="#163827"
+          stroke-width="1.5" stroke-opacity="0.45" />
+        <line x1="450" y1="15" x2="450" y2="405" stroke="#DFB756"
+          stroke-width="1.5" stroke-opacity="0.35" stroke-dasharray="6 4" />
+        <line x1="316" y1="30" x2="316" y2="390" stroke="#234735"
+          stroke-width="1.2" stroke-opacity="0.45" />
+        <line x1="584" y1="30" x2="584" y2="390" stroke="#234735"
+          stroke-width="1.2" stroke-opacity="0.45" />
+        <line x1="30" y1="210" x2="316" y2="210" stroke="#163827"
+          stroke-width="1.2" stroke-opacity="0.45" />
+        <line x1="584" y1="210" x2="870" y2="210" stroke="#163827"
+          stroke-width="1.2" stroke-opacity="0.45" />
+        <g fill="#DFB756" fill-opacity="0.3">
+          <circle cx="30" cy="30" r="3" />
+          <circle cx="870" cy="30" r="3" />
+          <circle cx="30" cy="390" r="3" />
+          <circle cx="870" cy="390" r="3" />
+        </g>
+      </svg>
+      <div class="startup-card">
+        <div class="startup-logo">
+          <img src="icons/cpc-logo.png" alt="Capitol Pickleball Club" width="64"
+            height="64" />
+        </div>
+        <span class="startup-brand">Capitol Pickleball Club</span>
+        <h1>Loading your account</h1>
+        <div class="startup-progress" role="progressbar"
+          aria-label="Loading your account">
+          <span></span>
+        </div>
+        <p
+          class="startup-message">Restoring your session and preparing your workspace.</p>
+      </div>
+    </section>
     <button type="button" class="skip" id="skip">Skip to content</button>
     <header class="app-header">
       <button
@@ -59,12 +100,9 @@
     </div>
     <nav class="mobile-bottom-nav" id="mobile-bottom-nav"
       aria-label="Mobile navigation"></nav>
-    <button type="button" class="btn btn-secondary admin-menu-trigger"
-      id="admin-menu-btn" aria-label="Open menu" aria-expanded="false"
-      aria-controls="side">Menu</button>
     <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
     <noscript>This app needs JavaScript.</noscript>
     <script src="vendor/supabase-js-2.118.0.umd.js"></script>
-    <script type="module" src="app.js"></script>
+    <script type="module" src="bootstrap.js"></script>
   </body>
 </html>
