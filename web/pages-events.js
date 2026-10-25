@@ -58,7 +58,7 @@ const EVENT_SELECT =
   "cancel_reason,divisions(id,status)";
 const DIVISION_SELECT =
   "id,name,category_id,format,gender,age_group,min_rank_id,max_rank_id,max_entries,status,cancel_reason," +
-  "format_snapshot,scoring_snapshot,category:categories(name)";
+  "format_snapshot,scoring_snapshot,category:categories(name),stages:division_stages(id,stage_no,status)";
 
 /** "2026-11-05T09:00" typed in the form (Manila time) -> an instant; "" -> null. */
 const toInstant = (v) => (v ? `${v}:00+08:00` : null);
@@ -769,6 +769,92 @@ export function createEventsPages({ api }) {
       });
     }
 
+    // ----------------------------------------------------------------- draw
+    const stageOne = (d) => (d.stages ?? []).find((s) => s.stage_no === 1);
+
+    async function runDraw(d) {
+      try {
+        await api.rpc("run_draw", { p_stage_id: stageOne(d).id });
+        toast("Draw made.", { tone: "success" });
+        await refresh();
+        const fresh = state.divisions.find((x) => x.id === d.id);
+        if (fresh) await drawModal(fresh);
+      } catch (e) {
+        toast(messageOf(e, "The draw did not work. Please try again."), {
+          tone: "danger",
+        });
+      }
+    }
+
+    /** Shows the drawn order. A redo needs a reason and is kept in the history. */
+    async function drawModal(d) {
+      let entries = [];
+      try {
+        entries = await api.read((c) =>
+          c.from("entries").select(
+            "id,seed,members:entry_members(member:members(person:persons(display_name)))",
+          ).eq("division_id", d.id).eq("status", "active").order("seed")
+        ) ?? [];
+      } catch {
+        entries = [];
+      }
+      const names = (e) =>
+        (e.members ?? []).map((m) => m.member?.person?.display_name).filter(
+          Boolean,
+        ).join(" & ") || "—";
+      const canRedo = stageOne(d)?.status === "drawn";
+      return openModal({
+        title: "Draw",
+        eyebrow: `${state.open.name} · ${d.name}`,
+        icon: "layers",
+        confirmLabel: canRedo ? "Redo the draw" : "Close",
+        destructive: canRedo,
+        body: h(
+          "div",
+          { class: "stack" },
+          h(
+            "p",
+            { class: "muted" },
+            "Made by the server from a random seed that is stored, so the draw can be checked later.",
+          ),
+          h(
+            "ol",
+            { class: "draw-list" },
+            ...entries.map((e) => h("li", {}, names(e))),
+          ),
+          canRedo
+            ? h(
+              "p",
+              { class: "muted" },
+              "Redoing the draw replaces this order. The old draw is kept in the history.",
+            )
+            : null,
+        ),
+        onConfirm: () => {
+          if (!canRedo) return;
+          setTimeout(() => redoDraw(d), 0);
+        },
+      });
+    }
+
+    function redoDraw(d) {
+      const key = api.newKey();
+      return reasonModal({
+        title: "Redo the draw",
+        eyebrow: d.name,
+        note:
+          "A new random draw replaces this one. Matches already scheduled from it are cancelled.",
+        confirmLabel: "Redo the draw",
+        run: (reason) =>
+          api.rpc("redo_draw", {
+            p_stage_id: stageOne(d).id,
+            p_reason: reason,
+            p_key: key,
+          }),
+        done: "Draw redone.",
+      });
+    }
+
     function cancelDivision(d) {
       return reasonModal({
         title: "Cancel this division",
@@ -848,6 +934,21 @@ export function createEventsPages({ api }) {
                 h(
                   "span",
                   { class: "row-actions" },
+                  r.status === "open" &&
+                    state.open.status === "registration_closed"
+                    ? iconButton({
+                      label: `Run the draw for ${r.name}`,
+                      icon: "shuffle",
+                      onClick: () => runDraw(r),
+                    })
+                    : null,
+                  ["drawn", "in_progress", "finalized"].includes(r.status)
+                    ? iconButton({
+                      label: `View the draw for ${r.name}`,
+                      icon: "eye",
+                      onClick: () => drawModal(r),
+                    })
+                    : null,
                   r.status === "open"
                     ? iconButton({
                       label: `Edit ${r.name}`,
