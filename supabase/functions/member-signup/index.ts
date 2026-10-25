@@ -65,6 +65,7 @@ const deps: Deps = {
     if (code === "invalid_credentials" || error?.status === 400) return "ok";
     return "unavailable";
   },
+  emailTaken: (email) => rpc<boolean>("signup_email_taken", { p_email: email }),
   allocateMemberNo: () => rpc<string>("signup_allocate_member_no"),
   createAuthUser: async (email, password) => {
     const { data, error } = await service.auth.admin.createUser({

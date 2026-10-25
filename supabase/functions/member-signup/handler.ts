@@ -26,6 +26,8 @@ export interface Deps {
   signupEnabled: () => Promise<boolean>;
   /** Verifies the Turnstile token with Auth. */
   checkCaptcha: (token: string) => Promise<"ok" | "failed" | "unavailable">;
+  /** True when a live member already uses this email address. */
+  emailTaken: (email: string) => Promise<boolean>;
   allocateMemberNo: () => Promise<string>;
   createAuthUser: (
     email: string,
@@ -199,6 +201,36 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         ok: false,
         code: "unavailable",
         message: "Sign-up is unavailable right now. Please try again shortly.",
+      },
+      origin,
+      deps,
+    );
+  }
+
+  // One email, one member. Asked only after the security check, so a bot cannot probe which addresses exist.
+  try {
+    if (await deps.emailTaken(data.email ?? "")) {
+      deps.log("signup.email_taken");
+      return reply(
+        409,
+        {
+          ok: false,
+          code: "email_taken",
+          message:
+            "That email is already used by another member. Sign in with it, or use a different email.",
+        },
+        origin,
+        deps,
+      );
+    }
+  } catch {
+    deps.log("signup.failed");
+    return reply(
+      503,
+      {
+        ok: false,
+        code: "unavailable",
+        message: "Sign-up could not be completed. Please try again shortly.",
       },
       origin,
       deps,

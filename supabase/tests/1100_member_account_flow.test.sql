@@ -70,14 +70,14 @@ create temp table brgy as select code from public.psgc_areas where level = 'bara
 grant select on brgy to public;
 select pg_temp.as_user((select u1 from fx));
 set local role authenticated;
-select throws_ok(format($f$select public.update_my_profile(null, '12345', null, '1 Test St', %L)$f$, (select code from brgy)), '22023', null, 'a short mobile number is refused');
-select throws_ok(format($f$select public.update_my_profile(null, null, null, '1 Test St', %L)$f$, (select code from brgy)), '22023', null, 'a mobile number is required');
+select throws_ok(format($f$select public.update_my_profile(null, '12345', 'fake.profile@example.test', '1 Test St', %L)$f$, (select code from brgy)), '22023', null, 'a short mobile number is refused');
+select throws_ok(format($f$select public.update_my_profile(null, null, 'fake.profile@example.test', '1 Test St', %L)$f$, (select code from brgy)), '22023', null, 'a mobile number is required');
 select throws_ok(format($f$select public.update_my_profile(null, '09171234567', 'not-an-email', '1 Test St', %L)$f$, (select code from brgy)), '22023', null, 'a bad email is refused');
-select throws_ok($$select public.update_my_profile(null, '09171234567', null, '1 Test St', null)$$, '22023', null, 'a barangay is required');
-select throws_ok($$select public.update_my_profile(null, '09171234567', null, '1 Test St', '999999999')$$, '22023', null, 'an unknown barangay is refused');
-select throws_ok(format($f$select public.update_my_profile(null, '09171234567', null, %L, %L)$f$, repeat('x', 201), (select code from brgy)), '22023', null, 'a long street line is refused');
-select throws_ok(format($f$select public.update_my_profile('x', '09171234567', null, null, %L)$f$, (select code from brgy)), '22023', null, 'a one-letter name is refused');
-select throws_ok(format($f$select public.update_my_profile(null, '09171234567', null, null, (select code from public.psgc_areas where level = 'city_muni' limit 1))$f$), '22023', null, 'a city code is not a barangay');
+select throws_ok($$select public.update_my_profile(null, '09171234567', 'fake.profile@example.test', '1 Test St', null)$$, '22023', null, 'a barangay is required');
+select throws_ok($$select public.update_my_profile(null, '09171234567', 'fake.profile@example.test', '1 Test St', '999999999')$$, '22023', null, 'an unknown barangay is refused');
+select throws_ok(format($f$select public.update_my_profile(null, '09171234567', 'fake.profile@example.test', %L, %L)$f$, repeat('x', 201), (select code from brgy)), '22023', null, 'a long street line is refused');
+select throws_ok(format($f$select public.update_my_profile('x', '09171234567', 'fake.profile@example.test', null, %L)$f$, (select code from brgy)), '22023', null, 'a one-letter name is refused');
+select throws_ok(format($f$select public.update_my_profile(null, '09171234567', 'fake.profile@example.test', null, (select code from public.psgc_areas where level = 'city_muni' limit 1))$f$), '22023', null, 'a city code is not a barangay');
 reset role;
 select is((select status from public.members where id = (select mem1 from fx)), 'invited', 'a refused edit changes nothing');
 
@@ -109,21 +109,21 @@ select is((select count(*)::int from public.member_status_events where member_id
 -- the other order: profile first, password later
 select pg_temp.as_user((select u2 from fx));
 set local role authenticated;
-select throws_ok(format($f$select public.update_my_profile(null, '09171234567', null, null, %L)$f$, (select code from brgy)), '42501', null, 'a member who never signed in (still imported) cannot edit yet');
+select throws_ok(format($f$select public.update_my_profile(null, '09171234567', 'fake.profile@example.test', null, %L)$f$, (select code from brgy)), '42501', null, 'a member who never signed in (still imported) cannot edit yet');
 reset role;
 select core.member_login_succeeded((select mem2 from fx));
 select core.member_password_changed((select mem2 from fx));
 select is((select status from public.members where id = (select mem2 from fx)), 'invited', 'password changed but profile incomplete: still invited');
 select pg_temp.as_user((select u2 from fx));
 set local role authenticated;
-select lives_ok(format($f$select public.update_my_profile(null, '0917 123 4568', null, null, %L)$f$, (select code from brgy)), 'then the profile is completed');
+select lives_ok(format($f$select public.update_my_profile(null, '0917 123 4568', 'fake.profile@example.test', null, %L)$f$, (select code from brgy)), 'then the profile is completed');
 select is((select status from public.my_access_state()), 'pending_approval', 'and the member moves to pending approval');
 reset role;
 
 -- an active member can edit their profile; nobody can edit someone else's
 select pg_temp.as_user((select u3 from fx));
 set local role authenticated;
-select lives_ok(format($f$select public.update_my_profile(null, '09171234569', null, 'Block 1', %L)$f$, (select code from brgy)), 'an approved-stage member can edit their profile');
+select lives_ok(format($f$select public.update_my_profile(null, '09171234569', 'fake.profile3@example.test', 'Block 1', %L)$f$, (select code from brgy)), 'an approved-stage member can edit their profile');
 reset role;
 select is((select mobile from public.persons where id = (select per3 from fx)), '09171234569', 'their own row changed');
 select is((select mobile from public.persons where id = (select per2 from fx)), '09171234568', 'and no one else''s changed');
@@ -138,7 +138,7 @@ select is((select count(*)::int from core.member_password_context(gen_random_uui
 update public.members set status = 'archived' where id = (select mem3 from fx);
 select pg_temp.as_user((select u3 from fx));
 set local role authenticated;
-select throws_ok(format($f$select public.update_my_profile(null, '09171234569', null, null, %L)$f$, (select code from brgy)), '42501', null, 'an archived member cannot edit their profile');
+select throws_ok(format($f$select public.update_my_profile(null, '09171234569', 'fake.profile@example.test', null, %L)$f$, (select code from brgy)), '42501', null, 'an archived member cannot edit their profile');
 reset role;
 
 select * from finish();

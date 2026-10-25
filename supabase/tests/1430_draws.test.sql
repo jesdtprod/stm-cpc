@@ -167,7 +167,7 @@ insert into public.matches (id, org_id, division_stage_id, round_no, match_no, e
 select (select m2 from fx), (select org from fx), (select s1 from stg), 1, 2, (select r -> 'order' ->> 2 from d2), (select r -> 'order' ->> 3 from d2), 'scheduled';
 update public.matches set status = 'in_progress' where id = (select m2 from fx);
 select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
-select throws_ok(format($f$select public.redo_draw(%L, 'Too late', %L)$f$, (select s1 from stg), (select core.ulid())), '22023', 'a match has already started; the draw cannot be redone', 'a draw cannot be redone after a match has started');
+select throws_ok(format($f$select public.redo_draw(%L, 'Too late', %L)$f$, (select s1 from stg), (select core.ulid())), '22023', 'the stage is already under way and cannot be redrawn', 'a draw cannot be redone after a match has started');
 reset role;
 
 -- the stored seed is for staff; members see the outcome through the entries and matches

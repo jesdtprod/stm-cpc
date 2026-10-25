@@ -30,7 +30,7 @@ select is(has_column_privilege('authenticated', 'public.persons', 'middle_name',
 -- ---- the profile function with the new fields
 select pg_temp.as_user((select u1 from fx));
 set local role authenticated;
-select lives_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', null, 'Block 1', %L,
+select lives_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', 'fake.profile@example.test', 'Block 1', %L,
   '  Fake  ', ' Middle ', 'Person', 'Jr.', 'female', 'Fake Contact', 'Parent', '0918 765 4321')$f$, (select code from brgy)), 'all the details can be saved');
 select is((select first_name from public.my_access_state()), 'Fake', 'the first name is saved, tidied');
 select is((select middle_name from public.my_access_state()), 'Middle', 'and the middle name');
@@ -44,20 +44,20 @@ select is((select date_of_birth from public.my_access_state()), '1990-02-03'::da
 select is((select profile_complete from public.my_access_state()), true, 'the profile is complete');
 
 -- null keeps, empty string clears
-select lives_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', null, 'Block 1', %L)$f$, (select code from brgy)), 'the original five arguments still work');
+select lives_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', 'fake.profile@example.test', 'Block 1', %L)$f$, (select code from brgy)), 'the original five arguments still work');
 select is((select middle_name from public.my_access_state()), 'Middle', 'and leave the other details as they were');
-select lives_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', null, 'Block 1', %L, null, '', null, '', '', '', '', '')$f$, (select code from brgy)), 'empty strings clear optional details');
+select lives_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', 'fake.profile@example.test', 'Block 1', %L, null, '', null, '', '', '', '', '')$f$, (select code from brgy)), 'empty strings clear optional details');
 select is((select middle_name from public.my_access_state()), null, 'the middle name is cleared');
 select is((select suffix from public.my_access_state()), null, 'the suffix is cleared');
 select is((select emergency_name from public.my_access_state()), null, 'the emergency contact is cleared');
 select is((select first_name from public.my_access_state()), 'Fake', 'while null left the first name alone');
 
 -- validation
-select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', null, null, %L, null, null, null, 'Esq')$f$, (select code from brgy)), '22023', null, 'an unknown suffix is refused');
-select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', null, null, %L, null, null, null, null, 'x')$f$, (select code from brgy)), '22023', null, 'an unknown gender is refused');
-select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', null, null, %L, null, null, null, null, null, 'Only A Name', null, '')$f$, (select code from brgy)), '22023', null, 'an emergency contact needs a number with the name');
-select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', null, null, %L, null, null, null, null, null, 'Name', null, '12')$f$, (select code from brgy)), '22023', null, 'a short emergency number is refused');
-select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', null, null, %L, %L)$f$, (select code from brgy), repeat('y', 61)), '22023', null, 'an over-long name part is refused');
+select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', 'fake.profile@example.test', null, %L, null, null, null, 'Esq')$f$, (select code from brgy)), '22023', null, 'an unknown suffix is refused');
+select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', 'fake.profile@example.test', null, %L, null, null, null, null, 'x')$f$, (select code from brgy)), '22023', null, 'an unknown gender is refused');
+select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', 'fake.profile@example.test', null, %L, null, null, null, null, null, 'Only A Name', null, '')$f$, (select code from brgy)), '22023', null, 'an emergency contact needs a number with the name');
+select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', 'fake.profile@example.test', null, %L, null, null, null, null, null, 'Name', null, '12')$f$, (select code from brgy)), '22023', null, 'a short emergency number is refused');
+select throws_ok(format($f$select public.update_my_profile('Fake Detail Person', '09171234567', 'fake.profile@example.test', null, %L, %L)$f$, (select code from brgy), repeat('y', 61)), '22023', null, 'an over-long name part is refused');
 reset role;
 
 -- audit masks the emergency contact

@@ -196,6 +196,7 @@ function world(over = {}) {
       s.deleted.push(id);
       return Promise.resolve();
     },
+    emailTaken: () => Promise.resolve(Boolean(over.emailTaken)),
     createMember: (no, data, uid) => {
       if (over.dbFails) return Promise.reject(new Error("db"));
       s.members.push({ no, data, uid });
@@ -326,6 +327,14 @@ Deno.test("signup: if the database step fails the Auth user is removed and the a
   const authDown = world({ authFails: true });
   assert.equal((await run(authDown.deps, GOOD)).status, 503);
   assert.equal(authDown.s.deleted.length, 0);
+});
+
+Deno.test("signup: an email another member already uses is refused before anything is created", async () => {
+  const { deps, s } = world({ emailTaken: true });
+  const r = await run(deps, GOOD);
+  assert.equal(r.status, 409);
+  assert.equal(r.body.code, "email_taken");
+  assert.equal(s.users.length + s.members.length + s.numbers, 0);
 });
 
 Deno.test("signup: origin, method, body size and shape", async () => {

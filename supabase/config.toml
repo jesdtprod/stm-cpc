@@ -431,6 +431,11 @@ enabled = true
 verify_jwt = false
 import_map = ""
 
+[functions.member-reset]
+enabled = true
+verify_jwt = false
+import_map = ""
+
 [functions.member-signup]
 enabled = true
 verify_jwt = false

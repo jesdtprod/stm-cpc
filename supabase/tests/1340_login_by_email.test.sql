@@ -18,7 +18,10 @@ end $$;
 
 select pg_temp.mk('CPC-2026-9601', 'Solo.Person@Example.Test', true);
 select pg_temp.mk('CPC-2026-9602', 'family@example.test', true);
+-- shared addresses exist from before the one-email rule (1440), so the second family member is added around it
+set local session_replication_role = replica;
 select pg_temp.mk('CPC-2026-9603', 'family@example.test', true);
+set local session_replication_role = origin;
 select pg_temp.mk('CPC-2026-9604', 'noaccount@example.test', false);
 
 select is(public.member_no_for_email('solo.person@example.test'), 'CPC-2026-9601', 'an address used by one member finds them');

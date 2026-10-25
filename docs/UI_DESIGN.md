@@ -75,12 +75,16 @@ Use this order when the section is applicable:
 
 ## 5. Buttons, inputs, dropdowns, and badges
 
+- Reusable button design: `web/buttons.css` is the sole owner of `.btn` appearance and states, using a flat finish without gradients or shadows. `button()` and `iconButton()` in `web/ui.js` and modal actions share `buttonClasses()` from `web/lib/buttons.js`. Use semantic variants (primary, secondary, accent, danger, warning, success, info, archive, restore, edit, outline, ghost, link); page CSS may control layout and width but must not override their flat finish. Default text buttons are 46px high with 12px corners; small and icon buttons are 36px with 10px corners. Pagination uses the same icon size. Large buttons are 48px. Header/menu/calendar controls retain their specialized layout, with the same flat finish. No button may add a gradient, box shadow, or text shadow in any state.
+
 - Use shared primary, secondary, destructive, and icon-button variants with consistent dimensions.
+- Pagination and table row actions keep their compact, flat finish in `web/buttons.css`, with 36px buttons and 10px corners; all other buttons also use solid fills without shadows.
 - Define default, hover, focus-visible, active, disabled, and pending states for every interactive component.
 - During submission, prevent duplicate actions and show clear progress without moving surrounding content.
 - All row action buttons must be icon-only. Provide a specific tooltip and accessible label, such as "Edit record" rather than just "Action".
 - Page actions and modal submission buttons retain readable text labels; the icon-only rule applies to row actions, not every button.
 - Use persistent field labels. Placeholders supplement labels; they do not replace them.
+- All new single-choice dropdowns use `selectField()` or `searchableSelect()` from `web/ui.js`; both provide the same searchable dropdown, animation, keyboard controls, disabled options, and native form validation. Supply an `id` and a label (or `ariaLabel`). Update existing controls with `.setOptions(options)` and `.value = selectedValue` instead of rebuilding them or styling native selects separately. `onChange` receives the backing select's change event; `onSelect(value, option)` is also available. Shared styles live in `web/styles.css`.
 - Place validation messages beside the affected field and preserve the user's entered values after an error.
 - Use the same dropdown and datepicker styling everywhere, including controls added dynamically.
 - Custom controls must support keyboard use, visible focus, correct roles, and expanded/selected states.
