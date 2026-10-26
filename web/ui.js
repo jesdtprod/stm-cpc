@@ -1875,17 +1875,78 @@ export function calendarDropdown(
         else emitDateTimeSelect();
       };
 
+      let amBtn;
+      let pmBtn;
+      let hrDisplay;
+      let minDisplay;
+      let periodBadge;
+      let hoursCol;
+      let minutesCol;
+
+      const updateTimeUI = (scrollIntoView = false) => {
+        if (hrDisplay) hrDisplay.textContent = selectedHour;
+        if (minDisplay) minDisplay.textContent = selectedMinute;
+        if (periodBadge) periodBadge.textContent = selectedPeriod;
+
+        if (amBtn) {
+          amBtn.classList.toggle("is-selected", selectedPeriod === "AM");
+          amBtn.setAttribute("aria-checked", selectedPeriod === "AM" ? "true" : "false");
+        }
+        if (pmBtn) {
+          pmBtn.classList.toggle("is-selected", selectedPeriod === "PM");
+          pmBtn.setAttribute("aria-checked", selectedPeriod === "PM" ? "true" : "false");
+        }
+
+        if (hoursCol) {
+          for (const btn of hoursCol.children) {
+            btn.classList.toggle(
+              "is-selected",
+              btn.getAttribute("data-hour") === selectedHour,
+            );
+          }
+          if (scrollIntoView) {
+            hoursCol.querySelector(".is-selected")?.scrollIntoView({
+              block: "center",
+              behavior: "smooth",
+            });
+          }
+        }
+
+        if (minutesCol) {
+          for (const btn of minutesCol.children) {
+            btn.classList.toggle(
+              "is-selected",
+              btn.getAttribute("data-minute") === selectedMinute,
+            );
+          }
+          if (scrollIntoView) {
+            minutesCol.querySelector(".is-selected")?.scrollIntoView({
+              block: "center",
+              behavior: "smooth",
+            });
+          }
+        }
+      };
+
+      const selectTimeValues = (hStr, mStr, pStr, scroll = false) => {
+        selectedHour = hStr;
+        selectedMinute = mStr;
+        selectedPeriod = pStr;
+        updateTimeUI(scroll);
+        emitTime();
+        displayText.textContent = formatDisplay();
+      };
+
       const hourBtns = hours.map((hStr) =>
         h("button", {
           type: "button",
           class: `calendar-time-btn${
             hStr === selectedHour ? " is-selected" : ""
           }`,
+          "data-hour": hStr,
           onClick: (e) => {
             e.stopPropagation();
-            selectedHour = hStr;
-            emitTime();
-            renderMonth();
+            selectTimeValues(hStr, selectedMinute, selectedPeriod);
           },
         }, hStr)
       );
@@ -1896,75 +1957,209 @@ export function calendarDropdown(
           class: `calendar-time-btn${
             mStr === selectedMinute ? " is-selected" : ""
           }`,
+          "data-minute": mStr,
           onClick: (e) => {
             e.stopPropagation();
-            selectedMinute = mStr;
-            emitTime();
-            renderMonth();
+            selectTimeValues(selectedHour, mStr, selectedPeriod);
           },
         }, mStr)
       );
 
-      const amBtn = h("button", {
+      amBtn = h("button", {
         type: "button",
-        class: `calendar-time-btn${
+        class: `calendar-time-period-btn${
           selectedPeriod === "AM" ? " is-selected" : ""
         }`,
+        role: "radio",
+        "aria-checked": selectedPeriod === "AM" ? "true" : "false",
         onClick: (e) => {
           e.stopPropagation();
-          selectedPeriod = "AM";
-          emitTime();
-          renderMonth();
+          selectTimeValues(selectedHour, selectedMinute, "AM");
         },
       }, "AM");
 
-      const pmBtn = h("button", {
+      pmBtn = h("button", {
         type: "button",
-        class: `calendar-time-btn${
+        class: `calendar-time-period-btn${
           selectedPeriod === "PM" ? " is-selected" : ""
         }`,
+        role: "radio",
+        "aria-checked": selectedPeriod === "PM" ? "true" : "false",
         onClick: (e) => {
           e.stopPropagation();
-          selectedPeriod = "PM";
-          emitTime();
-          renderMonth();
+          selectTimeValues(selectedHour, selectedMinute, "PM");
         },
       }, "PM");
+
+      const periodGroup = h(
+        "div",
+        {
+          class: "calendar-time-period-group",
+          role: "radiogroup",
+          "aria-label": "Time period",
+        },
+        amBtn,
+        pmBtn,
+      );
+
+      const headerTitle = h(
+        "div",
+        { class: "calendar-time-heading" },
+        h("span", { class: "calendar-time-icon" }, icon("clock")),
+        h("span", { class: "calendar-time-title" }, "Time"),
+      );
+
+      const timeHeader = h(
+        "div",
+        { class: "calendar-time-header" },
+        headerTitle,
+        periodGroup,
+      );
+
+      hrDisplay = h(
+        "span",
+        { class: "calendar-time-val-hour" },
+        selectedHour,
+      );
+      minDisplay = h(
+        "span",
+        { class: "calendar-time-val-min" },
+        selectedMinute,
+      );
+      periodBadge = h(
+        "span",
+        { class: "calendar-time-period-badge" },
+        selectedPeriod,
+      );
+
+      const displayCard = h(
+        "div",
+        { class: "calendar-time-display-card" },
+        h(
+          "div",
+          { class: "calendar-time-readout calendar-time-display" },
+          hrDisplay,
+          h("span", { class: "calendar-time-colon" }, ":"),
+          minDisplay,
+        ),
+        periodBadge,
+      );
+
+      const applyNow = () => {
+        const now = new Date();
+        let h24 = now.getHours();
+        const p = h24 >= 12 ? "PM" : "AM";
+        h24 = h24 % 12 || 12;
+        const hStr = String(h24).padStart(2, "0");
+        const mRounded = Math.round(now.getMinutes() / 5) * 5;
+        const mStr = String(mRounded >= 60 ? 55 : mRounded).padStart(2, "0");
+        selectTimeValues(hStr, mStr, p, true);
+      };
+
+      const presetChip = (chipLabel, hStr, mStr, pStr) =>
+        h(
+          "button",
+          {
+            type: "button",
+            class: "preset-chip",
+            onClick: (e) => {
+              e.stopPropagation();
+              selectTimeValues(hStr, mStr, pStr, true);
+            },
+          },
+          chipLabel,
+        );
+
+      const timePresetsBar = h(
+        "div",
+        { class: "calendar-time-presets" },
+        h(
+          "button",
+          {
+            type: "button",
+            class: "preset-chip",
+            onClick: (e) => {
+              e.stopPropagation();
+              applyNow();
+            },
+          },
+          "Now",
+        ),
+        presetChip("8:00 AM", "08", "00", "AM"),
+        presetChip("1:00 PM", "01", "00", "PM"),
+        presetChip("6:00 PM", "06", "00", "PM"),
+      );
+
+      const colLabels = h(
+        "div",
+        { class: "calendar-time-col-labels" },
+        h("span", {}, "Hour"),
+        h("span", {}, "Minute"),
+      );
+
+      hoursCol = h(
+        "div",
+        { class: "calendar-time-col hours-col" },
+        ...hourBtns,
+      );
+      minutesCol = h(
+        "div",
+        { class: "calendar-time-col minutes-col" },
+        ...minBtns,
+      );
+
+      const columnsGrid = h(
+        "div",
+        { class: "calendar-time-columns" },
+        hoursCol,
+        minutesCol,
+      );
+
+      const actionsBar = h(
+        "div",
+        { class: "calendar-time-actions" },
+        h(
+          "button",
+          {
+            type: "button",
+            class: "preset-now-btn",
+            onClick: (e) => {
+              e.stopPropagation();
+              applyNow();
+            },
+          },
+          "Now",
+        ),
+        button({
+          label: "Done",
+          variant: "primary",
+          size: "sm",
+          onClick: (e) => {
+            e.stopPropagation();
+            toggleCalendar(false);
+          },
+        }),
+      );
 
       const timePane = h(
         "div",
         { class: "calendar-time-pane" },
-        h(
-          "div",
-          { class: "calendar-time-header" },
-          h("span", { class: "calendar-time-title" }, "Time"),
-          h(
-            "span",
-            { class: "calendar-time-display" },
-            `${selectedHour}:${selectedMinute} ${selectedPeriod}`,
-          ),
-        ),
-        h(
-          "div",
-          { class: "calendar-time-columns" },
-          h("div", { class: "calendar-time-col hours-col" }, ...hourBtns),
-          h("div", { class: "calendar-time-col minutes-col" }, ...minBtns),
-          h("div", { class: "calendar-time-col period-col" }, amBtn, pmBtn),
-        ),
-        h(
-          "div",
-          { class: "calendar-time-actions" },
-          button({
-            label: "Done",
-            variant: "primary",
-            size: "sm",
-            onClick: (e) => {
-              e.stopPropagation();
-              toggleCalendar(false);
-            },
-          }),
-        ),
+        timeHeader,
+        displayCard,
+        timeOnly ? timePresetsBar : null,
+        colLabels,
+        columnsGrid,
+        actionsBar,
       );
+
+      requestAnimationFrame(() => {
+        hoursCol.querySelector(".is-selected")?.scrollIntoView({
+          block: "center",
+        });
+        minutesCol.querySelector(".is-selected")?.scrollIntoView({
+          block: "center",
+        });
+      });
 
       if (timeOnly) {
         popover.append(timePane);

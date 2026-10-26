@@ -65,6 +65,20 @@ Deno.test("slot grid: a court's own hours beat the all-courts hours, and dates a
   );
 });
 
+Deno.test("slot grid: end-of-day hours include the 11 PM to midnight slot", () => {
+  for (const closing of ["23:59", "23:59:59"]) {
+    const slots = buildSlots({
+      day: DAY,
+      courtId: "C2",
+      hours: [{ ...hours[0], closes_at: closing }],
+      slotMinutes: 60,
+      now,
+    });
+    assert.equal(timeLabel(slots.at(-1).start), "11:00 PM");
+    assert.equal(slots.at(-1).end.toISOString(), "2030-02-04T16:00:00.000Z");
+  }
+});
+
 Deno.test("slot grid: one slot per hour from opening to closing", () => {
   const slots = buildSlots({
     day: DAY,

@@ -142,6 +142,26 @@ export function createCourtsPages({ api, getOrgId }) {
     const courtName = (id) =>
       id ? (state.courts.find((c) => c.id === id)?.name ?? "—") : "All Courts";
 
+    const courtCell = (id) => {
+      const court = id ? state.courts.find((c) => c.id === id) : null;
+      return h(
+        "div",
+        { class: "member-cell" },
+        h("span", {
+          class: "member-avatar is-icon",
+          "aria-hidden": "true",
+        }, icon("grid")),
+        h(
+          "div",
+          { class: "member-meta" },
+          h("span", { class: "member-name" }, courtName(id)),
+          court
+            ? h("span", { class: "sub member-subtext" }, court.code)
+            : null,
+        ),
+      );
+    };
+
     // ------------------------------------------------------------- form kit
     const errorLine = () =>
       h("p", { class: "field-error form-error", role: "alert", hidden: true });
@@ -877,11 +897,6 @@ export function createCourtsPages({ api, getOrgId }) {
       return h(
         "div",
         { class: "stack" },
-        h(
-          "p",
-          { class: "muted" },
-          'Hours for a specific court replace the "All Courts" hours for that court and day.',
-        ),
         dataTable({
           searchState: state,
           filter: tabsHost,
@@ -891,7 +906,7 @@ export function createCourtsPages({ api, getOrgId }) {
               {
                 key: "court",
                 label: "Court",
-                render: (r) => courtName(r.court_id),
+                render: (r) => courtCell(r.court_id),
               },
               { key: "day", label: "Day", render: (r) => DAY_NAME[r.weekday] },
               {
@@ -1110,11 +1125,6 @@ export function createCourtsPages({ api, getOrgId }) {
       return h(
         "div",
         { class: "stack" },
-        h(
-          "p",
-          { class: "muted" },
-          "To change a price, add a new rate that starts on a date, and end the old one. Past bookings keep the price they were booked at.",
-        ),
         dataTable({
           searchState: state,
           filter: tabsHost,
@@ -1124,7 +1134,7 @@ export function createCourtsPages({ api, getOrgId }) {
               {
                 key: "court",
                 label: "Court",
-                render: (r) => courtName(r.court_id),
+                render: (r) => courtCell(r.court_id),
               },
               {
                 key: "when",
@@ -1204,8 +1214,7 @@ export function createCourtsPages({ api, getOrgId }) {
         title: "New Blackout",
         eyebrow: "Blackouts",
         icon: "alert",
-        description:
-          "Block a court or all courts during maintenance or events.",
+        description: "Block a court or all courts during maintenance.",
         confirmLabel: "Add Blackout",
         body: h(
           "div",
@@ -1328,7 +1337,7 @@ export function createCourtsPages({ api, getOrgId }) {
             {
               key: "court",
               label: "Court",
-              render: (r) => courtName(r.court_id),
+              render: (r) => courtCell(r.court_id),
             },
             {
               key: "when",
@@ -1378,7 +1387,7 @@ export function createCourtsPages({ api, getOrgId }) {
         onRetry: refresh,
         emptyTitle: "No Blackouts",
         emptyText:
-          "Add a blackout when a court cannot be booked, for example for maintenance or an event.",
+          "Add a blackout when a court cannot be booked, for example for maintenance.",
       });
     }
 

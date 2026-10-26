@@ -295,6 +295,7 @@ route(
 
 const shell = createShell({
   session,
+  client,
   checkAccess,
   routeAccess,
   gatePages: GATE_PAGES,

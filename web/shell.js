@@ -4,6 +4,7 @@
 import { button, h, icon, openModal } from "./ui.js";
 import { MEMBER_SHORTCUTS } from "./lib/member-shortcuts.js";
 import { isAdminAccount } from "./lib/permissions.js";
+import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 
 // Each entry uses the access rule of its own route, so a user sees exactly the pages they can open.
 // `gated: true` entries stay visible while a user is held at a gate (password change, waiting for approval).
@@ -105,7 +106,7 @@ const unreadBadge = (path) => {
 };
 
 export function createShell(
-  { session, checkAccess, routeAccess, gatePages },
+  { session, client, checkAccess, routeAccess, gatePages },
 ) {
   const el = (id) => document.getElementById(id);
   const menuBtn = el("menu-btn");
@@ -244,6 +245,20 @@ export function createShell(
     }
     const name = state.access?.display_name || "My Account";
     const memberNo = state.access?.member_no ?? "";
+    const avatar = h(
+      "span",
+      { class: "account-avatar", "aria-hidden": "true" },
+      avatarImage(null, name),
+    );
+    const avatarPath = state.access?.avatar_path;
+    if (client && avatarPath) {
+      signedAvatarUrls(client, [avatarPath]).then((urls) => {
+        const url = urls.get(avatarPath);
+        if (url && avatar.isConnected) {
+          avatar.replaceChildren(avatarImage(url, name));
+        }
+      });
+    }
     toggle = h(
       "button",
       {
@@ -255,11 +270,7 @@ export function createShell(
         "aria-controls": "account-menu",
         onClick: () => setMenu(!menuOpen),
       },
-      h(
-        "span",
-        { class: "account-avatar", "aria-hidden": "true" },
-        initials(name),
-      ),
+      avatar,
       h(
         "span",
         { class: "account-text" },

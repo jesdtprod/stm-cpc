@@ -256,6 +256,7 @@ export function createBookingAdminPages({ api, client }) {
     const page = h("div", {
       class: "page admin-dashboard admin-members-page admin-bookings-page",
     });
+    attachPagePattern(page);
     const kpis = h("div", { class: "home-grid kpis" });
     const tabsHost = h("div", { class: "member-status-filter" });
     const tableHost = h("div", { class: "table-host" });

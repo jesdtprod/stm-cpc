@@ -55,5 +55,16 @@ select public.request_booking(core.ulid(), (select court from fx), (select t0 fr
 select is((select public.quote_booking((select court from fx), (select t0 from fx), 60) ->> 'problem'), 'That time was just taken.', 'a taken slot is explained');
 reset role;
 
+-- The quote and request must agree on the end-of-day marker used by the UI.
+set local role authenticated;
+select is((select public.quote_booking((select court from fx), (select t0 from fx) + interval '13 hours', 60) ->> 'ok'), 'false', 'midnight quote is refused when the court closes at 21:00');
+select throws_ok(format($f$select public.request_booking(%L, %L, %L, 60, '{}')$f$, core.ulid(), (select court from fx), (select t0 from fx) + interval '13 hours'), '22023', null, 'midnight request is refused when the court closes at 21:00');
+reset role;
+update public.court_hours set closes_at = '23:59' where court_id = (select court from fx);
+set local role authenticated;
+select is((select public.quote_booking((select court from fx), (select t0 from fx) + interval '13 hours', 60) ->> 'ok'), 'true', 'midnight quote is allowed for 23:59 closing hours');
+select lives_ok(format($f$select public.request_booking(%L, %L, %L, 60, '{}')$f$, core.ulid(), (select court from fx), (select t0 from fx) + interval '13 hours'), 'an 11 PM request ending at midnight succeeds');
+reset role;
+
 select * from finish();
 rollback;

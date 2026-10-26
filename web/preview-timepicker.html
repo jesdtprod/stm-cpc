@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Time Picker Redesign Preview</title>
+  <link rel="stylesheet" href="./buttons.css">
+  <link rel="stylesheet" href="./shell.css">
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    body {
+      background: #07130E;
+      color: #F5F9F6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      min-height: 100vh;
+    }
+    .header-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: #15803D;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+    }
+    .preview-container {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+    .preview-box {
+      background: #0E2218;
+      border: 1px solid #234735;
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 480px;
+    }
+    .preview-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9EB5A7;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-area">
+    <div class="logo-badge">CPC</div>
+    <div>
+      <h1 style="font-size: 18px; font-weight: 700; margin: 0;">Time Picker Redesign</h1>
+      <p style="font-size: 12px; color: #9EB5A7; margin: 2px 0 0 0;">Capitol Pickleball Club UI System</p>
+    </div>
+  </div>
+
+  <div class="preview-container">
+    <div class="preview-box">
+      <div class="preview-title">Time Only (Standalone Popover)</div>
+      <div id="time-only-target"></div>
+    </div>
+    <div class="preview-box">
+      <div class="preview-title">Date &amp; Time (Integrated Popover)</div>
+      <div id="datetime-target"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { timeField, dateTimeField } from './ui.js';
+
+    const tField = timeField({
+      id: 'preview-time',
+      label: 'Court Start Time',
+      value: '12:00',
+      hint: 'Select the hour and minute block.',
+    });
+    document.getElementById('time-only-target').appendChild(tField);
+
+    const dtField = dateTimeField({
+      id: 'preview-datetime',
+      label: 'Match Check-in Instant',
+      value: '2026-10-26T12:00',
+      hint: 'Inclusive date and time slot.',
+    });
+    document.getElementById('datetime-target').appendChild(dtField);
+
+    // Open popovers after mount
+    setTimeout(() => {
+      document.querySelectorAll('.calendar-drop-trigger').forEach(btn => btn.click());
+    }, 150);
+  </script>
+</body>
+</html>

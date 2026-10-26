@@ -1629,7 +1629,6 @@ export function createHomePages({ session, api, client }) {
       "div",
       { class: "cpc-landing" },
       heroSection,
-      landingInfoSection(),
     );
 
     setupConvexPatternCanvas(canvasEl, landingEl, watermarkEl);
