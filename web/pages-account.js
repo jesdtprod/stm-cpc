@@ -793,6 +793,15 @@ export function createAccountPages(
       me.gender,
       "Prefer not to say",
     );
+    const duprId = field({
+      id: "pf-dupr-id",
+      label: "DUPR ID (optional)",
+      value: me.dupr_id ?? "",
+      hint:
+        "Enter the ID from your DUPR profile. This does not verify your account or sync ratings.",
+    });
+    duprId.querySelector("input").setAttribute("maxlength", "32");
+    duprId.querySelector("input").setAttribute("autocapitalize", "characters");
     const metaBirthDd = h("dd", {}, formatDate(me.date_of_birth) || "—");
     const birth = calendarDropdown({
       id: "pf-birth",
@@ -1294,6 +1303,7 @@ export function createAccountPages(
         gender.node,
         birth,
       ),
+      duprId,
     );
 
     const contactCard = h(
@@ -1451,6 +1461,10 @@ export function createAccountPages(
         if (!barangay.sel.value) {
           missing.push("Choose your province, city and barangay.");
         }
+        const duprValue = inputValue(duprId).trim().toUpperCase();
+        if (duprValue && !/^[A-Z0-9]{1,32}$/.test(duprValue)) {
+          missing.push("Enter a DUPR ID using 1 to 32 letters or numbers.");
+        }
         if (missing.length) return showError(error, missing);
         const dobVal = inputValue(birth).trim() || null;
         try {
@@ -1468,24 +1482,10 @@ export function createAccountPages(
             p_emergency_name: inputValue(emName),
             p_emergency_relationship: inputValue(emRel),
             p_emergency_phone: inputValue(emPhone),
+            p_dupr_id: duprValue,
+            p_date_of_birth: dobVal,
           };
-          try {
-            await api.rpc("update_my_profile", {
-              ...payload,
-              p_date_of_birth: dobVal,
-            });
-          } catch (rpcErr) {
-            if (
-              rpcErr?.code === "PGRST202" ||
-              String(rpcErr?.cause?.message || rpcErr?.message || "").includes(
-                "p_date_of_birth",
-              )
-            ) {
-              await api.rpc("update_my_profile", payload);
-            } else {
-              throw rpcErr;
-            }
-          }
+          await api.rpc("update_my_profile", payload);
           await api.rpc("confirm_my_profile");
           await session.refresh();
           toast("Profile saved.", { tone: "success" });

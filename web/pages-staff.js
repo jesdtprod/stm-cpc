@@ -4,6 +4,7 @@
 // do is set up with the club and checked by the database on every call.
 import {
   adminHero,
+  adminStatCard,
   attachPagePattern,
   badge,
   button,
@@ -15,9 +16,10 @@ import {
   openModal,
   searchControl,
   selectControl,
-  tabs,
+  tableFilter,
   toast,
 } from "./ui.js";
+import { avatarImage } from "./lib/avatar.js";
 
 const ASSIGNABLE = ["member", "referee", "front_desk", "manager", "admin"];
 const TONE = {
@@ -41,6 +43,10 @@ export function createStaffPages({ api }) {
     });
     attachPagePattern(page);
     const tabsHost = h("div", {});
+    const summary = h("div", {
+      class: "home-grid",
+      "aria-label": "Staff summary",
+    });
     const body = h("div", { class: "staff-body" });
     const state = { tab: "staff", status: "loading", staff: [], roles: [] };
     const addBtn = button({
@@ -435,20 +441,32 @@ export function createStaffPages({ api }) {
     function staffView() {
       return dataTable({
         searchState: state,
+        filter: tabsHost,
+        searchPlaceholder: "Search staff by name, member ID, or role…",
         schema: {
           columns: [
             {
               key: "name",
-              label: "Person",
+              label: "Member",
+              skeleton: "stack",
               render: (r) =>
                 h(
-                  "span",
-                  {},
-                  r.display_name,
+                  "div",
+                  { class: "member-cell" },
                   h(
                     "span",
-                    { class: "sub" },
-                    `${r.member_no}${r.is_self ? " · you" : ""}`,
+                    { class: "member-avatar", "aria-hidden": "true" },
+                    avatarImage(null, r.display_name),
+                  ),
+                  h(
+                    "div",
+                    { class: "member-meta" },
+                    h("span", { class: "member-name" }, r.display_name),
+                    h(
+                      "span",
+                      { class: "sub member-subtext" },
+                      `${r.member_no}${r.is_self ? " · you" : ""}`,
+                    ),
                   ),
                 ),
             },
@@ -459,8 +477,13 @@ export function createStaffPages({ api }) {
             },
             {
               key: "status",
-              label: "Membership",
-              render: (r) => r.status.replace("_", " "),
+              label: "Status",
+              skeleton: "badge-stack",
+              render: (r) =>
+                badge(
+                  r.status.replaceAll("_", " "),
+                  r.status === "active" ? "success" : "warning",
+                ),
             },
             {
               key: "actions",
@@ -493,7 +516,8 @@ export function createStaffPages({ api }) {
     function rolesView() {
       return h(
         "div",
-        { class: "stack" },
+        { class: "staff-role-catalog" },
+        tabsHost,
         h(
           "p",
           { class: "muted" },
@@ -538,11 +562,46 @@ export function createStaffPages({ api }) {
     }
 
     function draw() {
-      tabsHost.replaceChildren(tabs({
+      const loading = state.status === "loading";
+      const unavailable = state.status === "error";
+      summary.replaceChildren(
+        ...[
+          {
+            label: "Staff Members",
+            value: state.staff.length,
+            hint: "Members assigned a staff role",
+            iconName: "user",
+            tone: "emerald",
+          },
+          {
+            label: "Administrators",
+            value: state.staff.filter((r) => r.role_code === "admin").length,
+            hint: "Manage club access and role assignments",
+            iconName: "lock",
+            tone: "amber",
+          },
+          {
+            label: "Club Roles",
+            value: state.roles.length,
+            hint: "Defined roles and their permissions",
+            iconName: "file",
+            tone: "teal",
+          },
+        ].map((item) =>
+          adminStatCard({
+            ...item,
+            value: unavailable ? "—" : item.value,
+            loading,
+          })
+        ),
+      );
+      tabsHost.replaceChildren(tableFilter({
+        label: "Staff and role views",
         activeId: state.tab,
-        tabs: [{ id: "staff", label: "Staff" }, {
+        tabs: [{ id: "staff", label: "Staff", badge: state.staff.length }, {
           id: "roles",
           label: "Roles",
+          badge: state.roles.length,
         }],
         onChange: (id) => {
           state.tab = id;
@@ -552,6 +611,7 @@ export function createStaffPages({ api }) {
       addBtn.disabled = state.status !== "ready";
       if (state.status === "error") {
         body.replaceChildren(
+          tabsHost,
           h(
             "div",
             { class: "card home-error", role: "alert" },
@@ -578,9 +638,17 @@ export function createStaffPages({ api }) {
         chip: "Staff Management",
         description:
           "Who works for the club and what each role may do. Only an admin can change roles, and nobody can change their own.",
-        actions: [addBtn],
+        actions: [
+          button({
+            label: "Refresh List",
+            icon: "refresh",
+            variant: "secondary",
+            onClick: refresh,
+          }),
+          addBtn,
+        ],
       }),
-      tabsHost,
+      summary,
       body,
     );
     refresh();

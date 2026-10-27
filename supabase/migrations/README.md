@@ -63,5 +63,8 @@ history row.
 `1620_session_idle_30_minutes.sql` sets the inactivity timeout to 30 minutes.
 The app reads the setting at the next sign-in.
 
+`1630_profile_dupr_id.sql` adds the optional self-reported DUPR ID to the private
+profile read/save RPCs, with validation and uniqueness among active person records.
+
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in,
 linked CLI; no Docker).

@@ -138,6 +138,7 @@ Imported members start at `imported`. New sign-ups start directly at `pending_ap
 - Public Supabase sign-ups remain disabled; every account is created by an Edge Function.
 
 ### 4.5 Profile
+- Members may save or clear an optional, self-reported DUPR ID (letters and numbers, up to 32 characters). IDs are trimmed, stored uppercase, and unique among active person records within the club. Saving an ID does not verify ownership, fetch ratings, or change CPC ranks.
 - Members edit limited fields (display name, contact, preferences). They cannot edit member ID, status, rank, role, or approval data.
 - Minors require a guardian link and recorded consent/waiver acceptance (append-only).
 

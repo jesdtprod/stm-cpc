@@ -22,6 +22,11 @@ Preserve business logic, calculations, permissions, routes, data, and working in
 
 ### Members reference controls (approved October 25, 2026)
 
+Staff and Roles reuses the Members summary cards, full-width search with counted
+view pills below it, avatar initials with member IDs, status badges, and icon-only
+row actions. Its permission reference cards use two columns on desktop and one
+on mobile.
+
 The Members table shows the current category and rank in the Rank column (or
 Unranked), with the membership date as muted “Member since” subtext. Members
 without a joined date show “Not joined yet”.
@@ -273,6 +278,7 @@ Build skeletons from the actual page and table schema, not a generic loading rec
 - Never show "No records found" while a request is pending.
 - Keep loading, empty, error, refreshing, and populated states distinct.
 - Prevent stale requests from overwriting newer filters, accounts, or views.
+- Indeterminate progress bars (including app startup and upload bars) use continuous GPU-accelerated translateX transforms with soft alpha-feathered gradient tails and dual-phase emerald/gold illumination, eliminating abrupt rectangular edges, layout jitter, or ping-pong reversals.
 
 ## 11. Responsive and accessible interaction
 
