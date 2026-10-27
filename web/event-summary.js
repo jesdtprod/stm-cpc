@@ -35,7 +35,7 @@ export function eventSummary(event) {
   return [
     h(
       "div",
-      { class: "public-card-header" },
+      { class: "public-card-header event-summary-header" },
       h(
         "div",
         { class: "public-card-title-group" },
@@ -54,8 +54,10 @@ export function eventSummary(event) {
         "div",
         { class: "public-card-status" },
         badge(label, tone),
-        event.apply_cpc_rank_changes ? badge(cpc, "info") : null,
-        badge(dupr, event.dupr_rated ? "success" : "neutral"),
+        h("div", { class: "public-card-rating-status" },
+          event.apply_cpc_rank_changes ? badge(cpc, "info") : null,
+          badge(dupr, event.dupr_rated ? "success" : "neutral"),
+        ),
       ),
     ),
     h(
@@ -97,19 +99,29 @@ export function eventSummarySkeleton() {
   return [
     h(
       "div",
-      { class: "public-card-header" },
+      { class: "public-card-header event-summary-header" },
       h(
         "div",
         { class: "public-card-title-group" },
-        sk("sk-avatar"),
-        h("div", { class: "sk-group" }, sk("w-30 sk-sub"), sk("w-70")),
+        h("span", {
+          class: "sk section-icon member-event-icon",
+          style: "border-radius: var(--r-control);",
+        }),
+        h(
+          "div",
+          { class: "public-card-title-copy", style: "flex: 1;" },
+          sk("w-30 sk-sub public-card-eyebrow-skeleton"),
+          sk("w-70 public-card-title-skeleton"),
+        ),
       ),
       h(
         "div",
         { class: "public-card-status" },
-        sk("sk-pill"),
-        sk("sk-pill"),
-        sk("sk-pill"),
+        h("span", { class: "sk sk-pill", style: "width: 110px; height: 24px;" }),
+        h("div", { class: "public-card-rating-status" },
+          h("span", { class: "sk sk-pill", style: "width: 85px; height: 24px;" }),
+          h("span", { class: "sk sk-pill", style: "width: 95px; height: 24px;" }),
+        ),
       ),
     ),
     h(
@@ -119,8 +131,8 @@ export function eventSummarySkeleton() {
         h(
           "div",
           { class: i === 1 ? "public-meta-span2" : "" },
-          h("dt", {}, sk("w-50 sk-sub")),
-          h("dd", {}, sk()),
+          h("dt", {}, sk("w-40 sk-sub")),
+          h("dd", {}, sk("w-70")),
         )),
     ),
   ];

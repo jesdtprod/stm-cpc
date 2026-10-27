@@ -5,6 +5,7 @@
 import { attachPagePattern, h, icon } from "./ui.js";
 import { can, canAny, isAdminAccount } from "./lib/permissions.js";
 import { MEMBER_SHORTCUTS } from "./lib/member-shortcuts.js";
+import { memberMenuHidden } from "./lib/member-menu.js";
 import { isLocalDev } from "./dev.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 
@@ -303,7 +304,10 @@ const ADMIN_SHORTCUTS = [
 function quickTools(mode = "admin") {
   const tools = (mode === "admin" ? ADMIN_SHORTCUTS : MEMBER_SHORTCUTS).filter((
     s,
-  ) => !s.permission || can(s.permission));
+  ) =>
+    (!s.permission || can(s.permission)) &&
+    (mode === "admin" || !memberMenuHidden(s.href))
+  );
   if (!tools.length) return null;
   return section(
     mode === "admin" ? "Management & Controls" : "Quick Links",

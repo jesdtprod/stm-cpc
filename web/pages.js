@@ -52,23 +52,49 @@ function renderCourtCards(rows, state, onRetry) {
       ...Array.from({ length: 4 }, () =>
         h(
           "div",
-          { class: "public-card public-court-card sk-card", "aria-hidden": "true" },
+          { class: "public-card public-court-card", "aria-hidden": "true" },
           h(
             "div",
             { class: "public-court-header" },
             h(
               "div",
               { class: "public-court-title-group" },
-              sk("sk-avatar"),
-              h("div", { class: "sk-group" }, sk("w-50"), sk("w-30 sk-sub")),
+              h("span", {
+                class: "sk member-avatar is-icon public-court-avatar",
+                style: "border-radius: var(--r-control);",
+              }),
+              h(
+                "div",
+                { class: "public-court-title-copy", style: "flex: 1;" },
+                sk("w-50"),
+                sk("w-30 sk-sub"),
+              ),
             ),
-            sk("sk-pill"),
+            h("span", { class: "sk sk-pill", style: "width: 70px; height: 22px;" }),
           ),
           h(
             "div",
             { class: "public-court-meta" },
-            sk("w-70"),
-            sk("w-50"),
+            h(
+              "div",
+              { class: "public-court-meta-tile" },
+              sk("w-40 sk-sub"),
+              sk("w-70"),
+            ),
+            h(
+              "div",
+              { class: "public-court-meta-tile" },
+              sk("w-40 sk-sub"),
+              sk("w-70"),
+            ),
+          ),
+          h(
+            "div",
+            { class: "public-court-footer" },
+            h("span", {
+              class: "sk",
+              style: "width: 100%; height: 38px; border-radius: var(--r-control);",
+            }),
           ),
         )),
     );
@@ -176,11 +202,43 @@ function renderCourtCards(rows, state, onRetry) {
 
 function renderEventCards(rows, state, onRetry) {
   if (state === "loading") {
-    return h("div", { class: "public-cards-list", "aria-busy": "true" },
-      ...Array.from({ length: 2 }, () => h("div",
-        { class: "public-card public-event-card", "aria-hidden": "true" },
-        ...eventSummarySkeleton(),
-      )),
+    return h(
+      "div",
+      { class: "public-cards-list", "aria-busy": "true" },
+      ...Array.from({ length: 2 }, () =>
+        h(
+          "div",
+          { class: "public-card public-event-card", "aria-hidden": "true" },
+          ...eventSummarySkeleton(),
+          h(
+            "div",
+            { class: "public-card-footer" },
+            h(
+              "div",
+              { class: "public-card-footer-note" },
+              h("span", {
+                class: "sk",
+                style: "width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0;",
+              }),
+              h("span", {
+                class: "sk",
+                style: "width: 260px; max-width: 70%;",
+              }),
+            ),
+            h(
+              "div",
+              { class: "public-card-actions" },
+              h("span", {
+                class: "sk",
+                style: "width: 140px; height: 38px; border-radius: var(--r-control);",
+              }),
+              h("span", {
+                class: "sk",
+                style: "width: 88px; height: 38px; border-radius: var(--r-control);",
+              }),
+            ),
+          ),
+        )),
     );
   }
   if (state === "error") {

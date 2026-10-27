@@ -3,6 +3,7 @@
 // by the router and the database.
 import { attachPagePattern, button, h, icon, openModal } from "./ui.js";
 import { MEMBER_SHORTCUTS } from "./lib/member-shortcuts.js";
+import { memberMenuHidden } from "./lib/member-menu.js";
 import { isAdminAccount } from "./lib/permissions.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 
@@ -367,6 +368,7 @@ export function createShell(
           }
           if (n.onlyGate && n.onlyGate !== gate) return false;
           if (gate && !n.gated) return false;
+          if (view === "member" && memberMenuHidden(n.path)) return false;
           return checkAccess(routeAccess(n.path), gatePages).allow;
         }),
       }))
@@ -607,6 +609,7 @@ export function createShell(
               href: "#/",
             }),
             ...MEMBER_SHORTCUTS.filter((item) =>
+              !memberMenuHidden(item.href) &&
               checkAccess(routeAccess(item.href.slice(1)), gatePages).allow
             ).map((item) =>
               tab({

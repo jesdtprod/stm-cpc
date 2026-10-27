@@ -239,6 +239,37 @@ const GROUPS = [
     ],
   },
   {
+    id: "member_menu",
+    label: "Member Menu",
+    title: "Member Menu",
+    items: [
+      {
+        key: "member_menu.book",
+        type: "switch",
+        label: "Show Book a Court",
+        hint: "Off hides the link from the member menu and dashboard.",
+      },
+      {
+        key: "member_menu.bookings",
+        type: "switch",
+        label: "Show My Bookings",
+        hint: "Off hides the link from the member menu and dashboard.",
+      },
+      {
+        key: "member_menu.events",
+        type: "switch",
+        label: "Show Events",
+        hint: "Off hides the link from the member menu and dashboard.",
+      },
+      {
+        key: "member_menu.ranking",
+        type: "switch",
+        label: "Show Ranking",
+        hint: "Off hides the link from the member menu and dashboard.",
+      },
+    ],
+  },
+  {
     id: "security",
     label: "Security",
     title: "Security",

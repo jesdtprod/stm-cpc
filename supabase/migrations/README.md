@@ -115,3 +115,9 @@ immutable. Reload permissions after applying this migration to see admin actions
 `1700_public_landing_event_details.sql` enriches the public events payload in
 `public_landing_info` with tournament registration opening and closing timestamps,
 DUPR and CPC ranking flags, format template name and division counts.
+
+`1710_member_menu_settings.sql` adds four Settings switches (`member_menu.book`,
+`member_menu.bookings`, `member_menu.events`, `member_menu.ranking`, all on by
+default) that show or hide those links in the member side menu, dashboard quick
+links and shortcut tabs. Hiding is a convenience only; routes, RLS and
+permission codes are unchanged.

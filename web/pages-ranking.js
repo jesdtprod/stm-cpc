@@ -424,7 +424,6 @@ export function createRankingPages({ api, client, session }) {
         ],
         onChange: (id) => {
           state.tab = id;
-          if (id === "mine" && state.mineStatus === "loading") loadMine();
           draw();
         },
       }));
@@ -452,7 +451,9 @@ export function createRankingPages({ api, client, session }) {
       }),
       body,
     );
+    // both lists load up front so each tab's count is right before it is opened
     load();
+    loadMine();
     return page;
   }
 

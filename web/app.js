@@ -18,6 +18,7 @@ import {
 } from "./lib/permissions.js";
 import { CHANNEL, createSession } from "./lib/session.js";
 import { restoreSession } from "./lib/startup.js";
+import { MEMBER_MENU_SETTINGS, setMemberMenu } from "./lib/member-menu.js";
 import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
@@ -105,11 +106,17 @@ const session = createSession({
       api.rpc("my_profile"),
       api.rpc("my_access_state"),
       api.read((c) =>
-        c.from("settings").select("value").eq("key", "session.idle_minutes")
-          .is("unit_id", null).is("deleted_at", null).maybeSingle()
+        c.from("settings").select("key,value").in("key", [
+          "session.idle_minutes",
+          ...Object.keys(MEMBER_MENU_SETTINGS),
+        ]).is("unit_id", null).is("deleted_at", null)
       ).catch(() => null),
     ]);
-    idleMinutes = Number(idle?.value) > 0 ? Number(idle.value) : null;
+    const settingRows = Array.isArray(idle) ? idle : [];
+    const idleValue = settingRows.find((r) => r.key === "session.idle_minutes")
+      ?.value;
+    idleMinutes = Number(idleValue) > 0 ? Number(idleValue) : null;
+    setMemberMenu(settingRows);
     return { grants, profile: me?.[0] ?? null, access: state?.[0] ?? null };
   },
   channel: "BroadcastChannel" in globalThis
