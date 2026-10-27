@@ -21,6 +21,7 @@ import { createScoringPages } from "../../web/pages-scoring.js";
 import { createStaffPages } from "../../web/pages-staff.js";
 import { createBookingAdminPages } from "../../web/pages-bookings-admin.js";
 import { createMemberEventsPages } from "../../web/pages-events-member.js";
+import { createRankingPages } from "../../web/pages-ranking.js";
 import { clearAuth, setAuth } from "../../web/lib/permissions.js";
 
 // Small DOM fixture for component events; rendered browser checks remain separate.
@@ -869,6 +870,120 @@ Deno.test("member events: one shared search filters divisions and retains regist
       page.querySelector(".member-status-badges").querySelectorAll("button")[1]
         .getAttribute("aria-pressed") === "true",
       "Registration view must remain selectable",
+    );
+  }));
+
+Deno.test("ranking identity: actual CPC number appears below the player name without invented IDs", () =>
+  withDom(async (document) => {
+    const page = createRankingPages({
+      api: {
+        read: () => Promise.resolve([]),
+        rpc: () =>
+          Promise.resolve([
+            {
+              member_id: "fake-member-a",
+              member_no: "CPC-2026-99991",
+              since: "2026-10-27T00:00:00Z",
+              display_name: "Sample Player",
+              category_name: "Beginner",
+              rank_name: "Beginner Low",
+            },
+            {
+              member_id: "fake-member-b",
+              member_no: null,
+              since: "2026-10-27T00:00:00Z",
+              display_name: "Another Player",
+              category_name: "Beginner",
+              rank_name: "Beginner Low",
+            },
+          ]),
+      },
+    }).rankingPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const identities = page.querySelectorAll(".ranking-player-meta");
+    assert(
+      identities[0].children[0].textContent === "Sample Player",
+      "Name must appear first",
+    );
+    assert(
+      identities[0].children[1].textContent === "CPC-2026-99991",
+      "Actual member number must appear beneath the name",
+    );
+    assert(
+      !identities[1].querySelector(".ranking-player-id"),
+      "Missing member numbers must never be fabricated from database IDs",
+    );
+  }));
+
+Deno.test("ranking photos: signed private images replace icons and missing photos use initials", () =>
+  withDom(async (document) => {
+    const photoPath = "fake-org/fake-profile/photo.jpg";
+    const page = createRankingPages({
+      api: {
+        read: () => Promise.resolve([]),
+        rpc: (name) =>
+          Promise.resolve(
+            name === "ranking_photos"
+              ? [{ member_id: "fake-photo-member", avatar_path: photoPath }]
+              : [
+                {
+                  member_id: "fake-photo-member",
+                  display_name: "Sample Photo",
+                  category_name: "Beginner",
+                  rank_name: "Low",
+                  since: "2026-10-27T00:00:00Z",
+                },
+                {
+                  member_id: "fake-no-photo",
+                  display_name: "Sample Initials",
+                  category_name: "Beginner",
+                  rank_name: "Low",
+                  since: "2026-10-27T00:00:00Z",
+                },
+              ],
+          ),
+      },
+      client: {
+        storage: {
+          from: (bucket) => {
+            assert(
+              bucket === "avatars",
+              "Photos must use the private avatar bucket",
+            );
+            return {
+              createSignedUrls: (paths) => {
+                assert(
+                  paths[0] === photoPath,
+                  "Only ranking photo paths should be signed",
+                );
+                return Promise.resolve({
+                  data: [{
+                    path: photoPath,
+                    signedUrl: "https://example.invalid/signed-photo",
+                  }],
+                });
+              },
+            };
+          },
+        },
+      },
+    }).rankingPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const photos = page.querySelectorAll(".ranking-player-photo");
+    assert(
+      photos[0].querySelector("img").src ===
+        "https://example.invalid/signed-photo",
+      "Player photo must use the signed image link",
+    );
+    assert(
+      photos[1].textContent === "SI",
+      "A player without a photo must show initials",
+    );
+    assert(
+      !page.querySelector(".mobile-record-icon"),
+      "Player rows must no longer show the generic ranking icon",
     );
   }));
 

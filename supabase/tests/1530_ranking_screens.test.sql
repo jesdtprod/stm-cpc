@@ -52,7 +52,7 @@ select is((select array_agg(display_name order by rank_idx desc, display_name) f
   array['Zzyzx High', 'Zzyzx Another Mid', 'Zzyzx Mid', 'Zzyzx Low'], 'highest rank first, ties by name');
 select is((select rank_idx from rl where display_name = 'Zzyzx High'), 7, 'with the chain position');
 select is((select rank_name from rl where display_name = 'Zzyzx Low'), (select r.name from public.ranks r join chain c on c.rank_id = r.id where c.idx = 1), 'and the rank name');
-select ok((select bool_and(member_no is null) from rl where display_name like 'Zzyzx%'), 'a member does not see member IDs');
+select ok((select bool_and(member_no like 'CPC-2026-%') from rl where display_name like 'Zzyzx%'), 'signed-in members see the actual member numbers in rankings');
 select is((select count(*)::int from rl where member_id = (select mid from us where role = 'gone')), 0, 'a suspended member is not ranked');
 select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
 select is((select member_no from public.ranking_list() where display_name = 'Zzyzx High'), 'CPC-2026-97604', 'staff see the member ID');

@@ -240,7 +240,7 @@ route(
   "public",
 );
 
-const rankingPages = createRankingPages({ api });
+const rankingPages = createRankingPages({ api, client });
 route("/ranking", () => rankingPages.rankingPage(), "Ranking", "signedIn");
 
 const bracketPages = createBracketPages({ api });

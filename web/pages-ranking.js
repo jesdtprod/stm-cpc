@@ -16,13 +16,14 @@ import {
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
+import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 
 function messageOf(e, fallback) {
   const own = ["22023", "42501", "CP422"].includes(e?.code) && e.cause?.message;
   return own || e?.message || fallback;
 }
 
-export function createRankingPages({ api }) {
+export function createRankingPages({ api, client }) {
   function historyTable(rows, state, onRetry, filter) {
     return dataTable({
       filter,
@@ -94,6 +95,7 @@ export function createRankingPages({ api }) {
       category: "",
       mine: [],
       mineStatus: "loading",
+      photos: new Map(),
     };
 
     async function load() {
@@ -111,6 +113,24 @@ export function createRankingPages({ api }) {
         ]);
         state.list = list ?? [];
         state.categories = categories ?? [];
+        if (client && state.list.length) {
+          try {
+            const photos = await api.rpc("ranking_photos", {
+              p_member_ids: state.list.map((row) => row.member_id),
+            });
+            const urls = await signedAvatarUrls(
+              client,
+              (photos ?? []).map((row) => row.avatar_path),
+            );
+            state.photos = new Map(
+              (photos ?? []).map((
+                row,
+              ) => [row.member_id, urls.get(row.avatar_path)]),
+            );
+          } catch {
+            state.photos = new Map();
+          }
+        }
         state.status = "ready";
       } catch {
         state.status = "error";
@@ -257,18 +277,33 @@ export function createRankingPages({ api }) {
           label: "#",
           align: "right",
           width: 64,
-          render: (r) => String(state.list.indexOf(r) + 1),
+          render: (r) =>
+            h(
+              "span",
+              { class: "ranking-position" },
+              `#${state.list.indexOf(r) + 1}`,
+            ),
         },
         {
           key: "name",
           label: "Player",
           render: (r) => {
-            const memberId = r.member_no || (r.member_id ? `CPC-${r.member_id.slice(-5).toUpperCase()}` : "");
+            const memberId = r.member_no;
             return h(
               "div",
-              { class: "ranking-player-meta" },
-              h("strong", { class: "ranking-player-name" }, r.display_name),
-              memberId ? h("span", { class: "sub ranking-player-id" }, memberId) : null,
+              { class: "member-cell ranking-player-identity" },
+              h("span", {
+                class: "member-avatar ranking-player-photo",
+                "aria-hidden": "true",
+              }, avatarImage(state.photos.get(r.member_id), r.display_name)),
+              h(
+                "div",
+                { class: "ranking-player-meta" },
+                h("strong", { class: "ranking-player-name" }, r.display_name),
+                memberId
+                  ? h("span", { class: "sub ranking-player-id" }, memberId)
+                  : null,
+              ),
             );
           },
         },
@@ -320,7 +355,7 @@ export function createRankingPages({ api }) {
         { class: "ranking-category-filter" },
         selectField({
           id: "rk-cat",
-          label: "Category",
+          ariaLabel: "Filter ranking by category",
           value: state.category,
           options: [
             { value: "", label: "All Categories" },
