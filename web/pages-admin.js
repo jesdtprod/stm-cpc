@@ -694,27 +694,66 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       body: h(
         "div",
         { class: "member-details-modal" },
-        // One summary row; the member number is already in the modal header.
+        // 1 Unified Section: Membership & Audit
         h(
           "div",
-          { class: "member-banner" },
+          { class: "member-section-card member-audit-card" },
           h(
-            "div",
-            { class: "member-summary-item" },
-            h("span", { class: "kv-label" }, "Membership"),
-            statusBadge,
+            "h3",
+            {},
+            h(
+              "span",
+              { class: "section-icon", "aria-hidden": "true" },
+              icon("idCard"),
+            ),
+            "Membership & Audit",
           ),
           h(
             "div",
-            { class: "member-summary-item" },
-            h("span", { class: "kv-label" }, "Account"),
-            accountBadge,
+            { class: "member-status-strip" },
+            h(
+              "div",
+              { class: "member-summary-item" },
+              h("span", { class: "kv-label" }, "Membership"),
+              statusBadge,
+            ),
+            h(
+              "div",
+              { class: "member-summary-item" },
+              h("span", { class: "kv-label" }, "Account"),
+              accountBadge,
+            ),
+            h(
+              "div",
+              { class: "member-summary-item" },
+              h("span", { class: "kv-label" }, "Club Ranking"),
+              rankEl,
+            ),
           ),
+          h("div", { class: "member-card-divider", "aria-hidden": "true" }),
           h(
             "div",
-            { class: "member-summary-item" },
-            h("span", { class: "kv-label" }, "Club Ranking"),
-            rankEl,
+            { class: "member-details-grid" },
+            kv("Reason on Record", sentence(row.status_reason) || "—"),
+            kv(
+              "Review Flags",
+              flags.length
+                ? h(
+                  "span",
+                  { class: "badges" },
+                  flags.map((f) =>
+                    badge(FLAG_SHORT[f.kind] ?? f.kind, "warning")
+                  ),
+                )
+                : h("span", { class: "muted" }, "None"),
+            ),
+            row.deleted_at
+              ? kv(
+                "Deleted Record",
+                `Deleted: ${row.delete_reason ?? "No Reason"}`,
+                true,
+              )
+              : null,
           ),
         ),
         // Structured Profile Section Cards
@@ -791,43 +830,6 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 true,
               ),
             ),
-          ),
-        ),
-        h(
-          "div",
-          { class: "member-section-card" },
-          h(
-            "h3",
-            {},
-            h(
-              "span",
-              { class: "section-icon", "aria-hidden": "true" },
-              icon("file"),
-            ),
-            "Membership & Audit",
-          ),
-          h(
-            "div",
-            { class: "member-details-grid" },
-            kv("Reason on Record", sentence(row.status_reason) || "—"),
-            kv(
-              "Review Flags",
-              flags.length
-                ? h(
-                  "span",
-                  { class: "badges" },
-                  flags.map((f) =>
-                    badge(FLAG_SHORT[f.kind] ?? f.kind, "warning")
-                  ),
-                )
-                : h("span", { class: "muted" }, "None"),
-            ),
-            row.deleted_at
-              ? kv(
-                "Deleted Record",
-                `Deleted: ${row.delete_reason ?? "No Reason"}`,
-              )
-              : null,
           ),
         ),
         // Activity Timeline Card

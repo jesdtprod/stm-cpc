@@ -14,7 +14,7 @@
       padding: 30px;
       display: flex;
       flex-direction: column;
-      gap: 40px;
+      gap: 32px;
       align-items: center;
       min-height: 100vh;
     }
@@ -33,15 +33,20 @@
       color: #9EB5A7;
       margin: 0;
     }
-    .preview-section {
+    .preview-row {
+      display: flex;
+      gap: 32px;
+      align-items: flex-start;
+      justify-content: center;
       width: 100%;
-      max-width: 840px;
+    }
+    .preview-col {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
-    .preview-section h2 {
-      font-size: 15px;
+    .preview-col h2 {
+      font-size: 14px;
       font-weight: 700;
       color: #DFB756;
       text-transform: uppercase;
@@ -53,8 +58,6 @@
     .static-dialog {
       position: static !important;
       display: block !important;
-      width: 100% !important;
-      max-width: 840px !important;
       margin: 0 !important;
       padding: 0 !important;
       border: 1px solid rgba(223, 183, 86, 0.22) !important;
@@ -63,46 +66,68 @@
       box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06) inset !important;
       overflow: hidden;
     }
-    /* Variation Styles */
+    .static-dialog.desktop {
+      width: 800px !important;
+      max-width: 800px !important;
+    }
+    .static-dialog.mobile {
+      width: 380px !important;
+      max-width: 380px !important;
+    }
+
+    /* Unified Membership & Audit Card styles */
     .member-audit-card {
-      background: linear-gradient(135deg, rgba(223, 183, 86, 0.04) 0%, rgba(21, 128, 61, 0.08) 100%);
-      border: 1px solid rgba(223, 183, 86, 0.22);
+      background: linear-gradient(135deg, rgba(223, 183, 86, 0.04) 0%, rgba(21, 128, 61, 0.08) 100%) !important;
+      border: 1px solid rgba(223, 183, 86, 0.22) !important;
+      gap: 14px !important;
     }
     .member-status-strip {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
+      align-items: start;
+      gap: 14px;
       padding: 12px 14px;
-      border-radius: 10px;
+      border-radius: 12px;
       background: rgba(0, 0, 0, 0.22);
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
     .member-card-divider {
       height: 1px;
-      background: rgba(255, 255, 255, 0.06);
-      margin: 2px 0;
+      background: rgba(255, 255, 255, 0.07);
+      margin: 0;
     }
-    .member-audit-unified-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
+
+    /* Mobile specific inside .mobile container */
+    .static-dialog.mobile .member-status-strip {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+    .static-dialog.mobile .member-summary-item {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .static-dialog.mobile .member-profile-sections {
+      grid-template-columns: minmax(0, 1fr);
     }
   </style>
 </head>
 <body>
   <div class="preview-header">
     <h1>Member Details Modal — Redesign & Restructure</h1>
-    <p>Consolidating Top Status Strip + Membership &amp; Audit into 1 Section Only</p>
+    <p>Consolidated into 1 Section Only: <strong>Membership &amp; Audit</strong></p>
   </div>
 
-  <div class="preview-section">
-    <h2>Variation A: Dedicated Status Pod Strip + Audit Grid in 1 Card</h2>
-    <div id="target-var-a"></div>
-  </div>
-
-  <div class="preview-section">
-    <h2>Variation B: Unified Multi-Column Grid in 1 Card</h2>
-    <div id="target-var-b"></div>
+  <div class="preview-row">
+    <div class="preview-col">
+      <h2>Desktop View (1 Section for Status &amp; Audit)</h2>
+      <div id="target-desktop"></div>
+    </div>
+    <div class="preview-col">
+      <h2>Mobile View (1 Section for Status &amp; Audit)</h2>
+      <div id="target-mobile"></div>
+    </div>
   </div>
 
   <script type="module">
@@ -128,7 +153,7 @@
       }
     };
 
-    function renderModalSkeleton(unifiedCard) {
+    function renderModal(mode) {
       const p = mockRow.persons;
       const kv = (label, value, wide = false) =>
         h("dl", { class: `kv-item${wide ? " kv-item-wide" : ""}` },
@@ -167,7 +192,44 @@
         )
       );
 
-      return h("div", { class: "static-dialog modal modal-lg modal-tone-info" },
+      const rankElement = h("span", { class: "member-rank-line" },
+        badge("Unranked", "neutral"),
+        iconButton({
+          label: "Set Rank",
+          icon: "medal",
+          size: "sm",
+          variant: "edit"
+        })
+      );
+
+      // Unified Single Section: Membership & Audit
+      const unifiedCard = h("div", { class: "member-section-card member-audit-card" },
+        h("h3", {},
+          h("span", { class: "section-icon" }, icon("idCard")),
+          "Membership & Audit"
+        ),
+        h("div", { class: "member-status-strip" },
+          h("div", { class: "member-summary-item" },
+            h("span", { class: "kv-label" }, "Membership"),
+            badge("Active", "success")
+          ),
+          h("div", { class: "member-summary-item" },
+            h("span", { class: "kv-label" }, "Account"),
+            badge("Active Account", "success")
+          ),
+          h("div", { class: "member-summary-item" },
+            h("span", { class: "kv-label" }, "Club Ranking"),
+            rankElement
+          )
+        ),
+        h("div", { class: "member-card-divider" }),
+        h("div", { class: "member-details-grid" },
+          kv("Reason on Record", "Active"),
+          kv("Review Flags", h("span", { class: "muted" }, "None"))
+        )
+      );
+
+      return h("div", { class: `static-dialog modal modal-lg modal-tone-info ${mode}` },
         h("div", { class: "modal-form" },
           h("div", { class: "modal-head" },
             h("span", { class: "badge-icon is-info" }, icon("user", { solid: true })),
@@ -220,81 +282,8 @@
       );
     }
 
-    const rankElement = h("span", { class: "member-rank-line" },
-      badge("Unranked", "neutral"),
-      iconButton({
-        label: "Set Rank",
-        icon: "medal",
-        size: "sm",
-        variant: "edit"
-      })
-    );
-
-    // Variation A: Dedicated Status Pod Strip + Audit Details Grid
-    const cardA = h("div", { class: "member-section-card member-audit-card" },
-      h("h3", {},
-        h("span", { class: "section-icon" }, icon("idCard")),
-        "Membership & Audit"
-      ),
-      h("div", { class: "member-status-strip" },
-        h("div", { class: "member-summary-item" },
-          h("span", { class: "kv-label" }, "Membership"),
-          badge("Active", "success")
-        ),
-        h("div", { class: "member-summary-item" },
-          h("span", { class: "kv-label" }, "Account"),
-          badge("Active Account", "success")
-        ),
-        h("div", { class: "member-summary-item" },
-          h("span", { class: "kv-label" }, "Club Ranking"),
-          rankElement
-        )
-      ),
-      h("div", { class: "member-card-divider" }),
-      h("div", { class: "member-details-grid" },
-        h("dl", { class: "kv-item" },
-          h("dt", { class: "kv-label" }, "Reason on Record"),
-          h("dd", { class: "kv-val" }, "Active")
-        ),
-        h("dl", { class: "kv-item" },
-          h("dt", { class: "kv-label" }, "Review Flags"),
-          h("dd", { class: "kv-val" }, h("span", { class: "muted" }, "None"))
-        )
-      )
-    );
-
-    // Variation B: Unified Grid in 1 Card
-    const cardB = h("div", { class: "member-section-card member-audit-card" },
-      h("h3", {},
-        h("span", { class: "section-icon" }, icon("idCard")),
-        "Membership & Audit"
-      ),
-      h("div", { class: "member-details-grid member-audit-unified-grid" },
-        h("dl", { class: "kv-item" },
-          h("dt", { class: "kv-label" }, "Membership"),
-          h("dd", { class: "kv-val" }, badge("Active", "success"))
-        ),
-        h("dl", { class: "kv-item" },
-          h("dt", { class: "kv-label" }, "Account"),
-          h("dd", { class: "kv-val" }, badge("Active Account", "success"))
-        ),
-        h("dl", { class: "kv-item" },
-          h("dt", { class: "kv-label" }, "Club Ranking"),
-          h("dd", { class: "kv-val" }, rankElement.cloneNode(true))
-        ),
-        h("dl", { class: "kv-item" },
-          h("dt", { class: "kv-label" }, "Reason on Record"),
-          h("dd", { class: "kv-val" }, "Active")
-        ),
-        h("dl", { class: "kv-item" },
-          h("dt", { class: "kv-label" }, "Review Flags"),
-          h("dd", { class: "kv-val" }, h("span", { class: "muted" }, "None"))
-        )
-      )
-    );
-
-    document.getElementById("target-var-a").append(renderModalSkeleton(cardA));
-    document.getElementById("target-var-b").append(renderModalSkeleton(cardB));
+    document.getElementById("target-desktop").append(renderModal("desktop"));
+    document.getElementById("target-mobile").append(renderModal("mobile"));
   </script>
 </body>
 </html>
