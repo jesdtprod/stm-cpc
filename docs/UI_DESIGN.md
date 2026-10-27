@@ -207,6 +207,7 @@ Use this order when the section is applicable:
 - Use one compact badge style with consistent height, padding, radius, text size, and semantic colors.
 - Status badge labels stay on one line. Reserve enough column width for the longest label and let event names wrap to accommodate it.
 - Unread notification counts use red circular badges with white text (99+ maximum). On mobile, the count overlaps the upper-right edge of the floating navigation circle and also appears beside Notifications in the menu. Hide unread badges at zero.
+- The floating Quick Menu omits QR Pass for both members and visitors.
 - Record lists use a full-width search with wrapping status badges 12px below it, rather than a status dropdown. Use `tableFilter()` for these badge groups; show counts for every record category and default missing or unavailable counts to zero, including while loading. Keep form and category selectors as searchable dropdowns.
 
 ## 6. Grid tables and column content

@@ -1805,43 +1805,18 @@ export function createEventsPages({ api }) {
         );
       }
 
-      const topBar = h(
-        "div",
-        { class: "event-detail-toolbar" },
-        h("div", { class: "event-detail-navigation" },
-          h("div", { class: "event-detail-back" },
-          button({
-            label: "All Events",
-            icon: "chevl",
-            variant: "secondary",
-            onClick: () => {
-              state.open = null;
-              draw();
-            },
-          })),
-          h("div", {
-            class: "event-detail-actions",
-            role: "group",
-            "aria-label": "Event Controls",
-          }, ...eventActions),
-        ),
-        rosterActions.length ? h("section", {
-          class: "event-roster-toolbar",
-          "aria-label": "Player Registration",
-        },
-          h("div", { class: "event-roster-heading" },
-            h("span", { class: "event-roster-icon", "aria-hidden": "true" }, icon("userPlus")),
-            h("div", {},
-              h("strong", {}, "Player Registration"),
-              h("span", { class: "sub" }, "Guest profiles and event entries"),
-            ),
-          ),
-          h("div", {
-            class: "event-roster-actions",
-            role: "group",
-            "aria-label": "Guest Registration Actions",
-          }, ...rosterActions),
-        ) : null,
+      const navBar = h(
+        "nav",
+        { class: "event-detail-nav", "aria-label": "Event Navigation" },
+        button({
+          label: "All Events",
+          icon: "chevl",
+          variant: "secondary",
+          onClick: () => {
+            state.open = null;
+            draw();
+          },
+        }),
       );
 
       let regWindowValue = "Not specified";
@@ -1873,11 +1848,28 @@ export function createEventsPages({ api }) {
             h(
               "div",
               { class: "event-summary-headings" },
+              h(
+                "div",
+                { class: "event-summary-meta" },
+                h("span", { class: "event-summary-docno" }, ev.doc_no),
+                badge(statusLabel, statusTone),
+                ev.apply_cpc_rank_changes ? badge("CPC Ranked", "info") : null,
+                ev.dupr_rated ? badge("DUPR Rated", "success") : null,
+              ),
               h("h2", { class: "event-summary-title" }, ev.name),
-              h("span", { class: "event-summary-docno" }, ev.doc_no),
             ),
           ),
-          h("div", { class: "event-summary-badge" }, badge(statusLabel, statusTone)),
+          eventActions.length
+            ? h(
+              "div",
+              {
+                class: "event-summary-actions",
+                role: "group",
+                "aria-label": "Event Controls",
+              },
+              ...eventActions,
+            )
+            : null,
         ),
         h(
           "div",
@@ -1939,6 +1931,35 @@ export function createEventsPages({ api }) {
             h("p", { class: "cancel-alert-text" }, `Cancelled: ${ev.cancel_reason}`),
           )
           : null,
+        rosterActions.length
+          ? h(
+            "section",
+            {
+              class: "event-summary-roster",
+              "aria-label": "Guest Roster Management",
+            },
+            h(
+              "div",
+              { class: "event-roster-heading" },
+              h("span", { class: "event-roster-icon", "aria-hidden": "true" }, icon("userPlus")),
+              h(
+                "div",
+                { class: "event-roster-copy" },
+                h("strong", { class: "event-roster-title" }, "Guest & Roster Management"),
+                h("span", { class: "sub" }, "Guest registration policy, profile creation, and tournament entries"),
+              ),
+            ),
+            h(
+              "div",
+              {
+                class: "event-roster-actions",
+                role: "group",
+                "aria-label": "Guest Registration Actions",
+              },
+              ...rosterActions,
+            ),
+          )
+          : null,
       );
 
       const tabsHost = h("div", { class: "event-detail-tabs-host" });
@@ -1963,7 +1984,7 @@ export function createEventsPages({ api }) {
       return h(
         "div",
         { class: "stack event-detail-stack" },
-        topBar,
+        navBar,
         summaryCard,
         wrapTable(activeTable),
       );

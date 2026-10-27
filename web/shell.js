@@ -1,7 +1,7 @@
 // The app shell (PLAN 3.6): header with the account menu, and the side panel built from the
 // user's permissions. The menu is a convenience only; every page and every call is checked again
 // by the router and the database.
-import { attachPagePattern, button, h, icon, openModal } from "./ui.js";
+import { attachPagePattern, h, icon } from "./ui.js";
 import { MEMBER_SHORTCUTS } from "./lib/member-shortcuts.js";
 import { memberMenuHidden } from "./lib/member-menu.js";
 import { isAdminAccount } from "./lib/permissions.js";
@@ -149,45 +149,6 @@ export function createShell(
   }
   globalThis.addEventListener("scroll", updateHeaderScroll, { passive: true });
 
-  function openQrScanModal() {
-    const state = session.getState();
-    const name = state.access?.display_name || "Club Member";
-    const memberNo = state.access?.member_no || "CPC-MEMBER";
-
-    let modalRef = null;
-    const closeBtn = button({
-      label: "Close",
-      variant: "secondary",
-      onClick: () => modalRef?.close(),
-    });
-
-    modalRef = openModal({
-      title: "Member QR Code & Check-in",
-      body: h(
-        "div",
-        { class: "qr-modal-body" },
-        h(
-          "div",
-          { class: "qr-viewfinder" },
-          icon("qrScan"),
-          h("div", { class: "qr-scan-bar" }),
-        ),
-        h(
-          "p",
-          { class: "qr-hint" },
-          "Scan court QR to check in or present your member ID badge:",
-        ),
-        h(
-          "div",
-          { class: "qr-badge-preview" },
-          h("div", { class: "qr-badge-name" }, name),
-          h("div", { class: "qr-badge-id" }, `Member ID: ${memberNo}`),
-          h("span", { class: "badge badge-success" }, "Active Member"),
-        ),
-      ),
-      actions: [closeBtn],
-    });
-  }
 
   // ---- mobile drawer
   function setDrawer(open) {
@@ -517,7 +478,6 @@ export function createShell(
         mobileNav.hidden = false;
         const isHome = path === "/" || path === "";
         const isBooking = path === "/booking";
-        const isQr = path === "/qr";
         const isEvents = path === "/events";
         const isAccount = path === "/profile" || path === "/password" ||
           path === "/pending";
@@ -644,16 +604,6 @@ export function createShell(
             href: "#/profile",
           })
           : null;
-        const qrTab = tab({
-          label: "QR Pass",
-          detail: "Open your member pass",
-          iconName: "qrScan",
-          active: isQr,
-          onClick: (e) => {
-            e.preventDefault();
-            openQrScanModal();
-          },
-        });
         const switchTab = signedIn && !state.gate && canOpenAdmin() &&
             !isAdminAccount()
           ? tab({
@@ -724,7 +674,6 @@ export function createShell(
               ? [
                 ...groupTabs,
                 adminProfileTab,
-                isAdminAccount() || viewOf(path) === "admin" ? null : qrTab,
               ]
               : [
                 tab({
@@ -741,7 +690,6 @@ export function createShell(
                   active: isBooking,
                   href: "#/booking",
                 }),
-                qrTab,
                 tab({
                   label: "Events",
                   detail: "Club events and play",
