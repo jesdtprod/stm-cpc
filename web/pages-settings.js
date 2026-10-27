@@ -5,10 +5,12 @@ import {
   adminHero,
   alertBox,
   attachPagePattern,
+  badge,
   button,
   checkbox,
   field,
   h,
+  icon,
   selectField,
   switchToggle,
   tabs,
@@ -29,6 +31,9 @@ const GROUPS = [
     id: "general",
     label: "General",
     title: "Club Details",
+    eyebrow: "CLUB INFORMATION",
+    icon: "settings",
+    description: "Club profile, public name, and standardized business time zone.",
     items: [
       { key: "club.name", type: "text", label: "Club Name", max: 80 },
       {
@@ -43,19 +48,25 @@ const GROUPS = [
     id: "members",
     label: "Members",
     title: "Members and Sign-up",
+    eyebrow: "MEMBERSHIP RULES",
+    icon: "user",
+    description: "New member registration rules, initial password policies, and ID formats.",
     items: [
       {
         key: "members.signup_enabled",
         type: "switch",
         label: "Allow new people to sign up",
-        hint: "When off, the Join the club page refuses new applications.",
+        title: "Member Applications",
+        icon: "userPlus",
+        hint: "Allow new people to submit registration applications through the Join Club portal.",
       },
       {
         key: "members.auto_approve_imported",
         type: "switch",
         label: "Approve imported members automatically",
-        hint:
-          "Off means an admin approves each member after their first sign-in.",
+        title: "Auto-Approve Imported",
+        icon: "checkCircle",
+        hint: "Automatically approve imported roster members upon their first account sign-in.",
       },
       {
         key: "members.temp_password_days",
@@ -84,13 +95,17 @@ const GROUPS = [
     id: "booking",
     label: "Bookings",
     title: "Court Bookings",
+    eyebrow: "COURT SCHEDULING",
+    icon: "calendarCheck",
+    description: "Reservation approvals, advance windows, slot durations, and cancellation policies.",
     items: [
       {
         key: "booking.approval_required",
         type: "switch",
         label: "Admin approval is required",
-        hint:
-          "When off, a request is confirmed straight away if the slot is free.",
+        title: "Admin Approval Required",
+        icon: "calendarCheck",
+        hint: "When off, reservations are instantly confirmed if the court slot is open.",
       },
       {
         key: "booking.slot_minutes",
@@ -149,22 +164,33 @@ const GROUPS = [
     id: "payments",
     label: "Payments",
     title: "Payments",
+    eyebrow: "PAYMENTS & METHODS",
+    icon: "currency",
+    description: "Accepted payment channels and mandatory proof-of-payment requirements.",
     items: [
       {
         key: "payments.required.court_booking",
         type: "switch",
         label: "Payment is required for court bookings",
-        hint: "A booking is not confirmed until its payment is verified.",
+        title: "Required for Bookings",
+        icon: "calendar",
+        hint: "A court reservation remains pending until proof of payment is verified.",
       },
       {
         key: "payments.required.event_registration",
         type: "switch",
         label: "Payment is required for event registrations",
+        title: "Required for Events",
+        icon: "trophy",
+        hint: "Division tournament entries require payment verification before confirmation.",
       },
       {
         key: "payments.proof_required_non_cash",
         type: "switch",
         label: "Proof of payment is required for non-cash methods",
+        title: "Require Digital Proof",
+        icon: "file",
+        hint: "GCash, Maya, and bank transfers require an uploaded receipt or reference.",
       },
       {
         key: "payments.methods",
@@ -185,21 +211,30 @@ const GROUPS = [
     id: "events",
     label: "Events",
     title: "Events and Tournaments",
+    eyebrow: "TOURNAMENT RULES",
+    icon: "trophy",
+    description: "Division registration approval, waitlist settings, and default match scoring.",
     items: [
-      {
-        key: "events.default_scoring_rule",
-        type: "rule",
-        label: "Default Scoring Rule",
-      },
       {
         key: "events.registration_approval_required",
         type: "switch",
         label: "Admin approval is required to join an event",
+        title: "Registration Approval Required",
+        icon: "checkCircle",
+        hint: "Staff must review and approve player tournament registrations.",
       },
       {
         key: "events.waitlist_enabled",
         type: "switch",
         label: "Allow a waitlist when an event is full",
+        title: "Enable Waitlist",
+        icon: "clock",
+        hint: "Allow players to join a standby queue when division slots are filled.",
+      },
+      {
+        key: "events.default_scoring_rule",
+        type: "rule",
+        label: "Default Scoring Rule",
       },
     ],
   },
@@ -207,11 +242,16 @@ const GROUPS = [
     id: "ranks",
     label: "Ranks",
     title: "Ranks",
+    eyebrow: "RANKING ENGINE",
+    icon: "medal",
+    description: "Automated ladder movement and skill level progression following events.",
     items: [
       {
         key: "ranks.movement_enabled",
         type: "switch",
         label: "Ranks Move Up and Down After Events",
+        title: "Dynamic Rank Ladder Movement",
+        icon: "medal",
         hint:
           "Movement is applied once per member when a division is finalized.",
       },
@@ -221,11 +261,16 @@ const GROUPS = [
     id: "public",
     label: "Public Pages",
     title: "Public Pages",
+    eyebrow: "PUBLIC VISIBILITY",
+    icon: "eye",
+    description: "Configure leaderboard and podium visibility for non-signed-in visitors.",
     items: [
       {
         key: "public.results_enabled",
         type: "switch",
         label: "Show finished divisions' podiums to everyone",
+        title: "Public Tournament Podiums",
+        icon: "trophy",
         hint:
           "Visitors who are not signed in see the top three of each recently finished division, with display names only.",
       },
@@ -233,6 +278,8 @@ const GROUPS = [
         key: "public.leaderboard_enabled",
         type: "switch",
         label: "Show the leaderboard to everyone",
+        title: "Public Club Leaderboard",
+        icon: "eye",
         hint:
           "Visitors who are not signed in see each ranked player's display name, category and rank. Nothing else.",
       },
@@ -242,30 +289,41 @@ const GROUPS = [
     id: "member_menu",
     label: "Member Menu",
     title: "Member Menu",
+    eyebrow: "PORTAL NAVIGATION",
+    icon: "layers",
+    description: "Configure navigation links and module visibility for club members.",
     items: [
       {
         key: "member_menu.book",
         type: "switch",
         label: "Show Book a Court",
-        hint: "Off hides the link from the member menu and dashboard.",
+        title: "Book a Court",
+        icon: "calendar",
+        hint: "Allow members to book courts and reserve time slots from the portal.",
       },
       {
         key: "member_menu.bookings",
         type: "switch",
         label: "Show My Bookings",
-        hint: "Off hides the link from the member menu and dashboard.",
+        title: "My Bookings",
+        icon: "clock",
+        hint: "Allow members to view, manage, and track their court booking history.",
       },
       {
         key: "member_menu.events",
         type: "switch",
         label: "Show Events",
-        hint: "Off hides the link from the member menu and dashboard.",
+        title: "Events & Tournaments",
+        icon: "trophy",
+        hint: "Allow members to browse club events, register for divisions, and view brackets.",
       },
       {
         key: "member_menu.ranking",
         type: "switch",
         label: "Show Ranking",
-        hint: "Off hides the link from the member menu and dashboard.",
+        title: "Club Ranking",
+        icon: "medal",
+        hint: "Allow members to view skill category ladders, leaderboards, and member positions.",
       },
     ],
   },
@@ -273,6 +331,9 @@ const GROUPS = [
     id: "security",
     label: "Security",
     title: "Security",
+    eyebrow: "SESSION & SECURITY",
+    icon: "lock",
+    description: "Account idle timeout rules and administrative session protection.",
     items: [
       {
         key: "session.idle_minutes",
@@ -389,12 +450,6 @@ export function createSettingsPages({ api }) {
         onClick: () => show(group),
       });
       const status = h("div", { class: "settings-status", role: "status" });
-      const reason = textareaField({
-        id: "setting-reason",
-        label: "Reason (optional)",
-        rows: 2,
-        hint: "Kept with the change in the audit log.",
-      });
 
       function touch(key, value) {
         const item = ITEMS.find((i) => i.key === key);
@@ -408,18 +463,60 @@ export function createSettingsPages({ api }) {
         return item;
       }
 
+      function switchTile(item) {
+        const id = `set-${item.key.replace(/[^a-z0-9]/g, "-")}`;
+        const val = edited[item.key] !== undefined ? edited[item.key] : current[item.key];
+        const checked = val === true;
+        const isMemberMenu = group.id === "member_menu";
+        const activeText = item.activeText || (isMemberMenu ? "Visible" : "Enabled");
+        const inactiveText = item.inactiveText || (isMemberMenu ? "Hidden" : "Disabled");
+
+        const statusPill = badge(checked ? activeText : inactiveText, checked ? "success" : "neutral");
+        statusPill.classList.add("setting-switch-status-pill");
+
+        const toggle = switchToggle({
+          id,
+          label: "",
+          checked,
+          onChange: (on) => {
+            touch(item.key, on);
+            statusPill.textContent = on ? activeText : inactiveText;
+            statusPill.className = `badge badge-${on ? "success" : "neutral"} setting-switch-status-pill`;
+            tile.classList.toggle("is-active", on);
+          },
+        });
+
+        const iconEl = icon(item.icon || "layers");
+        const tile = h(
+          "div",
+          { class: `setting-switch-tile${checked ? " is-active" : ""}` },
+          h(
+            "div",
+            { class: "setting-switch-tile-header" },
+            h("div", { class: "setting-switch-tile-icon" }, iconEl),
+            h(
+              "div",
+              { class: "setting-switch-tile-info" },
+              h(
+                "div",
+                { class: "setting-switch-tile-heading" },
+                h("label", { class: "setting-switch-tile-title", for: id }, item.title || item.label),
+                statusPill,
+              ),
+              item.hint ? h("p", { class: "setting-switch-tile-hint" }, item.hint) : null,
+            ),
+            h("div", { class: "setting-switch-tile-action" }, toggle),
+          ),
+        );
+        return tile;
+      }
+
       function control(item) {
         const id = `set-${item.key.replace(/[^a-z0-9]/g, "-")}`;
         const value = current[item.key];
         switch (item.type) {
           case "switch":
-            return switchToggle({
-              id,
-              label: item.label,
-              hint: item.hint,
-              checked: value === true,
-              onChange: (on) => touch(item.key, on),
-            });
+            return switchTile(item);
           case "int":
           case "money":
             return field({
@@ -502,6 +599,15 @@ export function createSettingsPages({ api }) {
               item.hint ? h("div", { class: "muted" }, item.hint) : null,
             );
         }
+      }
+
+      function regularField(item) {
+        const isWide = item.type === "textarea" || item.type === "methods";
+        return h(
+          "div",
+          { class: `settings-item${isWide ? " is-wide" : ""}` },
+          control(item),
+        );
       }
 
       function quickCheck() {
@@ -592,6 +698,74 @@ export function createSettingsPages({ api }) {
         show(group);
       }
 
+      const header = h(
+        "div",
+        { class: "settings-card-header" },
+        h("div", { class: "settings-header-icon-squircle" }, icon(group.icon || "settings")),
+        h(
+          "div",
+          { class: "settings-header-meta" },
+          h("span", { class: "settings-eyebrow" }, group.eyebrow || "SYSTEM PREFERENCES"),
+          h("h2", { class: "settings-title" }, group.title),
+          group.description ? h("p", { class: "settings-subtitle" }, group.description) : null,
+        ),
+        h(
+          "div",
+          { class: "settings-header-badge" },
+          badge(
+            group.badgeText || `${group.items.length} ${group.id === "member_menu" ? "Modules" : group.items.length === 1 ? "Option" : "Options"}`,
+            "info",
+          ),
+        ),
+      );
+
+      const switches = group.items.filter((it) => it.type === "switch");
+      const fields = group.items.filter((it) => it.type !== "switch");
+
+      const switchGrid = switches.length > 0
+        ? h("div", { class: "settings-switch-grid" }, ...switches.map(switchTile))
+        : null;
+
+      const fieldsGrid = fields.length > 0
+        ? h("div", { class: "settings-fields-grid" }, ...fields.map(regularField))
+        : null;
+
+      const reasonBox = h(
+        "div",
+        { class: "settings-audit-box" },
+        h(
+          "div",
+          { class: "settings-audit-box-header" },
+          icon("file"),
+          h("span", { class: "settings-audit-box-title" }, "Audit Trail Reason"),
+          h("span", { class: "settings-audit-box-tag" }, "Optional"),
+        ),
+        textareaField({
+          id: "setting-reason",
+          label: "",
+          placeholder: "Provide context or explanation for this change (e.g., Seasonal maintenance, updated club policy)...",
+          rows: 2,
+          hint: "Recorded in the immutable club audit ledger with your member ID and Manila timestamp.",
+        }),
+      );
+
+      const footer = h(
+        "div",
+        { class: "actions settings-actions" },
+        h(
+          "div",
+          { class: "settings-audit-notice" },
+          icon("info"),
+          h("span", {}, "Changes take effect immediately and are logged to the club audit trail."),
+        ),
+        h(
+          "div",
+          { class: "settings-action-buttons" },
+          resetBtn,
+          saveBtn,
+        ),
+      );
+
       const form = h(
         "form",
         {
@@ -604,13 +778,12 @@ export function createSettingsPages({ api }) {
             if (!saveBtn.disabled) save();
           },
         },
-        h("h2", { class: "settings-title" }, group.title),
-        ...group.items.map((item) =>
-          h("div", { class: "settings-item" }, control(item))
-        ),
-        reason,
+        header,
+        switchGrid,
+        fieldsGrid,
+        reasonBox,
         status,
-        h("div", { class: "actions settings-actions" }, resetBtn, saveBtn),
+        footer,
       );
       return form;
     }

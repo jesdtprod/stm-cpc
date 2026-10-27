@@ -139,7 +139,8 @@ Imported members start at `imported`. New sign-ups start directly at `pending_ap
 
 ### 4.5 Profile
 - Members may save or clear an optional, self-reported DUPR ID (letters and numbers, up to 32 characters). IDs are trimmed, stored uppercase, and unique among active person records within the club. Saving an ID does not verify ownership, fetch ratings, or change CPC ranks.
-- Members edit limited fields (display name, contact, preferences). They cannot edit member ID, status, rank, role, or approval data.
+- Members edit limited fields (display name, contact, preferences). They cannot edit member ID, status, official CPC rank, role, or approval data.
+- Members without a saved assessment or current official club rank may submit an optional Rank Assessment once using active club ranks. After saving, only an admin with `ranks.override` may update or clear it, with a reason and audit entry. Existing saved admin assessments load directly; when no estimate was saved, the current official CPC rank loads as a read-only, club-assigned assessment without a backfill. Clearing an estimate does not reopen member submission. Assessment updates never change official CPC rank, rank history, eligibility, or DUPR. Idempotent retries still succeed after the lock, and expected versions protect against stale edits.
 - Minors require a guardian link and recorded consent/waiver acceptance (append-only).
 
 ## 5. Dashboard and side panel

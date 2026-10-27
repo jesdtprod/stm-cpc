@@ -20,6 +20,8 @@ import {
 import { can } from "./lib/permissions.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatDate, formatDateTime } from "./lib/dates.js";
+import { formatMemberName } from "./lib/names.js";
+import { selfAssessmentCard } from "./member-self-assessment.js";
 
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
@@ -64,7 +66,7 @@ const TABS = [
 ];
 
 const STATUS_LABEL = {
-  imported: "not signed in",
+  imported: "imported",
   invited: "profile incomplete",
   pending_approval: "waiting",
   active: "active",
@@ -94,7 +96,7 @@ const FLAG_SHORT = {
 
 const SELECT =
   "id,member_no,status,status_reason,joined_on,created_at,profile_id,deleted_at,delete_reason," +
-  "persons!inner(display_name,avatar_path,mobile,email,gender,date_of_birth,address_text,emergency_name,emergency_relationship,emergency_phone)," +
+  "persons!inner(display_name,first_name,middle_name,last_name,suffix,avatar_path,mobile,email,gender,date_of_birth,address_text,emergency_name,emergency_relationship,emergency_phone)," +
   "flags:member_review_flags!member_review_flags_member_id_fkey(kind,resolved_at)," +
   "member_ranks(deleted_at,ranks(name,rank_ladders(categories(name))))";
 
@@ -119,14 +121,24 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     let q = client.from("members").select(SELECT, { count: "exact" }).in(
       "status",
       statuses,
-    ).order("created_at", { ascending: false })
+    ).order("persons(last_name)", { ascending: true, nullsFirst: false })
+      .order("persons(first_name)", { ascending: true, nullsFirst: false })
+      .order("persons(display_name)", { ascending: true })
+      .order("id", { ascending: true })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     q = deleted ? q.not("deleted_at", "is", null) : q.is("deleted_at", null);
     const t = cleanTerm(term);
     if (t) {
-      q = /^(cpc|\d)/i.test(t)
-        ? q.ilike("member_no", `%${t}%`)
-        : q.ilike("persons.display_name", `%${t}%`);
+      if (/^(cpc|\d)/i.test(t)) {
+        q = q.ilike("member_no", `%${t}%`);
+      } else {
+        const words = t.replace(/["\\]/g, " ").split(/\s+/).filter(Boolean);
+        if (words.length) {
+          q = q.or(`and(${words.map((word) =>
+            `or(display_name.ilike.%${word}%,first_name.ilike.%${word}%,last_name.ilike.%${word}%)`
+          ).join(",")})`, { referencedTable: "persons" });
+        }
+      }
     }
     const { data, error, count } = await q;
     if (error) throw error;
@@ -230,7 +242,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             h(
               "div",
               { class: "member-decision-name" },
-              h("strong", { class: "member-name" }, row.persons.display_name),
+              h("strong", { class: "member-name" }, formatMemberName(row.persons)),
               badge(
                 STATUS_LABEL[row.status] ?? row.status,
                 STATUS_TONE[row.status] ?? "neutral",
@@ -268,7 +280,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             p_key: key,
             ...extra(form),
           }));
-          toast(`${row.persons.display_name}: ${verb.toLowerCase()} done.`, {
+          toast(`${formatMemberName(row.persons)}: ${verb.toLowerCase()} done.`, {
             tone: "success",
           });
           await onDone();
@@ -514,7 +526,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       role: "alert",
       hidden: true,
     });
-    const name = row.persons?.display_name || row.member_no;
+    const name = formatMemberName(row.persons);
     const roleValue = h("span", {}, "Loading…");
 
     if (can("roles.manage")) {
@@ -685,7 +697,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       : badge("No Account Yet", "neutral");
 
     openModal({
-      title: p.display_name,
+      title: formatMemberName(p),
       eyebrow: row.member_no,
       icon: "user",
       size: "lg",
@@ -758,6 +770,9 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           ),
         ),
         // Structured Profile Section Cards
+        !row.deleted_at ? selfAssessmentCard({
+          api, memberId: row.id, staff: true, canEdit: can("ranks.override"),
+        }) : null,
         h(
           "div",
           { class: "member-profile-sections" },
@@ -977,7 +992,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     });
     openModal({
       title: current ? "Change Rank" : "Set Rank",
-      eyebrow: `${row.persons.display_name} · ${
+      eyebrow: `${formatMemberName(row.persons)} · ${
         current ? `now ${current.text}` : "unranked"
       }`,
       icon: "medal",
@@ -1044,7 +1059,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             p_reason: reason,
             p_key: key,
           });
-          toast(`${row.persons.display_name}: rank set.`, { tone: "success" });
+          toast(`${formatMemberName(row.persons)}: rank set.`, { tone: "success" });
           await onDone?.();
         } catch (e) {
           return fail(
@@ -1067,7 +1082,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
   // ------------------------------------------------------------------ the page
   function membersPage() {
     const state = {
-      tab: "pending",
+      tab: "all",
       term: "",
       page: 1,
       rows: [],
@@ -1164,7 +1179,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                   p_id: row.id,
                   p_key: api.newKey(),
                 });
-                toast(`${row.persons.display_name}: record restored.`, {
+                toast(`${formatMemberName(row.persons)}: record restored.`, {
                   tone: "success",
                 });
                 await refresh();
@@ -1285,7 +1300,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           key: "name",
           label: "Member",
           render: (r) => {
-            const name = r.persons.display_name || "Unknown";
+            const name = formatMemberName(r.persons);
             return h(
               "div",
               { class: "member-cell" },
@@ -1306,19 +1321,20 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         {
           key: "mobile",
           label: "Contact",
-          width: 200,
+          minWidth: 280,
           skeleton: "stack",
           render: (r) =>
             h(
               "div",
               { class: "member-table-stack" },
               r.persons.mobile ?? "—",
-              h("span", { class: "sub" }, r.persons.email ?? "No Email"),
+              h("span", { class: "sub member-contact-email" }, r.persons.email ?? "No Email"),
             ),
         },
         {
           key: "status",
           label: "Status",
+          width: 140,
           skeleton: "badge-stack",
           render: (r) =>
             h(
@@ -1333,6 +1349,8 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 { class: "sub" },
                 r.deleted_at
                   ? "Deleted"
+                  : r.status === "imported"
+                  ? "Not Signed In Yet"
                   : ((sentence(r.status_reason) ?? "").toLowerCase() !==
                       (STATUS_LABEL[r.status] ?? r.status).toLowerCase()
                     ? sentence(r.status_reason)

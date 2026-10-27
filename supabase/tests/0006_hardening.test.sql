@@ -24,10 +24,13 @@ select is(
     and (has_table_privilege('anon', c.oid, 'select') or has_table_privilege('anon', c.oid, 'insert')
       or has_table_privilege('anon', c.oid, 'update') or has_table_privilege('anon', c.oid, 'delete'))),
   0, 'anon has no privilege on any table in public or core');
+-- except the public pages' read-only functions (1330, 1540, 1550), which return only what the club publishes
 select is(
   (select count(*)::int from pg_proc p where p.pronamespace in ('public'::regnamespace, 'core'::regnamespace)
-    and has_function_privilege('anon', p.oid, 'execute')),
-  0, 'anon cannot execute any function in public or core');
+    and has_function_privilege('anon', p.oid, 'execute')
+    and p.oid::regprocedure::text not in ('club_home_stats()', 'public_landing_info()', 'public_results()',
+                                          'public_leaderboard(text)')),
+  0, 'anon cannot execute any function in public or core except the public page functions');
 select is(has_function_privilege('authenticated', 'public.my_permissions()', 'execute'), true, 'authenticated can call my_permissions');
 select is(has_function_privilege('authenticated', 'core.has_permission(text,text,text)', 'execute'), true, 'authenticated can evaluate policies (has_permission)');
 select is(has_function_privilege('authenticated', 'core.attach_standard(regclass,text)', 'execute'), false, 'authenticated cannot run migration helpers');
@@ -128,6 +131,8 @@ select is(
 select is(
   (select count(*)::int from pg_class c where c.relkind = 'r' and c.relnamespace = 'public'::regnamespace
     and c.relname not like 't\_%'
+    -- push_subscriptions hold device keys: no policy at all, so the browser can never read them (1560)
+    and c.relname not in ('push_subscriptions')
     and not exists (select 1 from pg_policies p where p.schemaname = 'public' and p.tablename = c.relname and p.cmd in ('SELECT', 'INSERT'))),
   0, 'every real public table has a select or insert policy');
 select is(

@@ -121,3 +121,20 @@ DUPR and CPC ranking flags, format template name and division counts.
 default) that show or hide those links in the member side menu, dashboard quick
 links and shortcut tabs. Hiding is a convenience only; routes, RLS and
 permission codes are unchanged.
+
+`1720_member_self_assessment.sql` adds an optional estimate to the existing master
+members record, with owner/staff read access, permissioned admin corrections,
+reason and actor audit, idempotent saves and optimistic versions. Official CPC
+ranks, rank history, event eligibility and DUPR are unchanged. Apply before using
+the profile/member-details Self-Assessed Rank card; verify with `deno task db:test 1720`.
+
+`1730_lock_member_self_assessment.sql` makes a member's first assessment final for
+that member. Later updates/clears require `ranks.override` and a reason. Existing
+official club ranks load read-only when no estimate exists; no backfill is made.
+Completed retries still replay after locking. Verify with `deno task db:test 1730`
+and the updated `deno task db:test 1720` regression suite.
+
+`1720_rank_movement_switch_restore.sql` puts back the `ranks.movement_enabled`
+check in `core.apply_rank_movement`, lost when 1640 and 1650 rewrote the rank
+engine. With the switch off, divisions finalize and results are kept, but no
+rank moves.

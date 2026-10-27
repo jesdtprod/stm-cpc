@@ -24,6 +24,7 @@ import {
   problemMessages,
 } from "./lib/password-hints.js";
 import { suggestNameParts } from "./lib/names.js";
+import { selfAssessmentCard } from "./member-self-assessment.js";
 import {
   AVATAR_TYPES,
   avatarFileError,
@@ -1429,6 +1430,7 @@ export function createAccountPages(
           "div",
           { class: "profile-form-column" },
           personalCard,
+          selfAssessmentCard({ api }),
           contactCard,
           addressCard,
           actionsBar,

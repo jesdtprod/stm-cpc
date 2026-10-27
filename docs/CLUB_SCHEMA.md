@@ -64,6 +64,8 @@ Permission codes are from the seeded catalog; **new codes** are listed in Sectio
 
 ### 4.1 Members
 
+Migration 1720 adds optional `self_assessed_rank_id` (FK to ranks), `self_assessment_version`, `self_assessment_source`, `self_assessed_at`, `self_assessed_by` (FK to profiles), and `self_assessment_reason` to the existing master `members` table. Existing RLS and RPC-only writes remain. Migration 1730 permits one eligible owner submission; later updates/clears require `ranks.override` and a reason. The getter reports lock/source/origin and shows the existing official rank as a read-only fallback when no estimate was saved, without changing stored data. Members cannot clear or replace a saved/admin assessment; admin clearing keeps the owner locked. The estimate stays independent of `member_ranks`, with versions, idempotency keys and append-only audit entries.
+
 | Table | Class | Purpose and key columns |
 | --- | --- | --- |
 | `members` | master | One row per club member. `person_id` (unique), `profile_id` (unique, null until the account exists), `member_no` (not null, unique among active), `status` (`imported, invited, pending_approval, active, rejected, suspended, archived`), `status_reason`, `joined_on date`, `rfid_code` (partial unique), `import_batch_id`, `import_row int`. Indexes on `status`, `person_id`, `profile_id`. Minors are found from `persons.date_of_birth` |

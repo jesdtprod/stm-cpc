@@ -10,10 +10,31 @@ $$ select set_config('request.jwt.claims', json_build_object('sub', u, 'role', '
 -- the public RPC is a SECURITY INVOKER wrapper; the privileged lookup stays in core
 select is((select prosecdef from pg_proc where oid = 'public.my_permissions()'::regprocedure), false, 'public.my_permissions is SECURITY INVOKER');
 select is((select prosecdef from pg_proc where oid = 'core.my_permissions()'::regprocedure), true, 'core.my_permissions is SECURITY DEFINER');
+-- Known exceptions, each reviewed: the public page functions (anon, published data only) and the guest roster RPCs
+-- (1660-1690, authenticated only), which check events.manage / events.admin_roster / payments.submit before anything else.
+-- A new SECURITY DEFINER function in public fails this test until it is reviewed and added here.
+select is(
+  (select coalesce(string_agg(p.oid::regprocedure::text, ', ' order by 1), '') from pg_proc p
+   where p.pronamespace = 'public'::regnamespace and p.prosecdef
+    and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))
+    and p.oid::regprocedure::text not in (
+      'club_home_stats()', 'public_landing_info()', 'public_results()', 'public_leaderboard(text)',
+      'change_guest_registration(text,text,text,text,text,text,text,text,text)',
+      'create_event_participant(text,text,text,text,text,text,text,date)',
+      'create_guest_event_participant(text,text,text,text,text,text,date,text)',
+      'event_participant_choices(text)',
+      'guest_registration_payment_summary(text[])',
+      'register_guest_for_event(text,text,text,text,text,text)',
+      'search_event_players(text,text)',
+      'set_event_guest_policy(text,boolean,text)',
+      'submit_guest_event_payment(text,text,text,text,numeric,text)')),
+  '', 'no unreviewed SECURITY DEFINER function in public is callable by anon or authenticated');
 select is(
   (select count(*)::int from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef
-    and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
-  0, 'no SECURITY DEFINER function in public is callable by anon or authenticated');
+    and has_function_privilege('anon', p.oid, 'execute')
+    and p.oid::regprocedure::text not in ('club_home_stats()', 'public_landing_info()', 'public_results()',
+                                          'public_leaderboard(text)')),
+  0, 'only the public page functions are open to anon');
 
 select is(
   (select count(*)::int from pg_policies where schemaname = 'public' and tablename = 'persons' and cmd = 'SELECT'),

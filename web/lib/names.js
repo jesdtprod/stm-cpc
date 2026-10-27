@@ -25,6 +25,34 @@ const PARTICLES = new Set([
   "le",
 ]);
 
+function properName(text) {
+  return String(text ?? "").trim().replace(/\s+/gu, " ").toLowerCase().replace(
+    /(^|[\s\-'’.,])(\p{L})/gu,
+    (_match, separator, letter) => separator + letter.toUpperCase(),
+  );
+}
+
+/** Directory name from saved parts; display-only, without guessing missing parts. */
+export function formatMemberName(person = {}) {
+  const first = properName(person.first_name);
+  const last = properName(person.last_name);
+  if (!first || !last) {
+    const display = properName(person.display_name);
+    return display.replace(
+      /\b(jr|sr|ii|iii|iv|v)\.?$/iu,
+      (suffix) => SUFFIXES[suffix.replace(/\.$/u, "").toLowerCase()],
+    ) ||
+      [last, first].filter(Boolean).join(", ") || "Unknown";
+  }
+  const middle = String(person.middle_name ?? "").trim().match(/\p{L}/u)?.[0];
+  const suffix = String(person.suffix ?? "").trim();
+  const extension = SUFFIXES[suffix.replace(/\.$/u, "").toLowerCase()] ??
+    properName(suffix);
+  return `${last}, ${first}${middle ? ` ${middle.toUpperCase()}.` : ""}${
+    extension ? ` ${extension}` : ""
+  }`;
+}
+
 /** "MARQUEZ" -> "Marquez"; text that already has lower-case letters is left alone. */
 function titleIfShouting(text) {
   if (text !== text.toUpperCase() || text === text.toLowerCase()) return text;

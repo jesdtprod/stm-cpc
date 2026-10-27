@@ -1850,13 +1850,17 @@ export function createEventsPages({ api }) {
               { class: "event-summary-headings" },
               h(
                 "div",
-                { class: "event-summary-meta" },
+                { class: "event-summary-eyebrow" },
                 h("span", { class: "event-summary-docno" }, ev.doc_no),
+              ),
+              h("h2", { class: "event-summary-title" }, ev.name),
+              h(
+                "div",
+                { class: "event-summary-badges" },
                 badge(statusLabel, statusTone),
                 ev.apply_cpc_rank_changes ? badge("CPC Ranked", "info") : null,
                 ev.dupr_rated ? badge("DUPR Rated", "success") : null,
               ),
-              h("h2", { class: "event-summary-title" }, ev.name),
             ),
           ),
           eventActions.length

@@ -84,11 +84,11 @@ export function eventSummary(event) {
         ),
         "copy",
       ),
-      detail("Ranking & Rating", `${cpc} · ${dupr}`, "medal"),
       detail(
         "Entry Fee",
         Number(event.fee) > 0 ? formatMoney(event.fee) : "Free",
         "currency",
+        "public-meta-span2",
       ),
     ),
   ];
@@ -127,10 +127,10 @@ export function eventSummarySkeleton() {
     h(
       "dl",
       { class: "public-event-meta" },
-      ...Array.from({ length: 7 }, (_, i) =>
+      ...Array.from({ length: 6 }, (_, i) =>
         h(
           "div",
-          { class: i === 1 ? "public-meta-span2" : "" },
+          { class: i === 1 || i === 5 ? "public-meta-span2" : "" },
           h("dt", {}, sk("w-40 sk-sub")),
           h("dd", {}, sk("w-70")),
         )),
