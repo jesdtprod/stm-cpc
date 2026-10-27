@@ -238,8 +238,6 @@ For a page with date-range controls, use **Reset Filters & Date Range**. Otherwi
 
 ## 9. Standard modal anatomy
 
-Every route includes a shared centered footer with 12px vertical padding and no divider. The main column fills the available viewport, pushing the footer to the bottom on short pages; on longer pages it follows content without overlap. Both lines use weight 400; the copyright uses the current Manila year. Desktop shows “Copyright © …” and the STM Software Development Team credit inline with a pipe separator; mobile omits “Copyright” and places the credit on a second line with a 2px gap and 8px vertical padding.
-
 Every modal must use the same header and footer design, including nested and dynamically created modals.
 
 - Header: shared icon badge, optional eyebrow, title, concise description, and icon-only close button.

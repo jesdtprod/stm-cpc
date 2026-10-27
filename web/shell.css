@@ -4244,12 +4244,11 @@ body[data-auth-page="true"] main {
 }
 body[data-auth-page="true"] .auth-page-container.cpc-hero {
   height: auto !important;
-  min-height: 100vh !important;
-  min-height: 100dvh !important;
+  min-height: 0 !important;
   max-height: none !important;
   overflow: visible !important;
   justify-content: flex-start !important;
-  padding: 96px var(--s4) var(--s5);
+  padding: 96px var(--s4) 12px;
 }
 /* margin auto centres the content when it is shorter than the screen and never pushes it above the top */
 body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
@@ -4289,7 +4288,7 @@ body[data-auth-page="true"] .auth-page-container > .cpc-landing-container {
   }
   body[data-auth-page="true"] .auth-page-container.cpc-hero {
     padding-top: clamp(20px, 5vh, 48px);
-    padding-bottom: clamp(24px, 5vh, 48px);
+    padding-bottom: 12px;
   }
 }
 
@@ -10327,88 +10326,5 @@ body[data-member-view="true"] .member-header-logo {
   }
   .notice-arrow {
     display: none;
-  }
-}
-
-/* Shared footer for public, member, and admin routes. */
-.app-shell > main {
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100dvh - 69px);
-}
-.app-shell > main > :not(.app-footer) {
-  flex-shrink: 0;
-}
-body:not([data-landing="true"]):not([data-auth-page="true"]):not([data-admin-view="true"]) .app-shell > main {
-  padding-bottom: 12px !important;
-}
-body[data-admin-view="true"] .app-shell > main {
-  padding-bottom: 18px !important;
-}
-body[data-admin-view="true"] .app-shell > main,
-body[data-auth-page="true"] .app-shell > main,
-body[data-landing="true"] .app-shell > main {
-  min-height: 100dvh;
-}
-.app-footer {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  width: 100%;
-  max-width: 1380px;
-  box-sizing: border-box;
-  margin: auto auto 0;
-  flex-shrink: 0;
-  padding: 12px 16px 6px;
-  color: var(--text-2);
-  text-align: center;
-  font-size: 12px;
-  line-height: 1.6;
-}
-.app-footer p {
-  margin: 0;
-  font-weight: 400;
-}
-@media (max-width: 720px) {
-  .app-footer {
-    flex-direction: column;
-    gap: 2px;
-    margin-top: auto;
-    padding-block: 8px 4px;
-    line-height: 1.4;
-  }
-  .app-footer-prefix,
-  .app-footer-separator {
-    display: none;
-  }
-}
-
-@media (max-width: 860px) {
-  body[data-admin-view="true"] .app-shell > main {
-    padding-bottom: 16px !important;
-  }
-  body[data-member-view="true"] .app-shell > main {
-    min-height: 100dvh;
-  }
-}
-
-@media (max-width: 600px) {
-  body[data-admin-view="true"] .app-shell > main {
-    padding-bottom: 14px !important;
-  }
-}
-
-@media (max-width: 860px) {
-  html[data-landing="true"],
-  body[data-landing="true"],
-  body[data-landing="true"] .app-shell,
-  body[data-landing="true"] main {
-    height: auto !important;
-    max-height: none !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
   }
 }
