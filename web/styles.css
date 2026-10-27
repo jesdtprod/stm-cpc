@@ -2977,16 +2977,32 @@ dialog.drawer::backdrop {
   background: var(--accent);
 }
 .progress-bar.is-indeterminate .progress-bar-fill {
-  width: 35% !important;
+  width: 45% !important;
   position: absolute;
-  animation: indeterminate 1.5s infinite linear;
+  top: 0;
+  left: 0;
+  border-radius: 999px;
+  animation: indeterminate 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
 }
 @keyframes indeterminate {
   0% {
-    left: -35%;
+    transform: translateX(-120%) scaleX(0.7);
+    opacity: 0.3;
+  }
+  20% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(60%) scaleX(1.1);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
   }
   100% {
-    left: 100%;
+    transform: translateX(250%) scaleX(0.6);
+    opacity: 0.3;
   }
 }
 
