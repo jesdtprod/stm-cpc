@@ -435,6 +435,27 @@ export function createShell(
     document.body.dataset.signedIn = String(signedIn);
     drawPagePattern();
     drawMobilePageHeader(path);
+    const main = document.querySelector("main");
+    if (main && !main.querySelector(".app-footer")) {
+      const year = new Intl.DateTimeFormat("en", {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+      }).format(new Date());
+      main.append(
+        h(
+          "footer",
+          { class: "app-footer" },
+          h(
+            "p",
+            { class: "app-footer-copyright" },
+            h("span", { class: "app-footer-prefix" }, "Copyright "),
+            `© ${year} Capitol Pickleball Club. All rights reserved.`,
+          ),
+          h("span", { class: "app-footer-separator", "aria-hidden": "true" }, "|"),
+          h("p", { class: "app-footer-credit" }, "Developed By: STM Software Development Team"),
+        ),
+      );
+    }
 
     // Landing page: root path when not signed in
     // The home page and the sign-in page share one look: the full-screen hero, the pattern, the transparent header.

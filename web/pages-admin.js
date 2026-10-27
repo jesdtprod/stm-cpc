@@ -19,7 +19,7 @@ import {
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
-import { formatDateTime } from "./lib/dates.js";
+import { formatDate, formatDateTime } from "./lib/dates.js";
 
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
@@ -672,7 +672,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       { class: "timeline-empty muted" },
       "Loading history…",
     );
-    const rankEl = h("div", {}, badge("Loading…", "neutral"));
+    const rankEl = h("div", { class: "member-audit-rank" }, badge("Loading…", "neutral"));
 
     const statusBadge = badge(
       STATUS_LABEL[row.status] ?? row.status,
@@ -815,7 +815,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             h(
               "div",
               { class: "member-details-grid" },
-              kv("Date of Birth", p.date_of_birth || "—"),
+              kv("Date of Birth", p.date_of_birth ? formatDate(p.date_of_birth) : "—"),
               kv(
                 "Gender",
                 p.gender

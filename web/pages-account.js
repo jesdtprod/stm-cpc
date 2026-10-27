@@ -32,6 +32,7 @@ import {
   signedAvatarUrls,
 } from "./lib/avatar.js";
 import { ulid } from "./lib/ulid.js";
+import { isAdminAccount } from "./lib/permissions.js";
 
 const NCR_REGION = "130000000";
 
@@ -236,7 +237,7 @@ export function createAccountPages(
       password,
       box,
       error,
-      h("div", { class: "actions" }, submit),
+      h("div", { class: "actions pw-submit-actions" }, submit),
     );
     form.addEventListener(
       "submit",
@@ -546,6 +547,7 @@ export function createAccountPages(
     pwPage.append(
       adminHero({
         title: forced ? "Choose a new password" : "Change Password",
+        roleLabel: isAdminAccount() ? "Admin Console" : "Member Console",
         chip: forced ? "One more step" : "Account Security",
         description: forced
           ? "For your security, replace the password you were given before you continue."
@@ -563,27 +565,91 @@ export function createAccountPages(
       }),
       h(
         "div",
-        { class: "member-panel profile-section-card profile-password-card" },
+        { class: "password-page-layout" },
         h(
           "div",
-          { class: "profile-section-head" },
+          { class: "member-panel profile-section-card profile-password-card" },
           h(
-            "span",
-            { class: "section-icon", "aria-hidden": "true" },
-            icon("keyRound"),
+            "div",
+            { class: "profile-section-head" },
+            h(
+              "span",
+              { class: "section-icon", "aria-hidden": "true" },
+              icon("keyRound"),
+            ),
+            h(
+              "div",
+              { class: "profile-section-copy" },
+              h("h2", { class: "profile-section-title" }, "Update Password"),
+              h(
+                "p",
+                { class: "profile-section-sub muted" },
+                "Use at least 12 characters. Avoid reusing your temporary password or birth date.",
+              ),
+            ),
+          ),
+          form,
+        ),
+        h(
+          "div",
+          { class: "member-panel profile-section-card password-security-card" },
+          h(
+            "div",
+            { class: "profile-section-head" },
+            h(
+              "span",
+              { class: "section-icon is-shield", "aria-hidden": "true" },
+              icon("lock"),
+            ),
+            h(
+              "div",
+              { class: "profile-section-copy" },
+              h("h2", { class: "profile-section-title" }, "Password Guidelines"),
+              h(
+                "p",
+                { class: "profile-section-sub muted" },
+                "Keep your Capitol Pickleball Club account secure.",
+              ),
+            ),
           ),
           h(
             "div",
-            { class: "profile-section-copy" },
-            h("h2", { class: "profile-section-title" }, "Update Password"),
+            { class: "pw-guidelines-list" },
             h(
-              "p",
-              { class: "profile-section-sub muted" },
-              "Use at least 12 characters. Avoid reusing your temporary password or birth date.",
+              "div",
+              { class: "pw-guideline-item" },
+              h("span", { class: "pw-guideline-icon", "aria-hidden": "true" }, icon("checkCircle")),
+              h(
+                "div",
+                { class: "pw-guideline-content" },
+                h("strong", {}, "Use memorable passphrases"),
+                h("p", { class: "muted" }, "Combining multiple unrelated words is both strong and easy to remember."),
+              ),
+            ),
+            h(
+              "div",
+              { class: "pw-guideline-item" },
+              h("span", { class: "pw-guideline-icon", "aria-hidden": "true" }, icon("checkCircle")),
+              h(
+                "div",
+                { class: "pw-guideline-content" },
+                h("strong", {}, "Avoid personal details"),
+                h("p", { class: "muted" }, "Never use your birth date, phone number, or member ID in your password."),
+              ),
+            ),
+            h(
+              "div",
+              { class: "pw-guideline-item" },
+              h("span", { class: "pw-guideline-icon", "aria-hidden": "true" }, icon("checkCircle")),
+              h(
+                "div",
+                { class: "pw-guideline-content" },
+                h("strong", {}, "Unique credentials"),
+                h("p", { class: "muted" }, "Avoid reusing passwords from personal email or other recreational clubs."),
+              ),
             ),
           ),
         ),
-        form,
       ),
     );
     return pwPage;
@@ -1442,6 +1508,7 @@ export function createAccountPages(
     page.append(
       adminHero({
         title: isOnboarding ? "Complete your profile" : "Account & Profile",
+        roleLabel: isAdminAccount() ? "Admin Console" : "Member Console",
         chip: isOnboarding ? "Member Onboarding" : "Profile Settings",
         description: isOnboarding
           ? "The club needs your details, contact numbers and address before it can approve your membership."

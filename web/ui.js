@@ -2709,7 +2709,7 @@ const ADMIN_HERO_DATE = new Intl.DateTimeFormat("en-PH", {
  * the page title (the focus target for route changes), a short description and the page's primary actions.
  * `chip` is the status chip text, for example "Courts Management".
  */
-export function adminHero({ title, description, chip, actions = [] }) {
+export function adminHero({ title, description, chip, actions = [], roleLabel = "Admin Console" }) {
   return h(
     "section",
     { class: "dash-hero is-admin", "aria-label": title },
@@ -2723,7 +2723,7 @@ export function adminHero({ title, description, chip, actions = [] }) {
           "span",
           { class: "dash-chip is-role" },
           icon("medal"),
-          "Admin Console",
+          roleLabel,
         ),
         h(
           "span",

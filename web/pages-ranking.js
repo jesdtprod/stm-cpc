@@ -275,13 +275,16 @@ export function createRankingPages({ api, client }) {
         {
           key: "no",
           label: "#",
-          align: "right",
-          width: 64,
+          align: "center",
+          width: 80,
           render: (r) =>
             h(
               "span",
-              { class: "ranking-position" },
-              `#${state.list.indexOf(r) + 1}`,
+              {
+                class: "ranking-position",
+                "aria-label": `Position ${state.list.indexOf(r) + 1}`,
+              },
+              String(state.list.indexOf(r) + 1),
             ),
         },
         {

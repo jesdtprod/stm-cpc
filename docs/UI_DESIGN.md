@@ -184,7 +184,7 @@ Use this order when the section is applicable:
 - Member lists use compact cards up to 720px: primary icon and title, status badges, labeled details, and an action footer, with 16px gaps between search, filter groups, and records. Table schemas identify primary/status/detail cells for both loading and populated rows. Desktop tables and administrator lists retain their layouts.
 - Member Events and Ranking use full-width search above counted pill filters on both desktop and mobile. Events has one shared search across event/division metadata and registrations; Ranking retains its category selector within the filter area.
 - Events and Ranking desktop rows use the same round icon treatment as My Bookings. Ranking uses a compact 64px position column and places its standard searchable 240px category dropdown to the right of Search on desktop, with pills on the next row. Mobile stacks Search, Category, and pills. Free registrations use the shared green Free badge.
-- Ranking cards center the complete position text (for example #1) within its badge. Player names and actual member numbers align left; never derive or invent a member number from a database ID. Category and rank use the shared info/success badges.
+- Ranking cards center the position number without a hash in a gold badge; desktop uses an 80px centered position column and 32px badge. Player names and actual member numbers align left; never derive or invent a member number from a database ID. Category and rank use the shared info/success badges.
 - Ranking player rows use private profile photos through signed links, with initials when no image is available. Only active ranked players' images are shared within the signed-in club; the avatar bucket remains private.
 - A cell's content and mobile label must match its column heading. Do not put notes under a heading for status or timestamps under an unrelated heading.
 - Use real recorded values. Distinguish zero, unavailable data, not counted, and pending data; do not substitute a misleading zero.
@@ -238,6 +238,8 @@ For a page with date-range controls, use **Reset Filters & Date Range**. Otherwi
 
 ## 9. Standard modal anatomy
 
+Every route includes a shared centered footer with 12px vertical padding and no divider. The main column fills the available viewport, pushing the footer to the bottom on short pages; on longer pages it follows content without overlap. Both lines use weight 400; the copyright uses the current Manila year. Desktop shows “Copyright © …” and the STM Software Development Team credit inline with a pipe separator; mobile omits “Copyright” and places the credit on a second line with a 2px gap and 8px vertical padding.
+
 Every modal must use the same header and footer design, including nested and dynamically created modals.
 
 - Header: shared icon badge, optional eyebrow, title, concise description, and icon-only close button.
@@ -248,6 +250,7 @@ Every modal must use the same header and footer design, including nested and dyn
 - Do not duplicate footer submission actions in the body.
 - Keep long modal bodies scrollable and the header/footer reachable. Do not let content extend beyond the viewport.
 - Stack fields and actions consistently on small screens; ensure sufficient touch targets.
+- The member details Membership & Audit section uses equal status tiles with aligned badge rows, followed by matching reason and review tiles. Stack tiles on mobile and keep the rank action beside its wrapping badge.
 - Provide an accessible dialog name, initial focus, focus containment, and focus restoration after closing.
 - Support Escape and backdrop closing when safe. Protect unsaved changes where the workflow requires it.
 - Destructive confirmations must clearly describe the target and consequences and default to a safe choice.

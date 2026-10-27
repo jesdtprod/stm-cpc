@@ -22,6 +22,7 @@ import { createStaffPages } from "../../web/pages-staff.js";
 import { createBookingAdminPages } from "../../web/pages-bookings-admin.js";
 import { createMemberEventsPages } from "../../web/pages-events-member.js";
 import { createRankingPages } from "../../web/pages-ranking.js";
+import { createAdminPages } from "../../web/pages-admin.js";
 import { clearAuth, setAuth } from "../../web/lib/permissions.js";
 
 // Small DOM fixture for component events; rendered browser checks remain separate.
@@ -1561,3 +1562,96 @@ Deno.test("memberHero: renders dash-hero with chips, title, subtitle and respect
     assert(chips.length >= 3, "Must render eyebrow, date and status chips");
   });
 });
+
+Deno.test("member details modal: consolidates status and audit into 1 unified section", () =>
+  withDom(async (document) => {
+    setAuth({
+      signedIn: true,
+      grants: [{ code: "members.read" }],
+      gate: null,
+    });
+    const mockRow = {
+      id: "mem-01",
+      member_no: "CPC-2026-00001",
+      status: "active",
+      status_reason: "active",
+      flags: [],
+      deleted_at: null,
+      profile_id: "user-123",
+      persons: {
+        display_name: "Kyle Marquez",
+        mobile: "09566997151",
+        email: "kyxymiller@gmail.com",
+        address_text: "Poblacion III, Lebak, Sultan Kudarat",
+        date_of_birth: "1994-11-28",
+        gender: "male",
+        emergency_name: "Marlon Quinto",
+        emergency_relationship: "Team Leader",
+        emergency_phone: "09171247192",
+      },
+    };
+    const api = {
+      read: () => Promise.resolve(null),
+    };
+    const mockQuery = {
+      in: () => mockQuery,
+      order: () => mockQuery,
+      range: () => mockQuery,
+      is: () => mockQuery,
+      not: () => mockQuery,
+      ilike: () => mockQuery,
+      then: (resolve) => resolve({ data: [mockRow], count: 1, error: null }),
+    };
+    const client = {
+      from: () => ({
+        select: () => mockQuery,
+      }),
+    };
+    const pages = createAdminPages({ api, client, adminResetPassword: () => {} });
+    const page = pages.membersPage();
+    document.body.append(page);
+    await new Promise((r) => setTimeout(r, 10));
+
+    const viewBtn = document.querySelectorAll("button").find((b) =>
+      b.getAttribute("aria-label") === "View Details"
+    );
+    assert(viewBtn, "View details button must exist in table");
+    viewBtn.click();
+    await new Promise((r) => setTimeout(r, 10));
+
+    const modal = document.body.querySelector("dialog");
+    assert(modal, "Modal must be opened");
+
+    // Must have exactly 1 Membership & Audit card
+    const auditCards = modal.querySelectorAll(".member-audit-card");
+    assert(
+      auditCards.length === 1,
+      "Must have exactly 1 unified Membership & Audit card",
+    );
+
+    const auditCard = auditCards[0];
+    const statusStrip = auditCard.querySelector(".member-status-strip");
+    assert(statusStrip, "Unified card must contain status strip");
+
+    // The status strip contains Membership, Account, Club Ranking
+    const summaryItems = statusStrip.querySelectorAll(".member-summary-item");
+    assert(
+      summaryItems.length === 3,
+      "Status strip must have 3 summary items (Membership, Account, Club Ranking)",
+    );
+
+    // The audit card also contains Reason on Record and Review Flags
+    const detailsGrid = auditCard.querySelector(".member-details-grid");
+    assert(detailsGrid, "Unified card must contain audit details grid");
+    assert(
+      detailsGrid.textContent.includes("Reason on Record"),
+      "Must include Reason on Record",
+    );
+    assert(
+      detailsGrid.textContent.includes("Review Flags"),
+      "Must include Review Flags",
+    );
+
+    modal.close();
+    clearAuth();
+  }));
