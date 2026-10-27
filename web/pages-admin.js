@@ -95,7 +95,8 @@ const FLAG_SHORT = {
 const SELECT =
   "id,member_no,status,status_reason,joined_on,created_at,profile_id,deleted_at,delete_reason," +
   "persons!inner(display_name,avatar_path,mobile,email,gender,date_of_birth,address_text,emergency_name,emergency_relationship,emergency_phone)," +
-  "flags:member_review_flags!member_review_flags_member_id_fkey(kind,resolved_at)";
+  "flags:member_review_flags!member_review_flags_member_id_fkey(kind,resolved_at)," +
+  "member_ranks(deleted_at,ranks(name,rank_ladders(categories(name))))";
 
 const openFlags = (row) => (row.flags ?? []).filter((f) => !f.resolved_at);
 /** First letter upper case; the rest is left as typed (reasons are free text). */
@@ -656,7 +657,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     });
   }
 
-  function detailsModal(row) {
+  function detailsModal(row, onChange) {
     const p = row.persons;
     const kv = (label, value, wide = false) =>
       h(
@@ -869,7 +870,9 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 icon: "medal",
                 size: "sm",
                 variant: "edit",
-                onClick: () => setRankModal(row, current, drawRank),
+                onClick: () => setRankModal(row, current, async () => {
+                  await Promise.all([drawRank(), onChange?.()]);
+                }),
               })
               : null,
           ),
@@ -945,7 +948,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     return rk
       ? {
         id: r.rank_id,
-        text: `${rk.rank_ladders?.categories?.name ?? ""}: ${rk.name}`,
+        text: rk.name,
       }
       : null;
   }
@@ -999,7 +1002,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               h(
                 "option",
                 { value: r.id, selected: r.id === current?.id },
-                `${r.rank_ladders.categories.name} · ${r.name}`,
+                r.name,
               )
             ),
           ),
@@ -1042,7 +1045,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             p_key: key,
           });
           toast(`${row.persons.display_name}: rank set.`, { tone: "success" });
-          onDone?.();
+          await onDone?.();
         } catch (e) {
           return fail(
             e.cause?.message || e.message || "That did not work. Try again.",
@@ -1129,7 +1132,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           icon: "info",
           size: "sm",
           variant: "info",
-          onClick: () => detailsModal(row),
+          onClick: () => detailsModal(row, refresh),
         }),
       ];
       if (
@@ -1303,6 +1306,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         {
           key: "mobile",
           label: "Contact",
+          width: 200,
           skeleton: "stack",
           render: (r) =>
             h(
@@ -1369,24 +1373,27 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           },
         },
         {
-          key: "joined",
-          label: "Membership Dates",
+          key: "rank",
+          label: "Rank",
           skeleton: "stack",
-          render: (r) =>
-            h(
+          render: (r) => {
+            const rank = r.member_ranks?.find((entry) => !entry.deleted_at)
+              ?.ranks;
+            return h(
               "div",
               { class: "member-table-stack" },
-              `Added ${
-                (r.created_at ?? r.joined_on ?? "").slice(0, 10) || "—"
-              }`,
+              rank ? rank.name : "Unranked",
               h(
                 "span",
                 { class: "sub" },
                 r.joined_on
-                  ? `Joined ${r.joined_on.slice(0, 10)}`
-                  : "Not joined yet",
+                  ? `Member since ${r.joined_on.slice(0, 10)}`
+                  : r.created_at
+                  ? `Added ${formatDate(r.created_at)}`
+                  : "—",
               ),
-            ),
+            );
+          },
         },
         {
           key: "actions",
@@ -1569,6 +1576,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       }
 
       tableHost.replaceChildren(dataTable({
+        pageSize: 0, // The directory uses server pagination below.
         schema,
         rows: state.rows,
         state: state.status,

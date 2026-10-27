@@ -22,6 +22,10 @@ Preserve business logic, calculations, permissions, routes, data, and working in
 
 ### Members reference controls (approved October 25, 2026)
 
+The Members table shows the current category and rank in the Rank column (or
+Unranked), with the membership date as muted “Member since” subtext. Members
+without a joined date show “Not joined yet”.
+
 The current Members page is the reference for comparable controls. Retain the
 existing green, gold, and semantic colors and shared font; buttons are flat and
 have no shadows. Use `ui.js` components rather than new page-specific controls.
@@ -37,7 +41,7 @@ have no shadows. Use `ui.js` components rather than new page-specific controls.
   module, including server query ranges and local slices. Hide the complete
   footer when the filtered total is zero; the table empty state explains the
   result. With records, show the range, total and page size in a compact footer.
-- Searchable grids may set `pageSize` to use the shared pagination footer.
+- All shared grids default to 10 records per page, including grids without search. Views with an external/server pager explicitly set `pageSize: 0` to avoid duplicate pagination.
   Filter the full list before paging; reset to page one when search changes,
   retain the current page on refresh, and clamp it when records are removed.
   Categories, Courts, opening hours, rates and blackouts use 10 records per page.
@@ -111,6 +115,8 @@ Use one shared scale throughout the application:
 | Icons | 18–20px; consistent stroke weight |
 | Table cell padding | 12–16px vertical; 16–18px horizontal |
 
+Admin routes share the Members Directory layout through `.admin-reference-page`: 1380px maximum content width, 24px section gaps (16px on mobile), 18px KPI gaps, and 12px between search and status pills. Desktop headers use 16px × 20px padding, a 128px club logo, 32px title, and 14px description. Page-specific controls retain their functions and column definitions.
+
 Use comfortable spacing, not excessive empty areas or compressed controls. Allow browser zoom and user text scaling. Do not disable zoom to make a layout fit.
 
 ## 3. Color, hierarchy, and readability
@@ -183,6 +189,7 @@ Use this order when the section is applicable:
 - Non-home mobile pages share a centered header: title beside section badge, description, Manila date and section chips, then full-width actions. Use matching 16px gaps between the header copy and actions and between page sections (including Search). Home dashboards retain their own header layout; desktop headers retain their existing containers.
 - Member lists use compact cards up to 720px: primary icon and title, status badges, labeled details, and an action footer, with 16px gaps between search, filter groups, and records. Table schemas identify primary/status/detail cells for both loading and populated rows. Desktop tables and administrator lists retain their layouts.
 - Member Events and Ranking use full-width search above counted pill filters on both desktop and mobile. Events has one shared search across event/division metadata and registrations; Ranking retains its category selector within the filter area.
+- The admin Event Detail view uses an executive top action toolbar (navigation on the left, record and lifecycle actions on the right) above a prominent tournament summary card with gold trophy branding, reference code, status pill, and 4 KPI tiles (Schedule, Venue, Entry Fee, Registration). Below the summary, segmented tab filters switch between Divisions and Registrations tables to prevent stacked duplicate search controls and giant stacked empty states.
 - Events and Ranking desktop rows use the same round icon treatment as My Bookings. Ranking uses a compact 64px position column and places its standard searchable 240px category dropdown to the right of Search on desktop, with pills on the next row. Mobile stacks Search, Category, and pills. Free registrations use the shared green Free badge.
 - Ranking cards center the position number without a hash in a gold badge; desktop uses an 80px centered position column and 32px badge. Player names and actual member numbers align left; never derive or invent a member number from a database ID. Category and rank use the shared info/success badges.
 - Ranking player rows use private profile photos through signed links, with initials when no image is available. Only active ranked players' images are shared within the signed-in club; the avatar bucket remains private.
@@ -246,7 +253,7 @@ Every modal must use the same header and footer design, including nested and dyn
 - Use equal-width form columns when appropriate; long references, descriptions, and notes use full width.
 - Footer: shared divider and padding; Cancel followed by the primary action, right-aligned on desktop.
 - Do not duplicate footer submission actions in the body.
-- Keep long modal bodies scrollable and the header/footer reachable. Do not let content extend beyond the viewport.
+- Keep long modal bodies scrollable and the header/footer reachable. Hide scrollbars in all modals while preserving wheel, touch, and keyboard scrolling. Do not let content extend beyond the viewport.
 - Stack fields and actions consistently on small screens; ensure sufficient touch targets.
 - The member details Membership & Audit section uses equal status tiles with aligned badge rows, followed by matching reason and review tiles. Stack tiles on mobile and keep the rank action beside its wrapping badge.
 - Provide an accessible dialog name, initial focus, focus containment, and focus restoration after closing.
@@ -271,6 +278,7 @@ Build skeletons from the actual page and table schema, not a generic loading rec
 
 - Verify desktop, tablet, and mobile—not just one screenshot size.
 - Preserve all data and actions on small screens. Use a consistent labeled-card pattern or a deliberately scrollable table for dense comparisons.
+- Rank history cards on mobile stack three distinct full-width tiers: When (date and medal badge on one line), Rank Change (transition badges with directional indicator), and Why (audit note and event details), maintaining safe bottom clearance for floating navigation.
 - Do not shrink text to unreadable sizes, hide necessary actions, or force the entire page to scroll horizontally.
 - Ensure keyboard operation, visible focus, accessible names, and logical tab order.
 - Make tooltips supplementary; essential instructions must remain available without hover.

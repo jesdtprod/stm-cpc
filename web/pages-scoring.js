@@ -538,15 +538,21 @@ export function createScoringPages({ api, getOrgId }) {
                     label: "Rule",
                     render: (r) =>
                       h(
-                        "span",
-                        {},
-                        r.name,
-                        h("span", { class: "sub" }, describe(r)),
+                        "div",
+                        { class: "member-cell" },
+                        h("span", { class: "member-avatar", "aria-hidden": "true" }, icon("trophy")),
+                        h(
+                          "div",
+                          { class: "member-meta" },
+                          h("strong", { class: "member-name" }, r.name),
+                          h("span", { class: "sub" }, describe(r)),
+                        ),
                       ),
                   },
                   {
                     key: "game",
                     label: "Each Game",
+                    width: 220,
                     render: (r) =>
                       `To ${r.points_per_game}, win by ${r.win_by}${
                         r.point_cap ? `, cap ${r.point_cap}` : ""
@@ -555,6 +561,7 @@ export function createScoringPages({ api, getOrgId }) {
                   {
                     key: "forfeit",
                     label: "Forfeit",
+                    width: 100,
                     align: "right",
                     render: (r) => `${r.forfeit_score}–0`,
                   },
@@ -569,6 +576,7 @@ export function createScoringPages({ api, getOrgId }) {
                   {
                     key: "status",
                     label: "Status",
+                    width: 140,
                     render: (r) =>
                       r.is_active
                         ? badge("Active", "success")
@@ -578,6 +586,7 @@ export function createScoringPages({ api, getOrgId }) {
                     key: "actions",
                     label: "Action",
                     align: "center",
+                    actionCount: 2,
                     render: (r) =>
                       h(
                         "span",

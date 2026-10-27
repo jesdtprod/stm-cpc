@@ -468,6 +468,7 @@ export function createShell(
       } else logo?.remove();
     }
     for (const page of document.querySelectorAll("main .page")) {
+      page.classList.toggle("admin-reference-page", isAdminPath);
       page.classList.toggle(
         "member-mobile-lists",
         signedIn && isMemberView && !page.classList.contains("dash-page"),

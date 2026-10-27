@@ -602,6 +602,7 @@ export function createCategoriesPages({ api, getOrgId }) {
         state.page * DEFAULT_PAGE_SIZE,
       );
       tableHost.replaceChildren(dataTable({
+        pageSize: 0, // The category list owns its pager.
         searchable: false,
         hasFilters: Boolean(state.term.trim()),
         onReset: () => {

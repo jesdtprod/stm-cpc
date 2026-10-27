@@ -369,7 +369,7 @@ Deno.test("session: sign-in loads grants; idle timeout warns, then signs out and
     { profile_id: "P1", org_id: "O" },
     "the profile is kept for error reports",
   );
-  env.clock.advance(14 * 60_000 - 1);
+  env.clock.advance(29 * 60_000 - 1);
   assert.equal(s.getState().status, "signed_in");
   env.clock.advance(1);
   assert.deepEqual(env.log.warnings, [60]);
@@ -398,7 +398,7 @@ Deno.test("session: activity postpones the idle sign-out", async () => {
   s.activity();
   env.clock.advance(10 * 60_000);
   assert.equal(s.getState().status, "signed_in");
-  env.clock.advance(5 * 60_000 + 1);
+  env.clock.advance(20 * 60_000 + 1);
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(s.getState().status, "signed_out");
 });
@@ -488,10 +488,10 @@ Deno.test("session: the club's idle setting replaces the default, and a bad valu
   const fallback = makeEnv({ getIdleMs: () => null });
   const f = fallback.make(null);
   await f.signIn({ id: "CPC-2026-00001", password: "x" }, "token");
-  fallback.clock.advance(14 * 60_000 - 1);
+  fallback.clock.advance(29 * 60_000 - 1);
   assert.equal(
     f.getState().status,
     "signed_in",
-    "no setting: the 15 minute default",
+    "no setting: the 30 minute default",
   );
 });

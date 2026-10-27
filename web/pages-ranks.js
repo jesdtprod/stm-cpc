@@ -1277,6 +1277,7 @@ export function createRanksPages({ api, getOrgId }) {
             "div",
             { class: "table-host" },
             dataTable({
+              pageSize: 0, // Rank rules are paged by the surrounding view.
               searchable: false,
               hasFilters: Boolean(state.term.trim()),
               onReset: () => {

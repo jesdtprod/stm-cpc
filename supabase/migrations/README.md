@@ -60,5 +60,8 @@ following midnight in Asia/Manila. Earlier closing times still apply normally.
 with no rank yet: it now creates the current rank instead of recording only the
 history row.
 
+`1620_session_idle_30_minutes.sql` sets the inactivity timeout to 30 minutes.
+The app reads the setting at the next sign-in.
+
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in,
 linked CLI; no Docker).

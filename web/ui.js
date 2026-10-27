@@ -2954,7 +2954,7 @@ export function dataTable(
     filter,
     searchActions,
     searchState,
-    pageSize = 0,
+    pageSize = DEFAULT_PAGE_SIZE,
     searchKey = ariaLabel ??
       schema.columns.map((column) => column.key).join(":"),
   },
@@ -3196,7 +3196,7 @@ export function dataTable(
     "aria-label": ariaLabel ?? "Data Table",
     tabindex: "0",
   }, table);
-  if (!searchable) return h("div", { class: "data-grid" }, scroll);
+  if (!searchable && pageSize <= 0) return h("div", { class: "data-grid" }, scroll);
 
   let saved = searchState ? tableSearches.get(searchState) : null;
   if (searchState && !saved) {
@@ -3277,6 +3277,7 @@ export function dataTable(
     }
   }
   applySearch();
+  if (!searchable) return h("div", { class: "data-grid" }, scroll, pagerHost);
   return h(
     "div",
     { class: "data-grid-layout" },

@@ -19,6 +19,7 @@ import {
   inputWithIcon,
   openModal,
   selectControl,
+  tableFilter,
   toast,
 } from "./ui.js";
 import { formatDate, formatDateTime } from "./lib/dates.js";
@@ -99,6 +100,7 @@ export function createEventsPages({ api }) {
       templates: [],
       rules: [],
       open: null, // the event whose divisions are shown
+      detailTab: "divisions",
       divisions: [],
       regs: [],
       pays: {},
@@ -605,11 +607,20 @@ export function createEventsPages({ api }) {
               key: "name",
               label: "Event",
               render: (r) =>
-                h("span", {}, r.name, h("span", { class: "sub" }, r.doc_no)),
+                h(
+                  "div",
+                  { class: "member-cell" },
+                  h("span", { class: "member-avatar", "aria-hidden": "true" }, icon("trophy")),
+                  h("div", { class: "member-meta" },
+                    h("strong", { class: "member-name" }, r.name),
+                    h("span", { class: "sub member-subtext" }, r.doc_no),
+                  ),
+                ),
             },
             {
               key: "dates",
               label: "Dates",
+              width: 240,
               render: (r) =>
                 r.starts_on === r.ends_on
                   ? formatDate(`${r.starts_on}T00:00:00+08:00`)
@@ -620,18 +631,21 @@ export function createEventsPages({ api }) {
             {
               key: "fee",
               label: "Fee",
+              width: 100,
               align: "right",
-              render: (r) => Number(r.fee) ? formatMoney(r.fee) : "Free",
+              render: (r) => Number(r.fee) ? formatMoney(r.fee) : badge("Free", "success"),
             },
             {
               key: "divisions",
               label: "Divisions",
+              width: 120,
               align: "right",
               render: (r) => String(liveDivisions(r)),
             },
             {
               key: "status",
               label: "Status",
+              width: 180,
               render: (r) =>
                 badge(...(EVENT_STATUS[r.status] ?? [r.status, "neutral"])),
             },
@@ -720,6 +734,7 @@ export function createEventsPages({ api }) {
     // ------------------------------------------------------------- divisions
     async function openEvent(ev) {
       state.open = ev;
+      state.detailTab = "divisions";
       state.divisions = [];
       state.divStatus = "loading";
       draw();
@@ -927,7 +942,10 @@ export function createEventsPages({ api }) {
             select(
               "dv-format-tpl",
               "template_id",
-              state.templates.map((t) => ({ value: t.id, label: t.name })),
+              state.templates.map((t) => ({
+                value: t.id,
+                label: t.name.replace(/\b[a-z]/g, (letter) => letter.toUpperCase()),
+              })),
               state.templates[0]?.id,
             ),
             "Copied to the division at creation.",
@@ -1591,12 +1609,65 @@ export function createEventsPages({ api }) {
       const [statusLabel, statusTone] = EVENT_STATUS[ev.status] ??
         [ev.status, "neutral"];
       const canAdd = !["completed", "cancelled"].includes(ev.status);
-      return h(
+
+      const eventActions = [];
+      if (beforeDraw(ev)) {
+        eventActions.push(
+          button({
+            label: "Edit Event",
+            icon: "edit",
+            variant: "secondary",
+            onClick: () => eventModal(ev),
+          }),
+        );
+      }
+      if (ev.status === "draft" || ev.status === "registration_closed") {
+        eventActions.push(
+          button({
+            label: "Open Registration",
+            icon: "check",
+            variant: "success",
+            onClick: () =>
+              setStatus(ev, "registration_open", "Registration open."),
+          }),
+        );
+      } else if (ev.status === "registration_open") {
+        eventActions.push(
+          button({
+            label: "Close Registration",
+            icon: "lock",
+            variant: "warning",
+            onClick: () =>
+              setStatus(ev, "registration_closed", "Registration closed."),
+          }),
+        );
+      } else if (ev.status === "in_progress") {
+        eventActions.push(
+          button({
+            label: "Mark Completed",
+            icon: "medal",
+            variant: "success",
+            onClick: () => setStatus(ev, "completed", "Event completed."),
+          }),
+        );
+      }
+      if (canAdd) {
+        eventActions.push(
+          button({
+            label: "New Division",
+            icon: "plus",
+            variant: "primary",
+            onClick: () => divisionModal(null),
+          }),
+        );
+      }
+
+      const topBar = h(
         "div",
-        { class: "stack" },
+        { class: "event-detail-toolbar" },
         h(
           "div",
-          { class: "actions events-actions" },
+          { class: "event-detail-back" },
           button({
             label: "All Events",
             icon: "chevl",
@@ -1606,44 +1677,137 @@ export function createEventsPages({ api }) {
               draw();
             },
           }),
-          canAdd
-            ? button({
-              label: "New Division",
-              icon: "plus",
-              variant: "primary",
-              onClick: () => divisionModal(null),
-            })
-            : null,
+        ),
+        h("div", { class: "event-detail-actions" }, ...eventActions),
+      );
+
+      let regWindowValue = "Not specified";
+      let regWindowSub = "No registration window set";
+      if (ev.registration_opens_at && ev.registration_closes_at) {
+        regWindowValue = `${formatDate(ev.registration_opens_at)} – ${formatDate(ev.registration_closes_at)}`;
+        regWindowSub = `Closes ${formatDateTime(ev.registration_closes_at)}`;
+      } else if (ev.registration_opens_at) {
+        regWindowValue = `Opens ${formatDate(ev.registration_opens_at)}`;
+        regWindowSub = formatDateTime(ev.registration_opens_at);
+      } else if (ev.registration_closes_at) {
+        regWindowValue = `Closes ${formatDate(ev.registration_closes_at)}`;
+        regWindowSub = formatDateTime(ev.registration_closes_at);
+      }
+
+      const feeValue = Number(ev.fee) ? formatMoney(ev.fee) : "Free";
+      const feeSub = Number(ev.fee) ? "Per participant entry" : "No entry fee required";
+      const scheduleValue = ev.starts_on && ev.ends_on
+        ? (ev.starts_on === ev.ends_on ? formatDate(ev.starts_on) : `${formatDate(ev.starts_on)} – ${formatDate(ev.ends_on)}`)
+        : "Dates unannounced";
+      const locationValue = ev.location || "Capitol Pickleball Club Courts";
+
+      const summaryCard = h(
+        "div",
+        { class: "event-summary-card" },
+        h(
+          "div",
+          { class: "event-summary-header" },
+          h(
+            "div",
+            { class: "event-summary-identity" },
+            h("span", { class: "event-summary-icon", "aria-hidden": "true" }, icon("trophy")),
+            h(
+              "div",
+              { class: "event-summary-headings" },
+              h("h2", { class: "event-summary-title" }, ev.name),
+              h("span", { class: "event-summary-docno" }, ev.doc_no),
+            ),
+          ),
+          h("div", { class: "event-summary-badge" }, badge(statusLabel, statusTone)),
         ),
         h(
           "div",
-          { class: "member-panel events-summary" },
-          h("h2", {}, ev.name),
-          badge(statusLabel, statusTone),
+          { class: "event-summary-grid" },
           h(
-            "p",
-            { class: "muted" },
-            [
-              ev.doc_no,
-              ev.location,
-              Number(ev.fee) ? formatMoney(ev.fee) : "Free",
-              ev.registration_opens_at
-                ? `Registration opens ${
-                  formatDateTime(ev.registration_opens_at)
-                }`
-                : null,
-              ev.registration_closes_at
-                ? `closes ${formatDateTime(ev.registration_closes_at)}`
-                : null,
-            ].filter(Boolean).join(" · "),
+            "div",
+            { class: "event-kpi-tile" },
+            h("span", { class: "event-kpi-icon", "aria-hidden": "true" }, icon("calendar")),
+            h(
+              "div",
+              { class: "event-kpi-content" },
+              h("span", { class: "event-kpi-label" }, "Schedule"),
+              h("strong", { class: "event-kpi-value" }, scheduleValue),
+              h("span", { class: "event-kpi-sub" }, "Tournament Days"),
+            ),
           ),
-          ev.status === "cancelled" && ev.cancel_reason
-            ? h("p", { class: "muted" }, `Cancelled: ${ev.cancel_reason}`)
-            : null,
+          h(
+            "div",
+            { class: "event-kpi-tile" },
+            h("span", { class: "event-kpi-icon", "aria-hidden": "true" }, icon("home")),
+            h(
+              "div",
+              { class: "event-kpi-content" },
+              h("span", { class: "event-kpi-label" }, "Venue"),
+              h("strong", { class: "event-kpi-value" }, locationValue),
+              h("span", { class: "event-kpi-sub" }, "Court Location"),
+            ),
+          ),
+          h(
+            "div",
+            { class: "event-kpi-tile" },
+            h("span", { class: "event-kpi-icon", "aria-hidden": "true" }, icon("currency")),
+            h(
+              "div",
+              { class: "event-kpi-content" },
+              h("span", { class: "event-kpi-label" }, "Entry Fee"),
+              h("strong", { class: "event-kpi-value" }, feeValue),
+              h("span", { class: "event-kpi-sub" }, feeSub),
+            ),
+          ),
+          h(
+            "div",
+            { class: "event-kpi-tile" },
+            h("span", { class: "event-kpi-icon", "aria-hidden": "true" }, icon("clock")),
+            h(
+              "div",
+              { class: "event-kpi-content" },
+              h("span", { class: "event-kpi-label" }, "Registration"),
+              h("strong", { class: "event-kpi-value" }, regWindowValue),
+              h("span", { class: "event-kpi-sub" }, `${state.divisions.length} Divisions · ${state.regs.length} Registered`),
+            ),
+          ),
         ),
-        wrapTable(divisionsView()),
-        h("h3", {}, "Registrations"),
-        wrapTable(registrationsView()),
+        ev.status === "cancelled" && ev.cancel_reason
+          ? h(
+            "div",
+            { class: "event-summary-cancel-alert" },
+            h("span", { class: "cancel-alert-icon", "aria-hidden": "true" }, icon("alert")),
+            h("p", { class: "cancel-alert-text" }, `Cancelled: ${ev.cancel_reason}`),
+          )
+          : null,
+      );
+
+      const tabsHost = h("div", { class: "event-detail-tabs-host" });
+      tabsHost.replaceChildren(
+        tableFilter({
+          activeId: state.detailTab,
+          tabs: [
+            { id: "divisions", label: "Divisions", badge: state.divisions.length },
+            { id: "registrations", label: "Registrations", badge: state.regs.length },
+          ],
+          onChange: (id) => {
+            state.detailTab = id;
+            draw();
+          },
+        }),
+      );
+
+      const activeTable = state.detailTab === "divisions"
+        ? divisionsView()
+        : registrationsView();
+
+      return h(
+        "div",
+        { class: "stack event-detail-stack" },
+        topBar,
+        summaryCard,
+        tabsHost,
+        wrapTable(activeTable),
       );
     }
 

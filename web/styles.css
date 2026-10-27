@@ -1977,6 +1977,10 @@ textarea.input {
   color: #fff;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  letter-spacing: 0;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2337,8 +2341,19 @@ dialog.modal::backdrop {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+/* Hide modal scrollbars while preserving wheel, touch and keyboard scrolling. */
+dialog.modal,
+dialog.modal *,
+dialog.drawer,
+dialog.drawer * {
+  scrollbar-width: none;
+}
+dialog.modal::-webkit-scrollbar,
+dialog.modal *::-webkit-scrollbar,
+dialog.drawer::-webkit-scrollbar,
+dialog.drawer *::-webkit-scrollbar {
+  display: none;
 }
 .modal-foot {
   display: flex;

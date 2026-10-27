@@ -569,6 +569,7 @@ export function createImportPages({ api }) {
           "Try searching by another member ID, row number, or issue description.";
       }
       tableHost.replaceChildren(dataTable({
+        pageSize: 0, // The import list uses server pagination below.
         schema: state.tab === "batches" ? batchSchema : issueSchema,
         rows,
         state: state.status,

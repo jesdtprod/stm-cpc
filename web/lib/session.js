@@ -21,7 +21,7 @@ export function createSession({
   channel = null,
   storage = null,
   cacheStorage = null,
-  idleMs = 15 * 60_000,
+  idleMs = 30 * 60_000,
   getIdleMs = null, // optional: the club's idle setting, read after sign-in
   warnMs = 60_000,
   reauthMs = 5 * 60_000,

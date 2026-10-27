@@ -1485,6 +1485,7 @@ export function createBookingAdminPages({ api, client }) {
 
       const tableState = state.status === "refreshing" ? "ready" : state.status;
       tableHost.replaceChildren(dataTable({
+        pageSize: 0, // Booking filters and totals use the surrounding pager.
         searchState: state,
         schema: { columns },
         rows: pageRows,

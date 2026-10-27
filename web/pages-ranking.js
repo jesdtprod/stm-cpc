@@ -23,9 +23,9 @@ function messageOf(e, fallback) {
   return own || e?.message || fallback;
 }
 
-export function createRankingPages({ api, client }) {
+export function createRankingPages({ api, client, session }) {
   function historyTable(rows, state, onRetry, filter) {
-    return dataTable({
+    const table = dataTable({
       filter,
       schema: {
         columns: [
@@ -37,34 +37,53 @@ export function createRankingPages({ api, client }) {
           {
             key: "change",
             label: "Rank Change",
-            render: (r) =>
-              h(
-                "span",
-                {},
-                r.from_name === r.to_name
-                  ? `${r.to_name} (no change)`
-                  : r.from_name
-                  ? `${r.from_name} → ${r.to_name}`
-                  : `Set to ${r.to_name}`,
-                r.is_reversal
-                  ? badge("Reversal", "warning")
-                  : r.reversed
-                  ? badge("Reversed", "neutral")
-                  : null,
-              ),
+            render: (r) => {
+              const flow = r.from_name && r.from_name !== r.to_name
+                ? h(
+                  "span",
+                  { class: "rank-change-flow" },
+                  badge(r.from_name, "neutral"),
+                  h("span", { class: "rank-change-arrow", "aria-hidden": "true" }, "→"),
+                  badge(r.to_name, "success"),
+                )
+                : r.from_name === r.to_name
+                ? h(
+                  "span",
+                  { class: "rank-change-flow" },
+                  badge(r.to_name, "neutral"),
+                  h("span", { class: "sub rank-change-sub" }, "(no change)"),
+                )
+                : h(
+                  "span",
+                  { class: "rank-change-flow" },
+                  h("span", { class: "rank-change-prefix" }, "Set to"),
+                  badge(r.to_name ?? "Unranked", "success"),
+                );
+              const statusBadge = r.is_reversal
+                ? badge("Reversal", "warning")
+                : r.reversed
+                ? badge("Reversed", "neutral")
+                : null;
+              return h(
+                "div",
+                { class: "rank-history-change" },
+                flow,
+                statusBadge,
+              );
+            },
           },
           {
             key: "why",
             label: "Why",
             render: (r) =>
               h(
-                "span",
-                {},
-                r.reason ?? r.rule_name ?? "—",
+                "div",
+                { class: "rank-history-why" },
+                h("span", { class: "rank-history-reason" }, r.reason ?? r.rule_name ?? "—"),
                 r.event_name
                   ? h(
                     "span",
-                    { class: "sub" },
+                    { class: "sub rank-history-event" },
                     [r.event_name, r.division_name].filter(Boolean).join(" · "),
                   )
                   : null,
@@ -80,6 +99,8 @@ export function createRankingPages({ api, client }) {
       emptyText:
         "A rank change appears here after a division is finalized or an administrator sets a rank.",
     });
+    table.classList.add("rank-history-table-wrap");
+    return table;
   }
 
   function rankingPage() {
@@ -111,7 +132,11 @@ export function createRankingPages({ api, client }) {
                 .order("sort_order")
             ),
         ]);
-        state.list = list ?? [];
+        const memberId = session?.getState().access?.member_id;
+        state.list = (list ?? []).map((row, index) => ({
+          ...row,
+          position: index + 1,
+        })).filter((row) => can("members.read") || row.member_id === memberId);
         state.categories = categories ?? [];
         if (client && state.list.length) {
           try {
@@ -282,9 +307,9 @@ export function createRankingPages({ api, client }) {
               "span",
               {
                 class: "ranking-position",
-                "aria-label": `Position ${state.list.indexOf(r) + 1}`,
+                "aria-label": `Position ${r.position}`,
               },
-              String(state.list.indexOf(r) + 1),
+              String(r.position),
             ),
         },
         {
@@ -382,8 +407,10 @@ export function createRankingPages({ api, client }) {
           state: state.status === "refreshing" ? "ready" : state.status,
           ariaLabel: "Ranking",
           onRetry: load,
-          emptyTitle: "No ranked players yet",
-          emptyText: "Players appear here once they hold a rank.",
+          emptyTitle: can("members.read") ? "No ranked players yet" : "No rank to show",
+          emptyText: can("members.read")
+            ? "Players appear here once they hold a rank."
+            : "Your rank will appear here once assigned and matching the selected category.",
         }),
       );
     }
@@ -419,7 +446,9 @@ export function createRankingPages({ api, client }) {
         chip: "Ranks and History",
         titleBadge: true,
         description:
-          "Every ranked player, highest first, and how ranks have changed.",
+          can("members.read")
+            ? "Every ranked player, highest first, and how ranks have changed."
+            : "Your current rank and how it has changed.",
       }),
       body,
     );

@@ -876,6 +876,7 @@ Deno.test("member events: one shared search filters divisions and retains regist
 
 Deno.test("ranking identity: actual CPC number appears below the player name without invented IDs", () =>
   withDom(async (document) => {
+    setAuth({ signedIn: true, grants: [{ code: "members.read" }] });
     const page = createRankingPages({
       api: {
         read: () => Promise.resolve([]),
@@ -915,10 +916,12 @@ Deno.test("ranking identity: actual CPC number appears below the player name wit
       !identities[1].querySelector(".ranking-player-id"),
       "Missing member numbers must never be fabricated from database IDs",
     );
+    clearAuth();
   }));
 
 Deno.test("ranking photos: signed private images replace icons and missing photos use initials", () =>
   withDom(async (document) => {
+    setAuth({ signedIn: true, grants: [{ code: "members.read" }] });
     const photoPath = "fake-org/fake-profile/photo.jpg";
     const page = createRankingPages({
       api: {
@@ -986,6 +989,7 @@ Deno.test("ranking photos: signed private images replace icons and missing photo
       !page.querySelector(".mobile-record-icon"),
       "Player rows must no longer show the generic ranking icon",
     );
+    clearAuth();
   }));
 
 Deno.test("icon inputs: preserve native validation attributes and existing handlers", () =>
@@ -1091,6 +1095,28 @@ Deno.test("grid pagination: filters the full list before paging and retains the 
         findButton(view, "Previous Page").disabled,
       "A single search result must disable both navigation buttons",
     );
+  }));
+
+Deno.test("grid pagination: defaults to ten records with or without search and allows an external pager", () =>
+  withDom(() => {
+    const config = {
+      schema: { columns: [{ key: "name", label: "Record" }] },
+      rows: Array.from({ length: 12 }, (_, i) => ({ name: `Record ${i + 1}` })),
+    };
+    for (const searchable of [true, false]) {
+      const grid = dataTable({ ...config, searchable });
+      const rows = grid.querySelector(".tbl-body").querySelectorAll(".tbl-row");
+      assert(rows.filter((row) => !row.hidden).length === 10);
+      const next = grid.querySelectorAll("button").find((button) =>
+        button.getAttribute("aria-label") === "Next Page"
+      );
+      next.click();
+      assert(rows.filter((row) => !row.hidden).length === 2);
+      assert(!rows[10].hidden && !rows[11].hidden);
+    }
+    const external = dataTable({ ...config, searchable: false, pageSize: 0 });
+    assert(!external.querySelector(".grid-pager"));
+    assert(external.querySelector(".tbl-body").querySelectorAll(".tbl-row").every((row) => !row.hidden));
   }));
 
 Deno.test("calendar: full seven-column month and single-date selection remain separate from range styling", () =>

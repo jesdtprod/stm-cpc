@@ -66,7 +66,7 @@ Do not mark the work complete while any applicable item is unverified. Identify 
 - Redirect URL allowlist contains only the exact production Pages URL and `localhost` for development.
 - Password reset links are single-use and short-lived. Do not extend their lifetime.
 - Logout calls `supabase.auth.signOut()`, clears all cached app data, and clears the offline queue. Provide an admin option for global sign-out of a user.
-- Idle timeout: automatically sign out after a period of inactivity (default 15 minutes on shared front-desk devices; configurable).
+- Idle timeout: automatically sign out after a period of inactivity (default 30 minutes; configurable).
 - Re-authenticate (password prompt) before sensitive actions: payment verification or voiding, refunds, rank overrides, bracket redraws, score corrections, role or permission changes, password resets, member import, data export.
 - No shared accounts. Every member and staff user has a unique login.
 - Session tokens are never logged, placed in URLs, shown on screen, or sent to third parties.

@@ -34,7 +34,7 @@ Use this instead of loading the whole documents. Open a `docs/` section only whe
 - Escape all dynamic text; no inline scripts or handlers; meta CSP in every HTML file; URLs validated.
 - Login: member ID + password via `member-login` function; Turnstile, rate limit, lockout, generic errors. Public Supabase sign-ups stay disabled; accounts are created by Edge Functions.
 - Edge Functions: verify JWT then permission; schema-validate input; CORS allowlist (own origin only); generic errors; audit sensitive actions.
-- Service worker caches the app shell only, never authenticated data. Logout clears caches and offline queue. Idle timeout 15 min.
+- Service worker caches the app shell only, never authenticated data. Logout clears caches and offline queue. Idle timeout 30 min.
 
 ## UI essentials (docs/UI_DESIGN.md)
 - Spacing 4/8/12/16/24/32. Control height 40–44px, radius 10px; cards/modals radius 14–16px. Body 13–14px, table heads 11–12px uppercase.
