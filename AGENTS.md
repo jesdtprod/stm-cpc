@@ -24,6 +24,8 @@ Web app for the Capitol Pickleball Club (one club): member-ID sign-in with admin
 - Prices, totals, payment status, standings, and rank changes are computed **on the server**, never trusted from the browser.
 - All dates and business days use `Asia/Manila`.
 - UI follows the shared tokens and components (`docs/UI_DESIGN.md`). Row actions are icon-only with accessible labels.
+- Data below a primary value must be smaller, muted subtext using the shared `.sub` class.
+- Guest additions, late registration and roster changes are admin-only (`events.admin_roster`); Open/Closed registration does not prevent admin guest management. Preserve draws, match history and payment ownership.
 
 ## Where to read more (open only what the task needs)
 | Task | Read |

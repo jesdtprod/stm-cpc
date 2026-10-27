@@ -61,7 +61,13 @@ select is((select avatar_path from public.ranking_photos(array[(select member_id
   (select path from photos where role = 'high'), 'ordinary members can request a ranked player photo');
 select is((select count(*)::int from public.ranking_photos(array[(select member_id from photos where role = 'norank')])), 0, 'unranked member photos are excluded');
 select is((select count(*)::int from storage.objects where bucket_id = 'avatars' and name = (select path from photos where role = 'high')), 1, 'storage permits the ranked photo to be signed');
-select is((select count(*)::int from storage.objects where bucket_id = 'avatars' and name = (select path from photos where role = 'norank')), 0, 'storage still hides other unranked member photos');
+-- Migration 1661 intentionally publishes only selected landing photos, even for unranked members.
+-- ranking_photos above still excludes them; Storage allows this separate public-strip exception.
+select is((select count(*)::int from storage.objects where bucket_id = 'avatars' and name = (select path from photos where role = 'norank')),
+  (select case when exists (
+    select 1 from jsonb_array_elements(public.club_home_stats() -> 'member_badges') b
+    where b ->> 'avatar_path' = (select path from photos where role = 'norank')
+  ) then 1 else 0 end), 'unranked photos are readable only when selected for the public landing strip');
 select throws_ok($$select * from public.ranking_photos(array_fill('fake-id'::text, array[1001]))$$,
   '22023', 'request at most 1000 ranking photos', 'photo requests are bounded');
 reset role;

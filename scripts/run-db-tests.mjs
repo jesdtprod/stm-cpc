@@ -7,6 +7,8 @@
 // and replaces `select * from finish();` with a query that returns the log.
 // Run: deno run --allow-read=supabase/tests --allow-write=supabase/.temp --allow-run=npx scripts/run-db-tests.mjs [name-filter]
 
+import { parseDbTestOutput } from "./lib/db-test-output.mjs";
+
 const filter = Deno.args[0] ?? "";
 const files = [];
 for await (const entry of Deno.readDir("supabase/tests")) {
@@ -60,7 +62,7 @@ for (const name of files) {
   const err = new TextDecoder().decode(stderr);
   let lines = [];
   try {
-    lines = (JSON.parse(out).rows ?? []).map((r) => String(r.line));
+    lines = parseDbTestOutput(out);
   } catch {
     // reported below
   }

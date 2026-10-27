@@ -23,6 +23,8 @@ import {
   switchToggle,
   tableFilter,
   toast,
+  toProperCase,
+  formatTemplateLabel as templateLabel,
 } from "./ui.js";
 
 const CODE_RE = /^[a-z0-9][a-z0-9_-]{0,31}$/;
@@ -34,14 +36,13 @@ const CATEGORY_SELECT = "id,code,name,sort_order,is_active,deleted_at," +
   "ladders:rank_ladders(id,overflow,is_active,deleted_at,version," +
   "ranks(id,code,name,sort_order,is_starting,deleted_at,version))";
 const RULE_SELECT =
-  "id,name,conditions,action,levels,min_rank_id,max_rank_id,cooldown_days,exclude_forfeits,priority,is_active,version";
+  "id,name,format_template_id,template:format_templates(name),conditions,action,levels,min_rank_id,max_rank_id,cooldown_days,exclude_forfeits,priority,is_active,version";
 
 const OVERFLOW = {
   chain: "Continue into the next category",
   stop: "Stay within this category",
 };
 const ACTION_LABEL = { up: "Move Up", down: "Move Down", retain: "Stay" };
-
 const liveLadder = (cat) => (cat.ladders ?? []).find((l) => !l.deleted_at);
 const liveRanks = (ladder) =>
   (ladder?.ranks ?? []).filter((r) => !r.deleted_at).sort((a, b) =>
@@ -70,6 +71,7 @@ export function createRanksPages({ api, getOrgId }) {
       tab: "ladders",
       cats: [],
       rules: [],
+      templates: [],
       status: "loading",
       term: "",
       category: "all",
@@ -132,7 +134,7 @@ export function createRanksPages({ api, getOrgId }) {
       state.status = state.cats.length ? "refreshing" : "loading";
       draw();
       try {
-        const [cats, rules] = await Promise.all([
+        const [cats, rules, templates] = await Promise.all([
           api.read((c) =>
             c.from("categories").select(CATEGORY_SELECT).is("deleted_at", null)
               .order("sort_order")
@@ -141,9 +143,14 @@ export function createRanksPages({ api, getOrgId }) {
             c.from("rank_rules").select(RULE_SELECT).is("deleted_at", null)
               .order("priority").order("name")
           ),
+          api.read((c) =>
+            c.from("format_templates").select("id,name").is("deleted_at", null)
+              .eq("is_active", true).order("name")
+          ),
         ]);
         state.cats = cats ?? [];
         state.rules = rules ?? [];
+        state.templates = templates ?? [];
         state.status = "ready";
       } catch {
         state.status = "error";
@@ -826,8 +833,8 @@ export function createRanksPages({ api, getOrgId }) {
     // ------------------------------------------------------------- rules tab
     function conditionText(c) {
       const parts = [];
-      if (c.bracket_tier) parts.push(`${c.bracket_tier} bracket`);
-      if (c.bracket_result) parts.push(c.bracket_result);
+      if (c.bracket_tier) parts.push(`${c.bracket_tier} Bracket`);
+      if (c.bracket_result) parts.push(toProperCase(c.bracket_result));
       if (c.placement) parts.push(`placed ${c.placement}`);
       if (c.min_matches) parts.push(`at least ${c.min_matches} matches`);
       return parts.length ? parts.join(", ") : "Any Result";
@@ -838,6 +845,11 @@ export function createRanksPages({ api, getOrgId }) {
         : `${ACTION_LABEL[r.action]} ${r.levels} level${
           r.levels === 1 ? "" : "s"
         }`;
+    const templateName = (r) => r.format_template_id
+      ? templateLabel(r.template?.name ||
+        state.templates.find((t) => t.id === r.format_template_id)?.name ||
+        "Unavailable Template")
+      : "All Formats";
 
     function ruleModal(row) {
       const editing = Boolean(row);
@@ -930,13 +942,32 @@ export function createRanksPages({ api, getOrgId }) {
               "When a member's final result is",
             ),
           ),
+          h("div", { class: "form-grid-wide" }, field(
+            "ru-template",
+            "Format Template",
+            select("ru-template", "format_template_id", [
+              { value: "", label: "All Formats" },
+              ...state.templates.map((t) => ({
+                value: t.id,
+                label: templateLabel(t.name),
+              })),
+              ...(row?.format_template_id &&
+                  !state.templates.some((t) => t.id === row.format_template_id)
+                ? [{
+                  value: row.format_template_id,
+                  label: templateLabel(row.template?.name || "Unavailable Template (Saved)"),
+                }]
+                : []),
+            ], row?.format_template_id),
+            "Apply only to divisions created with this template. All Formats also includes older divisions with an unknown source template.",
+          )),
           field(
             "ru-tier",
             "Bracket",
             select("ru-tier", "bracket_tier", [
               { value: "", label: "Any" },
-              { value: "H", label: "H bracket" },
-              { value: "L", label: "L bracket" },
+              { value: "H", label: "H Bracket" },
+              { value: "L", label: "L Bracket" },
             ], c.bracket_tier),
             "Filter by tournament bracket tier.",
           ),
@@ -946,7 +977,7 @@ export function createRanksPages({ api, getOrgId }) {
             select("ru-result", "bracket_result", [
               { value: "", label: "Any" },
               { value: "won", label: "Won the Bracket" },
-              { value: "lost", label: "Lost (eliminated)" },
+              { value: "lost", label: "Lost (Eliminated)" },
             ], c.bracket_result),
             "Outcome required in the chosen bracket.",
           ),
@@ -1094,6 +1125,7 @@ export function createRanksPages({ api, getOrgId }) {
           }
           const fields = {
             name,
+            format_template_id: form.get("format_template_id") || null,
             conditions,
             action,
             levels: lv,
@@ -1169,6 +1201,11 @@ export function createRanksPages({ api, getOrgId }) {
                   ),
                 ),
               ),
+          },
+          {
+            key: "format_template",
+            label: "Format Template",
+            render: templateName,
           },
           {
             key: "when",
@@ -1255,6 +1292,7 @@ export function createRanksPages({ api, getOrgId }) {
       const rows = state.rules.filter((rule) =>
         matchesSearch([
           rule.name,
+          templateName(rule),
           conditionText(rule.conditions),
           actionText(rule),
           rankName(rule.min_rank_id),

@@ -991,7 +991,7 @@ export function createBookingPages({ api, client, session }) {
           api.read((c) =>
             c.from("bookings").select(
               "id,doc_no,court_name_snapshot,during,status,status_reason,cancel_reason,price_snapshot,expires_at,requested_by_member_id",
-            ).order("during", { ascending: false })
+            ).order("doc_no", { ascending: false })
               .order("created_at", { ascending: false })
               .order("id", { ascending: false }).limit(100)
           ),
@@ -1316,7 +1316,7 @@ export function createBookingPages({ api, client, session }) {
                 ),
                 h(
                   "span",
-                  { class: "my-booking-time" },
+                  { class: "sub my-booking-time" },
                   x ? `${formatDateTime(x.start)} – ${timeLabel(x.end)}` : "—",
                 ),
               ),

@@ -1,0 +1,64 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+grant execute on all functions in schema extensions to public;
+select no_plan();
+create function pg_temp.as_user(u uuid) returns void language sql as
+$$ select set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true) $$;
+create function pg_temp.mk(p_role text, p_no text) returns uuid language plpgsql as $$
+declare u uuid := gen_random_uuid(); pid text := core.ulid(); per text := core.ulid(); mid text := core.ulid(); org text := (select id from public.orgs where code = 'cpc');
+begin
+  insert into auth.users(id,email) values(u,lower(p_no)||'@members.example.test');
+  insert into public.persons(id,org_id,display_name) values(per,org,'Fake '||p_no);
+  insert into public.profiles(id,org_id,auth_user_id,person_id) values(pid,org,u,per);
+  insert into public.org_members(org_id,profile_id,role_id) values(org,pid,(select id from public.roles where org_id=org and code=p_role));
+  insert into public.members(id,org_id,person_id,profile_id,member_no) values(mid,org,per,pid,p_no);
+  update public.members set status='invited' where id=mid;
+  update public.members set status='pending_approval' where id=mid;
+  update public.members set status='active' where id=mid;
+  return u;
+end $$;
+create temp table us(role text,u uuid);
+insert into us values('admin',pg_temp.mk('admin','CPC-2030-96800'));
+insert into us values('member',pg_temp.mk('member','CPC-2030-96801'));
+create temp table fx as select core.ulid() as ev,core.ulid() as ev2,core.ulid() as gp,
+  core.ulid() as p1,core.ulid() as p2,core.ulid() as optional,
+  'FAKE'||core.ulid() as dupr1,'FAKE'||core.ulid() as dupr2;
+grant select on us,fx to public;
+select is(has_function_privilege('anon','public.create_guest_event_participant(text,text,text,text,text,text,date,text)','execute'),false,'anonymous callers cannot create guests with DUPR IDs');
+select pg_temp.as_user((select u from us where role='admin')); set local role authenticated;
+select public.create_event((select ev from fx),'Fake Guest DUPR Event','2030-11-01','2030-11-02',null,0,null,null);
+select public.create_event((select ev2 from fx),'Fake Guest DUPR Event Two','2030-11-01','2030-11-02',null,0,null,null);
+select lives_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake DUPR Guest',null,'male','2000-01-01',%L)$f$,(select p1 from fx),(select ev from fx),(select gp from fx),' '||(select lower(dupr1) from fx)||' '),'guest DUPR ID is accepted and normalized');
+reset role;
+select is((select dupr_id from public.persons where id=(select gp from fx)),(select dupr1 from fx),'guest person stores the normalized ID');
+select is((select dupr_id_snapshot from public.event_participants where id=(select p1 from fx)),(select dupr1 from fx),'event participation preserves the supplied ID');
+select is((select count(*)::integer from public.members where person_id=(select gp from fx)),0,'recording a guest DUPR ID creates no membership');
+select is((select count(*)::integer from public.profiles where person_id=(select gp from fx)),0,'recording a guest DUPR ID creates no login');
+select pg_temp.as_user((select u from us where role='admin')); set local role authenticated;
+select lives_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake DUPR Guest',null,'male','2000-01-01',%L)$f$,(select p1 from fx),(select ev from fx),(select gp from fx),(select dupr1 from fx)),'retry returns the same guest participant');
+select is((select count(*)::integer from public.event_participants where person_id=(select gp from fx)),1,'retry does not duplicate the event identity');
+select throws_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake DUPR Guest',null,'male','2000-01-01',%L)$f$,(select p1 from fx),(select ev from fx),(select gp from fx),(select dupr2 from fx)),'CP422',null,'reusing the operation ID with a changed DUPR ID is refused');
+select throws_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake Duplicate Guest',null,null,null,%L)$f$,core.ulid(),(select ev from fx),core.ulid(),(select dupr1 from fx)),'23505',null,'DUPR ID cannot identify another guest in the same club');
+select throws_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake Bad Guest',null,null,null,'bad-id!')$f$,core.ulid(),(select ev from fx),core.ulid()),'22023',null,'invalid DUPR characters are refused');
+select throws_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake Long ID',null,null,null,%L)$f$,core.ulid(),(select ev from fx),core.ulid(),repeat('X',33)),'22023',null,'DUPR IDs longer than 32 characters are refused');
+select lives_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake Optional Guest',null,null,null,'  ')$f$,(select optional from fx),(select ev from fx),core.ulid()),'guest DUPR ID remains optional');
+select is((select dupr_id_snapshot from public.event_participants where id=(select optional from fx)),null::text,'empty DUPR ID is stored as null');
+select throws_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake DUPR Guest',null,'male','2000-01-01',%L)$f$,core.ulid(),(select ev2 from fx),(select gp from fx),(select dupr2 from fx)),'CP422',null,'adding a guest to another event cannot overwrite the person ID');
+reset role;
+select throws_ok(format($f$update public.event_participants set dupr_id_snapshot=%L where id=%L$f$,(select dupr2 from fx),(select p1 from fx)),'22023',null,'event DUPR snapshots cannot be rewritten');
+update public.persons set dupr_id=(select dupr2 from fx) where id=(select gp from fx);
+select is((select dupr_id_snapshot from public.event_participants where id=(select p1 from fx)),(select dupr1 from fx),'later profile edits do not change the old event record');
+select pg_temp.as_user((select u from us where role='admin')); set local role authenticated;
+select public.create_event_participant((select p2 from fx),(select ev2 from fx),null,(select gp from fx));
+select is((select dupr_id_snapshot from public.event_participants where id=(select p2 from fx)),(select dupr2 from fx),'existing guest carries their current ID into a new event');
+select public.set_event_status((select ev2 from fx),'cancelled','Fake DUPR test cancellation');
+select throws_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake Late DUPR Guest',null,null,null,'FAKELATE1680')$f$,core.ulid(),(select ev2 from fx),core.ulid()),'22023',null,'cancelled event refuses new guest identities with DUPR IDs');
+reset role;
+select is((select count(*)::integer from public.persons where dupr_id='FAKELATE1680'),0,'failed participation rolls back the new guest profile');
+select ok(exists(select 1 from core.audit_log where table_name='public.event_participants' and record_id=(select p1 from fx) and new_values->>'dupr_id_snapshot'=(select dupr1 from fx)),'recording event DUPR ID is audited');
+select pg_temp.as_user((select u from us where role='member')); set local role authenticated;
+select throws_ok(format($f$select public.create_guest_event_participant(%L,%L,%L,'Fake Unauthorized Guest',null,null,null,'FAKEUNAUTHORIZED1680')$f$,core.ulid(),(select ev from fx),core.ulid()),'42501',null,'ordinary members cannot set another guest DUPR ID');
+select is((select count(*)::integer from public.event_participants where event_id=(select ev from fx)),0,'guest DUPR event snapshots are staff-only');
+reset role;
+select * from finish();
+rollback;

@@ -62,6 +62,15 @@ export function toProperCase(text) {
     .replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
+/** Consistent template names, including older Split Single Elimination labels. */
+export function formatTemplateLabel(name) {
+  return toProperCase(
+    String(name ?? "")
+      .replace(/\s*\((?:H\s+and\s+L|High\s*\/\s*Low)\)\s*$/i, "")
+      .trim(),
+  );
+}
+
 export function badge(text, tone = "info") {
   const properText = typeof text === "string" ? toProperCase(text) : text;
   return h("span", { class: `badge badge-${tone}` }, properText);
@@ -3241,6 +3250,8 @@ export function dataTable(
   );
   body.append(empty);
   function applySearch() {
+    const mobile = globalThis.matchMedia?.("(max-width: 720px)").matches ?? false;
+    const visiblePageSize = mobile ? 0 : pageSize;
     const terms = normalize(search.value).trim().split(/\s+/).filter(Boolean);
     const matches = records.filter((record) =>
       terms.every((term) => record.text.includes(term))
@@ -3250,33 +3261,55 @@ export function dataTable(
         Math.max(1, currentPage),
         Math.max(
           1,
-          Math.ceil(matches.length / (pageSize || matches.length || 1)),
+          Math.ceil(matches.length / (visiblePageSize || matches.length || 1)),
         ),
       );
       savedPages?.set(searchKey, currentPage);
     }
     for (const record of records) record.node.hidden = true;
-    const visible = pageSize > 0
-      ? matches.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    const visible = visiblePageSize > 0
+      ? matches.slice(
+        (currentPage - 1) * visiblePageSize,
+        currentPage * visiblePageSize,
+      )
       : matches;
     for (const record of visible) record.node.hidden = false;
     saved?.set(searchKey, search.value);
     empty.hidden = !records.length || matches.length > 0;
     if (pagerHost) {
+      pagerHost.hidden = mobile;
       pagerHost.replaceChildren(
-        ...(state === "loading" || state === "error" ? [] : [pagination({
-          page: currentPage,
-          pageSize,
-          total: matches.length,
-          onPage: (next) => {
-            currentPage = next;
-            applySearch();
-          },
-        })]),
+        ...(mobile || state === "loading" || state === "error"
+          ? []
+          : [pagination({
+            page: currentPage,
+            pageSize,
+            total: matches.length,
+            onPage: (next) => {
+              currentPage = next;
+              applySearch();
+            },
+          })]),
       );
     }
   }
   applySearch();
+  if (typeof ResizeObserver === "function") {
+    let mobile = globalThis.matchMedia?.("(max-width: 720px)").matches ?? false;
+    const observer = new ResizeObserver(() => {
+      if (!scroll.isConnected) {
+        observer.disconnect();
+        return;
+      }
+      const nextMobile =
+        globalThis.matchMedia?.("(max-width: 720px)").matches ?? false;
+      if (nextMobile !== mobile) {
+        mobile = nextMobile;
+        applySearch();
+      }
+    });
+    observer.observe(scroll);
+  }
   if (!searchable) return h("div", { class: "data-grid" }, scroll, pagerHost);
   return h(
     "div",
@@ -3718,6 +3751,9 @@ export function toast(
   } = {},
 ) {
   const toastContainer = document.getElementById("toasts");
+  const sentenceCase = (text) => typeof text === "string"
+    ? text.replace(/^(\s*)([a-z])/, (_, space, first) => space + first.toUpperCase())
+    : text;
   const iconName = tone === "success"
     ? "checkCircle"
     : tone === "error"
@@ -3739,8 +3775,8 @@ export function toast(
     h(
       "div",
       { class: "toast-body" },
-      title ? h("div", { class: "toast-title" }, title) : null,
-      h("div", { class: "toast-msg" }, message),
+      title ? h("div", { class: "toast-title" }, sentenceCase(title)) : null,
+      h("div", { class: "toast-msg" }, sentenceCase(message)),
     ),
   );
 

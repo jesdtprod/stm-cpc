@@ -22,13 +22,44 @@ Preserve business logic, calculations, permissions, routes, data, and working in
 
 ### Members reference controls (approved October 25, 2026)
 
+Event guest tools use the shared modal, search, select, date, switch and field
+components. With migration 1690, only `events.admin_roster` exposes guest write
+controls. Draft, Open and Closed event details expose Guest Registration; enabled
+events expose Add Guest and Add Existing Player. Open and Closed events expose
+Register Guest without reopening public registration. Undrawn requested/confirmed
+guest entry rows expose icon-only Move Division and Replace Players actions with
+accessible labels. Their modal requires a reason and explains payment ownership;
+only eligible undrawn destinations appear. Waitlisted and drawn rows retain their
+existing workflows.
+Registration rows label guests and show partner names as subtext. The payment row
+action submits a receipt for normal review; the Payments table identifies the
+guest payer and Event Registration source without exposing guest contact data.
+
+Division tables reuse the Members identity cell: round icon, emphasized name,
+and smaller muted details. Format names stack above scoring-rule subtext using
+the shared table stack. Keep shared row density, status badges, and icon actions.
+
+The Events directory includes a Template column showing the event's default
+format template, “Not set” when none is selected, or “Unavailable template” when
+the saved template cannot be read. Show the full template name on one line without
+an ellipsis; give this column space from the flexible Event column.
+
 Staff and Roles reuses the Members summary cards, full-width search with counted
 view pills below it, avatar initials with member IDs, status badges, and icon-only
 row actions. Its permission reference cards use two columns on desktop and one
 on mobile.
 
+Member Events presents open tournaments using executive summary panels with an embossed
+gold trophy badge, uppercase eyebrow, schedule, venue court grid, and fee metadata tiles.
+Division tables use trophy avatar badges (emerald when eligible, gold when restricted),
+format/gender/category tags, tabular capacity progress meters, and structured restriction
+alert callouts for ineligible ranks or categories. On mobile, divisions render as responsive
+cards with top-aligned identity and status, structured restriction notices, and full-width
+bottom capacity/actions without empty layout gaps.
+
 The Members table shows the current category and rank in the Rank column (or
-Unranked), with the membership date as muted “Member since” subtext. Members
+Unranked), with the membership date as muted “Member since” subtext. Both membership
+and added dates use the shared `formatDate()` display (for example, Oct 27, 2026). Members
 without a joined date show “Not joined yet”.
 
 The current Members page is the reference for comparable controls. Retain the
@@ -100,6 +131,10 @@ have no shadows. Use `ui.js` components rather than new page-specific controls.
 
 ## 2. Design tokens
 
+Display the format name as **Split Single Elimination** everywhere. Use the shared `formatTemplateLabel()` for saved template names so legacy capitalization and H/L suffixes do not appear in labels.
+
+The landing member strip uses circular, overlapping uploaded photos with `object-fit: cover`; the same circles show initials if no usable photo exists, including image-load failures.
+
 Use one shared scale throughout the application:
 
 | Property | Standard |
@@ -118,7 +153,7 @@ Use one shared scale throughout the application:
 | Control radius | 10px |
 | Card/modal radius | 14–16px |
 | Icons | 18–20px; consistent stroke weight |
-| Table cell padding | 12–16px vertical; 16–18px horizontal |
+| Table cell padding | Desktop/tablet (>720px): 8px vertical, 18px horizontal, minimum 56px data rows growing with content. Mobile retains its original row and card spacing. |
 
 Admin routes share the Members Directory layout through `.admin-reference-page`: 1380px maximum content width, 24px section gaps (16px on mobile), 18px KPI gaps, and 12px between search and status pills. Desktop headers use 16px × 20px padding, a 128px club logo, 32px title, and 14px description. Page-specific controls retain their functions and column definitions.
 
@@ -170,6 +205,7 @@ Use this order when the section is applicable:
 - Use the same dropdown and datepicker styling everywhere, including controls added dynamically.
 - Custom controls must support keyboard use, visible focus, correct roles, and expanded/selected states.
 - Use one compact badge style with consistent height, padding, radius, text size, and semantic colors.
+- Status badge labels stay on one line. Reserve enough column width for the longest label and let event names wrap to accommodate it.
 - Unread notification counts use red circular badges with white text (99+ maximum). On mobile, the count overlaps the upper-right edge of the floating navigation circle and also appears beside Notifications in the menu. Hide unread badges at zero.
 - Record lists use a full-width search with wrapping status badges 12px below it, rather than a status dropdown. Use `tableFilter()` for these badge groups; show counts for every record category and default missing or unavailable counts to zero, including while loading. Keep form and category selectors as searchable dropdowns.
 
@@ -182,7 +218,8 @@ Use this order when the section is applicable:
 - Center the Action heading and all action icons beneath it. Keep action-button gaps consistent.
 - Left-align text. Right-align money and numerical amounts, including their headings. Use tabular numerals.
 - Keep quantities, currency, and dates consistently formatted. Do not wrap a currency label separately from its amount.
-- Place supporting information directly beneath its primary value using consistent spacing and secondary text.
+- Always render data beneath a primary value as subtext: use the shared `.sub` class for smaller, muted text with a 2px gap. This includes dates, times, member IDs, booking references, and supporting notes.
+- On desktop and tablet (>720px), vertically center each cell's content group, identity icon, and row actions; keep stacked primary and secondary text together.
 - My Bookings lists bookings by scheduled date and time, newest first, in both Upcoming and Past and Closed. Creation time and ID break ties consistently.
 - My Bookings uses the shared animated court pattern on mobile and desktop, including empty states. The pattern sits behind controls, responds to mouse/touch, and remains static when reduced motion is requested.
 - The shell fills in the same animated pattern on every routed page that does not already provide it, without adding duplicate canvases. Shared non-home mobile headers apply across member and admin pages; desktop page headers retain a bordered container. The public landing and Home keep their existing welcome presentation.
@@ -190,11 +227,15 @@ Use this order when the section is applicable:
 - Admin headers, including the admin dashboard, follow the same CPC-logo sizing, title/role grouping, Manila date chips, and spacing as member headers. Keep admin labels and actions, use a bordered container on desktop, and an unboxed centered layout on mobile.
 - My Bookings retains the bordered hero container on desktop (above 720px); its mobile header stays unboxed with balanced spacing around the photo.
 - On mobile, My Bookings places the Play badge beside its title and presents each booking as a card: court and time, status, price and payment, then accessible icon actions. The booking reference appears below the price, in a compact 170px Price column on desktop. Free bookings show a No Charge payment badge with Complimentary beneath it.
+- My Bookings is ordered by booking number descending, with the highest booking number first, on desktop and mobile.
 - The member Home welcome shows the personal header photo (128px on desktop, 144px on mobile), using the private signed image URL or initials. Other member page headers match the landing CPC logo size (72px desktop, 54px tablet, 96px phone) with an 8px mobile gap below the logo; Profile retains its photo editor. Member desktop headers, including Home, use the bordered hero container; mobile headers remain unboxed.
 - Non-home mobile pages share a centered header: title beside section badge, description, Manila date and section chips, then full-width actions. Use matching 16px gaps between the header copy and actions and between page sections (including Search). Home dashboards retain their own header layout; desktop headers retain their existing containers.
 - Member lists use compact cards up to 720px: primary icon and title, status badges, labeled details, and an action footer, with 16px gaps between search, filter groups, and records. Table schemas identify primary/status/detail cells for both loading and populated rows. Desktop tables and administrator lists retain their layouts.
 - Member Events and Ranking use full-width search above counted pill filters on both desktop and mobile. Events has one shared search across event/division metadata and registrations; Ranking retains its category selector within the filter area.
+- Public Events and member Club Events use the same `web/event-summary.js` component: gold trophy beside the Club Event eyebrow and title, registration/CPC/DUPR badges with 8px gaps, and seven metadata tiles (Schedule, Registration Window, Venue, Divisions, Format Template, Ranking & Rating, Entry Fee). Desktop uses a four-column grid with Registration Window spanning two columns; tablet and mobile use two and one columns. Member details use existing authenticated RLS reads; registration eligibility still comes from `my_event_options`. Skeletons share the summary geometry. Member divisions stay inside the same bordered, rounded event panel below its summary on every screen size, with 16px padding on mobile. Desktop divisions use the shared table with distinct Division, Entries capacity, Status badge, and Action columns; mobile divisions use a modern 3-row card layout: Row 1 features the division identity with squircle trophy avatar and format subtitle on the left, and the status badge aligned top-right, with any ineligibility callout note spanning 100% width below the identity; Row 2 provides a continuous hairline divider across the entire card width; Row 3 balances the Entries capacity block (uppercase tracking label, count, and fluid progress bar) with the 40px action button. If no action exists, the capacity bar smoothly fills the card width. Skeletons and empty states match this exact geometry.
+- Member event divisions sort Beginner, Novice, Intermediate, Advanced, then Elite. Within each category, show Men Low/High, Women Low/High, then Mixed Low/High. Divisions without a Low/High label follow those levels within their gender group.
 - The admin Event Detail view uses an executive top action toolbar (navigation on the left, record and lifecycle actions on the right) above a prominent tournament summary card with gold trophy branding, reference code, status pill, and 4 KPI tiles (Schedule, Venue, Entry Fee, Registration). Below the summary, segmented tab filters switch between Divisions and Registrations tables to prevent stacked duplicate search controls and giant stacked empty states.
+- Event Detail groups Guest Registration, Add Guest, Add Existing Player and Register Guest in a separate Player Registration panel with smaller muted subtext. All Events stays in the navigation row beside event controls. Mobile uses two-column button grids with at least 44px touch targets and consistent row heights; permission and event-state visibility rules are preserved.
 - Events and Ranking desktop rows use the same round icon treatment as My Bookings. Ranking uses a compact 64px position column and places its standard searchable 240px category dropdown to the right of Search on desktop, with pills on the next row. Mobile stacks Search, Category, and pills. Free registrations use the shared green Free badge.
 - Ranking cards center the position number without a hash in a gold badge; desktop uses an 80px centered position column and 32px badge. Player names and actual member numbers align left; never derive or invent a member number from a database ID. Category and rank use the shared info/success badges.
 - Ranking player rows use private profile photos through signed links, with initials when no image is available. Only active ranked players' images are shared within the signed-in club; the avatar bucket remains private.
@@ -205,6 +246,10 @@ Use this order when the section is applicable:
 - Use semantic table markup where practical. Grid-based tables must retain accessible header/cell relationships.
 
 ### Pagination
+
+Shared client-side lists (including My Bookings) show all matching records with
+no pagination footer on mobile (up to 720px). Desktop and tablet retain pagination.
+Server-paged directories retain their navigation so further records stay accessible.
 
 - Show a consistent footer with the visible row range and filtered record count.
 - Use the same previous/next and page-number controls throughout the app.
@@ -261,6 +306,8 @@ Every modal must use the same header and footer design, including nested and dyn
 - Keep long modal bodies scrollable and the header/footer reachable. Hide scrollbars in all modals while preserving wheel, touch, and keyboard scrolling. Do not let content extend beyond the viewport.
 - Stack fields and actions consistently on small screens; ensure sufficient touch targets.
 - The member details Membership & Audit section uses equal status tiles with aligned badge rows, followed by matching reason and review tiles. Stack tiles on mobile and keep the rank action beside its wrapping badge.
+- The staff role assignment modal ("Give Someone a Role") dynamically replaces the member search and radio list with a unified Selected Member card upon selection, showing an emerald verified avatar, display name, member ID chip, role badge, and a "Change" button to eliminate redundant duplicate cards.
+- The event division registration modal ("Register for Division") presents an executive tournament division summary card with format, category, and fee/capacity badges, followed by a dedicated Doubles Partner panel with real-time member search, candidate cards with active status pills, and dynamic replacement with a unified Selected Partner card upon selection.
 - Provide an accessible dialog name, initial focus, focus containment, and focus restoration after closing.
 - Support Escape and backdrop closing when safe. Protect unsaved changes where the workflow requires it.
 - Destructive confirmations must clearly describe the target and consequences and default to a safe choice.
@@ -345,8 +392,10 @@ General principles that apply to every screen. When a rule here conflicts with a
 - Pointer targets at least 24×24 CSS px by WCAG minimum; this standard requires 44px for touch controls.
 - Do not rely on hover, color, sound, or motion alone to convey information.
 - Announce dynamic changes (toasts, validation, loading results) with live regions.
+- All toasts share a compact, flat rounded surface with a plain leading icon, vertically centered message, and small dismiss button. Preserve semantic tone colors on the border and icon. Capitalize the first letter of messages and titles without changing acronyms or names.
 
 ### 12.8 Responsive design
+- Mobile pages (up to 720px) use 20px bottom spacing plus the device safe-area inset, matching sign-in. Avoid adding a second bottom spacer inside a page. Desktop and tablet spacing stays unchanged.
 - Design mobile-first, then enhance. Content decides breakpoints, not device names.
 - Use fluid layouts and relative units; avoid fixed pixel widths for containers.
 - On mobile, put primary actions within thumb reach, collapse secondary navigation, and keep forms single-column.

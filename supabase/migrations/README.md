@@ -66,5 +66,52 @@ The app reads the setting at the next sign-in.
 `1630_profile_dupr_id.sql` adds the optional self-reported DUPR ID to the private
 profile read/save RPCs, with validation and uniqueness among active person records.
 
+`1640_event_rating_settings.sql` adds draft event ranking settings and a default
+format template. CPC rank opt-out is enforced on finalization and correction;
+DUPR registration remains closed until verified-account eligibility is available.
+
+`1650_rank_rule_format_template.sql` adds an optional template restriction to rank
+rules and saves the source template ID on new divisions. Older divisions retain
+an unknown source and match All Formats rules only.
+
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in,
 linked CLI; no Docker).
+
+`1661_landing_member_photos.sql` adds photo paths to the public landing member
+badges and permits reads only for those selected active members' photos. The
+avatar bucket stays private; the page uses short-lived signed URLs and initials
+when a photo is missing or fails to load.
+The test runner accepts both CLI JSON result formats: an array of rows or an
+object containing `rows`. Missing or malformed results still fail verification.
+
+`1660_event_participants.sql` (6.2a) adds a staff-only event participant registry,
+reusing existing persons for active members and guests without creating accounts.
+This is the identity foundation; guest registrations, transfers, substitutions,
+fees and rank-credit changes are separate later steps. Verify with the matching
+`1660_event_participants.test.sql`; do not enable guest entries before 6.2b.
+
+`1670_guest_event_registration.sql` (6.2b) adds the draft-only Allow Guest Players
+policy, staff guest registration, rank assessment and member/guest doubles.
+Guest registrations use the existing approval/waitlist/withdrawal lifecycle;
+payment receipts and ledger entries reference the real guest payer. Immutable
+`entry_guests` snapshots supply names to draws, brackets, standings and results,
+while only `entry_members` are considered for CPC rank movement. This migration
+also closes null-member ownership checks in member payment/withdrawal RPCs.
+Apply before deploying `event-guests.js` and the event/payment screen changes.
+
+`1680_guest_dupr_id.sql` adds optional guest DUPR IDs using the existing person ID
+validation/uniqueness and a staff-only immutable event participant snapshot. It
+does not verify DUPR accounts, fetch ratings or permit DUPR-rated registration.
+
+`1690_admin_guest_roster.sql` grants `events.admin_roster` to the admin bundle
+only and requires it on guest identity/policy/registration writes. Admins can add
+guests in open or closed registration without reopening the event. Pre-draw Move
+and Replace actions retain original registrations/rosters in append-only change
+history and calculate new fees server-side. Verified credit follows a change only
+for the same payer; pending receipts must be resolved first. Drawn records remain
+immutable. Reload permissions after applying this migration to see admin actions.
+
+
+`1700_public_landing_event_details.sql` enriches the public events payload in
+`public_landing_info` with tournament registration opening and closing timestamps,
+DUPR and CPC ranking flags, format template name and division counts.

@@ -14,6 +14,7 @@ import {
   selectField,
   switchToggle,
   tableFilter,
+  toast,
   timeControl,
 } from "../../web/ui.js";
 import { createRanksPages } from "../../web/pages-ranks.js";
@@ -23,6 +24,8 @@ import { createBookingAdminPages } from "../../web/pages-bookings-admin.js";
 import { createMemberEventsPages } from "../../web/pages-events-member.js";
 import { createRankingPages } from "../../web/pages-ranking.js";
 import { createAdminPages } from "../../web/pages-admin.js";
+import { createEventsPages, divisionStatusBadge } from "../../web/pages-events.js";
+import { createGuestEventActions } from "../../web/event-guests.js";
 import { clearAuth, setAuth } from "../../web/lib/permissions.js";
 
 // Small DOM fixture for component events; rendered browser checks remain separate.
@@ -1119,6 +1122,49 @@ Deno.test("grid pagination: defaults to ten records with or without search and a
     assert(external.querySelector(".tbl-body").querySelectorAll(".tbl-row").every((row) => !row.hidden));
   }));
 
+Deno.test("mobile tables: all matching records remain accessible without pagination", () =>
+  withDom(() => {
+    const previous = globalThis.matchMedia;
+    globalThis.matchMedia = () => ({ matches: true });
+    try {
+      const view = dataTable({
+        schema: { columns: [{ key: "name", label: "Name", render: (r) => r.name }] },
+        rows: Array.from({ length: 12 }, (_, i) => ({ name: `Player ${i + 1}` })),
+      });
+      const rows = view.querySelector(".tbl-body").querySelectorAll(".tbl-row");
+      assert(rows.length === 12 && rows.every((row) => !row.hidden));
+      assert(view.querySelector(".grid-pager").hidden);
+      assert(!view.querySelector('[aria-label="Next Page"]'));
+      const search = view.querySelector("input");
+      search.value = "Player 12";
+      search.dispatchEvent(new Event("input"));
+      assert(rows.filter((row) => !row.hidden).length === 1);
+      assert(!rows[11].hidden);
+    } finally {
+      if (previous === undefined) delete globalThis.matchMedia;
+      else globalThis.matchMedia = previous;
+    }
+  }));
+
+Deno.test("toasts: sentence casing preserves acronyms and semantic tones", () =>
+  withDom((document) => {
+    document.getElementById = () => null;
+    for (const tone of ["info", "success", "warning", "error"]) {
+      const view = toast("a draw needs at least 2 entries (this division has 0)", {
+        tone,
+        title: "check CPC and DUPR settings",
+        timeout: 0,
+      });
+      assert(view.matches(`.toast-${tone}`));
+      assert(view.querySelector(".toast-msg").textContent === "A draw needs at least 2 entries (this division has 0)");
+      assert(view.querySelector(".toast-title").textContent === "Check CPC and DUPR settings");
+      assert(view.querySelector(".toast-close-btn").getAttribute("aria-label") === "Dismiss Notification");
+      assert(view.getAttribute("role") === (["warning", "error"].includes(tone) ? "alert" : "status"));
+    }
+    const view = toast("DUPR settings saved.", { timeout: 0 });
+    assert(view.querySelector(".toast-msg").textContent === "DUPR settings saved.");
+  }));
+
 Deno.test("calendar: full seven-column month and single-date selection remain separate from range styling", () =>
   withDom((document) => {
     const native = dateControl({ id: "schedule-day", value: "2030-02-10" });
@@ -1214,10 +1260,19 @@ Deno.test("ranks page: search keeps full ladder context and movement uses the or
       levels: 1,
       is_active: true,
     }];
-    let reads = 0;
     const calls = [];
     const api = {
-      read: () => Promise.resolve(reads++ % 2 === 0 ? cats : rules),
+      read: (build) => {
+        const query = {
+          select: () => query,
+          is: () => query,
+          eq: () => query,
+          order: () => query,
+          then: (resolve) => resolve(query.table === "categories" ? cats
+            : query.table === "rank_rules" ? rules : []),
+        };
+        return build({ from: (table) => { query.table = table; return query; } });
+      },
       newKey: () => "01K00000000000000000000000",
       // Keep the mutation at the API boundary so this test checks the submitted order.
       rpc: (name, args) => {
@@ -1680,4 +1735,266 @@ Deno.test("member details modal: consolidates status and audit into 1 unified se
 
     modal.close();
     clearAuth();
+  }));
+
+Deno.test("division status follows event registration without hiding tournament progress", () => {
+  for (const [eventStatus, label, tone] of [
+    ["draft", "Draft", "neutral"],
+    ["registration_open", "Open", "success"],
+    ["registration_closed", "Closed", "warning"],
+    ["cancelled", "Cancelled", "danger"],
+  ]) {
+    const result = divisionStatusBadge("open", eventStatus);
+    assert(result[0] === label && result[1] === tone);
+  }
+  for (const eventStatus of ["draft", "registration_open", "registration_closed"]) {
+    for (const [status, label] of [
+      ["drawn", "Drawn"], ["in_progress", "In Progress"],
+      ["finalized", "Finalized"], ["cancelled", "Cancelled"],
+    ]) {
+      assert(divisionStatusBadge(status, eventStatus)[0] === label);
+    }
+  }
+});
+
+Deno.test("guest forms: policy and guest identity use shared accessible controls", () =>
+  withDom(() => {
+    const actions = createGuestEventActions({
+      api: { newKey: () => "fake-key" }, refresh: () => {},
+      getEvent: () => ({ id: "fake-event", name: "Fake Guest Event", allow_guest_players: true }),
+      getDivisions: () => [], getRanks: () => [],
+    });
+    let modal = actions.policy();
+    assert(modal.textContent.includes("Guest Registration"));
+    const toggle = modal.querySelectorAll("input").find((el) => el.getAttribute("name") === "allow-event-guests");
+    assert(toggle.hasAttribute("checked"));
+    modal.close();
+    modal = actions.addGuest();
+    const names = modal.querySelectorAll("input,select").map((el) => el.getAttribute("name"));
+    assert(names.includes("guest-name") && names.includes("guest-gender") && names.includes("guest-dob"));
+    const dupr = modal.querySelectorAll("input").find((el) => el.getAttribute("name") === "guest-dupr-id");
+    assert(dupr && dupr.getAttribute("maxlength") === "32" && !dupr.hasAttribute("required"), "Guest DUPR ID stays optional and uses the member ID length limit");
+    assert(!names.some((name) => /password|email/.test(name ?? "")), "Guests need no sign-in credentials");
+    modal.close();
+  }));
+
+Deno.test("guest registration: primary selection excludes members and supports mixed partners", () =>
+  withDom(async () => {
+    const calls = [];
+    const actions = createGuestEventActions({
+      api: {
+        newKey: () => "fake-key",
+        rpc: (name, args) => {
+          calls.push({ name, args });
+          return Promise.resolve([
+            { id: "guest-one", display_name: "Fake Guest", member_id: null },
+            { id: "member-one", display_name: "Fake Member", member_id: "fake-member", member_no: "CPC-2030-99999" },
+          ]);
+        },
+      },
+      refresh: () => {}, getEvent: () => ({ id: "fake-event", name: "Fake Guest Event" }),
+      getDivisions: () => [{ id: "fake-doubles", name: "Fake Doubles", status: "open" }],
+      getRanks: () => [{ id: "fake-rank", label: "Novice: Low" }],
+    });
+    const modal = await actions.register("fake-doubles");
+    const controls = modal.querySelectorAll("select");
+    const guest = controls.find((el) => el.getAttribute("name") === "guest-player");
+    const partner = controls.find((el) => el.getAttribute("name") === "guest-partner");
+    assert(guest.querySelectorAll("option").length === 1, "Primary guest picker must exclude members");
+    assert(partner.querySelectorAll("option").length === 3, "Partner picker accepts guests and members");
+    assert(modal.textContent.includes("Assessed Guest Rank"));
+    assert(calls.length === 1 && calls[0].name === "event_participant_choices");
+    modal.close();
+  }));
+
+Deno.test("admin guest roster: closed-event move selects another undrawn division and requires a reason", () =>
+  withDom(async () => {
+    const actions = createGuestEventActions({
+      api: { newKey: () => "fake-change", rpc: () => Promise.resolve([
+        { id: "fake-guest", display_name: "Fake Guest", member_id: null },
+        { id: "fake-partner", display_name: "Fake Partner", member_id: null },
+      ]) },
+      refresh: () => {}, getEvent: () => ({ id: "fake-event", name: "Fake Closed Event", status: "registration_closed" }),
+      getDivisions: () => [
+        { id: "source", name: "Fake Source", status: "open" },
+        { id: "target", name: "Fake Destination", status: "open" },
+        { id: "drawn", name: "Fake Drawn Division", status: "drawn" },
+      ],
+      getRanks: () => [{ id: "fake-rank", label: "Novice: Low" }],
+    });
+    const row = { id: "fake-registration", division_id: "source", guest_participant_id: "fake-guest", guest_rank_id: "fake-rank", guest_partner_participant_id: "fake-partner" };
+    let modal = await actions.change(row, "move");
+    let selects = modal.querySelectorAll("select");
+    const destination = selects.find((el) => el.getAttribute("name") === "guest-division");
+    assert(destination.querySelectorAll("option").length === 1 && destination.value === "target");
+    assert(selects.find((el) => el.getAttribute("name") === "guest-player").querySelectorAll("option").length === 1);
+    assert(modal.querySelector("textarea").hasAttribute("required"));
+    modal.close();
+    modal = await actions.change(row, "replace");
+    selects = modal.querySelectorAll("select");
+    assert(selects.find((el) => el.getAttribute("name") === "guest-division").value === "source");
+    assert(selects.find((el) => el.getAttribute("name") === "guest-player").querySelectorAll("option").length === 2);
+    modal.close();
+  }));
+
+Deno.test("admin guest roster: management permissions alone do not show guest write actions", () =>
+  withDom(async (document) => {
+    try {
+      for (const administrator of [false, true]) {
+        setAuth({ signedIn: true, grants: ["events.manage", "registrations.manage", ...(administrator ? ["events.admin_roster"] : [])].map((code) => ({ code, unit_id: null })) });
+        const event = { id: "fake-admin-event", name: "Fake Admin Event", status: "registration_closed", allow_guest_players: true, starts_on: "2030-11-01", ends_on: "2030-11-01", fee: 0, divisions: [] };
+        const api = {
+          newKey: () => "fake-key", rpc: () => Promise.resolve([]),
+          read: (build) => {
+            const q = { select: () => q, order: () => q, is: () => q, eq: () => q,
+              then: (resolve) => resolve(q.table === "events" ? [event] : []) };
+            return build({ from: (table) => { q.table = table; return q; } });
+          },
+        };
+        const page = createEventsPages({ api }).eventsPage();
+        document.body.append(page);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        page.querySelectorAll("button").find((b) => b.getAttribute("aria-label") === "Divisions of Fake Admin Event").click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const labels = page.querySelectorAll("button").map((b) => b.textContent);
+        for (const label of ["Add Guest", "Add Existing Player", "Register Guest", "Guest Registration"]) {
+          assert(labels.includes(label) === administrator, `${label} is admin-only in closed events`);
+        }
+        page.remove();
+      }
+    } finally { clearAuth(); }
+  }));
+
+Deno.test("event settings: draft defaults and saved ranking options remain separate", () =>
+  withDom(async (document) => {
+    const event = {
+      id: "fake-event",
+      doc_no: "EV-2030-99999",
+      name: "Fake Rating Event",
+      starts_on: "2030-11-01",
+      ends_on: "2030-11-01",
+      fee: 0,
+      status: "draft",
+      dupr_rated: true,
+      apply_cpc_rank_changes: false,
+      default_format_template_id: "fake-template",
+      divisions: [],
+    };
+    const api = {
+      newKey: () => "01K00000000000000000000000",
+      read: (build) => {
+        const query = {
+          select: () => query,
+          order: () => query,
+          is: () => query,
+          eq: () => query,
+          then: (resolve) =>
+            resolve(
+              query.table === "events"
+                ? [event]
+                : query.table === "format_templates"
+                ? [{ id: "fake-template", name: "Round Robin" }]
+                : [],
+            ),
+        };
+        return build({
+          from: (table) => {
+            query.table = table;
+            return query;
+          },
+        });
+      },
+    };
+    const page = createEventsPages({ api }).eventsPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    page.querySelectorAll("button").find((b) => b.textContent === "New Event")
+      .click();
+    let modal = document.body.querySelector("dialog");
+    const control = (id) =>
+      modal.querySelectorAll("input,select").find((el) =>
+        el.getAttribute("id") === id ||
+        (id === "ev-format-tpl" &&
+          el.getAttribute("name") === "default_format_template_id")
+      );
+    assert(
+      !control("ev-dupr-rated").hasAttribute("checked"),
+      "New events default to CPC only",
+    );
+    assert(
+      control("ev-cpc-ranks").hasAttribute("checked"),
+      "New events keep CPC rank movement",
+    );
+    assert(
+      control("ev-format-tpl").value === "",
+      "The format default is optional for legacy setup",
+    );
+    modal.close();
+    page.querySelectorAll("button").find((b) =>
+      b.getAttribute("aria-label") === "Edit Fake Rating Event"
+    ).click();
+    modal = document.body.querySelector("dialog");
+    assert(
+      control("ev-dupr-rated").hasAttribute("checked"),
+      "Saved DUPR setting is displayed",
+    );
+    assert(
+      !control("ev-cpc-ranks").hasAttribute("checked"),
+      "Saved CPC opt-out is displayed independently",
+    );
+    assert(
+      control("ev-format-tpl").value === "fake-template",
+      "Saved event default is displayed",
+    );
+    assert(!control("ev-dupr-rated").disabled, "Draft settings can be edited");
+    modal.close();
+    event.status = "registration_open";
+    page.querySelectorAll("button").find((b) =>
+      b.getAttribute("aria-label") === "Edit Fake Rating Event"
+    ).click();
+    modal = document.body.querySelector("dialog");
+    assert(
+      control("ev-dupr-rated").disabled && control("ev-cpc-ranks").disabled &&
+        control("ev-format-tpl").disabled,
+      "Ranking and format options are locked after draft",
+    );
+    modal.close();
+  }));
+
+Deno.test("rank rules: template selector preserves scope and list displays the template", () =>
+  withDom(async (document) => {
+    const templates = [{ id: "fake-format", name: "round robin" }];
+    const rules = [{
+      id: "fake-rule", name: "Fake Scoped Rule", conditions: {},
+      format_template_id: "fake-format", template: { name: "round robin" },
+      action: "retain", levels: 0, priority: 10, is_active: true,
+    }];
+    const api = {
+      newKey: () => "01K00000000000000000000000",
+      read: (build) => {
+        const query = {
+          select: () => query, is: () => query, eq: () => query, order: () => query,
+          then: (resolve) => resolve(query.table === "rank_rules" ? rules
+            : query.table === "format_templates" ? templates : []),
+        };
+        return build({ from: (table) => { query.table = table; return query; } });
+      },
+    };
+    const page = createRanksPages({ api, getOrgId: () => "fake-org" }).ranksPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    page.querySelectorAll("button").find((b) => b.textContent === "New Rule").click();
+    let dialog = document.body.querySelector("dialog");
+    const selector = () => dialog.querySelectorAll("select").find((s) => s.getAttribute("name") === "format_template_id");
+    assert(selector().value === "", "New rules default to All Formats");
+    assert(selector().options[0].textContent === "All Formats", "The unrestricted choice is explicit");
+    assert(selector().options[1].textContent === "Round Robin", "Template labels use title case");
+    dialog.close();
+    page.querySelectorAll("div").find((el) => el.getAttribute("id") === "ranks-view").querySelectorAll("button")[1].click();
+    assert(page.querySelector(".tbl").textContent.includes("Format Template"), "Rules list includes the template column");
+    assert(page.querySelector(".tbl").textContent.includes("Round Robin"), "The saved scope is visible in the list");
+    page.querySelectorAll("button").find((b) => b.getAttribute("aria-label") === "Edit Fake Scoped Rule").click();
+    dialog = document.body.querySelector("dialog");
+    assert(selector().value === "fake-format", "Editing retains the saved template restriction");
+    dialog.close();
   }));

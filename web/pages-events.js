@@ -19,11 +19,16 @@ import {
   inputWithIcon,
   openModal,
   selectControl,
+  switchToggle,
   tableFilter,
   toast,
+  formatTemplateLabel as templateLabel,
 } from "./ui.js";
-import { formatDate, formatDateTime } from "./lib/dates.js";
+import { formatDate } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
+import { can } from "./lib/permissions.js";
+import { createGuestEventActions } from "./event-guests.js";
+import { readGuestCompatible } from "./lib/guest-schema.js";
 
 const EVENT_STATUS = {
   draft: ["Draft", "neutral"],
@@ -41,6 +46,14 @@ const DIVISION_STATUS = {
   finalized: ["Finalized", "neutral"],
   cancelled: ["Cancelled", "danger"],
 };
+
+export function divisionStatusBadge(status, eventStatus) {
+  if (status !== "open") return DIVISION_STATUS[status] ?? [status, "neutral"];
+  if (eventStatus === "draft") return ["Draft", "neutral"];
+  if (eventStatus === "registration_open") return ["Open", "success"];
+  if (eventStatus === "cancelled") return ["Cancelled", "danger"];
+  return ["Closed", "warning"];
+}
 const STAGE_LABEL = {
   round_robin: "Round Robin",
   single_elimination: "Single Elimination",
@@ -56,13 +69,13 @@ const REG_STATUS = {
   rejected: ["Rejected", "danger"],
 };
 const REG_SELECT =
-  "id,status,status_reason,fee_snapshot,meta,division:divisions(name,status),member:members(member_no,person:persons(display_name))";
+  "id,division_id,status,status_reason,fee_snapshot,meta,guest_participant_id,guest_partner_participant_id,guest_name_snapshot,guest_partner_name_snapshot,guest_rank_id,guest_partner_rank_id,division:divisions(name,status),member:members(member_no,person:persons(display_name))";
 const GENDER_LABEL = { male: "Men", female: "Women", mixed: "Mixed" };
 const MANILA_OFFSET_MS = 8 * 3600 * 1000;
-
 const EVENT_SELECT =
   "id,doc_no,name,starts_on,ends_on,location,status,status_reason,fee,registration_opens_at,registration_closes_at," +
-  "cancel_reason,divisions(id,status)";
+  "cancel_reason,dupr_rated,default_format_template_id,apply_cpc_rank_changes,allow_guest_players,divisions(id,status)," +
+  "default_template:format_templates!events_default_format_template_id_fkey(name)";
 const DIVISION_SELECT =
   "id,name,category_id,format,gender,age_group,min_rank_id,max_rank_id,max_entries,status,cancel_reason," +
   "format_snapshot,scoring_snapshot,category:categories(name),stages:division_stages(id,stage_no,stage_type,status,config)";
@@ -105,19 +118,27 @@ export function createEventsPages({ api }) {
       regs: [],
       pays: {},
       partners: {},
+      guestDupr: {},
       divStatus: "ready",
     };
+    const guestActions = createGuestEventActions({
+      api, refresh, getEvent: () => state.open, getDivisions: () => state.divisions,
+      getRanks: () => state.categories.flatMap((category) => (category.ladders ?? [])
+        .filter((ladder) => !ladder.deleted_at).flatMap((ladder) => (ladder.ranks ?? [])
+          .filter((rank) => !rank.deleted_at).map((rank) => ({ id: rank.id, label: `${category.name}: ${rank.name}` })))),
+    });
 
     async function refresh() {
       state.status = state.events.length ? "refreshing" : "loading";
       draw();
       try {
         const [events, categories, templates, rules] = await Promise.all([
-          api.read((c) =>
+          readGuestCompatible(() => api.read((c) =>
             c.from("events").select(EVENT_SELECT).order("starts_on", {
               ascending: false,
             })
-          ),
+          ), () => api.read((c) => c.from("events").select(EVENT_SELECT.replace("allow_guest_players,", ""))
+            .order("starts_on", { ascending: false }))),
           api.read((c) =>
             c.from("categories").select(
               "id,name,sort_order,ladders:rank_ladders(id,deleted_at,ranks(id,name,sort_order,deleted_at))",
@@ -168,12 +189,14 @@ export function createEventsPages({ api }) {
 
     async function loadRegistrations() {
       try {
-        const regs = await api.read((c) =>
+        const regs = await readGuestCompatible(() => api.read((c) =>
           c.from("registrations").select(REG_SELECT).eq(
             "event_id",
             state.open.id,
           ).order("created_at")
-        ) ?? [];
+        ), () => api.read((c) => c.from("registrations")
+          .select(REG_SELECT.replace("guest_participant_id,guest_partner_participant_id,guest_name_snapshot,guest_partner_name_snapshot,guest_rank_id,guest_partner_rank_id,", ""))
+          .eq("event_id", state.open.id).order("created_at"))) ?? [];
         const ids = regs.map((r) =>
           r.id
         );
@@ -182,7 +205,7 @@ export function createEventsPages({ api }) {
             regs.map((r) => r.meta?.partner_member_id).filter(Boolean),
           ),
         ];
-        const [totals, partners] = await Promise.all([
+        const [totals, partners, participantDupr, guestCredit] = await Promise.all([
           ids.length
             ? api.read((c) =>
               c.from("source_payment_totals").select(
@@ -198,11 +221,20 @@ export function createEventsPages({ api }) {
                 .in("id", partnerIds)
             )
             : [],
+          regs.some((r) => r.guest_participant_id)
+            ? readGuestCompatible(() => api.read((c) => c.from("event_participants")
+              .select("id,dupr_id_snapshot").eq("event_id", state.open.id).is("deleted_at", null)), () => [])
+            : [],
+          can("events.admin_roster") && regs.some((r) => r.guest_participant_id)
+            ? api.rpc("guest_registration_payment_summary", { p_registration_ids: regs.filter((r) => r.guest_participant_id).map((r) => r.id) })
+            : [],
         ]);
         state.regs = regs;
+        state.guestDupr = Object.fromEntries((participantDupr ?? []).map((p) => [p.id, p.dupr_id_snapshot]));
         state.pays = Object.fromEntries(
           (totals ?? []).map((t) => [t.source_id, t]),
         );
+        for (const credit of guestCredit ?? []) state.pays[credit.id] = credit;
         state.partners = Object.fromEntries(
           (partners ?? []).map((m) => [m.id, m]),
         );
@@ -373,12 +405,25 @@ export function createEventsPages({ api }) {
       const editing = Boolean(row);
       const key = row?.id ?? api.newKey();
       const error = errorLine();
+      const settingsLocked = editing && row.status !== "draft";
+      const template = select("ev-format-tpl", "default_format_template_id", [
+        { value: "", label: "Choose per division" },
+        ...state.templates.map((t) => ({ value: t.id, label: templateLabel(t.name) })),
+        ...(row?.default_format_template_id &&
+            !state.templates.some((t) => t.id === row.default_format_template_id)
+          ? [{
+            value: row.default_format_template_id,
+            label: "Unavailable template (saved)",
+          }]
+          : []),
+      ], row?.default_format_template_id);
+      template.disabled = settingsLocked;
       return openModal({
         title: editing ? "Edit Event" : "New Event",
         eyebrow: editing ? row.doc_no : "Events",
         icon: "trophy",
         description:
-          "Set the tournament dates, location, entry fee and registration window.",
+          "Set the tournament schedule, ranking options and default format.",
         size: "lg",
         confirmLabel: editing ? "Save Changes" : "Create Event",
         body: h(
@@ -504,6 +549,43 @@ export function createEventsPages({ api }) {
             }),
             "Optional. Manila time.",
           ),
+          h(
+            "div",
+            { class: "profile-subsection-divider form-grid-wide" },
+            h("span", { class: "profile-subsection-label" }, "Ranking & Format"),
+          ),
+          h("div", { class: "form-grid-wide" }, field(
+            "ev-format-tpl",
+            "Default Format Template",
+            template,
+            "Preferred format for new divisions. Existing brackets keep their saved format.",
+            "settings",
+          )),
+          h("div", { class: "form-grid-wide" }, switchToggle({
+            id: "ev-dupr-rated",
+            name: "dupr_rated",
+            label: "DUPR-Rated Event",
+            checked: row?.dupr_rated ?? false,
+            disabled: settingsLocked,
+            hint:
+              "Plan to submit results to DUPR. Registration stays closed until DUPR account verification is available.",
+          })),
+          h("div", { class: "form-grid-wide" }, switchToggle({
+            id: "ev-cpc-ranks",
+            name: "apply_cpc_rank_changes",
+            label: "Apply CPC Rank Changes",
+            checked: row?.apply_cpc_rank_changes ?? true,
+            disabled: settingsLocked,
+            hint:
+              "Apply club rank rules when each division is finalized. Separate from DUPR ratings.",
+          })),
+          settingsLocked
+            ? h(
+              "p",
+              { class: "field-hint form-grid-wide" },
+              "Ranking and format settings are locked after draft.",
+            )
+            : null,
           h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
@@ -540,6 +622,13 @@ export function createEventsPages({ api }) {
             p_fee: fee,
             p_opens_at: toInstant(opens),
             p_closes_at: toInstant(closes),
+            p_dupr_rated: settingsLocked ? row.dupr_rated : form.has("dupr_rated"),
+            p_default_format_template_id: settingsLocked
+              ? row.default_format_template_id
+              : String(form.get("default_format_template_id") ?? "") || null,
+            p_apply_cpc_rank_changes: settingsLocked
+              ? row.apply_cpc_rank_changes
+              : form.has("apply_cpc_rank_changes"),
           };
           try {
             await api.rpc(
@@ -618,6 +707,17 @@ export function createEventsPages({ api }) {
                 ),
             },
             {
+              key: "template",
+              label: "Template",
+              width: 240,
+              render: (r) => {
+                const name = r.default_template?.name
+                  ? templateLabel(r.default_template.name)
+                  : r.default_format_template_id ? "Unavailable template" : "Not set";
+                return h("span", { class: "event-template-name", title: name }, name);
+              },
+            },
+            {
               key: "dates",
               label: "Dates",
               width: 240,
@@ -638,7 +738,7 @@ export function createEventsPages({ api }) {
             {
               key: "divisions",
               label: "Divisions",
-              width: 120,
+              width: 96,
               align: "right",
               render: (r) => String(liveDivisions(r)),
             },
@@ -819,7 +919,7 @@ export function createEventsPages({ api }) {
                   { class: "member-decision-name" },
                   h("strong", { class: "member-name" }, row.name),
                   badge(
-                    ...(DIVISION_STATUS[row.status] ?? [row.status, "neutral"]),
+                    ...divisionStatusBadge(row.status, ev.status),
                   ),
                 ),
                 h(
@@ -944,14 +1044,14 @@ export function createEventsPages({ api }) {
               "template_id",
               state.templates.map((t) => ({
                 value: t.id,
-                label: t.name.replace(/\b[a-z]/g, (letter) => letter.toUpperCase()),
+                label: templateLabel(t.name),
               })),
-              state.templates[0]?.id,
+              state.open.default_format_template_id ?? state.templates[0]?.id,
             ),
-            "Copied to the division at creation.",
+            "Uses the event default; change if needed.",
             "settings",
           ),
-          editing ? null : field(
+          editing ? null : h("div", { class: "form-grid-wide" }, field(
             "dv-rule",
             "Scoring Rule",
             select("dv-rule", "scoring_rule_id", [
@@ -960,7 +1060,7 @@ export function createEventsPages({ api }) {
             ], ""),
             "Match point and win-by configuration.",
             "medal",
-          ),
+          )),
           editing
             ? h(
               "div",
@@ -1066,16 +1166,18 @@ export function createEventsPages({ api }) {
     async function drawModal(d) {
       let entries = [];
       try {
-        entries = await api.read((c) =>
+        entries = await readGuestCompatible(() => api.read((c) =>
           c.from("entries").select(
-            "id,seed,members:entry_members(member:members(person:persons(display_name)))",
+            "id,seed,members:entry_members(member:members(person:persons(display_name))),guests:entry_guests(display_name_snapshot)",
           ).eq("division_id", d.id).eq("status", "active").order("seed")
-        ) ?? [];
+        ), () => api.read((c) => c.from("entries").select("id,seed,members:entry_members(member:members(person:persons(display_name)))")
+          .eq("division_id", d.id).eq("status", "active").order("seed"))) ?? [];
       } catch {
         entries = [];
       }
       const names = (e) =>
-        (e.members ?? []).map((m) => m.member?.person?.display_name).filter(
+        [...(e.members ?? []).map((m) => m.member?.person?.display_name),
+          ...(e.guests ?? []).map((g) => g.display_name_snapshot)].filter(
           Boolean,
         ).join(" & ") || "—";
       const canRedo = stageOne(d)?.status === "drawn";
@@ -1280,20 +1382,32 @@ export function createEventsPages({ api }) {
         STAGE_LABEL[s.stage_type] ?? s.stage_type
       ).join(" → ");
 
-    function divisionsView() {
+    function divisionsView(filter) {
       return dataTable({
         searchState: state,
+        filter,
         schema: {
           columns: [
             {
               key: "name",
               label: "Division",
+              minWidth: 260,
+              skeleton: "member",
               render: (r) =>
                 h(
-                  "span",
-                  {},
-                  r.name,
-                  h("span", { class: "sub" }, describeDivision(r)),
+                  "div",
+                  { class: "member-cell" },
+                  h(
+                    "span",
+                    { class: "member-avatar is-icon", "aria-hidden": "true" },
+                    icon("layers"),
+                  ),
+                  h(
+                    "div",
+                    { class: "member-meta" },
+                    h("span", { class: "member-name" }, r.name),
+                    h("span", { class: "sub member-subtext" }, describeDivision(r)),
+                  ),
                 ),
             },
             {
@@ -1304,10 +1418,12 @@ export function createEventsPages({ api }) {
             {
               key: "format",
               label: "Format",
+              minWidth: 220,
+              skeleton: "stack",
               render: (r) =>
                 h(
-                  "span",
-                  {},
+                  "div",
+                  { class: "member-table-stack" },
                   stageNames(r),
                   h(
                     "span",
@@ -1326,7 +1442,7 @@ export function createEventsPages({ api }) {
               key: "status",
               label: "Status",
               render: (r) =>
-                badge(...(DIVISION_STATUS[r.status] ?? [r.status, "neutral"])),
+                badge(...divisionStatusBadge(r.status, state.open.status)),
             },
             {
               key: "actions",
@@ -1431,7 +1547,7 @@ export function createEventsPages({ api }) {
     function rejectRegistration(r) {
       return reasonModal({
         title: "Reject This Registration",
-        eyebrow: r.member?.person?.display_name ?? "",
+        eyebrow: r.guest_name_snapshot ?? r.member?.person?.display_name ?? "",
         confirmLabel: "Reject",
         run: (reason) =>
           api.rpc("decide_registration", {
@@ -1446,9 +1562,9 @@ export function createEventsPages({ api }) {
     function withdrawRegistration(r) {
       return reasonModal({
         title: "Withdraw This Registration",
-        eyebrow: r.member?.person?.display_name ?? "",
+        eyebrow: r.guest_name_snapshot ?? r.member?.person?.display_name ?? "",
         note: r.status === "confirmed" && Number(r.fee_snapshot) > 0
-          ? "The fee charge is reversed on the member's account. Void any payment separately if money is handed back."
+          ? "The fee charge is reversed on the player's account. Void any payment separately if money is handed back."
           : null,
         confirmLabel: "Withdraw",
         run: (reason) =>
@@ -1474,25 +1590,30 @@ export function createEventsPages({ api }) {
       return 0;
     }
 
-    function registrationsView() {
+    function registrationsView(filter) {
       return dataTable({
         searchState: state,
+        filter,
         schema: {
           columns: [
             {
               key: "member",
-              label: "Member",
+              label: "Player",
               render: (r) => {
                 const partner = state.partners[r.meta?.partner_member_id];
                 return h(
                   "span",
                   {},
-                  r.member?.person?.display_name ?? "—",
+                  r.guest_name_snapshot ?? r.member?.person?.display_name ?? "—",
                   h(
                     "span",
                     { class: "sub" },
                     [
                       r.member?.member_no,
+                      r.guest_participant_id ? "Guest" : null,
+                      state.guestDupr[r.guest_participant_id] ? `DUPR ID: ${state.guestDupr[r.guest_participant_id]} (self-reported)` : null,
+                      r.guest_partner_name_snapshot ? `with ${r.guest_partner_name_snapshot}` : null,
+                      state.guestDupr[r.guest_partner_participant_id] ? `Partner DUPR ID: ${state.guestDupr[r.guest_partner_participant_id]} (self-reported)` : null,
                       partner
                         ? `with ${
                           partner.person?.display_name ?? partner.member_no
@@ -1545,13 +1666,22 @@ export function createEventsPages({ api }) {
               key: "actions",
               label: "Action",
               align: "center",
-              actionCount: 1,
-              render: (r) =>
+              actionCount: can("events.admin_roster") ? 5 : 3,
+              render: (r) => h("span", { class: "row-actions" },
+                r.guest_participant_id && can("events.admin_roster") && ["requested", "confirmed"].includes(r.status) && r.division?.status === "open" && ["registration_open", "registration_closed"].includes(state.open.status)
+                  ? [
+                    iconButton({ label: `Move division for ${r.guest_name_snapshot}`, icon: "shuffle", size: "sm", variant: "info", onClick: () => guestActions.change(r, "move") }),
+                    iconButton({ label: `Replace players for ${r.guest_name_snapshot}`, icon: "edit", size: "sm", variant: "edit", onClick: () => guestActions.change(r, "replace") }),
+                  ] : null,
+                r.guest_participant_id && ["requested", "waitlisted", "confirmed"].includes(r.status) && can("payments.submit") &&
+                  Number(r.fee_snapshot) > Number(state.pays[r.id]?.verified_total ?? 0) + Number(state.pays[r.id]?.pending_total ?? 0)
+                  ? iconButton({ label: `Record payment for ${r.guest_name_snapshot}`, icon: "file", size: "sm", variant: "info",
+                    onClick: () => guestActions.payment(r, Number(r.fee_snapshot) - Number(state.pays[r.id]?.verified_total ?? 0) - Number(state.pays[r.id]?.pending_total ?? 0)) }) : null,
                 ["confirmed", "waitlisted"].includes(r.status) &&
                   r.division?.status === "open"
                   ? iconButton({
                     label: `Withdraw ${
-                      r.member?.person?.display_name ?? "registration"
+                      r.guest_name_snapshot ?? r.member?.person?.display_name ?? "registration"
                     }`,
                     icon: "x",
                     size: "sm",
@@ -1564,7 +1694,7 @@ export function createEventsPages({ api }) {
                     { class: "row-actions" },
                     iconButton({
                       label: `Approve ${
-                        r.member?.person?.display_name ?? "registration"
+                        r.guest_name_snapshot ?? r.member?.person?.display_name ?? "registration"
                       }`,
                       icon: "check",
                       size: "sm",
@@ -1573,7 +1703,7 @@ export function createEventsPages({ api }) {
                     }),
                     iconButton({
                       label: `Reject ${
-                        r.member?.person?.display_name ?? "registration"
+                        r.guest_name_snapshot ?? r.member?.person?.display_name ?? "registration"
                       }`,
                       icon: "x",
                       size: "sm",
@@ -1581,7 +1711,7 @@ export function createEventsPages({ api }) {
                       onClick: () => rejectRegistration(r),
                     }),
                   )
-                  : null,
+                  : null),
             },
           ],
         },
@@ -1593,7 +1723,7 @@ export function createEventsPages({ api }) {
           draw();
         },
         emptyTitle: "No registrations yet",
-        emptyText: "Members' registrations for this event appear here.",
+        emptyText: "Player registrations for this event appear here.",
       });
     }
 
@@ -1611,6 +1741,19 @@ export function createEventsPages({ api }) {
       const canAdd = !["completed", "cancelled"].includes(ev.status);
 
       const eventActions = [];
+      const rosterActions = [];
+      if (Object.hasOwn(ev, "allow_guest_players") && beforeDraw(ev) && can("events.admin_roster")) {
+        rosterActions.push(button({ label: "Guest Registration", icon: "user", variant: "secondary", onClick: guestActions.policy }));
+      }
+      if (ev.allow_guest_players && beforeDraw(ev) && can("events.admin_roster")) {
+        rosterActions.push(
+          button({ label: "Add Guest", icon: "plus", variant: "secondary", onClick: guestActions.addGuest }),
+          button({ label: "Add Existing Player", icon: "search", variant: "secondary", onClick: guestActions.addExisting }),
+        );
+        if (["registration_open", "registration_closed"].includes(ev.status)) {
+          rosterActions.push(button({ label: "Register Guest", icon: "layers", variant: "primary", onClick: () => guestActions.register() }));
+        }
+      }
       if (beforeDraw(ev)) {
         eventActions.push(
           button({
@@ -1665,9 +1808,8 @@ export function createEventsPages({ api }) {
       const topBar = h(
         "div",
         { class: "event-detail-toolbar" },
-        h(
-          "div",
-          { class: "event-detail-back" },
+        h("div", { class: "event-detail-navigation" },
+          h("div", { class: "event-detail-back" },
           button({
             label: "All Events",
             icon: "chevl",
@@ -1676,26 +1818,43 @@ export function createEventsPages({ api }) {
               state.open = null;
               draw();
             },
-          }),
+          })),
+          h("div", {
+            class: "event-detail-actions",
+            role: "group",
+            "aria-label": "Event Controls",
+          }, ...eventActions),
         ),
-        h("div", { class: "event-detail-actions" }, ...eventActions),
+        rosterActions.length ? h("section", {
+          class: "event-roster-toolbar",
+          "aria-label": "Player Registration",
+        },
+          h("div", { class: "event-roster-heading" },
+            h("span", { class: "event-roster-icon", "aria-hidden": "true" }, icon("userPlus")),
+            h("div", {},
+              h("strong", {}, "Player Registration"),
+              h("span", { class: "sub" }, "Guest profiles and event entries"),
+            ),
+          ),
+          h("div", {
+            class: "event-roster-actions",
+            role: "group",
+            "aria-label": "Guest Registration Actions",
+          }, ...rosterActions),
+        ) : null,
       );
 
       let regWindowValue = "Not specified";
-      let regWindowSub = "No registration window set";
       if (ev.registration_opens_at && ev.registration_closes_at) {
         regWindowValue = `${formatDate(ev.registration_opens_at)} – ${formatDate(ev.registration_closes_at)}`;
-        regWindowSub = `Closes ${formatDateTime(ev.registration_closes_at)}`;
       } else if (ev.registration_opens_at) {
         regWindowValue = `Opens ${formatDate(ev.registration_opens_at)}`;
-        regWindowSub = formatDateTime(ev.registration_opens_at);
       } else if (ev.registration_closes_at) {
         regWindowValue = `Closes ${formatDate(ev.registration_closes_at)}`;
-        regWindowSub = formatDateTime(ev.registration_closes_at);
       }
 
       const feeValue = Number(ev.fee) ? formatMoney(ev.fee) : "Free";
-      const feeSub = Number(ev.fee) ? "Per participant entry" : "No entry fee required";
+      const feeSub = Number(ev.fee) ? "Per division entry" : "No entry fee required";
       const scheduleValue = ev.starts_on && ev.ends_on
         ? (ev.starts_on === ev.ends_on ? formatDate(ev.starts_on) : `${formatDate(ev.starts_on)} – ${formatDate(ev.ends_on)}`)
         : "Dates unannounced";
@@ -1798,15 +1957,14 @@ export function createEventsPages({ api }) {
       );
 
       const activeTable = state.detailTab === "divisions"
-        ? divisionsView()
-        : registrationsView();
+        ? divisionsView(tabsHost)
+        : registrationsView(tabsHost);
 
       return h(
         "div",
         { class: "stack event-detail-stack" },
         topBar,
         summaryCard,
-        tabsHost,
         wrapTable(activeTable),
       );
     }

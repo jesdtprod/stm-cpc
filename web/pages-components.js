@@ -1330,7 +1330,7 @@ export function componentsPage() {
         { value: "pool_play", label: "Regular Pool Play into Elimination" },
         {
           value: "split_single",
-          label: "Split Single Elimination (High / Low)",
+          label: "Split Single Elimination",
         },
       ],
       value: "pool_play",
@@ -2664,7 +2664,7 @@ export function componentsPage() {
           id: "acc-1",
           title: "How do club rank promotions work?",
           content:
-            "Ranks change once per member after the division finalization of a sanctioned tournament. Split single elimination champions gain +1 level; consolation bracket finalists retain rank.",
+            "Ranks change once per member after the division finalization of a sanctioned tournament. Split Single Elimination champions gain +1 level; consolation bracket finalists retain rank.",
           defaultOpen: true,
         },
         {

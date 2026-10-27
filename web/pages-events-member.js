@@ -10,6 +10,7 @@ import {
   button,
   dataTable,
   h,
+  icon,
   iconButton,
   memberHero,
   openModal,
@@ -21,6 +22,7 @@ import {
 import { formatDate } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 import { ulid } from "./lib/ulid.js";
+import { eventSummary, eventSummarySkeleton } from "./event-summary.js";
 
 const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 const PROOF_TYPES = [
@@ -43,6 +45,21 @@ const REG_STATUS = {
   rejected: ["Rejected", "danger"],
 };
 const GENDER_LABEL = { male: "Men", female: "Women", mixed: "Mixed" };
+const CATEGORY_ORDER = {
+  beginner: 0, novice: 1, intermediate: 2, advanced: 3, advance: 3, elite: 4,
+};
+const categoryOrder = (d) =>
+  CATEGORY_ORDER[String(d.category ?? "").trim().toLowerCase()] ?? 5;
+const genderOrder = (d) => ({ male: 0, female: 1, mixed: 2 })[d.gender] ?? 3;
+const levelOrder = (d) => /\blow\b/i.test(d.name) ? 0
+  : /\bhigh\b/i.test(d.name) ? 1 : 2;
+const compareDivisions = (a, b) =>
+  categoryOrder(a) - categoryOrder(b) ||
+  (categoryOrder(a) === 5
+    ? String(a.category ?? "").localeCompare(String(b.category ?? ""), "en")
+    : 0) ||
+  genderOrder(a) - genderOrder(b) || levelOrder(a) - levelOrder(b) ||
+  String(a.name).localeCompare(String(b.name), "en", { numeric: true });
 
 const when = (d) => formatDate(`${d}T00:00:00+08:00`);
 
@@ -125,7 +142,22 @@ export function createMemberEventsPages({ api, client, session }) {
             "payments.instructions",
           ]),
         ]);
-        state.options = options ?? [];
+        const details = options?.length ? await api.read((c) =>
+          c.from("events").select(
+            "id,dupr_rated,apply_cpc_rank_changes,divisions(id,status)," +
+              "default_template:format_templates!events_default_format_template_id_fkey(name)",
+          ).in("id", options.map((ev) => ev.id))
+        ) : [];
+        const summaries = new Map(details.map((ev) => [ev.id, ev]));
+        state.options = (options ?? []).map((ev) => ({
+          ...ev,
+          dupr_rated: summaries.get(ev.id)?.dupr_rated,
+          apply_cpc_rank_changes: summaries.get(ev.id)?.apply_cpc_rank_changes,
+          default_format_template_name: summaries.get(ev.id)?.default_template?.name,
+          divisions_count: summaries.get(ev.id)?.divisions?.filter((d) => d.status !== "cancelled").length ??
+            (ev.divisions ?? []).length,
+          divisions: [...(ev.divisions ?? [])].sort(compareDivisions),
+        }));
         state.mine = mine ?? [];
         state.settings = settings;
         const ids = state.mine.map((r) => r.id);
@@ -157,6 +189,7 @@ export function createMemberEventsPages({ api, client, session }) {
     // ------------------------------------------------------------- register
     function registerModal(ev, d) {
       const doubles = d.format === "doubles";
+      const full = d.max_entries && d.taken >= d.max_entries;
       const error = h("p", {
         class: "field-error form-error",
         role: "alert",
@@ -167,8 +200,14 @@ export function createMemberEventsPages({ api, client, session }) {
         error.hidden = false;
         return false;
       };
+
       let partner = null; // { member_id, display_name, member_no }
-      const chosen = h("p", { class: "muted" }, "No partner chosen yet.");
+      const previewHost = h("div", { class: "partner-preview-host" });
+      const summary = h(
+        "p",
+        { class: "sub form-help-text" },
+        "Search by partner's name or member ID. Active members only.",
+      );
       const results = h("div", { class: "staff-results" });
       const term = searchControl({
         class: "input",
@@ -177,90 +216,240 @@ export function createMemberEventsPages({ api, client, session }) {
         placeholder: "Partner's name or member ID",
         maxlength: 60,
       });
-      async function search() {
-        const text = term.value.trim();
-        if (text.length < 2) return;
-        try {
-          const rows = await api.rpc("find_players", { p_term: text });
-          results.replaceChildren(
-            ...(rows ?? []).map((r) =>
+
+      function updatePartner(p) {
+        partner = p;
+        if (!p) {
+          previewHost.replaceChildren();
+          results.hidden = false;
+          summary.hidden = false;
+          return;
+        }
+        results.hidden = true;
+        summary.hidden = true;
+        previewHost.replaceChildren(
+          h(
+            "div",
+            { class: "staff-selected-card" },
+            h(
+              "div",
+              { class: "staff-selected-identity" },
               h(
-                "button",
+                "span",
                 {
-                  type: "button",
-                  class: "staff-result",
-                  onClick: () => {
-                    partner = r;
-                    chosen.textContent =
-                      `Partner: ${r.display_name} (${r.member_no})`;
-                    results.replaceChildren();
-                  },
+                  class: "member-avatar is-icon staff-selected-avatar",
+                  "aria-hidden": "true",
                 },
+                icon("user"),
+              ),
+              h(
+                "div",
+                { class: "member-meta" },
+                h(
+                  "div",
+                  { class: "staff-selected-header-row" },
+                  h("strong", { class: "member-name" }, p.display_name),
+                  badge("Doubles Partner", "success"),
+                ),
                 h(
                   "span",
-                  {},
-                  r.display_name,
-                  h("span", { class: "sub" }, r.member_no),
+                  { class: "sub member-subtext" },
+                  `Member ID: ${p.member_no}`,
                 ),
+              ),
+            ),
+            button({
+              label: "Change",
+              icon: "refresh",
+              variant: "ghost",
+              class: "staff-change-btn",
+              onClick: (e) => {
+                e.preventDefault();
+                updatePartner(null);
+                const checked = results.querySelector(
+                  "input[type='radio']:checked",
+                );
+                if (checked) checked.checked = false;
+              },
+            }),
+          ),
+        );
+      }
+
+      async function search() {
+        updatePartner(null);
+        const text = term.value.trim();
+        if (text.length < 2) {
+          summary.textContent = "Type at least 2 letters or numbers.";
+          results.replaceChildren();
+          return;
+        }
+        summary.textContent = "Searching players…";
+        try {
+          const rows = await api.rpc("find_players", { p_term: text });
+          const players = (rows ?? []).filter((r) =>
+            r.member_id !== profile()?.id
+          );
+          summary.textContent = players.length
+            ? `${players.length} found. Choose one below.`
+            : "No active members match. Your partner must be an active club member.";
+          results.replaceChildren(
+            ...players.map((r) =>
+              h(
+                "label",
+                { class: "staff-result" },
+                h("input", {
+                  type: "radio",
+                  name: "partner",
+                  value: r.member_id,
+                  onChange: () => updatePartner(r),
+                }),
+                h("span", {
+                  class: "member-avatar is-icon",
+                  "aria-hidden": "true",
+                }, icon("user")),
+                h(
+                  "span",
+                  { class: "member-meta" },
+                  h("span", { class: "member-name" }, r.display_name),
+                  h(
+                    "span",
+                    { class: "sub member-subtext" },
+                    r.member_no,
+                  ),
+                ),
+                badge("Active", "success"),
               )
             ),
           );
-          if (!rows?.length) chosen.textContent = "Nobody active matches.";
         } catch (e) {
-          chosen.textContent = eventMessage(e, "The search did not work.");
+          summary.textContent = eventMessage(e, "The search did not work.");
         }
       }
+
       term.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           search();
         }
       });
-      const full = d.max_entries && d.taken >= d.max_entries;
+
+      const summaryCard = h(
+        "div",
+        { class: "event-registration-summary-card" },
+        h(
+          "div",
+          { class: "event-registration-summary-header" },
+          h(
+            "div",
+            { class: "event-registration-summary-title-col" },
+            h("span", { class: "eyebrow" }, "Tournament Division"),
+            h("strong", { class: "event-registration-division-title" }, d.name),
+            h(
+              "span",
+              { class: "sub" },
+              [
+                ev.name,
+                d.format === "doubles" ? "Doubles" : "Singles",
+                GENDER_LABEL[d.gender],
+                d.category,
+              ].filter(Boolean).join(" · "),
+            ),
+          ),
+          h(
+            "div",
+            { class: "event-registration-summary-badges" },
+            Number(ev.fee) > 0
+              ? badge(formatMoney(ev.fee), "primary")
+              : badge("Free Entry", "success"),
+            full ? badge("Waitlist Only", "warning") : badge("Open", "success"),
+          ),
+        ),
+        Number(ev.fee) > 0
+          ? h(
+            "div",
+            { class: "event-registration-fee-note" },
+            icon("currency"),
+            h(
+              "span",
+              {},
+              `Registration fee: ${formatMoney(ev.fee)}${
+                doubles ? " for the pair (paid by you upon approval)" : ""
+              }.`,
+            ),
+          )
+          : null,
+        full
+          ? h(
+            "div",
+            {
+              class:
+                "division-problem-callout event-registration-waitlist-callout",
+            },
+            icon("info"),
+            h(
+              "span",
+              {},
+              "This division has reached capacity. Submitting places your team on the official waitlist.",
+            ),
+          )
+          : null,
+      );
+
+      const partnerPanel = doubles
+        ? h(
+          "div",
+          { class: "form-section event-registration-partner-panel" },
+          h(
+            "div",
+            { class: "event-registration-partner-head" },
+            h(
+              "div",
+              { class: "event-registration-partner-label" },
+              icon("userPlus"),
+              h("strong", {}, "Doubles Partner *"),
+            ),
+            badge("Required", "warning"),
+          ),
+          h(
+            "div",
+            { class: "staff-search" },
+            term,
+            button({
+              label: "Search",
+              icon: "search",
+              onClick: search,
+            }),
+          ),
+          summary,
+          results,
+          previewHost,
+          h(
+            "p",
+            { class: "event-registration-partner-tip" },
+            icon("info"),
+            h(
+              "span",
+              {},
+              "Your partner must also be an active club member eligible for this division.",
+            ),
+          ),
+        )
+        : null;
+
       return openModal({
-        title: "Register",
-        eyebrow: `${ev.name} · ${d.name}`,
+        title: "Register for Division",
+        eyebrow: "Event Registration",
+        description: `${ev.name} · ${d.name}`,
         icon: "trophy",
-        confirmLabel: full ? "Join the waitlist" : "Register",
+        size: "md",
+        confirmLabel: full ? "Join Waitlist" : "Register",
+        cancelLabel: "Cancel",
         body: h(
           "div",
           { class: "stack" },
-          h(
-            "p",
-            {},
-            Number(ev.fee) > 0
-              ? `Fee: ${formatMoney(ev.fee)}${
-                doubles ? " for the pair, paid by you" : ""
-              }.`
-              : "There is no fee.",
-          ),
-          full
-            ? h(
-              "p",
-              { class: "muted" },
-              "This division is full. You will be put on the waitlist.",
-            )
-            : null,
-          doubles
-            ? h(
-              "div",
-              { class: "stack" },
-              h("label", { for: "rg-term" }, "Doubles Partner *"),
-              h(
-                "div",
-                { class: "actions" },
-                term,
-                button({ label: "Search", onClick: search }),
-              ),
-              results,
-              chosen,
-              h(
-                "p",
-                { class: "muted" },
-                "Your partner must also be allowed to join this division.",
-              ),
-            )
-            : null,
+          summaryCard,
+          partnerPanel,
           error,
         ),
         onConfirm: async () => {
@@ -499,79 +688,150 @@ export function createMemberEventsPages({ api, client, session }) {
     }
 
     // --------------------------------------------------------------- views
-    function divisionsTable(ev) {
-      return dataTable({
-        searchable: false,
-        searchState: state,
-        schema: {
-          columns: [
-            {
-              key: "name",
-              label: "Division",
-              render: (d) =>
-                h(
-                  "span",
-                  {},
-                  d.name,
+    function divisionsTable(ev, viewState = "ready") {
+      const divisionBadge = (d) =>
+        d.mine
+          ? badge(
+            ...(REG_STATUS[d.mine.status] ??
+              [d.mine.status, "neutral"]),
+          )
+          : d.problem
+          ? badge("Unavailable", "warning")
+          : d.max_entries && d.taken >= d.max_entries
+          ? badge("Waitlist", "info")
+          : badge("Open", "success");
+
+      return h(
+        "div",
+        { class: "member-event-division-list" },
+        dataTable({
+          searchable: false,
+          searchState: state,
+          schema: {
+            columns: [
+              {
+                key: "name",
+                label: "Division",
+                render: (d) =>
                   h(
-                    "span",
-                    { class: "sub" },
-                    [
-                      d.format === "doubles" ? "Doubles" : "Singles",
-                      GENDER_LABEL[d.gender],
-                      d.age_group,
-                      d.category,
-                    ].filter(Boolean).join(" · "),
+                    "div",
+                    { class: "member-event-division-col" },
+                    h(
+                      "div",
+                      { class: "member-event-division-header" },
+                      h(
+                        "div",
+                        { class: "member-event-division-identity" },
+                        h("span", {
+                          class: `member-avatar is-icon ${d.problem ? "is-restricted" : "is-eligible"}`,
+                          "aria-hidden": "true",
+                        }, icon("trophy")),
+                        h(
+                          "div",
+                          { class: "member-event-division-copy" },
+                          h(
+                            "strong",
+                            { class: "member-event-division-name" },
+                            d.name,
+                          ),
+                          h(
+                            "span",
+                            { class: "sub" },
+                            [
+                              d.format === "doubles" ? "Doubles" : "Singles",
+                              GENDER_LABEL[d.gender],
+                              d.age_group,
+                              d.category,
+                            ].filter(Boolean).join(" · "),
+                          ),
+                        ),
+                      ),
+                      h(
+                        "div",
+                        { class: "member-event-division-badge-mobile" },
+                        divisionBadge(d),
+                      ),
+                    ),
+                    d.problem
+                      ? h(
+                        "div",
+                        { class: "member-event-restriction-note" },
+                        icon("info"),
+                        h("span", {}, d.problem),
+                      )
+                      : null,
                   ),
-                ),
-            },
-            {
-              key: "spots",
-              label: "Entries",
-              align: "right",
-              render: (d) =>
-                d.max_entries
-                  ? `${d.taken} of ${d.max_entries}`
-                  : String(d.taken),
-            },
-            {
-              key: "state",
-              label: "Status",
-              render: (d) =>
-                d.mine
-                  ? badge(
-                    ...(REG_STATUS[d.mine.status] ??
-                      [d.mine.status, "neutral"]),
-                  )
-                  : d.problem
-                  ? h("span", { class: "muted" }, d.problem)
-                  : badge("Open", "success"),
-            },
-            {
-              key: "actions",
-              label: "Action",
-              align: "center",
-              actionCount: 1,
-              render: (d) =>
-                !d.mine && !d.problem
-                  ? iconButton({
-                    icon: "userPlus",
-                    label: d.max_entries && d.taken >= d.max_entries
-                      ? "Waitlist"
-                      : "Register",
-                    variant: "success",
-                    onClick: () => registerModal(ev, d),
-                  })
-                  : null,
-            },
-          ],
-        },
-        rows: ev.divisions,
-        state: "ready",
-        ariaLabel: `Divisions of ${ev.name}`,
-        emptyTitle: "No Divisions",
-        emptyText: "This event has no open divisions.",
-      });
+              },
+              {
+                key: "spots",
+                label: "Entries",
+                align: "right",
+                render: (d) =>
+                  h(
+                    "div",
+                    { class: "member-event-entries" },
+                    h(
+                      "div",
+                      { class: "member-event-entries-meta" },
+                      h("span", { class: "member-event-entries-label" }, "Entries"),
+                      h(
+                        "strong",
+                        { class: "member-event-entries-count" },
+                        d.max_entries
+                          ? `${d.taken} of ${d.max_entries}`
+                          : String(d.taken),
+                      ),
+                    ),
+                    d.max_entries
+                      ? h("progress", {
+                        class: "member-event-capacity",
+                        value: Math.max(
+                          0,
+                          Math.min(Number(d.taken), Number(d.max_entries)),
+                        ),
+                        max: d.max_entries,
+                        "aria-label": `Entry capacity for ${d.name}`,
+                      })
+                      : h("span", { class: "sub" }, "No Entry Limit"),
+                  ),
+              },
+              {
+                key: "state",
+                label: "Status",
+                render: (d) => divisionBadge(d),
+              },
+              {
+                key: "actions",
+                label: "Action",
+                align: "center",
+                actionCount: 1,
+                render: (d) =>
+                  !d.mine && !d.problem
+                    ? iconButton({
+                      icon: "userPlus",
+                      label: d.max_entries && d.taken >= d.max_entries
+                        ? "Waitlist"
+                        : "Register",
+                      variant: "success",
+                      onClick: () => registerModal(ev, d),
+                    })
+                    : null,
+              },
+            ],
+          },
+          rows: ev.divisions,
+          state: viewState,
+          ariaLabel: `Divisions of ${ev.name}`,
+          emptyTitle: "No Divisions",
+          emptyText: "This event has no open divisions.",
+        }),
+      );
+    }
+
+    function memberEventSummary(ev) {
+      return h("header", { class: "member-event-header" },
+        ...eventSummary({ ...ev, status: "registration_open" }),
+      );
     }
 
     function openView() {
@@ -591,20 +851,36 @@ export function createMemberEventsPages({ api, client, session }) {
             GENDER_LABEL[d.gender],
             d.age_group,
             d.category,
-            d.mine ? REG_STATUS[d.mine.status]?.[0] : d.problem || "Open",
+            d.mine ? REG_STATUS[d.mine.status]?.[0] : d.problem ||
+              (d.max_entries && d.taken >= d.max_entries ? "Waitlist" : "Open"),
           )
         );
         return divisions.length ? [{ ...ev, divisions }] : [];
       });
       if (state.status === "loading") {
-        return dataTable({
-          searchable: false,
-          searchState: state,
-          schema: { columns: [{ key: "n", label: "Event", render: () => "" }] },
-          rows: [],
-          state: "loading",
-          ariaLabel: "Events",
-        });
+        const bar = (shape = "w-70") => h("span", { class: `sk ${shape}` });
+        return h(
+          "section",
+          {
+            class: "member-panel member-event-panel",
+            "aria-label": "Loading Events",
+            "aria-busy": "true",
+          },
+          h(
+            "header",
+            { class: "member-event-header", "aria-hidden": "true" },
+            ...eventSummarySkeleton(),
+          ),
+          h(
+            "div",
+            { class: "member-event-divisions" },
+            h("div", {
+              class: "member-event-divisions-heading",
+              "aria-hidden": "true",
+            }, bar("w-30")),
+            divisionsTable({ name: "Loading Event", divisions: [] }, "loading"),
+          ),
+        );
       }
       if (state.status === "error") {
         return dataTable({
@@ -639,20 +915,29 @@ export function createMemberEventsPages({ api, client, session }) {
         ...options.map((ev) =>
           h(
             "section",
-            { class: "card stack" },
-            h("h2", {}, ev.name),
+            {
+              class: "member-panel member-event-panel",
+              "aria-label": ev.name,
+              "aria-busy": state.status === "refreshing" ? "true" : "false",
+            },
+            memberEventSummary(ev),
             h(
-              "p",
-              { class: "muted" },
-              [
-                ev.starts_on === ev.ends_on
-                  ? when(ev.starts_on)
-                  : `${when(ev.starts_on)} – ${when(ev.ends_on)}`,
-                ev.location,
-                Number(ev.fee) > 0 ? formatMoney(ev.fee) : "Free",
-              ].filter(Boolean).join(" · "),
+              "div",
+              { class: "member-event-divisions" },
+              h(
+                "div",
+                { class: "member-event-divisions-heading" },
+                h("h3", {}, "Divisions"),
+                h(
+                  "span",
+                  { class: "sub" },
+                  `${ev.divisions.length} ${
+                    ev.divisions.length === 1 ? "Division" : "Divisions"
+                  }`,
+                ),
+              ),
+              divisionsTable(ev),
             ),
-            divisionsTable(ev),
           )
         ),
       );

@@ -284,11 +284,14 @@ route("/", () => homePages.homePage(), "Home", "public");
 route("/admin", () => homePages.adminHomePage(), "Admin Dashboard", {
   any: ADMIN_CODES,
 });
-route("/booking", () => bookingPage(), "Court Booking", "public");
-// Members who may register see the registration page; everyone else sees the public placeholder.
+route("/booking", () => bookingPage({ api }), "Court Booking", "public");
+// Members who may register see the registration page; everyone else sees the public event list.
 route(
   "/events",
-  () => can("events.register") ? memberEventsPages.eventsPage() : eventsPage(),
+  () =>
+    can("events.register")
+      ? memberEventsPages.eventsPage()
+      : eventsPage({ api }),
   "Events",
   "public",
 );

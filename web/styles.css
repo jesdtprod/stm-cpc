@@ -259,7 +259,6 @@ main[aria-busy="true"] {
   flex-shrink: 0;
 }
 .page-header .muted,
-.modal-head .muted,
 .card-head-lead .card-subtitle,
 .dash-hero-sub,
 .home-section-desc {
@@ -1916,6 +1915,21 @@ textarea.input {
   padding: 14px 18px;
   overflow-wrap: anywhere;
 }
+@media (min-width: 721px) {
+  .tbl-body > .tbl-row {
+    min-height: 56px;
+  }
+  .tbl-body .tbl-cell {
+    padding-block: 8px;
+    align-self: center;
+    align-content: center;
+  }
+  .tbl-body .tbl-cell.center,
+  .tbl-body .member-cell,
+  .tbl-body .row-actions {
+    align-items: center;
+  }
+}
 .tbl-head .tbl-cell {
   position: relative;
   white-space: nowrap;
@@ -2312,6 +2326,10 @@ dialog.modal::backdrop {
   font-size: 13px;
   color: var(--text-2);
   margin: 4px 0 0;
+  white-space: normal;
+  line-height: 1.45;
+  overflow: visible;
+  text-overflow: clip;
 }
 .modal-close-btn {
   width: 32px;
@@ -2534,29 +2552,19 @@ dialog.drawer::backdrop {
   align-items: center;
   gap: 12px;
   width: auto;
-  min-width: 280px;
-  max-width: 440px;
+  min-width: min(280px, 100%);
+  max-width: min(440px, 100%);
   min-height: 52px;
   padding: 10px 14px 10px 12px;
   background: rgba(13, 27, 20, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
-  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0,
-    0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: none;
   animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   color: var(--text);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-sizing: border-box;
-}
-.toast::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  border-radius: 4px 0 0 4px;
 }
 @keyframes toastIn {
   from {
@@ -2589,7 +2597,7 @@ dialog.drawer::backdrop {
   justify-content: center;
   flex-shrink: 0;
   width: 32px;
-  height: 32px;
+  height: 26px;
   border-radius: 9px;
   transition: transform 0.2s ease;
 }
@@ -2614,7 +2622,7 @@ dialog.drawer::backdrop {
 }
 .toast-msg {
   font-size: 13.5px;
-  font-weight: 450;
+  font-weight: 600;
   color: #F1F5F9;
   line-height: 1.4;
   word-break: break-word;
@@ -2651,59 +2659,27 @@ dialog.drawer::backdrop {
 }
 .toast-success {
   border-color: rgba(34, 197, 94, 0.35);
-  box-shadow: 0 18px 40px -8px rgba(0, 0, 0, 0.7), 0 0 20px -4px rgba(34, 197,
-    94, 0.22), inset 0 1px 0 rgba(74, 222, 128, 0.25);
-}
-.toast-success::before {
-  background: linear-gradient(180deg, #4ADE80 0%, #22C55E 100%);
 }
 .toast-success .toast-icon {
-  background: rgba(34, 197, 94, 0.14);
-  border: 1px solid rgba(34, 197, 94, 0.3);
   color: #4ADE80;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
 }
 .toast-error {
   border-color: rgba(239, 68, 68, 0.35);
-  box-shadow: 0 18px 40px -8px rgba(0, 0, 0, 0.7), 0 0 20px -4px rgba(239, 68,
-    68, 0.22), inset 0 1px 0 rgba(248, 113, 113, 0.25);
-}
-.toast-error::before {
-  background: linear-gradient(180deg, #F87171 0%, #EF4444 100%);
 }
 .toast-error .toast-icon {
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.3);
   color: #F87171;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
 }
 .toast-warning {
   border-color: rgba(245, 158, 11, 0.35);
-  box-shadow: 0 18px 40px -8px rgba(0, 0, 0, 0.7), 0 0 20px -4px rgba(245, 158,
-    11, 0.22), inset 0 1px 0 rgba(251, 191, 36, 0.25);
-}
-.toast-warning::before {
-  background: linear-gradient(180deg, #FBBF24 0%, #F59E0B 100%);
 }
 .toast-warning .toast-icon {
-  background: rgba(245, 158, 11, 0.14);
-  border: 1px solid rgba(245, 158, 11, 0.3);
   color: #FBBF24;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
 }
 .toast-info {
   border-color: rgba(56, 189, 248, 0.35);
-  box-shadow: 0 18px 40px -8px rgba(0, 0, 0, 0.7), 0 0 20px -4px rgba(56, 189,
-    248, 0.22), inset 0 1px 0 rgba(56, 189, 248, 0.25);
-}
-.toast-info::before {
-  background: linear-gradient(180deg, #38BDF8 0%, #0EA5E9 100%);
 }
 .toast-info .toast-icon {
-  background: rgba(56, 189, 248, 0.14);
-  border: 1px solid rgba(56, 189, 248, 0.3);
   color: #38BDF8;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
 }
 
 /* ===== Alerts & Banners ===== */

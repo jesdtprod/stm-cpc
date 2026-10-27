@@ -1387,7 +1387,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 "span",
                 { class: "sub" },
                 r.joined_on
-                  ? `Member since ${r.joined_on.slice(0, 10)}`
+                  ? `Member since ${formatDate(r.joined_on)}`
                   : r.created_at
                   ? `Added ${formatDate(r.created_at)}`
                   : "—",

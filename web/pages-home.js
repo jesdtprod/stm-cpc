@@ -25,7 +25,7 @@ export const ADMIN_CODES = [
   "settings.manage",
   "roles.manage",
 ];
-import { formatDateTime } from "./lib/dates.js";
+import { formatCourtTime as time, formatDateTime } from "./lib/dates.js";
 
 // href is only set where the page already exists; the rest are plain figures until their steps arrive.
 const STAFF_CARDS = [
@@ -641,29 +641,47 @@ function loadingView(mode = "member") {
 }
 
 export function createHomePages({ session, api, client }) {
-  function renderMemberBadges(target, badges, fallbackInitials) {
-    const initials = Array.isArray(badges)
+  async function renderMemberBadges(target, badges, fallbackInitials) {
+    const members = Array.isArray(badges)
       ? badges
         .slice(0, 15)
-        .map((badge) =>
-          String(badge?.initials ?? "")
+        .map((badge) => ({
+          initials: String(badge?.initials ?? "")
             .replace(/[^a-z]/gi, "")
             .slice(0, 2)
-            .toUpperCase()
-        )
-        .filter(Boolean)
+            .toUpperCase(),
+          photoPath: typeof badge?.avatar_path === "string"
+            ? badge.avatar_path
+            : null,
+        }))
+        .filter((member) => member.initials)
       : [];
-    const visibleInitials = initials.length ? initials : [
-      String(fallbackInitials ?? "C").replace(/[^a-z]/gi, "").slice(0, 2)
+    const visibleMembers = members.length ? members : [{
+      initials: String(fallbackInitials ?? "C").replace(/[^a-z]/gi, "").slice(0, 2)
         .toUpperCase() || "C",
-    ];
-
-    target.replaceChildren(
-      ...visibleInitials.map((initial) =>
-        h("span", { class: "cpc-member-account" }, initial)
-      ),
+      photoPath: null,
+    }];
+    const circles = visibleMembers.map((member) =>
+      h("span", { class: "cpc-member-account" }, member.initials)
     );
+
+    target.replaceChildren(...circles);
     target.hidden = false;
+    const urls = await signedAvatarUrls(
+      client,
+      visibleMembers.map((member) => member.photoPath),
+      300,
+    );
+    if (!target.isConnected) return;
+    for (const [index, member] of visibleMembers.entries()) {
+      const url = urls.get(member.photoPath);
+      if (!url) continue;
+      // The public strip returns initials, not names. Separate the letters so the shared
+      // image fallback preserves both initials when an image is missing or fails to load.
+      circles[index].replaceChildren(
+        avatarImage(url, member.initials.split("").join(" ")),
+      );
+    }
   }
 
   async function loadClubMemberCount(target, accountIndicators) {
@@ -680,7 +698,7 @@ export function createHomePages({ session, api, client }) {
         .replace(/[^a-z]/gi, "")
         .slice(0, 2)
         .toUpperCase();
-      renderMemberBadges(accountIndicators, stats?.member_badges, initials);
+      await renderMemberBadges(accountIndicators, stats?.member_badges, initials);
     } catch {
       if (target.isConnected) target.textContent = "Active club members";
     }
@@ -1123,12 +1141,6 @@ export function createHomePages({ session, api, client }) {
         year: "numeric",
         timeZone: "Asia/Manila",
       });
-    const time = (hhmm) => {
-      const [hh, mm] = hhmm.split(":").map(Number);
-      return `${hh % 12 || 12}:${String(mm).padStart(2, "0")} ${
-        hh < 12 ? "AM" : "PM"
-      }`;
-    };
     const card = (title, ...children) =>
       h("article", { class: "cpc-info-card" }, h("h3", {}, title), ...children);
 
@@ -1197,7 +1209,7 @@ export function createHomePages({ session, api, client }) {
                       ? h(
                         "p",
                         {},
-                        `${time(c.hours.opens)} – ${time(c.hours.closes)}`,
+                        `${time(c.hours.opens)} – ${time(c.hours.closes, true)}`,
                         c.hours.days >= 7
                           ? ", every day"
                           : `, ${c.hours.days} days a week`,

@@ -2,6 +2,7 @@
 // Each action calls one server function (decide_booking, cancel_booking, decide_payment, void_payment) that checks the
 // permission, takes an idempotency key (made when the window opens, reused if the click is repeated), changes the state
 // and writes the audit row. The buttons shown follow the caller's permissions, but the database decides.
+import { readGuestCompatible } from "./lib/guest-schema.js";
 import {
   adminHero,
   attachPagePattern,
@@ -834,9 +835,7 @@ export function createBookingAdminPages({ api, client }) {
                   start: x.start,
                   end: x.end,
                   kind: "booked",
-                  label: `${who(b.requester)} (${
-                    (STATUS[b.status] ?? [b.status])[0]
-                  })`,
+                  label: (STATUS[b.status] ?? [b.status])[0],
                   booking: b,
                 };
             }),
@@ -1086,8 +1085,13 @@ export function createBookingAdminPages({ api, client }) {
                     "aria-label": `${text}, ${hit ? hit.label : "free"}`,
                     onClick: () => hit?.booking && detailsModal(hit.booking),
                   },
-                  h("span", {}, text),
-                  hit ? h("span", { class: "slot-note" }, hit.label) : null,
+                  h("span", { class: "slot-time-with-status" },
+                    text,
+                    hit?.booking?.status === "completed" ? icon("check") : null,
+                  ),
+                  hit && hit.booking?.status !== "completed"
+                    ? h("span", { class: "slot-note" }, hit.label)
+                    : null,
                 );
               }),
             )
@@ -1609,12 +1613,15 @@ export function createBookingAdminPages({ api, client }) {
       state.status = state.rows.length ? "refreshing" : "loading";
       draw();
       try {
-        const rows = await api.read((c) =>
+        const rows = await readGuestCompatible(() => api.read((c) =>
           c.from("payment_submissions").select(
-            "id,doc_no,method,reference_no,amount,status,created_at,reject_reason,void_reason,source_id," +
+            "id,doc_no,method,reference_no,amount,status,created_at,reject_reason,void_reason,source_id,source_type,payer_name_snapshot," +
               "payer:members!payment_submissions_payer_member_id_fkey(member_no,persons(display_name)),file:files(storage_path)",
           ).order("created_at", { ascending: false }).limit(150)
-        );
+        ), () => api.read((c) => c.from("payment_submissions").select(
+          "id,doc_no,method,reference_no,amount,status,created_at,reject_reason,void_reason,source_id,source_type," +
+          "payer:members!payment_submissions_payer_member_id_fkey(member_no,persons(display_name)),file:files(storage_path)",
+        ).order("created_at", { ascending: false }).limit(150)));
         state.rows = rows ?? [];
         const ids = [...new Set(state.rows.map((p) => p.source_id))];
         const bks = ids.length
@@ -1662,7 +1669,7 @@ export function createBookingAdminPages({ api, client }) {
 
     function actionsFor(p) {
       const b = [];
-      const label = `${p.doc_no}, ${who(p.payer)}`;
+      const label = `${p.doc_no}, ${p.payer_name_snapshot ?? who(p.payer)}`;
       if (p.file?.storage_path) {
         b.push(
           iconButton({
@@ -1751,18 +1758,18 @@ export function createBookingAdminPages({ api, client }) {
     const columns = [
       {
         key: "who",
-        label: "Member",
+        label: "Player",
         render: (p) =>
           h(
             "span",
             {},
-            who(p.payer),
-            sub(`${p.payer?.member_no ?? ""} · ${p.doc_no}`),
+            p.payer_name_snapshot ?? who(p.payer),
+            sub(`${p.payer_name_snapshot ? "Guest" : p.payer?.member_no ?? ""} · ${p.doc_no}`),
           ),
       },
       {
         key: "for",
-        label: "For Booking",
+        label: "Source",
         render: (p) => {
           const b = state.bookings[p.source_id];
           return b
@@ -1774,7 +1781,7 @@ export function createBookingAdminPages({ api, client }) {
                 `${b.court_name_snapshot} · ${formatMoney(b.price_snapshot)}`,
               ),
             )
-            : "—";
+            : p.source_type === "event_registration" ? "Event Registration" : "—";
         },
       },
       {

@@ -147,6 +147,7 @@ GitHub Pages cannot send security headers. Use these controls in every HTML file
 - **Separate projects for development and production**, with different keys and no real member data in development.
 - Storage: private buckets by default, RLS on `storage.objects`, restrict file type/size, random file names, short-lived signed URLs, never serve user-uploaded HTML/SVG from the app origin.
 - Profile photos: JPG, PNG, or WebP, maximum 3 MB at selection and in the private `avatars` bucket. The browser crops/resizes uploads to JPEG. CSP permits photo display only from this project's Storage object endpoint; failed images show initials.
+- The landing member strip intentionally permits anonymous reads only for the current photo paths of its at-most-15 selected active, nondeleted CPC members. Unlisted members, unrelated uploads, other clubs, suspended/pending members and removed photos remain private. The bucket stays private; the landing page requests signed links with a five-minute lifetime. Already-issued links may remain usable until they expire.
 
 ## 9. Public repository and secrets
 

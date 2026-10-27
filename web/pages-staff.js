@@ -274,32 +274,57 @@ export function createStaffPages({ api }) {
         chosen = member;
         if (!member) {
           previewHost.replaceChildren();
+          results.hidden = false;
+          summary.hidden = false;
           return;
         }
+        results.hidden = true;
+        summary.hidden = true;
         previewHost.replaceChildren(
           h(
             "div",
-            { class: "member-decision-subject" },
-            h(
-              "span",
-              { class: "member-avatar is-icon", "aria-hidden": "true" },
-              icon("user"),
-            ),
+            { class: "staff-selected-card" },
             h(
               "div",
-              { class: "member-meta" },
-              h(
-                "div",
-                { class: "member-decision-name" },
-                h("strong", { class: "member-name" }, member.display_name),
-                badge(member.role_name, TONE[member.role_code] ?? "neutral"),
-              ),
+              { class: "staff-selected-identity" },
               h(
                 "span",
-                { class: "sub member-subtext" },
-                `Member ID: ${member.member_no}`,
+                {
+                  class: "member-avatar is-icon staff-selected-avatar",
+                  "aria-hidden": "true",
+                },
+                icon("userCheck"),
+              ),
+              h(
+                "div",
+                { class: "member-meta" },
+                h(
+                  "div",
+                  { class: "staff-selected-header-row" },
+                  h("strong", { class: "member-name" }, member.display_name),
+                  badge(member.role_name, TONE[member.role_code] ?? "neutral"),
+                ),
+                h(
+                  "span",
+                  { class: "sub member-subtext" },
+                  `Member ID: ${member.member_no}`,
+                ),
               ),
             ),
+            button({
+              label: "Change",
+              icon: "refreshCw",
+              variant: "ghost",
+              class: "staff-change-btn",
+              onClick: (e) => {
+                e.preventDefault();
+                updatePreview(null);
+                const checkedRadio = results.querySelector(
+                  "input[type='radio']:checked",
+                );
+                if (checkedRadio) checkedRadio.checked = false;
+              },
+            }),
           ),
         );
       }

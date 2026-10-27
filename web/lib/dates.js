@@ -84,3 +84,15 @@ export function formatDate(instant) {
 export function formatDateTime(instant) {
   return dateTime.format(new Date(instant));
 }
+
+/** Public court hours: end-of-day closing markers represent midnight in Manila. */
+export function formatCourtTime(value, closing = false) {
+  const hhmm = String(value).slice(0, 5);
+  if (closing && ["23:59", "24:00", "00:00"].includes(hhmm)) {
+    return "12 Midnight";
+  }
+  const [hh, mm] = hhmm.split(":").map(Number);
+  return `${hh % 12 || 12}:${String(mm).padStart(2, "0")} ${
+    hh < 12 ? "AM" : "PM"
+  }`;
+}
