@@ -11,11 +11,11 @@ import {
   dataTable,
   h,
   iconButton,
+  memberHero,
   openModal,
-  pageHeader,
   searchControl,
   selectControl,
-  tabs,
+  tableFilter,
   toast,
 } from "./ui.js";
 import { formatDate } from "./lib/dates.js";
@@ -68,7 +68,7 @@ export function createMemberEventsPages({ api, client, session }) {
   }
 
   function eventsPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", { class: "page member-events-page" });
     const tabsHost = h("div", {});
     const body = h("div", { class: "events-body" });
     const state = {
@@ -78,6 +78,25 @@ export function createMemberEventsPages({ api, client, session }) {
       mine: [],
       pays: {},
       settings: {},
+      term: "",
+    };
+    const search = searchControl({
+      id: "member-events-search",
+      class: "input",
+      placeholder: "Search events...",
+      "aria-label": "Search Events and Registrations",
+      onInput: () => {
+        state.term = search.value;
+        draw();
+      },
+    });
+    const matches = (...values) => {
+      const normalize = (value) =>
+        String(value ?? "").normalize("NFKD")
+          .replace(/\p{M}/gu, "").toLocaleLowerCase();
+      const text = normalize(values.join(" "));
+      return normalize(state.term).trim().split(/\s+/).filter(Boolean)
+        .every((term) => text.includes(term));
     };
     // One registration ID per division, so pressing Register again is not a second registration.
     const regIds = new Map();
@@ -482,6 +501,7 @@ export function createMemberEventsPages({ api, client, session }) {
     // --------------------------------------------------------------- views
     function divisionsTable(ev) {
       return dataTable({
+        searchable: false,
         searchState: state,
         schema: {
           columns: [
@@ -555,8 +575,30 @@ export function createMemberEventsPages({ api, client, session }) {
     }
 
     function openView() {
+      const options = state.options.flatMap((ev) => {
+        const eventText = [
+          ev.name,
+          ev.location,
+          when(ev.starts_on),
+          when(ev.ends_on),
+        ];
+        if (matches(...eventText)) return [ev];
+        const divisions = (ev.divisions ?? []).filter((d) =>
+          matches(
+            ...eventText,
+            d.name,
+            d.format === "doubles" ? "Doubles" : "Singles",
+            GENDER_LABEL[d.gender],
+            d.age_group,
+            d.category,
+            d.mine ? REG_STATUS[d.mine.status]?.[0] : d.problem || "Open",
+          )
+        );
+        return divisions.length ? [{ ...ev, divisions }] : [];
+      });
       if (state.status === "loading") {
         return dataTable({
+          searchable: false,
           searchState: state,
           schema: { columns: [{ key: "n", label: "Event", render: () => "" }] },
           rows: [],
@@ -566,6 +608,7 @@ export function createMemberEventsPages({ api, client, session }) {
       }
       if (state.status === "error") {
         return dataTable({
+          searchable: false,
           searchState: state,
           schema: { columns: [{ key: "n", label: "Event", render: () => "" }] },
           rows: [],
@@ -574,22 +617,26 @@ export function createMemberEventsPages({ api, client, session }) {
           ariaLabel: "Events",
         });
       }
-      if (!state.options.length) {
+      if (!options.length) {
         return dataTable({
+          searchable: false,
           searchState: state,
           schema: { columns: [{ key: "n", label: "Event", render: () => "" }] },
           rows: [],
           state: "ready",
           ariaLabel: "Events",
-          emptyTitle: "No events open for registration",
-          emptyText:
-            "When the club opens registration, the event appears here.",
+          emptyTitle: state.term.trim()
+            ? "No matching events"
+            : "No events open for registration",
+          emptyText: state.term.trim()
+            ? "Try another event, division, or category."
+            : "When the club opens registration, the event appears here.",
         });
       }
       return h(
         "div",
         { class: "stack" },
-        ...state.options.map((ev) =>
+        ...options.map((ev) =>
           h(
             "section",
             { class: "card stack" },
@@ -613,6 +660,7 @@ export function createMemberEventsPages({ api, client, session }) {
 
     function mineView() {
       return dataTable({
+        searchable: false,
         searchState: state,
         schema: {
           columns: [
@@ -632,7 +680,9 @@ export function createMemberEventsPages({ api, client, session }) {
               label: "Fee",
               align: "right",
               render: (r) =>
-                Number(r.fee_snapshot) ? formatMoney(r.fee_snapshot) : "Free",
+                Number(r.fee_snapshot)
+                  ? formatMoney(r.fee_snapshot)
+                  : badge("Free", "success"),
             },
             {
               key: "status",
@@ -692,7 +742,15 @@ export function createMemberEventsPages({ api, client, session }) {
             },
           ],
         },
-        rows: state.mine,
+        rows: state.mine.filter((r) =>
+          matches(
+            r.event?.name,
+            r.division?.name,
+            REG_STATUS[r.status]?.[0],
+            r.status_reason,
+            Number(r.fee_snapshot) ? formatMoney(r.fee_snapshot) : "Free",
+          )
+        ),
         state: state.status,
         ariaLabel: "My Registrations",
         onRetry: refresh,
@@ -702,11 +760,11 @@ export function createMemberEventsPages({ api, client, session }) {
     }
 
     function draw() {
-      tabsHost.replaceChildren(tabs({
+      tabsHost.replaceChildren(tableFilter({
         activeId: state.tab,
         tabs: [
-          { id: "open", label: "Open Events" },
-          { id: "mine", label: "My Registrations" },
+          { id: "open", label: "Open Events", badge: state.options.length },
+          { id: "mine", label: "My Registrations", badge: state.mine.length },
         ],
         onChange: (id) => {
           state.tab = id;
@@ -717,14 +775,21 @@ export function createMemberEventsPages({ api, client, session }) {
     }
 
     page.append(
-      pageHeader({
-        icon: "trophy",
+      memberHero({
+        iconName: "trophy",
         eyebrow: "Play",
         title: "Events",
+        chip: "Events and Registration",
+        titleBadge: true,
         description:
           "Join a division, pay the fee if there is one, and follow your registrations.",
       }),
-      tabsHost,
+      h(
+        "div",
+        { class: "toolbar admin-members-toolbar has-status-badges" },
+        search,
+        tabsHost,
+      ),
       body,
     );
     refresh();

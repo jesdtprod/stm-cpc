@@ -5,6 +5,7 @@ import {
   memberLogin,
 } from "../../web/lib/auth-api.js";
 import {
+  evaluatePasswordStrength,
   localPasswordProblems,
   problemMessages,
 } from "../../web/lib/password-hints.js";
@@ -130,6 +131,27 @@ Deno.test("password hints: local checks and message mapping", () => {
   );
   assert.match(problemMessages(["contains_birth_date"])[0], /birth date/);
 });
+
+Deno.test("account: evaluatePasswordStrength computes accurate scores and criteria", () => {
+  assert.equal(evaluatePasswordStrength("").score, 0);
+  assert.equal(evaluatePasswordStrength("short").score, 1);
+  assert.equal(evaluatePasswordStrength("short").hasLength, false);
+
+  const fair = evaluatePasswordStrength("twelvecharslong");
+  assert.equal(fair.score, 2);
+  assert.equal(fair.hasLength, true);
+
+  const good = evaluatePasswordStrength("SecretPass12");
+  assert.equal(good.score, 3);
+  assert.equal(good.hasLength, true);
+  assert.equal(good.hasVariety, true);
+
+  const strong = evaluatePasswordStrength("correct-horse-battery-staple");
+  assert.equal(strong.score, 4);
+  assert.equal(strong.label, "Strong");
+  assert.equal(strong.tone, "success");
+});
+
 
 // ---------- gates and where to go next
 Deno.test("account: where each kind of user is sent after signing in", () => {

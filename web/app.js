@@ -326,37 +326,34 @@ for (const type of ["pointerdown", "keydown", "scroll", "visibilitychange"]) {
   addEventListener(type, () => session.activity(), { passive: true });
 }
 
-// Service worker: app shell only. On local development, unregister and clear caches to prevent stale bundles.
+// Service worker: app shell only. Local development keeps push support but bypasses shell caching.
 if ("serviceWorker" in navigator) {
   if (isLocalDev) {
-    navigator.serviceWorker.getRegistrations().then((regs) => {
-      for (const r of regs) r.unregister();
-    });
     if (globalThis.caches) {
       caches.keys().then((keys) =>
         Promise.all(keys.map((k) => caches.delete(k)))
       );
     }
-  } else {
-    navigator.serviceWorker.register("./service-worker.js").then((reg) => {
-      const announce = () => {};
-      if (reg.waiting && navigator.serviceWorker.controller) {
-        announce(reg.waiting);
-      }
-      reg.addEventListener("updatefound", () => {
-        const worker = reg.installing;
-        worker?.addEventListener("statechange", () => {
-          if (
-            worker.state === "installed" && navigator.serviceWorker.controller
-          ) announce(worker);
-        });
+  }
+  navigator.serviceWorker.register("./service-worker.js").then((reg) => {
+    const announce = () => {};
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      announce(reg.waiting);
+    }
+    reg.addEventListener("updatefound", () => {
+      const worker = reg.installing;
+      worker?.addEventListener("statechange", () => {
+        if (
+          worker.state === "installed" && navigator.serviceWorker.controller
+        ) announce(worker);
       });
     });
-    let reloading = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (reloading) return;
-      reloading = true;
-      location.reload();
-    });
-  }
+  });
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (isLocalDev) return;
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
 }

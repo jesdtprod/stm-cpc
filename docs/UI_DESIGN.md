@@ -150,6 +150,7 @@ Use this order when the section is applicable:
 - Pagination and table row actions keep their compact, flat finish in `web/buttons.css`, with 36px buttons and 10px corners; all other buttons also use solid fills without shadows.
 - Define default, hover, focus-visible, active, disabled, and pending states for every interactive component.
 - During submission, prevent duplicate actions and show clear progress without moving surrounding content.
+- Device-alert settings offer activation only when browser support and an active service worker are available, including localhost previews (which bypass shell caching). Failures distinguish browser permissions, notification-service connectivity (including Brave's push messaging setting), sign-in, device limits, and server registration; never show device keys or endpoints.
 - All row action buttons must be icon-only. Provide a specific tooltip and accessible label, such as "Edit record" rather than just "Action".
 - Page actions and modal submission buttons retain readable text labels; the icon-only rule applies to row actions, not every button.
 - Use persistent field labels. Placeholders supplement labels; they do not replace them.
@@ -158,6 +159,8 @@ Use this order when the section is applicable:
 - Use the same dropdown and datepicker styling everywhere, including controls added dynamically.
 - Custom controls must support keyboard use, visible focus, correct roles, and expanded/selected states.
 - Use one compact badge style with consistent height, padding, radius, text size, and semantic colors.
+- Unread notification counts use red circular badges with white text (99+ maximum). On mobile, the count overlaps the upper-right edge of the floating navigation circle and also appears beside Notifications in the menu. Hide unread badges at zero.
+- Record lists use a full-width search with wrapping status badges 12px below it, rather than a status dropdown. Use `tableFilter()` for these badge groups; show counts for every record category and default missing or unavailable counts to zero, including while loading. Keep form and category selectors as searchable dropdowns.
 
 ## 6. Grid tables and column content
 
@@ -169,6 +172,18 @@ Use this order when the section is applicable:
 - Left-align text. Right-align money and numerical amounts, including their headings. Use tabular numerals.
 - Keep quantities, currency, and dates consistently formatted. Do not wrap a currency label separately from its amount.
 - Place supporting information directly beneath its primary value using consistent spacing and secondary text.
+- My Bookings lists bookings by scheduled date and time, newest first, in both Upcoming and Past and Closed. Creation time and ID break ties consistently.
+- My Bookings uses the shared animated court pattern on mobile and desktop, including empty states. The pattern sits behind controls, responds to mouse/touch, and remains static when reduced motion is requested.
+- The shell fills in the same animated pattern on every routed page that does not already provide it, without adding duplicate canvases. Shared non-home mobile headers apply across member and admin pages; desktop page headers retain a bordered container. The public landing and Home keep their existing welcome presentation.
+- Events, Ranking, Notifications, Brackets, and Leaderboard/Results use `memberHero()` directly, matching Book a Court and My Bookings with Manila date and page-specific section chips on both screen sizes.
+- Admin headers, including the admin dashboard, follow the same CPC-logo sizing, title/role grouping, Manila date chips, and spacing as member headers. Keep admin labels and actions, use a bordered container on desktop, and an unboxed centered layout on mobile.
+- My Bookings retains the bordered hero container on desktop (above 720px); its mobile header stays unboxed with balanced spacing around the photo.
+- On mobile, My Bookings places the Play badge beside its title and presents each booking as a card: court and time, status, price and payment, then accessible icon actions. The booking reference appears below the price, in a compact 170px Price column on desktop. Free bookings show a No Charge payment badge with Complimentary beneath it.
+- The member Home welcome shows the personal header photo (128px on desktop, 144px on mobile), using the private signed image URL or initials. Other member page headers use the CPC logo at the same sizes and mobile top offset (24px from the header edge); Profile retains its photo editor. Member desktop headers, including Home, use the bordered hero container; mobile headers remain unboxed.
+- Non-home mobile pages share a centered header: title beside section badge, description, Manila date and section chips, then full-width actions. Use matching 16px gaps between the header copy and actions and between page sections (including Search). Home dashboards retain their own header layout; desktop headers retain their existing containers.
+- Member lists use compact cards up to 720px: primary icon and title, status badges, labeled details, and an action footer, with 16px gaps between search, filter groups, and records. Table schemas identify primary/status/detail cells for both loading and populated rows. Desktop tables and administrator lists retain their layouts.
+- Member Events and Ranking use full-width search above counted pill filters on both desktop and mobile. Events has one shared search across event/division metadata and registrations; Ranking retains its category selector within the filter area.
+- Events and Ranking desktop rows use the same round icon treatment as My Bookings. Ranking uses a compact 64px position column and places its standard searchable 240px category dropdown to the right of Search on desktop, with pills on the next row. Mobile stacks Search, Category, and pills. Free registrations use the shared green Free badge.
 - A cell's content and mobile label must match its column heading. Do not put notes under a heading for status or timestamps under an unrelated heading.
 - Use real recorded values. Distinguish zero, unavailable data, not counted, and pending data; do not substitute a misleading zero.
 - Allow long names and references to wrap safely. Avoid overlapping cells, clipped actions, and broken amounts.

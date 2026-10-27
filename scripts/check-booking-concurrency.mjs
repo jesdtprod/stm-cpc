@@ -143,7 +143,7 @@ const results = await Promise.all(ids.map((id, i) => attempt(i + 1, id)));
 const wins = results.filter((r) => r.ok).length;
 const conflicts =
   results.filter((r) =>
-    !r.ok && /just taken|exclusion|23P01/.test(r.err + r.out)
+    !r.ok && /just taken|exclusion|23P01|Only 1 booking/.test(r.err + r.out)
   ).length;
 const winnerId = ids[results.findIndex((r) => r.ok)];
 
@@ -199,7 +199,7 @@ const left = await sql(
 const leftover = rows(left)[0];
 
 console.log(
-  `${PARALLEL} parallel requests: ${wins} succeeded, ${conflicts} refused as "just taken", ${live} live booking(s) in the database`,
+  `${PARALLEL} parallel requests: ${wins} succeeded, ${conflicts} refused by court or daily limits, ${live} live booking(s) in the database`,
 );
 console.log(
   `retry with the same ID: ${

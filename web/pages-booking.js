@@ -180,14 +180,66 @@ export function createBookingPages({ api, client, session }) {
     }
 
     // ------------------------------------------------------------- request
-    function requestModal(court, slots, index) {
+    let checkingBooking = false;
+    async function requestModal(court, slots, index) {
+      if (checkingBooking) return;
+      checkingBooking = true;
+      const selectedDay = state.day;
+      try {
+        const memberId = session.getState().access?.member_id;
+        if (!memberId) throw new Error("Sign in again before booking a court.");
+        const from = manilaDate(selectedDay, "00:00");
+        const to = new Date(from.getTime() + 24 * 3600_000);
+        const existing = await api.read((c) =>
+          c.from("bookings").select("id,status,expires_at")
+            .eq("requested_by_member_id", memberId)
+            .in("status", [
+              "pending_approval",
+              "confirmed",
+              "checked_in",
+              "completed",
+              "no_show",
+            ])
+            .overlaps("during", `[${from.toISOString()},${to.toISOString()})`)
+        );
+        if (state.day !== selectedDay || !page.isConnected) return;
+        if (
+          (existing ?? []).some((booking) =>
+            booking.status !== "pending_approval" || !booking.expires_at ||
+            new Date(booking.expires_at).getTime() > Date.now()
+          )
+        ) {
+          toast(
+            "You already have a booking for this day. Only 1 booking of up to 1 hour is allowed per day.",
+            { tone: "warning" },
+          );
+          return;
+        }
+      } catch (e) {
+        toast(
+          bookingMessage(
+            e,
+            "Your existing bookings could not be checked. Please try again.",
+          ),
+          { tone: "error" },
+        );
+        return;
+      } finally {
+        checkingBooking = false;
+      }
       const first = slots[index];
-      const maxBookingMinutes = 120; // max 2 hours only
+      const maxBookingMinutes = 60;
       const maxSlots = Math.floor(maxBookingMinutes / state.slotMinutes);
       const runLimit = Math.min(
         freeRun(slots, index, maxSlots),
         maxSlots,
       );
+      if (runLimit < 1) {
+        toast("No session of up to 1 hour is available at this time.", {
+          tone: "warning",
+        });
+        return;
+      }
       const players = new Map(); // member_id -> { member_no, display_name }
       const error = h("p", {
         class: "field-error form-error",
@@ -273,7 +325,11 @@ export function createBookingPages({ api, client, session }) {
           "div",
           { class: "decision-field-heading" },
           h("label", { for: "bk-len" }, "How Long"),
-          h("span", { class: "field-hint" }, "Max 2 hours per session"),
+          h(
+            "span",
+            { class: "field-hint" },
+            "1 booking · up to 1 hour per day",
+          ),
         ),
         minutesSel,
       );
@@ -915,9 +971,10 @@ export function createBookingPages({ api, client, session }) {
 
   // ============================================================== my bookings
   function myBookingsPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", { class: "page my-bookings-page" });
+    attachPagePattern(page);
     const tabsHost = h("div", { class: "member-status-filter" });
-    const tableHost = h("div", { class: "card" });
+    const tableHost = h("div", { class: "my-bookings-list" });
     const state = {
       tab: "upcoming",
       rows: [],
@@ -934,7 +991,9 @@ export function createBookingPages({ api, client, session }) {
           api.read((c) =>
             c.from("bookings").select(
               "id,doc_no,court_name_snapshot,during,status,status_reason,cancel_reason,price_snapshot,expires_at,requested_by_member_id",
-            ).order("created_at", { ascending: false }).limit(100)
+            ).order("during", { ascending: false })
+              .order("created_at", { ascending: false })
+              .order("id", { ascending: false }).limit(100)
           ),
           loadSettings([
             "payments.methods",
@@ -1234,17 +1293,32 @@ export function createBookingPages({ api, client, session }) {
       columns: [
         {
           key: "when",
-          label: "When",
+          label: "Court and Time",
+          minWidth: 280,
+          skeleton: "member",
           render: (r) => {
             const x = range(r);
             return h(
-              "span",
-              {},
-              x ? formatDateTime(x.start) : "—",
+              "div",
+              { class: "member-cell my-booking-cell" },
               h(
                 "span",
-                { class: "sub" },
-                `${r.court_name_snapshot} · ${r.doc_no}`,
+                { class: "member-avatar is-icon", "aria-hidden": "true" },
+                icon("clock"),
+              ),
+              h(
+                "div",
+                { class: "my-booking-summary" },
+                h(
+                  "strong",
+                  { class: "my-booking-court" },
+                  r.court_name_snapshot,
+                ),
+                h(
+                  "span",
+                  { class: "my-booking-time" },
+                  x ? `${formatDateTime(x.start)} – ${timeLabel(x.end)}` : "—",
+                ),
               ),
             );
           },
@@ -1280,16 +1354,30 @@ export function createBookingPages({ api, client, session }) {
           key: "price",
           label: "Price",
           align: "right",
+          width: 170,
+          skeleton: "stack",
           render: (r) =>
-            Number(r.price_snapshot) > 0
-              ? formatMoney(r.price_snapshot)
-              : "Free",
+            h(
+              "div",
+              { class: "my-booking-price" },
+              Number(r.price_snapshot) > 0
+                ? formatMoney(r.price_snapshot)
+                : badge("Free", "success"),
+              h("span", { class: "sub my-booking-reference" }, r.doc_no),
+            ),
         },
         {
           key: "paid",
           label: "Payment",
           render: (r) => {
-            if (!(Number(r.price_snapshot) > 0)) return "—";
+            if (!(Number(r.price_snapshot) > 0)) {
+              return h(
+                "div",
+                { class: "member-table-stack" },
+                badge("No Charge", "neutral"),
+                h("span", { class: "sub" }, "Complimentary"),
+              );
+            }
             const t = state.pays[r.id];
             const paid = Number(t?.verified_total ?? 0);
             const pending = Number(t?.pending_total ?? 0);
@@ -1329,9 +1417,17 @@ export function createBookingPages({ api, client, session }) {
           {
             id: "upcoming",
             label: "Upcoming",
-            badge: state.rows.filter(isUpcoming).length || undefined,
+            badge: state.status === "loading"
+              ? "—"
+              : state.rows.filter(isUpcoming).length,
           },
-          { id: "past", label: "Past and Closed" },
+          {
+            id: "past",
+            label: "Past and Closed",
+            badge: state.status === "loading"
+              ? "—"
+              : state.rows.filter((r) => !isUpcoming(r)).length,
+          },
         ],
         onChange: (id) => {
           state.tab = id;
@@ -1360,6 +1456,7 @@ export function createBookingPages({ api, client, session }) {
         iconName: "clock",
         eyebrow: "Play",
         title: "My Bookings",
+        titleBadge: true,
         chip: "Reservation History",
         description: "Your court requests, their status, and payment.",
         actions: [

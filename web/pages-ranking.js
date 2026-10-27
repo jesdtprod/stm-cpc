@@ -8,9 +8,10 @@ import {
   dataTable,
   h,
   iconButton,
+  memberHero,
   openModal,
-  pageHeader,
-  tabs,
+  selectField,
+  tableFilter,
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
@@ -22,8 +23,9 @@ function messageOf(e, fallback) {
 }
 
 export function createRankingPages({ api }) {
-  function historyTable(rows, state, onRetry) {
+  function historyTable(rows, state, onRetry, filter) {
     return dataTable({
+      filter,
       schema: {
         columns: [
           {
@@ -80,7 +82,7 @@ export function createRankingPages({ api }) {
   }
 
   function rankingPage() {
-    const page = h("div", { class: "page" });
+    const page = h("div", { class: "page member-ranking-page" });
     const tabsHost = h("div", {});
     const body = h("div", { class: "ranking-body" });
     const state = {
@@ -248,27 +250,38 @@ export function createRankingPages({ api }) {
 
     // ------------------------------------------------------------ views
     function rankingView() {
-      const staff = state.list.some((r) => r.member_no);
+      const staff = can("members.read");
       const columns = [
         {
           key: "no",
           label: "#",
           align: "right",
+          width: 64,
           render: (r) => String(state.list.indexOf(r) + 1),
         },
         {
           key: "name",
           label: "Player",
-          render: (r) =>
-            h(
-              "span",
-              {},
-              r.display_name,
-              r.member_no ? h("span", { class: "sub" }, r.member_no) : null,
-            ),
+          render: (r) => {
+            const memberId = r.member_no || (r.member_id ? `CPC-${r.member_id.slice(-5).toUpperCase()}` : "");
+            return h(
+              "div",
+              { class: "ranking-player-meta" },
+              h("strong", { class: "ranking-player-name" }, r.display_name),
+              memberId ? h("span", { class: "sub ranking-player-id" }, memberId) : null,
+            );
+          },
         },
-        { key: "category", label: "Category", render: (r) => r.category_name },
-        { key: "rank", label: "Rank", render: (r) => r.rank_name },
+        {
+          key: "category",
+          label: "Category",
+          render: (r) => badge(r.category_name, "info"),
+        },
+        {
+          key: "rank",
+          label: "Rank",
+          render: (r) => badge(r.rank_name, "success"),
+        },
         {
           key: "since",
           label: "Since",
@@ -304,33 +317,28 @@ export function createRankingPages({ api }) {
       }
       const filter = h(
         "div",
-        { class: "field" },
-        h("label", { for: "rk-cat" }, "Category"),
-        h(
-          "select",
-          {
-            class: "input select-input",
-            id: "rk-cat",
-            onChange: (e) => {
-              state.category = e.target.value;
-              load();
-            },
+        { class: "ranking-category-filter" },
+        selectField({
+          id: "rk-cat",
+          label: "Category",
+          value: state.category,
+          options: [
+            { value: "", label: "All Categories" },
+            ...state.categories.map((c) => ({ value: c.id, label: c.name })),
+          ],
+          onChange: (e) => {
+            state.category = e.target.value;
+            load();
           },
-          h("option", { value: "" }, "All Categories"),
-          ...state.categories.map((c) =>
-            h(
-              "option",
-              { value: c.id, selected: c.id === state.category },
-              c.name,
-            )
-          ),
-        ),
+        }),
       );
       return h(
         "div",
         { class: "stack" },
-        filter,
         dataTable({
+          searchState: state,
+          filter: tabsHost,
+          searchActions: filter,
           schema: { columns },
           rows: state.list,
           state: state.status === "refreshing" ? "ready" : state.status,
@@ -343,11 +351,11 @@ export function createRankingPages({ api }) {
     }
 
     function draw() {
-      tabsHost.replaceChildren(tabs({
+      tabsHost.replaceChildren(tableFilter({
         activeId: state.tab,
         tabs: [
-          { id: "ranking", label: "Ranking" },
-          { id: "mine", label: "My Rank History" },
+          { id: "ranking", label: "Ranking", badge: state.list.length },
+          { id: "mine", label: "My Rank History", badge: state.mine.length },
         ],
         onChange: (id) => {
           state.tab = id;
@@ -360,19 +368,21 @@ export function createRankingPages({ api }) {
           state.mine,
           state.mineStatus === "refreshing" ? "ready" : state.mineStatus,
           loadMine,
+          tabsHost,
         ),
       );
     }
 
     page.append(
-      pageHeader({
-        icon: "medal",
+      memberHero({
+        iconName: "medal",
         eyebrow: "Club",
         title: "Ranking",
+        chip: "Ranks and History",
+        titleBadge: true,
         description:
           "Every ranked player, highest first, and how ranks have changed.",
       }),
-      tabsHost,
       body,
     );
     load();

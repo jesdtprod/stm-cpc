@@ -16,7 +16,7 @@ import {
   openModal,
   pagination,
   searchControl,
-  selectField,
+  tableFilter,
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
@@ -48,6 +48,8 @@ export function createImportPages({ api }) {
       status: "loading",
       latest: null,
       openCount: null,
+      doneCount: null,
+      batchCount: null,
       summaryReady: false,
     };
     const page = h("div", {
@@ -59,32 +61,31 @@ export function createImportPages({ api }) {
     const pagerHost = h("div", {});
     let timer = null;
 
-    const statusField = selectField({
+    const statusField = tableFilter({
       id: "import-status",
-      value: state.tab,
-      ariaLabel: "Filter import records",
-      options: TABS.map((item) => ({ value: item.id, label: item.label })),
-      onChange: (event) => {
+      activeId: state.tab,
+      label: "Filter import records",
+      tabs: TABS,
+      onChange: (id) => {
         clearTimeout(timer);
-        state.tab = event.target.value;
+        state.tab = id;
         state.term = search.value;
         state.page = 1;
         load();
       },
     });
-    const statusFilter = h(
-      "div",
-      { class: "member-status-filter" },
-      statusField,
-    );
+    const statusFilter = statusField;
 
     function drawStatusFilter() {
       statusField.setOptions(
         TABS.map((item) => ({
           value: item.id,
-          label: item.id === "open" && state.openCount != null
-            ? `${item.label} (${state.openCount})`
-            : item.label,
+          label: item.label,
+          badge: ({
+            open: state.openCount,
+            done: state.doneCount,
+            batches: state.batchCount,
+          })[item.id] ?? "—",
         })),
         state.tab,
       );
@@ -124,7 +125,7 @@ export function createImportPages({ api }) {
         } else {
           const { data, error, count } = await rangeQuery((c) => {
             let q = c.from("member_import_issues").select(
-              "id,source_row,member_no_claimed,issue_code,detail,resolved_at,meta",
+              "id,source_row,member_no_claimed,issue_code,detail,resolved_at,meta,member:members(person:persons(display_name))",
               { count: "exact" },
             ).is("deleted_at", null);
             q = state.tab === "open"
@@ -167,17 +168,27 @@ export function createImportPages({ api }) {
           ).order("created_at", { ascending: false }).limit(1)
         );
         state.latest = latest?.[0] ?? null;
-        let openResult = null;
-        await api.read((c) =>
-          c.from("member_import_issues").select("id", {
-            count: "exact",
-            head: true,
-          }).is("deleted_at", null).is("resolved_at", null).then((r) => {
-            openResult = r;
-            return { data: r.data, error: r.error };
-          })
-        );
-        state.openCount = openResult?.count ?? null;
+        const totals = await Promise.all(TABS.map(async (item) => {
+          let total = null;
+          await api.read((c) => {
+            let q = c.from(
+              item.id === "batches" ? "import_batches" : "member_import_issues",
+            )
+              .select("id", { count: "exact", head: true });
+            if (item.id !== "batches") {
+              q = q.is("deleted_at", null);
+              q = item.id === "open"
+                ? q.is("resolved_at", null)
+                : q.not("resolved_at", "is", null);
+            }
+            return q.then((r) => {
+              total = r.count;
+              return { data: r.data, error: r.error };
+            });
+          });
+          return total;
+        }));
+        [state.openCount, state.doneCount, state.batchCount] = totals;
       } catch { /* the summary is optional */ }
       state.summaryReady = true;
       drawKpis();
@@ -350,14 +361,18 @@ export function createImportPages({ api }) {
         },
         {
           key: "no",
-          label: "Member ID in the File",
+          label: "Member Name",
           skeleton: "stack",
           render: (r) =>
             h(
               "div",
               { class: "member-table-stack" },
-              r.member_no_claimed ?? "—",
-              h("span", { class: "sub" }, `Source row #${r.source_row}`),
+              r.member?.person?.display_name || "Name unavailable",
+              h(
+                "span",
+                { class: "sub" },
+                r.member_no_claimed ?? "No member ID",
+              ),
             ),
         },
         {
@@ -605,7 +620,7 @@ export function createImportPages({ api }) {
       kpis,
       h(
         "div",
-        { class: "toolbar admin-members-toolbar" },
+        { class: "toolbar admin-members-toolbar has-status-badges" },
         searchBox,
         statusFilter,
       ),

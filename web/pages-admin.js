@@ -15,7 +15,6 @@ import {
   pagination,
   searchControl,
   selectControl,
-  selectField,
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
@@ -104,11 +103,13 @@ const sentence = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const cleanTerm = (t) => t.replace(/[%_,()*]/g, " ").trim().slice(0, 60);
 
 export function createAdminPages({ client, api, adminResetPassword }) {
-  async function countOf(statuses) {
-    const { count, error } = await client.from("members").select("id", {
+  async function countOf(statuses, deleted = false) {
+    let q = client.from("members").select("id", {
       count: "exact",
       head: true,
-    }).in("status", statuses).is("deleted_at", null);
+    }).in("status", statuses);
+    q = deleted ? q.not("deleted_at", "is", null) : q.is("deleted_at", null);
+    const { count, error } = await q;
     if (error) throw error;
     return count ?? 0;
   }
@@ -849,15 +850,34 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       onConfirm: () => {},
     });
 
-    loadRank(row).then((text) => {
-      rankEl.replaceChildren(
-        text && text !== "—"
-          ? h("span", { class: "badge badge-accent" }, text)
-          : h("span", { class: "badge badge-neutral" }, "Unranked"),
-      );
-    }).catch(() => {
-      rankEl.replaceChildren(h("span", { class: "badge badge-neutral" }, "—"));
-    });
+    // Staff with ranks.override can set the rank by hand; the database checks the permission, refuses the caller's own
+    // rank, and writes the rank history and audit rows.
+    const drawRank = () =>
+      loadRank(row).then((current) => {
+        rankEl.replaceChildren(
+          h(
+            "span",
+            { class: "member-rank-line" },
+            current
+              ? h("span", { class: "badge badge-accent" }, current.text)
+              : h("span", { class: "badge badge-neutral" }, "Unranked"),
+            can("ranks.override") && !row.deleted_at
+              ? iconButton({
+                label: current ? "Change Rank" : "Set Rank",
+                icon: "medal",
+                size: "sm",
+                variant: "edit",
+                onClick: () => setRankModal(row, current, drawRank),
+              })
+              : null,
+          ),
+        );
+      }).catch(() => {
+        rankEl.replaceChildren(
+          h("span", { class: "badge badge-neutral" }, "—"),
+        );
+      });
+    drawRank();
 
     loadHistory(row).then((items) => {
       if (!items.length) {
@@ -916,13 +936,118 @@ export function createAdminPages({ client, api, adminResetPassword }) {
   async function loadRank(row) {
     const r = await api.read((c) =>
       c.from("member_ranks").select(
-        "ranks(name,rank_ladders(categories(name)))",
+        "rank_id,ranks(name,rank_ladders(categories(name)))",
       ).eq("member_id", row.id).is("deleted_at", null).maybeSingle()
     );
     const rk = r?.ranks;
     return rk
-      ? `${rk.rank_ladders?.categories?.name ?? ""}: ${rk.name}`
-      : "Not ranked yet";
+      ? {
+        id: r.rank_id,
+        text: `${rk.rank_ladders?.categories?.name ?? ""}: ${rk.name}`,
+      }
+      : null;
+  }
+
+  async function setRankModal(row, current, onDone) {
+    let ranks;
+    try {
+      ranks = await api.read((c) =>
+        c.from("ranks").select(
+          "id,name,sort_order,rank_ladders!inner(categories!inner(name,sort_order))",
+        ).is("deleted_at", null)
+      ) ?? [];
+    } catch {
+      toast("The ranks could not be loaded.", { tone: "error" });
+      return;
+    }
+    ranks.sort((a, b) =>
+      (a.rank_ladders.categories.sort_order -
+        b.rank_ladders.categories.sort_order) || (a.sort_order - b.sort_order)
+    );
+    const key = api.newKey();
+    const error = h("p", {
+      class: "field-error form-error",
+      role: "alert",
+      hidden: true,
+    });
+    openModal({
+      title: current ? "Change Rank" : "Set Rank",
+      eyebrow: `${row.persons.display_name} · ${
+        current ? `now ${current.text}` : "unranked"
+      }`,
+      icon: "medal",
+      tone: "warning",
+      confirmLabel: "Set Rank",
+      body: h(
+        "div",
+        { class: "stack" },
+        h(
+          "p",
+          { class: "muted" },
+          "This overrides the rank rules. It is kept in the member's rank history and the audit log. You cannot change your own rank.",
+        ),
+        h(
+          "div",
+          { class: "field" },
+          h("label", { for: "set-rank" }, "New Rank *"),
+          selectControl(
+            { class: "input", id: "set-rank", name: "rank", required: true },
+            h("option", { value: "" }, "Choose a rank"),
+            ...ranks.map((r) =>
+              h(
+                "option",
+                { value: r.id, selected: r.id === current?.id },
+                `${r.rank_ladders.categories.name} · ${r.name}`,
+              )
+            ),
+          ),
+        ),
+        h(
+          "div",
+          { class: "field" },
+          h("label", { for: "set-rank-reason" }, "Reason *"),
+          h("textarea", {
+            class: "input textarea",
+            id: "set-rank-reason",
+            name: "reason",
+            rows: 3,
+            maxlength: 500,
+            required: true,
+          }),
+        ),
+        error,
+      ),
+      onConfirm: async (form) => {
+        const rankId = String(form.get("rank") ?? "");
+        const reason = String(form.get("reason") ?? "").trim();
+        const fail = (m) => {
+          error.textContent = m;
+          error.hidden = false;
+          return false;
+        };
+        if (!rankId) return fail("Choose a rank.");
+        if (rankId === current?.id) {
+          return fail("The member is already at that rank.");
+        }
+        if (reason.length < 3) {
+          return fail("Give a reason of at least 3 characters.");
+        }
+        try {
+          await api.rpc("override_member_rank", {
+            p_member_id: row.id,
+            p_rank_id: rankId,
+            p_reason: reason,
+            p_key: key,
+          });
+          toast(`${row.persons.display_name}: rank set.`, { tone: "success" });
+          onDone?.();
+        } catch (e) {
+          return fail(
+            e.cause?.message || e.message || "That did not work. Try again.",
+          );
+        }
+      },
+    });
   }
 
   async function loadHistory(row) {
@@ -944,7 +1069,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       total: 0,
       status: "loading",
     };
-    const counts = { pending: null, active: null, suspended: null };
+    const counts = Object.fromEntries(TABS.map((item) => [item.id, null]));
     const root = h("div", { class: "page admin-dashboard admin-members-page" });
     attachPagePattern(root);
 
@@ -952,23 +1077,29 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     const tableHost = h("div", { class: "table-host" });
     const pagerHost = h("div", {});
     let timer = null;
-    const statusField = selectField({
-      id: "members-status",
-      value: state.tab,
-      ariaLabel: "Filter members by status",
-      options: TABS.map((item) => ({ value: item.id, label: item.label })),
-      onChange: (event) => {
-        clearTimeout(timer);
-        state.tab = event.target.value;
-        state.term = search.value;
-        state.page = 1;
-        load();
-      },
-    });
+    const statusButtons = TABS.map((item) =>
+      h("button", {
+        type: "button",
+        class: "tab-btn",
+        "aria-pressed": String(item.id === state.tab),
+        onClick: () => {
+          clearTimeout(timer);
+          state.tab = item.id;
+          state.term = search.value;
+          state.page = 1;
+          drawStatusFilter();
+          load();
+        },
+      }, item.label)
+    );
     const statusFilter = h(
       "div",
-      { class: "member-status-filter" },
-      statusField,
+      {
+        class: "member-status-badges",
+        role: "group",
+        "aria-label": "Filter members by status",
+      },
+      ...statusButtons,
     );
 
     const search = searchControl({
@@ -1266,14 +1397,17 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     };
 
     function drawStatusFilter() {
-      statusField.setOptions(TABS.map((item) => {
+      TABS.forEach((item, index) => {
         const count = counts[item.id];
-        return {
-          value: item.id,
-          label: count == null ? item.label : `${item.label} (${count})`,
-        };
-      }));
-      statusField.value = state.tab;
+        statusButtons[index].replaceChildren(
+          item.label,
+          badge(String(count ?? 0), "neutral"),
+        );
+        statusButtons[index].setAttribute(
+          "aria-pressed",
+          String(item.id === state.tab),
+        );
+      });
     }
 
     function memberStatCard({
@@ -1468,11 +1602,12 @@ export function createAdminPages({ client, api, adminResetPassword }) {
 
     async function loadCounts() {
       try {
-        [counts.pending, counts.active, counts.suspended] = await Promise.all([
-          countOf(["pending_approval"]),
-          countOf(["active"]),
-          countOf(["suspended"]),
-        ]);
+        const totals = await Promise.all(
+          TABS.map((item) => countOf(item.statuses, Boolean(item.deleted))),
+        );
+        TABS.forEach((item, index) => {
+          counts[item.id] = totals[index];
+        });
       } catch { /* the numbers are a convenience */ }
       drawKpis();
       drawStatusFilter();
@@ -1568,7 +1703,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       kpis,
       h(
         "div",
-        { class: "toolbar admin-members-toolbar" },
+        { class: "toolbar admin-members-toolbar has-status-badges" },
         searchBox,
         statusFilter,
       ),

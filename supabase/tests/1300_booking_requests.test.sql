@@ -65,20 +65,20 @@ select is(has_function_privilege('authenticated', 'public.expire_bookings()', 'e
 -- ---- a request
 select pg_temp.as_user((select u from us where role = 'member'));
 set local role authenticated;
-create temp table r1 as select public.request_booking((select b1 from fx), (select court from fx), (select tomorrow10 from fx), 120, array[(select mid from us where role = 'friend')]) as r;
+create temp table r1 as select public.request_booking((select b1 from fx), (select court from fx), (select tomorrow10 from fx), 60, array[(select mid from us where role = 'friend')]) as r;
 reset role;
 grant select on r1 to public;
 select is((select r ->> 'status' from r1), 'pending_approval', 'a request waits for approval');
-select is((select (r ->> 'price')::numeric from r1), 400::numeric, 'two hours at 200 cost 400');
+select is((select (r ->> 'price')::numeric from r1), 200::numeric, 'one hour at 200 costs 200');
 select ok((select r ->> 'doc_no' from r1) ~ '^BK-\d{4}-\d{5}$', 'it gets a booking number');
 select is((select count(*)::int from public.booking_participants where booking_id = (select b1 from fx)), 2, 'the requester and the friend are the players');
-select is((select price_snapshot from public.bookings where id = (select b1 from fx)), 400::numeric, 'the price is copied into the booking');
+select is((select price_snapshot from public.bookings where id = (select b1 from fx)), 200::numeric, 'the price is copied into the booking');
 select ok((select expires_at from public.bookings where id = (select b1 from fx)) > now() + interval '23 hours', 'it expires after the set time');
 
 -- ---- the same request again, and a different one under the same ID
 select pg_temp.as_user((select u from us where role = 'member'));
 set local role authenticated;
-select is((select public.request_booking((select b1 from fx), (select court from fx), (select tomorrow10 from fx), 120, array[(select mid from us where role = 'friend')]) ->> 'id'), (select b1 from fx), 'sending the same request again returns the same booking');
+select is((select public.request_booking((select b1 from fx), (select court from fx), (select tomorrow10 from fx), 60, array[(select mid from us where role = 'friend')]) ->> 'id'), (select b1 from fx), 'sending the same request again returns the same booking');
 select throws_ok(format($f$select public.request_booking(%L, %L, %L, 60, '{}')$f$, (select b1 from fx), (select court from fx), (select tomorrow10 from fx)), 'CP422', null, 'another request under the same ID is refused');
 select is((select count(*)::int from public.bookings where court_id = (select court from fx)), 1, 'still one booking');
 reset role;
@@ -86,7 +86,7 @@ reset role;
 -- ---- the slot is taken
 select pg_temp.as_user((select u from us where role = 'other'));
 set local role authenticated;
-select throws_ok(format($f$select public.request_booking(%L, %L, %L, 60, '{}')$f$, (select b2 from fx), (select court from fx), (select tomorrow10 from fx) + interval '1 hour'), '23P01', 'that time was just taken; choose another slot', 'an overlapping request loses');
+select throws_ok(format($f$select public.request_booking(%L, %L, %L, 60, '{}')$f$, (select b2 from fx), (select court from fx), (select tomorrow10 from fx)), '23P01', 'that time was just taken; choose another slot', 'an overlapping request loses');
 -- ---- the other rules
 select throws_ok(format($f$select public.request_booking(%L, %L, %L, 60, '{}')$f$, (select b3 from fx), (select court from fx), (select tomorrow10 from fx) + interval '5 hours 30 minutes'), '22023', null, 'a start off the slot grid is refused');
 select throws_ok(format($f$select public.request_booking(%L, %L, %L, 90, '{}')$f$, (select b3 from fx), (select court from fx), (select tomorrow10 from fx) + interval '5 hours'), '22023', null, 'a length that is not whole slots is refused');
@@ -139,7 +139,7 @@ create temp table d1 as select public.decide_booking((select b1 from fx), 'appro
 reset role;
 grant select on d1 to public;
 select is((select status from public.bookings where id = (select b1 from fx)), 'confirmed', 'the admin confirms it');
-select is((select amount from public.ledger_entries where source_type = 'booking' and source_id = (select b1 from fx) and client_ref = 'charge'), -400.0000::numeric, 'the price is charged to the member');
+select is((select amount from public.ledger_entries where source_type = 'booking' and source_id = (select b1 from fx) and client_ref = 'charge'), -200.0000::numeric, 'the price is charged to the member');
 set local role authenticated;
 select is((select public.decide_booking((select b1 from fx), 'approve', null, (select k3 from fx))), (select r from d1), 'the same key replays');
 select is((select (public.decide_booking((select b1 from fx), 'approve', null, (select k4 from fx))) ->> 'unchanged'), 'true', 'approving twice changes nothing');
@@ -156,7 +156,7 @@ set local role authenticated;
 select throws_ok(format($f$select public.decide_booking(%L, 'reject', '', %L)$f$, (select b4 from fx), (select k5 from fx)), '22023', 'a reason is required', 'a rejection needs a reason');
 select is((select public.decide_booking((select b4 from fx), 'reject', 'court needed for a clinic', (select k6 from fx)) ->> 'status'), 'rejected', 'the admin rejects');
 reset role;
-select pg_temp.as_user((select u from us where role = 'member'));
+select pg_temp.as_user((select u from us where role = 'friend'));
 set local role authenticated;
 select is((select public.request_booking((select b5 from fx), (select court from fx), (select tomorrow10 from fx) + interval '4 hours', 60, '{}') ->> 'status'), 'pending_approval', 'the freed slot can be booked again');
 reset role;
@@ -187,7 +187,7 @@ create temp table c1 as select public.cancel_booking((select b1 from fx), 'chang
 reset role;
 grant select on c1 to public;
 select is((select status from public.bookings where id = (select b1 from fx)), 'cancelled', 'the requester cancels a confirmed booking');
-select is((select amount from public.ledger_entries where source_type = 'booking' and source_id = (select b1 from fx) and client_ref = 'charge-reversal'), 400.0000::numeric, 'the charge is reversed');
+select is((select amount from public.ledger_entries where source_type = 'booking' and source_id = (select b1 from fx) and client_ref = 'charge-reversal'), 200.0000::numeric, 'the charge is reversed');
 select is((select count(*)::int from public.ledger_entries where source_type = 'booking' and source_id = (select b1 from fx) and client_ref = 'cancel-fee'), 0, 'no fee more than 24 hours ahead');
 select is((select sum(amount) from public.ledger_entries where source_type = 'booking' and source_id = (select b1 from fx)), 0.0000::numeric, 'the member owes nothing for it');
 set local role authenticated;
@@ -249,13 +249,13 @@ select is((select amount from public.ledger_entries where source_type = 'booking
 update public.settings set value = 'false'::jsonb where key = 'booking.approval_required' and unit_id is null and deleted_at is null;
 select pg_temp.as_user((select u from us where role = 'other'));
 set local role authenticated;
-select is((select public.request_booking((select b12 from fx), (select court from fx), (select tomorrow10 from fx) + interval '6 hours', 60, '{}') ->> 'status'), 'confirmed', 'with approval switched off a paid-or-free request is confirmed at once');
+select is((select public.request_booking((select b12 from fx), (select court from fx), (select tomorrow10 from fx) + interval '1 day 6 hours', 60, '{}') ->> 'status'), 'confirmed', 'with approval switched off a paid-or-free request is confirmed at once');
 reset role;
 select is((select amount from public.ledger_entries where source_type = 'booking' and source_id = (select b12 from fx) and client_ref = 'charge'), -200.0000::numeric, 'and charged');
 update public.settings set value = 'true'::jsonb where key = 'payments.required.court_booking' and unit_id is null and deleted_at is null;
 select pg_temp.as_user((select u from us where role = 'other'));
 set local role authenticated;
-select is((select public.request_booking((select bx1 from fx), (select court from fx), (select tomorrow10 from fx) + interval '7 hours', 60, '{}') ->> 'status'), 'pending_approval', 'but it waits when payment is required and not yet verified');
+select is((select public.request_booking((select bx1 from fx), (select court from fx), (select tomorrow10 from fx) + interval '2 days 7 hours', 60, '{}') ->> 'status'), 'pending_approval', 'but it waits when payment is required and not yet verified');
 reset role;
 
 select * from finish();

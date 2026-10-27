@@ -3,7 +3,7 @@
 //     names at all and this page says so.
 //   * What is shown is fixed by the server: display name, category and rank for the leaderboard; division, category, date and
 //     the podium (top three, display names) for results. No member IDs, contact details, scores or history.
-import { badge, dataTable, h, pageHeader, tabs } from "./ui.js";
+import { badge, dataTable, h, memberHero, tabs } from "./ui.js";
 
 export function createPublicPages({ api }) {
   function leaderboardPage() {
@@ -202,10 +202,12 @@ export function createPublicPages({ api }) {
     }
 
     page.append(
-      pageHeader({
-        icon: "trophy",
-        eyebrow: "Capitol Pickleball Club",
+      memberHero({
+        iconName: "trophy",
+        eyebrow: "Club",
         title: "Leaderboard and Results",
+        chip: "Club Results",
+        titleBadge: true,
         description:
           "What the club has chosen to share publicly. Sign in for the full ranking and your own history.",
       }),

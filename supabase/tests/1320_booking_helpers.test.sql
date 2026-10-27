@@ -46,16 +46,17 @@ select is((select display_name from public.find_players('9502')), 'Zzyzx Tester 
 select is((select count(*)::int from public.find_players('9501')), 0, 'never themselves');
 select is((select count(*)::int from public.find_players('9503')), 0, 'and never a member who is not active');
 select throws_ok($$select * from public.find_players('z')$$, '22023', null, 'a one-letter search is refused');
-select is((select (public.quote_booking((select court from fx), (select t0 from fx), 120) ->> 'price')::numeric), 300::numeric, 'a quote for two hours at 150 is 300');
-select is((select public.quote_booking((select court from fx), (select t0 from fx), 120) ->> 'ok'), 'true', 'and nothing is wrong with it');
+select is((select (public.quote_booking((select court from fx), (select t0 from fx), 60) ->> 'price')::numeric), 150::numeric, 'a quote for one hour at 150 is 150');
+select is((select public.quote_booking((select court from fx), (select t0 from fx), 60) ->> 'ok'), 'true', 'and nothing is wrong with it');
 select is((select public.quote_booking((select court from fx), (select t0 from fx) - interval '9 hours', 60) ->> 'problem'), 'The court is open 08:00 to 21:00.', 'a time before opening is explained');
 select is((select public.quote_booking((select court from fx), now() - interval '1 hour', 60) ->> 'problem'), 'Choose a time in the future.', 'a past time is explained');
 select is((select public.quote_booking((select court from fx), (select t0 from fx), 45) ->> 'problem'), 'Choose a whole number of slots, up to 4 hours.', 'a bad length is explained');
 select public.request_booking(core.ulid(), (select court from fx), (select t0 from fx), 60, '{}');
-select is((select public.quote_booking((select court from fx), (select t0 from fx), 60) ->> 'problem'), 'That time was just taken.', 'a taken slot is explained');
+select is((select public.quote_booking((select court from fx), (select t0 from fx), 60) ->> 'problem'), 'You already have a booking for this day. Only 1 booking of up to 1 hour is allowed per day.', 'the daily allowance is explained');
 reset role;
 
 -- The quote and request must agree on the end-of-day marker used by the UI.
+select pg_temp.as_user((select u from us where role = 'buddy'));
 set local role authenticated;
 select is((select public.quote_booking((select court from fx), (select t0 from fx) + interval '13 hours', 60) ->> 'ok'), 'false', 'midnight quote is refused when the court closes at 21:00');
 select throws_ok(format($f$select public.request_booking(%L, %L, %L, 60, '{}')$f$, core.ulid(), (select court from fx), (select t0 from fx) + interval '13 hours'), '22023', null, 'midnight request is refused when the court closes at 21:00');

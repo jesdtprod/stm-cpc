@@ -31,3 +31,57 @@ export function localPasswordProblems(password, confirm) {
 
 export const problemMessages = (codes = []) =>
   codes.map((c) => PROBLEM_MESSAGES[c] ?? "Choose a different password.");
+
+/**
+ * Evaluates real-time password strength and criteria.
+ * @param {string} password
+ * @returns {{ score: number, label: string, tone: string, hasLength: boolean, hasVariety: boolean }}
+ */
+export function evaluatePasswordStrength(password = "") {
+  if (!password) {
+    return {
+      score: 0,
+      label: "",
+      tone: "",
+      hasLength: false,
+      hasVariety: false,
+    };
+  }
+
+  const hasLength = password.length >= MIN_PASSWORD_LENGTH;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasDigit = /[0-9]/.test(password);
+  const hasSymbol = /[^A-Za-z0-9]/.test(password);
+
+  let varietyCount = 0;
+  if (hasUpper) varietyCount++;
+  if (hasLower) varietyCount++;
+  if (hasDigit) varietyCount++;
+  if (hasSymbol) varietyCount++;
+
+  const distinct = new Set(password).size;
+  const hasVariety = (varietyCount >= 2 && distinct >= 4) || (password.length >= 16 && distinct >= 5);
+
+  let score = 1;
+  if (hasLength) {
+    score = 2; // Fair (meets 12+ chars)
+    if (hasVariety && (varietyCount >= 3 || password.length >= 16)) {
+      score = 3; // Good
+    }
+    if ((hasVariety && varietyCount >= 3 && password.length >= 14) || password.length >= 18) {
+      score = 4; // Strong
+    }
+  }
+
+  const labels = ["", "Weak", "Fair", "Good", "Strong"];
+  const tones = ["", "danger", "warning", "info", "success"];
+
+  return {
+    score,
+    label: labels[score],
+    tone: tones[score],
+    hasLength,
+    hasVariety,
+  };
+}

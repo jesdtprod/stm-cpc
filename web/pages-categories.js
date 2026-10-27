@@ -17,7 +17,7 @@ import {
   openModal,
   pagination,
   searchControl,
-  selectField,
+  tableFilter,
   toast,
 } from "./ui.js";
 import { button } from "./ui.js";
@@ -85,13 +85,13 @@ export function createCategoriesPages({ api, getOrgId }) {
         draw();
       },
     });
-    const statusFilter = selectField({
+    const statusFilter = tableFilter({
       id: "categories-status",
-      value: state.tab,
-      ariaLabel: "Filter categories by status",
-      options: TABS.map((item) => ({ value: item.id, label: item.label })),
-      onChange: (event) => {
-        state.tab = event.target.value;
+      activeId: state.tab,
+      label: "Filter categories by status",
+      tabs: TABS,
+      onChange: (id) => {
+        state.tab = id;
         state.page = 1;
         draw();
       },
@@ -576,9 +576,8 @@ export function createCategoriesPages({ api, getOrgId }) {
     function draw() {
       statusFilter.setOptions(TABS.map((item) => ({
         value: item.id,
-        label: `${item.label} (${
-          state.rows.filter((row) => tabOf(row) === item.id).length
-        })`,
+        label: item.label,
+        badge: state.status === "loading" ? "—" : rowsOf(item.id).length,
       })));
       const normalize = (text) =>
         String(text ?? "").normalize("NFKD").replace(/\p{M}/gu, "")
@@ -669,9 +668,9 @@ export function createCategoriesPages({ api, getOrgId }) {
       }),
       h(
         "div",
-        { class: "toolbar admin-members-toolbar" },
+        { class: "toolbar admin-members-toolbar has-status-badges" },
         search,
-        h("div", { class: "member-status-filter" }, statusFilter),
+        statusFilter,
       ),
       h(
         "div",

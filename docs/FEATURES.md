@@ -188,6 +188,9 @@ State machine: `pending_approval → confirmed → checked_in → completed`, wi
 
 Booking approval can be turned off in settings (bookings then confirm automatically), but the club default is **on**. Cancellation policy (cut-off hours, fees) is a setting enforced in the cancel RPC.
 
+Each requesting member may make only one booking of up to 60 minutes per Asia/Manila calendar day across all courts. Pending, confirmed, checked-in, completed, and no-show bookings consume that allowance. Cancelled, rejected, and expired requests do not. Quote and request RPCs enforce this rule; requests by the same member are serialized before the replay check so concurrent submissions cannot bypass it and retries remain idempotent. Existing bookings are retained.
+Clicking a free time slot checks the member's existing bookings for the selected Manila day before opening the request form. If the allowance is already used, a warning toast explains the daily limit and the form stays closed. Failed checks show an error and allow retry.
+
 ### 7.3 Optional payment attachment
 - Whether payment is required is a setting (`payments.required.court_booking`). The server enforces it; hiding a field in the UI is not enough.
 - A member may attach payment: proof image and/or reference number, method, and amount. This creates a `payment_submissions` row (`submitted`).

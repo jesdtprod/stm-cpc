@@ -1411,7 +1411,10 @@ export function createCourtsPages({ api, getOrgId }) {
       tabsHost.replaceChildren(tableFilter({
         activeId: state.tab,
         label: "View Court Records",
-        tabs: TABS,
+        tabs: TABS.map((item) => ({
+          ...item,
+          badge: state.status === "loading" ? "—" : state[item.id].length,
+        })),
         onChange: (id) => {
           state.tab = id;
           draw();

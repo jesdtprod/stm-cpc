@@ -19,6 +19,9 @@ import {
 import { createRanksPages } from "../../web/pages-ranks.js";
 import { createScoringPages } from "../../web/pages-scoring.js";
 import { createStaffPages } from "../../web/pages-staff.js";
+import { createBookingAdminPages } from "../../web/pages-bookings-admin.js";
+import { createMemberEventsPages } from "../../web/pages-events-member.js";
+import { clearAuth, setAuth } from "../../web/lib/permissions.js";
 
 // Small DOM fixture for component events; rendered browser checks remain separate.
 function withDom(run) {
@@ -117,8 +120,11 @@ function withDom(run) {
     }
     append(...nodes) {
       for (const node of nodes) {
-        node.parent = this;
-        this.children.push(node);
+        const child = typeof node === "string"
+          ? document.createTextNode(node)
+          : node;
+        child.parent = this;
+        this.children.push(child);
       }
     }
     replaceChildren(...nodes) {
@@ -656,7 +662,7 @@ Deno.test("table search: retains page-scoped query through refresh without dupli
     );
   }));
 
-Deno.test("grid controls: search and searchable list filter are siblings outside the table panel", () =>
+Deno.test("grid controls: search and status badges stay outside the table panel", () =>
   withDom(() => {
     let selected;
     const filter = tableFilter({
@@ -664,6 +670,7 @@ Deno.test("grid controls: search and searchable list filter are siblings outside
       tabs: [{ id: "active", label: "Active", badge: 2 }, {
         id: "deleted",
         label: "Deleted",
+        badge: 0,
       }],
       onChange: (value) => selected = value,
     });
@@ -678,12 +685,190 @@ Deno.test("grid controls: search and searchable list filter are siblings outside
       panel && toolbar && !panel.contains(toolbar),
       "Controls must be outside the bordered table panel",
     );
-    assert(toolbar.contains(filter), "Status filter must sit beside search");
-    filter.querySelector(".searchable-select-trigger").click();
-    filter.querySelectorAll(".searchable-select-item")[1].click();
+    assert(
+      toolbar.contains(filter),
+      "Status badges must share the search toolbar",
+    );
+    assert(
+      !filter.querySelector("select"),
+      "Status badges replace the dropdown",
+    );
+    assert(
+      filter.querySelectorAll(".badge")[1].textContent === "0",
+      "Empty categories must show zero",
+    );
+    filter.querySelectorAll("button")[1].click();
     assert(
       selected === "deleted",
       "Status selection must keep its original callback value",
+    );
+    assert(
+      filter.querySelectorAll("button")[1].getAttribute("aria-pressed") ===
+        "true",
+      "Selected status must be accessible",
+    );
+    filter.setOptions([{ value: "active", label: "Active", badge: 3 }, {
+      value: "deleted",
+      label: "Deleted",
+      badge: 1,
+    }]);
+    assert(filter.value === "deleted", "Count refresh must preserve selection");
+    filter.setOptions([
+      { value: "active", label: "Active" },
+      { value: "deleted", label: "Deleted", badge: null },
+      { value: "pending", label: "Pending", badge: "—" },
+    ]);
+    assert(
+      filter.querySelectorAll(".badge").every((count) =>
+        count.textContent === "0"
+      ),
+      "Missing, null and unavailable counts must all display zero",
+    );
+    filter.value = "active";
+    assert(
+      filter.querySelectorAll("button")[0].getAttribute("aria-pressed") ===
+        "true",
+      "Programmatic selection must update badges",
+    );
+  }));
+
+Deno.test("booking actions: approval, rejection and cancellation open their confirmation dialogs", () =>
+  withDom(async (document) => {
+    setAuth({
+      signedIn: true,
+      grants: ["bookings.approve", "bookings.cancel_any"].map((code) => ({
+        code,
+      })),
+    });
+    try {
+      const row = {
+        id: "01K00000000000000000000000",
+        doc_no: "BK-2099-00001",
+        court_id: "court-test",
+        court_name_snapshot: "Test Court",
+        during: '["2099-01-01 01:00:00+00","2099-01-01 02:00:00+00")',
+        status: "pending_approval",
+        price_snapshot: 0,
+        requester: {
+          member_no: "CPC-2099-00001",
+          persons: { display_name: "Test Member" },
+        },
+      };
+      let reads = 0;
+      let writes = 0;
+      const api = {
+        read: () => Promise.resolve(reads++ === 0 ? [row] : []),
+        newKey: () => "01K00000000000000000000001",
+        rpc: () => {
+          writes++;
+        },
+      };
+      const page = createBookingAdminPages({ api, client: {} }).bookingsPage();
+      document.body.append(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      for (
+        const [action, title] of [
+          ["Approve", "Approve This Booking"],
+          ["Reject", "Reject This Request"],
+          ["Cancel", "Cancel This Booking"],
+        ]
+      ) {
+        const button = page.querySelectorAll("button").find((button) =>
+          button.getAttribute("aria-label")?.startsWith(
+            `${action} ${row.doc_no}`,
+          )
+        );
+        assert(button, `${action} action must be available`);
+        button.click();
+        const dialog = document.body.querySelector("dialog");
+        assert(
+          dialog?.getAttribute("open") !== null,
+          `${action} must open its dialog`,
+        );
+        assert(
+          dialog.querySelector("h2").textContent === title,
+          `${action} must show the correct confirmation`,
+        );
+        assert(
+          dialog.querySelector(".member-avatar").textContent === "TM",
+          "Member initials must render without a photo",
+        );
+        if (action !== "Approve") {
+          assert(
+            dialog.querySelector("textarea").getAttribute("required") !== null,
+            "Rejection and cancellation must require a reason",
+          );
+        }
+        dialog.close();
+      }
+      assert(
+        writes === 0,
+        "Opening and dismissing dialogs must not change bookings",
+      );
+    } finally {
+      clearAuth();
+    }
+  }));
+
+Deno.test("member events: one shared search filters divisions and retains registration controls", () =>
+  withDom(async (document) => {
+    const api = {
+      read: () => Promise.resolve([]),
+      rpc: () =>
+        Promise.resolve([{
+          id: "fake-event",
+          name: "Sample Open",
+          starts_on: "2099-01-01",
+          ends_on: "2099-01-01",
+          divisions: [
+            { id: "beginner", name: "Beginner", format: "singles", taken: 0 },
+            { id: "advanced", name: "Advanced", format: "doubles", taken: 1 },
+          ],
+        }]),
+    };
+    const page = createMemberEventsPages({
+      api,
+      client: {},
+      session: { getState: () => ({}) },
+    }).eventsPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const search = page.querySelectorAll("input").find((input) =>
+      input.getAttribute("id") === "member-events-search"
+    );
+    assert(
+      page.querySelectorAll("input").length === 1,
+      "Events must have one shared search",
+    );
+    search.value = "Advanced";
+    search.dispatchEvent(new Event("input"));
+    assert(
+      page.querySelector(".tbl-body").textContent.includes("Advanced"),
+      "Search must retain matching divisions",
+    );
+    assert(
+      !page.querySelector(".tbl-body").textContent.includes("Beginner"),
+      "Search must exclude other divisions",
+    );
+    assert(
+      page.querySelectorAll("button").some((button) =>
+        button.getAttribute("aria-label") === "Register"
+      ),
+      "Filtered divisions must retain registration actions",
+    );
+    search.value = "no-match";
+    search.dispatchEvent(new Event("input"));
+    assert(
+      page.textContent.includes("No matching events"),
+      "Search must explain empty results",
+    );
+    const buttons = page.querySelector(".member-status-badges")
+      .querySelectorAll("button");
+    buttons[1].click();
+    assert(
+      page.querySelector(".member-status-badges").querySelectorAll("button")[1]
+        .getAttribute("aria-pressed") === "true",
+      "Registration view must remain selectable",
     );
   }));
 
@@ -926,11 +1111,10 @@ Deno.test("ranks page: search keeps full ladder context and movement uses the or
         calls[0].args.p_rank_ids.join(",") === "high,low,elite",
       "Movement must submit the full correctly reordered ladder",
     );
-    const view = page.querySelectorAll("select").find((select) =>
-      select.getAttribute("name") === "ranks-view"
+    const view = page.querySelectorAll("div").find((element) =>
+      element.getAttribute("id") === "ranks-view"
     );
-    view.value = "rules";
-    view.dispatchEvent(new Event("change"));
+    view.querySelectorAll("button")[1].click();
     assert(
       page.querySelector(".tbl") && page.querySelector(".pager"),
       "Rules view must use the shared table and pagination",
@@ -951,8 +1135,8 @@ Deno.test("ranks page: New rule opens its dialog directly without changing the a
       .ranksPage();
     document.body.append(page);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const view = page.querySelectorAll("select").find((select) =>
-      select.getAttribute("name") === "ranks-view"
+    const view = page.querySelectorAll("div").find((element) =>
+      element.getAttribute("id") === "ranks-view"
     );
     assert(view.value === "ladders", "Start in the ladder view");
     page.querySelectorAll("button").find((button) =>

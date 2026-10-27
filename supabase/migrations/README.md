@@ -52,9 +52,13 @@ without its Windows binary; stay on 2.118.0 until fixed).
 | `1360_admin_password_reset.sql`                                   | 3.2       | `admin_reset_target` and `admin_reset_done` (service role): the database half of the secure admin password reset                                                                                            |
 | `1370_member_password_reset.sql`                                  | 3.2       | `member_reset_target` and `member_reset_done` (service role): a new password for an ordinary active member who forgot theirs; the member must choose their own at the next sign-in                          |
 
-`1570_booking_midnight.sql` aligns booking requests and quotes with the calendar:
-closing times of `23:59`, `23:59:59`, or `24:00` permit an end at the following
-midnight in Asia/Manila. Earlier closing times still apply normally.
+`1570_booking_midnight.sql` aligns booking requests and quotes with the
+calendar: closing times of `23:59`, `23:59:59`, or `24:00` permit an end at the
+following midnight in Asia/Manila. Earlier closing times still apply normally.
+
+`1590_override_unranked_member.sql` fixes `override_member_rank` for a member
+with no rank yet: it now creates the current rank instead of recording only the
+history row.
 
 Tests live in `../tests/` and run with `deno task db:test` (needs a logged-in,
 linked CLI; no Docker).

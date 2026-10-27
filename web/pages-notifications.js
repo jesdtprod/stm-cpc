@@ -2,9 +2,14 @@
 //   * Messages appear here as they arrive (the page refreshes itself from the live feed) and open the page they are about.
 //   * "Alerts on This Device" registers the device for push messages, so approvals, booking decisions, payments, draws,
 //     results, rank changes and match times arrive even when the app is in the background or closed.
-import { badge, button, emptyState, h, pageHeader, toast } from "./ui.js";
+import { badge, button, emptyState, h, memberHero, toast } from "./ui.js";
 import { formatDateTime } from "./lib/dates.js";
-import { disablePush, enablePush, pushState } from "./lib/push.js";
+import {
+  disablePush,
+  enablePush,
+  PUSH_MESSAGES,
+  pushState,
+} from "./lib/push.js";
 
 export function createNotificationPages({ api, feed }) {
   function notificationsPage() {
@@ -73,7 +78,9 @@ export function createNotificationPages({ api, feed }) {
           h(
             "p",
             { class: "muted" },
-            "This browser cannot receive alerts while the app is closed. Messages still appear here and while the app is open. On an iPhone, add the app to your Home Screen first, then open it from there.",
+            `${
+              PUSH_MESSAGES[d.reason ?? "unsupported"]
+            } Messages still appear here while the app is open.`,
           ),
         );
       } else if (d.permission === "denied") {
@@ -115,18 +122,16 @@ export function createNotificationPages({ api, feed }) {
           button({
             label: "Turn on Alerts on This Device",
             variant: "primary",
-            onClick: async () => {
+            onClick: async (event) => {
+              event.currentTarget.disabled = true;
               const r = await enablePush(api);
               if (r.ok) {
                 toast("Alerts are on for this device.", { tone: "success" });
-              } else if (r.reason === "denied") {
-                toast(
-                  "Alerts were not allowed. You can change this in your browser settings.",
-                  { tone: "warning" },
-                );
-              } else {toast("Alerts could not be turned on. Try again.", {
-                  tone: "error",
-                });}
+              } else {
+                toast(PUSH_MESSAGES[r.reason] ?? PUSH_MESSAGES.registration, {
+                  tone: r.reason === "denied" ? "warning" : "error",
+                });
+              }
               loadDevice();
             },
           }),
@@ -212,10 +217,12 @@ export function createNotificationPages({ api, feed }) {
     addEventListener("cpc:notification", onLive);
 
     page.append(
-      pageHeader({
-        icon: "inbox",
+      memberHero({
+        iconName: "inbox",
         eyebrow: "Account",
         title: "Notifications",
+        chip: "Messages and Alerts",
+        titleBadge: true,
         description: "Your messages from the club, as they happen.",
       }),
       deviceHost,

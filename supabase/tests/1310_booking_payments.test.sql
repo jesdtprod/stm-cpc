@@ -48,11 +48,15 @@ update public.settings set value = 'false'::jsonb where key = 'payments.required
 update public.settings set value = '["cash", "gcash", "bank_transfer"]'::jsonb where key = 'payments.methods' and unit_id is null and deleted_at is null;
 update public.settings set value = 'true'::jsonb where key = 'payments.proof_required_non_cash' and unit_id is null and deleted_at is null;
 
--- two bookings of 600 and 300
+-- two one-hour bookings of 600 and 300 on different days
+update public.court_rates set rate_per_hour = 600 where court_id = (select court from fx);
 select pg_temp.as_user((select u from us where role = 'member'));
 set local role authenticated;
-select public.request_booking((select bk1 from fx), (select court from fx), (select t0 from fx), 120, '{}');
-select public.request_booking((select bk2 from fx), (select court from fx), (select t0 from fx) + interval '5 hours', 60, '{}');
+select public.request_booking((select bk1 from fx), (select court from fx), (select t0 from fx), 60, '{}');
+reset role;
+update public.court_rates set rate_per_hour = 300 where court_id = (select court from fx);
+set local role authenticated;
+select public.request_booking((select bk2 from fx), (select court from fx), (select t0 from fx) + interval '1 day 5 hours', 60, '{}');
 reset role;
 
 -- the member's proof files, as the storage API would leave them

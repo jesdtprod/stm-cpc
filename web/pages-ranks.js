@@ -21,6 +21,7 @@ import {
   selectControl,
   selectField,
   switchToggle,
+  tableFilter,
   toast,
 } from "./ui.js";
 
@@ -85,16 +86,16 @@ export function createRanksPages({ api, getOrgId }) {
         draw();
       },
     });
-    const viewFilter = selectField({
+    const viewFilter = tableFilter({
       id: "ranks-view",
-      ariaLabel: "View Rank Management",
-      value: state.tab,
-      options: [{ value: "ladders", label: "Ladders and Ranks" }, {
-        value: "rules",
+      label: "View Rank Management",
+      activeId: state.tab,
+      tabs: [{ id: "ladders", label: "Ladders and Ranks" }, {
+        id: "rules",
         label: "Movement Rules",
       }],
-      onChange: (event) => {
-        state.tab = event.target.value;
+      onChange: (id) => {
+        state.tab = id;
         state.term = "";
         search.value = "";
         state.page = 1;
@@ -1270,11 +1271,6 @@ export function createRanksPages({ api, getOrgId }) {
         "div",
         { class: "stack" },
         h(
-          "p",
-          { class: "muted" },
-          "Rules are checked in priority order after a division is finalized, once per member. Ranks never change from a single match.",
-        ),
-        h(
           "div",
           { class: "member-directory-card is-auto-grid" },
           h(
@@ -1321,7 +1317,18 @@ export function createRanksPages({ api, getOrgId }) {
 
     // ---------------------------------------------------------------- layout
     function draw() {
-      viewFilter.value = state.tab;
+      viewFilter.setOptions([
+        {
+          id: "ladders",
+          label: "Ladders and Ranks",
+          badge: state.status === "loading" ? "—" : state.cats.length,
+        },
+        {
+          id: "rules",
+          label: "Movement Rules",
+          badge: state.status === "loading" ? "—" : state.rules.length,
+        },
+      ], state.tab);
       if (
         state.category !== "all" &&
         !state.cats.some((cat) => cat.id === state.category)
@@ -1426,10 +1433,10 @@ export function createRanksPages({ api, getOrgId }) {
       }),
       h(
         "div",
-        { class: "toolbar admin-members-toolbar" },
+        { class: "toolbar admin-members-toolbar has-status-badges" },
         search,
+        viewFilter,
         categoryHost,
-        h("div", { class: "member-status-filter" }, viewFilter),
       ),
       body,
     );

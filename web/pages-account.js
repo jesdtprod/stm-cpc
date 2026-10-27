@@ -19,6 +19,7 @@ import {
   withPending,
 } from "./ui.js";
 import {
+  evaluatePasswordStrength,
   localPasswordProblems,
   problemMessages,
 } from "./lib/password-hints.js";
@@ -312,6 +313,163 @@ export function createAccountPages(
     });
   }
 
+
+  function attachPasswordValidation(passwordField, confirmField) {
+    const pwInput = passwordField.querySelector("input");
+    const confirmInput = confirmField.querySelector("input");
+    if (!pwInput || !confirmInput) return;
+
+    // Remove any static hint from password and confirm fields
+    const existingHint = passwordField.querySelector(".field-hint");
+    if (existingHint) existingHint.remove();
+    const existingConfirmHint = confirmField.querySelector(".field-hint");
+    if (existingConfirmHint) existingConfirmHint.remove();
+
+    // Strength meter bars (4 segments)
+    const meterBars = [1, 2, 3, 4].map(() => h("span", { class: "pw-meter-bar" }));
+    const strengthMeter = h(
+      "div",
+      {
+        class: "pw-strength-meter",
+        "data-score": "0",
+        "aria-hidden": "true",
+      },
+      ...meterBars,
+    );
+
+    const strengthPill = h(
+      "span",
+      {
+        class: "pw-strength-pill",
+        "data-tone": "none",
+        "aria-live": "polite",
+      },
+      "Required",
+    );
+
+    const lengthIcon = h("span", { class: "pw-criteria-icon", "aria-hidden": "true" });
+    const lengthItem = h(
+      "li",
+      { class: "pw-criteria-item" },
+      lengthIcon,
+      h("span", { class: "pw-criteria-text" }, "At least 12 characters"),
+    );
+
+    const varietyIcon = h("span", { class: "pw-criteria-icon", "aria-hidden": "true" });
+    const varietyItem = h(
+      "li",
+      { class: "pw-criteria-item" },
+      varietyIcon,
+      h("span", { class: "pw-criteria-text" }, "Letters, numbers, or symbols"),
+    );
+
+    const criteriaList = h(
+      "ul",
+      {
+        class: "pw-criteria-list",
+        "aria-label": "Password requirements",
+      },
+      lengthItem,
+      varietyItem,
+    );
+
+    const strengthBox = h(
+      "div",
+      { class: "pw-strength-box" },
+      h(
+        "div",
+        { class: "pw-strength-top" },
+        h("span", { class: "pw-strength-caption" }, "Password strength"),
+        strengthPill,
+      ),
+      strengthMeter,
+      criteriaList,
+    );
+
+    const pwError = passwordField.querySelector(".field-error");
+    if (pwError) {
+      passwordField.insertBefore(strengthBox, pwError);
+    } else {
+      passwordField.appendChild(strengthBox);
+    }
+
+    // Confirm Match Status
+    const matchIcon = h("span", { class: "pw-match-icon", "aria-hidden": "true" });
+    const matchText = h("span", { class: "pw-match-text" }, "Repeat password.");
+    const matchStatus = h(
+      "div",
+      {
+        class: "pw-match-status",
+        "aria-live": "polite",
+      },
+      matchIcon,
+      matchText,
+    );
+
+    const matchBox = h("div", { class: "pw-match-box" }, matchStatus);
+
+    const confirmError = confirmField.querySelector(".field-error");
+    if (confirmError) {
+      confirmField.insertBefore(matchBox, confirmError);
+    } else {
+      confirmField.appendChild(matchBox);
+    }
+
+    function update() {
+      const pw = pwInput.value;
+      const confirm = confirmInput.value;
+      const evalResult = evaluatePasswordStrength(pw);
+
+      if (!pw) {
+        strengthMeter.setAttribute("data-score", "0");
+        strengthPill.setAttribute("data-tone", "none");
+        strengthPill.textContent = "Required";
+      } else {
+        strengthMeter.setAttribute("data-score", String(evalResult.score));
+        strengthPill.setAttribute("data-tone", evalResult.tone);
+        strengthPill.textContent = evalResult.label;
+      }
+
+      if (evalResult.hasLength) {
+        lengthItem.classList.add("is-met");
+        lengthIcon.replaceChildren(icon("check"));
+      } else {
+        lengthItem.classList.remove("is-met");
+        lengthIcon.replaceChildren();
+      }
+
+      if (evalResult.hasVariety) {
+        varietyItem.classList.add("is-met");
+        varietyIcon.replaceChildren(icon("check"));
+      } else {
+        varietyItem.classList.remove("is-met");
+        varietyIcon.replaceChildren();
+      }
+
+      const confirmWrap = confirmField.querySelector(".input-wrap");
+      if (!confirm) {
+        matchStatus.className = "pw-match-status";
+        matchIcon.replaceChildren();
+        matchText.textContent = "Repeat password.";
+        confirmWrap?.classList.remove("is-pw-match");
+      } else if (confirm === pw && pw.length > 0) {
+        matchStatus.className = "pw-match-status is-matched";
+        matchIcon.replaceChildren(icon("check"));
+        matchText.textContent = "Passwords match";
+        confirmWrap?.classList.add("is-pw-match");
+      } else {
+        matchStatus.className = "pw-match-status is-mismatched";
+        matchIcon.replaceChildren(icon("alertCircle"));
+        matchText.textContent = "Passwords do not match yet";
+        confirmWrap?.classList.remove("is-pw-match");
+      }
+    }
+
+    pwInput.addEventListener("input", update);
+    confirmInput.addEventListener("input", update);
+    update();
+  }
+
   // ---------------------------------------------------------------- password
   function passwordPage() {
     const state = session.getState();
@@ -331,6 +489,7 @@ export function createAccountPages(
     });
     next.querySelector("input").setAttribute("autocomplete", "new-password");
     again.querySelector("input").setAttribute("autocomplete", "new-password");
+    attachPasswordValidation(next, again);
     const error = errorBox();
     const submit = button({
       label: "Save Password",
@@ -603,6 +762,8 @@ export function createAccountPages(
     });
     mobile.querySelector("input").setAttribute("autocomplete", "tel");
     mobile.querySelector("input").setAttribute("inputmode", "tel");
+    mobile.querySelector("input").setAttribute("maxlength", "11");
+    mobile.querySelector("input").setAttribute("minlength", "11");
     const email = field({
       id: "pf-email",
       label: "Email",
@@ -1384,6 +1545,8 @@ export function createAccountPages(
     });
     mobile.querySelector("input").setAttribute("inputmode", "tel");
     mobile.querySelector("input").setAttribute("autocomplete", "tel");
+    mobile.querySelector("input").setAttribute("maxlength", "11");
+    mobile.querySelector("input").setAttribute("minlength", "11");
     const email = field({
       id: "su-email",
       label: "Email",
@@ -1410,6 +1573,7 @@ export function createAccountPages(
       "new-password",
     );
     confirm.querySelector("input").setAttribute("autocomplete", "new-password");
+    attachPasswordValidation(password, confirm);
     for (const f of [firstName, lastName, middleName]) {
       f.querySelector("input").setAttribute("maxlength", "60");
     }

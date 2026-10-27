@@ -20,7 +20,7 @@ import {
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
-import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
+import { avatarImage, initialsOf, signedAvatarUrls } from "./lib/avatar.js";
 import { businessDate, formatDateTime } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 import {
@@ -309,7 +309,7 @@ export function createBookingAdminPages({ api, client }) {
 
     const toolbar = h(
       "div",
-      { class: "toolbar admin-members-toolbar" },
+      { class: "toolbar admin-members-toolbar has-status-badges" },
       searchBox,
       tabsHost,
     );
@@ -615,6 +615,7 @@ export function createBookingAdminPages({ api, client }) {
       {
         key: "status",
         label: "Status",
+        minWidth: 240,
         skeleton: "badge-stack",
         render: (r) =>
           h(
@@ -1427,23 +1428,23 @@ export function createBookingAdminPages({ api, client }) {
           {
             id: "approve",
             label: "Waiting for Approval",
-            badge: counts.approve ? String(counts.approve) : undefined,
+            badge: state.loaded ? counts.approve : "—",
           },
           {
             id: "today",
             label: "Today",
-            badge: counts.today ? String(counts.today) : undefined,
+            badge: state.loaded ? counts.today : "—",
           },
           {
             id: "upcoming",
             label: "Upcoming",
-            badge: counts.upcoming ? String(counts.upcoming) : undefined,
+            badge: state.loaded ? counts.upcoming : "—",
           },
           { id: "calendar", label: "Calendar" },
           {
             id: "history",
             label: "History",
-            badge: counts.history ? String(counts.history) : undefined,
+            badge: state.loaded ? counts.history : "—",
           },
         ],
         onChange: (id) => {
@@ -1840,10 +1841,18 @@ export function createBookingAdminPages({ api, client }) {
           {
             id: "check",
             label: "To Check",
-            badge: lists.check().length || undefined,
+            badge: state.status === "loading" ? "—" : lists.check().length,
           },
-          { id: "verified", label: "Verified" },
-          { id: "closed", label: "Rejected and Voided" },
+          {
+            id: "verified",
+            label: "Verified",
+            badge: state.status === "loading" ? "—" : lists.verified().length,
+          },
+          {
+            id: "closed",
+            label: "Rejected and Voided",
+            badge: state.status === "loading" ? "—" : lists.closed().length,
+          },
         ],
         onChange: (id) => {
           state.tab = id;

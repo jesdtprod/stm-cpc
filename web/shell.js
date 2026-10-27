@@ -1,7 +1,7 @@
 // The app shell (PLAN 3.6): header with the account menu, and the side panel built from the
 // user's permissions. The menu is a convenience only; every page and every call is checked again
 // by the router and the database.
-import { button, h, icon, openModal } from "./ui.js";
+import { attachPagePattern, button, h, icon, openModal } from "./ui.js";
 import { MEMBER_SHORTCUTS } from "./lib/member-shortcuts.js";
 import { isAdminAccount } from "./lib/permissions.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
@@ -373,10 +373,68 @@ export function createShell(
       .filter((g) => g.items.length);
   }
 
+  function drawPagePattern() {
+    const page = document.querySelector("main .page");
+    if (page && !page.querySelector(".dashboard-pattern")) {
+      attachPagePattern(page);
+    }
+  }
+
+  function drawMobilePageHeader(path) {
+    if (["/", ""].includes(path)) return;
+    const main = document.querySelector("main");
+    const page = main?.querySelector(".page");
+    const header = page?.querySelector(".dash-hero, .page-header");
+    const title = header?.querySelector("h1");
+    if (!title || header.classList.contains("mobile-format-header")) return;
+    page.classList.add("mobile-format-page");
+    header.classList.add("mobile-format-header");
+    const role = header.querySelector(".dash-chip.is-role, .eyebrow");
+    let heading = header.querySelector(".member-hero-heading");
+    if (!heading) {
+      heading = h("div", { class: "member-hero-heading" });
+      title.replaceWith(heading);
+      heading.append(title);
+    }
+    if (role && !heading.querySelector(".mobile-title-badge")) {
+      const roleBadge = h("span", { class: "dash-chip mobile-title-badge" });
+      const roleIcon = role.querySelector("svg") ??
+        header.querySelector(".badge-icon svg");
+      if (roleIcon) roleBadge.append(roleIcon.cloneNode(true));
+      roleBadge.append(document.createTextNode(role.textContent));
+      heading.append(roleBadge);
+    }
+    if (header.classList.contains("page-header")) {
+      const description = title.parentElement.parentElement;
+      description.classList.add("mobile-header-copy");
+      description.append(
+        h(
+          "div",
+          { class: "dash-hero-chips mobile-header-chips" },
+          h(
+            "span",
+            { class: "dash-chip is-date" },
+            icon("calendar"),
+            new Intl.DateTimeFormat("en-PH", {
+              timeZone: "Asia/Manila",
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }).format(new Date()),
+          ),
+          h("span", { class: "dash-chip is-status" }, title.textContent),
+        ),
+      );
+    }
+  }
+
   function draw(path) {
     const state = session.getState();
     const signedIn = state.status === "signed_in";
     document.body.dataset.signedIn = String(signedIn);
+    drawPagePattern();
+    drawMobilePageHeader(path);
 
     // Landing page: root path when not signed in
     // The home page and the sign-in page share one look: the full-screen hero, the pattern, the transparent header.
@@ -394,6 +452,27 @@ export function createShell(
     lastPath = path;
     const isAdminPath = signedIn && viewOf(path) === "admin";
     const isMemberView = !isAdminPath;
+    const memberHeader = document.querySelector("main .mobile-format-header");
+    if (memberHeader) {
+      const logo = memberHeader.querySelector(".member-header-logo");
+      if (signedIn && !["/", ""].includes(path)) {
+        if (!logo) {
+          memberHeader.prepend(h("img", {
+            class: "member-header-logo",
+            src: "icons/cpc-logo-256.webp",
+            alt: "Capitol Pickleball Club",
+            width: 128,
+            height: 128,
+          }));
+        }
+      } else logo?.remove();
+    }
+    for (const page of document.querySelectorAll("main .page")) {
+      page.classList.toggle(
+        "member-mobile-lists",
+        signedIn && isMemberView && !page.classList.contains("dash-page"),
+      );
+    }
     // the side-panel layout: the admin side always, the member side on a computer
     const sidePanel = signedIn && (isAdminPath || Boolean(wide?.matches));
     lastView = isAdminPath ? "admin" : "member";
@@ -458,7 +537,11 @@ export function createShell(
           toggle.setAttribute("aria-expanded", String(open));
           toggle.setAttribute(
             "aria-label",
-            open ? "Close navigation menu" : "Open navigation menu",
+            `${open ? "Close navigation menu" : "Open navigation menu"}${
+              unreadBadge("/notifications")
+                ? `, ${unreadBadge("/notifications")} unread notifications`
+                : ""
+            }`,
           );
           if (open) {
             closeBtn.focus?.();
@@ -496,10 +579,15 @@ export function createShell(
               h("span", { class: "assistive-nav-item-title" }, label),
               h("span", { class: "assistive-nav-item-detail" }, detail),
             ),
-            h("span", {
-              class: "assistive-nav-item-chevron",
-              "aria-hidden": "true",
-            }, icon("chevr")),
+            href === "#/notifications" && unreadBadge("/notifications")
+              ? h("span", {
+                class: "notification-count assistive-nav-item-count",
+                "aria-label": "Unread notifications",
+              }, unreadBadge("/notifications"))
+              : h("span", {
+                class: "assistive-nav-item-chevron",
+                "aria-hidden": "true",
+              }, icon("chevr")),
           );
         const scrim = h("div", {
           class: "assistive-nav-scrim",
@@ -763,7 +851,21 @@ export function createShell(
             alt: "",
             "aria-hidden": "true",
           }),
+          signedIn && unreadBadge("/notifications")
+            ? h("span", {
+              class: "notification-count assistive-notification-count",
+              "aria-hidden": "true",
+            }, unreadBadge("/notifications"))
+            : null,
         );
+        if (signedIn && unreadBadge("/notifications")) {
+          toggle.setAttribute(
+            "aria-label",
+            `Open navigation menu, ${
+              unreadBadge("/notifications")
+            } unread notifications`,
+          );
+        }
         itemsWrap.id = "assistive-nav-menu";
         mobileNav.replaceChildren(scrim, itemsWrap, toggle);
         closeAssistiveMenu = () => setMenuOpen(false);
@@ -845,7 +947,11 @@ export function createShell(
             (n.badge ?? unreadBadge(n.path))
               ? h(
                 "span",
-                { class: "nav-link-badge" },
+                {
+                  class: `nav-link-badge${
+                    n.path === "/notifications" ? " notification-count" : ""
+                  }`,
+                },
                 n.badge ?? unreadBadge(n.path),
               )
               : null,

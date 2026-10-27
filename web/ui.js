@@ -481,26 +481,56 @@ export function selectControl(props = {}, ...children) {
   return native;
 }
 
-/** List status filter using the same searchable control as Members. */
+/** Record filters: accessible badge buttons with optional counts. */
 export function tableFilter(
   { id, activeId, tabs: options = [], onChange, label = "Filter Records" },
 ) {
-  return h(
-    "div",
-    { class: "member-status-filter" },
-    selectField({
-      id,
-      value: activeId,
-      ariaLabel: label,
-      options: options.map((item) => ({
-        value: item.id,
-        label: item.badge === undefined
-          ? item.label
-          : `${item.label} (${item.badge})`,
-      })),
-      onChange: (event) => onChange?.(event.target.value),
-    }),
-  );
+  const container = h("div", {
+    id,
+    class: "member-status-badges",
+    role: "group",
+    "aria-label": label,
+  });
+  let selected = activeId;
+  const updateSelection = () => {
+    for (const button of container.children) {
+      button.setAttribute(
+        "aria-pressed",
+        String(button.getAttribute("data-value") === selected),
+      );
+    }
+  };
+  container.setOptions = (items, value = selected) => {
+    selected = value;
+    container.replaceChildren(...items.map((item) => {
+      const value = item.id ?? item.value;
+      return h(
+        "button",
+        {
+          type: "button",
+          class: "tab-btn",
+          "data-value": value,
+          onClick: () => {
+            selected = value;
+            updateSelection();
+            onChange?.(value);
+          },
+        },
+        item.label,
+        badge(String(Number(item.badge) || 0), "neutral"),
+      );
+    }));
+    updateSelection();
+  };
+  Object.defineProperty(container, "value", {
+    get: () => selected,
+    set: (value) => {
+      selected = value;
+      updateSelection();
+    },
+  });
+  container.setOptions(options);
+  return container;
 }
 
 export function searchableSelect({
@@ -2730,10 +2760,16 @@ export function memberHero({
   chip = "Court Availability",
   iconName = "calendar",
   actions = [],
+  titleBadge = false,
 }) {
+  const heading = h(
+    "h1",
+    { class: "dash-hero-title", id: "page-title", tabindex: "-1" },
+    title,
+  );
   return h(
     "section",
-    { class: "dash-hero", "aria-label": title },
+    { class: "dash-hero is-plain", "aria-label": title },
     h(
       "div",
       { class: "dash-hero-copy" },
@@ -2763,11 +2799,19 @@ export function memberHero({
           )
           : null,
       ),
-      h(
-        "h1",
-        { class: "dash-hero-title", id: "page-title", tabindex: "-1" },
-        title,
-      ),
+      titleBadge
+        ? h(
+          "div",
+          { class: "member-hero-heading" },
+          heading,
+          h(
+            "span",
+            { class: "dash-chip mobile-title-badge" },
+            icon(iconName),
+            eyebrow,
+          ),
+        )
+        : heading,
       description ? h("p", { class: "dash-hero-sub" }, description) : null,
     ),
     actions.length ? h("div", { class: "dash-hero-actions" }, actions) : null,
@@ -2908,6 +2952,7 @@ export function dataTable(
     searchable = true,
     searchPlaceholder,
     filter,
+    searchActions,
     searchState,
     pageSize = 0,
     searchKey = ariaLabel ??
@@ -2915,6 +2960,12 @@ export function dataTable(
   },
 ) {
   const cols = schema.columns.map(tableColumn);
+  const primaryColumn = cols.find((column) =>
+    /^(name|member|player|team|event|division|when|change)$/.test(column.key)
+  ) ?? cols.find((column) => !column.actions);
+  const mobileKind = (column) => column.actions ? "actions"
+    : column === primaryColumn ? "primary"
+    : /^(status|state)$/.test(column.key) ? "status" : "detail";
   const actions = schema.actions ?? [];
   const cls = `tbl cols-${cols.length}${
     actions.length ? ` act-${actions.length}` : ""
@@ -3025,6 +3076,7 @@ export function dataTable(
           h("div", {
             class: `tbl-cell ${c.align}${c.actions ? " tbl-actions" : ""}`,
             "data-label": c.label,
+            "data-mobile-kind": mobileKind(c),
           }, bar),
         );
       }
@@ -3082,6 +3134,14 @@ export function dataTable(
         if (c.render) content = c.render(r);
         else if (c.kind === "money") content = PHP.format(r[c.key]);
         else content = r[c.key];
+        if (c === primaryColumn && !content?.querySelector?.(".member-avatar, .avatar-lg")) {
+          const symbol = /rank|leaderboard/i.test(ariaLabel ?? "") ? "medal"
+            : /event|division|match|bracket/i.test(ariaLabel ?? "") ? "trophy" : "clock";
+          content = h("div", { class: "mobile-record-identity" },
+            h("span", { class: "member-avatar is-icon mobile-record-icon", "aria-hidden": "true" }, icon(symbol)),
+            h("div", { class: "mobile-record-summary" }, content),
+          );
+        }
         if (c.actions) {
           const group = h("div", { class: "row-actions" }, content);
           const buttons = group.querySelectorAll("button, a.btn");
@@ -3092,6 +3152,7 @@ export function dataTable(
           class: `tbl-cell ${c.align}${c.actions ? " tbl-actions" : ""}`,
           role: "cell",
           "data-label": c.label,
+          "data-mobile-kind": mobileKind(c),
         }, content);
         if (!c.actions) searchableValues.push(readText(cell));
         row.append(cell);
@@ -3221,8 +3282,12 @@ export function dataTable(
     { class: "data-grid-layout" },
     h(
       "div",
-      { class: "toolbar admin-members-toolbar data-grid-toolbar" },
+      {
+        class:
+          "toolbar admin-members-toolbar data-grid-toolbar has-status-badges",
+      },
       search,
+      searchActions,
       filter,
     ),
     h("div", { class: "data-grid" }, scroll, pagerHost),
@@ -4428,6 +4493,7 @@ export function attachPagePattern(page) {
 export function setupConvexPatternCanvas(canvas, containerEl, watermarkEl) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return () => {};
+  const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
 
   const STEP = 60;
   const RADIUS = 180;
@@ -4625,6 +4691,12 @@ export function setupConvexPatternCanvas(canvas, containerEl, watermarkEl) {
   }
 
   function step() {
+    if (reducedMotion?.matches) {
+      currentStrength = 0;
+      draw();
+      animId = null;
+      return;
+    }
     if (containerEl && containerEl.isConnected) {
       hasConnected = true;
       if (width === 0 || height === 0) resize();
@@ -4667,6 +4739,7 @@ export function setupConvexPatternCanvas(canvas, containerEl, watermarkEl) {
   }
 
   function handleMouseMove(e) {
+    if (reducedMotion?.matches) return;
     if (width === 0 || height === 0) resize();
     const rect = canvas.getBoundingClientRect();
     targetX = e.clientX - rect.left;
@@ -4680,6 +4753,7 @@ export function setupConvexPatternCanvas(canvas, containerEl, watermarkEl) {
   }
 
   function handleTouch(e) {
+    if (reducedMotion?.matches) return;
     if (!e.touches || !e.touches[0]) return;
     if (width === 0 || height === 0) resize();
     const t = e.touches[0];

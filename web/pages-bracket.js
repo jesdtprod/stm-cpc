@@ -10,8 +10,8 @@ import {
   dataTable,
   h,
   iconButton,
+  memberHero,
   openModal,
-  pageHeader,
   selectControl,
   tabs,
   toast,
@@ -907,10 +907,12 @@ export function createBracketPages({ api }) {
     }
 
     page.append(
-      pageHeader({
-        icon: "trophy",
+      memberHero({
+        iconName: "trophy",
         eyebrow: "Bracket",
         title: "Standings and matches",
+        chip: "Match Results",
+        titleBadge: true,
         description:
           "Results are worked out by the club's system from the finished matches.",
       }),
