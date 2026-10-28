@@ -13,7 +13,7 @@ create temp table fx as select (select id from public.orgs where code = 'cpc') a
   core.ulid() as r7, core.ulid() as r8, core.ulid() as r9, core.ulid() as r10, core.ulid() as r11, core.ulid() as r12, core.ulid() as r13,
   core.ulid() as r14, core.ulid() as r15, core.ulid() as r16, core.ulid() as r17, core.ulid() as r18, core.ulid() as r19,
   core.ulid() as p1, core.ulid() as p2, core.ulid() as p3, core.ulid() as p4,
-  (select id from public.format_templates where lower(name) = 'round robin' and deleted_at is null) as tpl,
+  (select id from public.format_templates where stages -> 0 ->> 'stage_type' = 'round_robin' and jsonb_array_length(stages) = 1 and deleted_at is null order by id limit 1) as tpl,
   (select id from public.categories where code = 'novice' and deleted_at is null) as cat_novice,
   (select id from public.categories where code = 'advanced' and deleted_at is null) as cat_adv,
   (select r.id from public.ranks r join public.rank_ladders l on l.id = r.ladder_id join public.categories c on c.id = l.category_id

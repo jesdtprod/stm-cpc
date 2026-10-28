@@ -33,11 +33,17 @@ select is((select feeds_round || '/' || feeds_match || '/' || slot from core.se_
 select is((select feeds_round || '/' || feeds_match || '/' || slot from core.se_layout(8) where round_no = 1 and match_no = 4), '2/2/b', 'and match 4 feeds slot b of the same match');
 
 -- ---- real brackets
+-- the seeded "Single elimination" template was retired (migration 1860), so this suite brings its own
+create temp table tpl1470 as select core.ulid() as id;
+grant select on tpl1470 to public;
+insert into public.format_templates (id, org_id, name, stages)
+values ((select id from tpl1470), (select id from public.orgs where code = 'cpc'), 'T Knockout 1470',
+  '[{"stage_type": "single_elimination", "config": {"third_place_game": false}}]'::jsonb);
 create temp table fx as select (select id from public.orgs where code = 'cpc') as org,
   core.ulid() as ev, core.ulid() as dvA, core.ulid() as dvB,
   core.ulid() as a1, core.ulid() as a2, core.ulid() as a3, core.ulid() as a4, core.ulid() as a5, core.ulid() as a6, core.ulid() as a7, core.ulid() as a8,
   core.ulid() as b1, core.ulid() as b2, core.ulid() as b3, core.ulid() as b4, core.ulid() as b5,
-  (select id from public.format_templates where lower(name) = 'single elimination' and deleted_at is null) as tpl,
+  (select id from tpl1470) as tpl,
   (select id from public.categories where code = 'novice' and deleted_at is null) as cat_novice,
   current_date + 30 as day1;
 grant select on fx to public;

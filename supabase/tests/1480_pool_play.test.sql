@@ -9,7 +9,7 @@ $$ select set_config('request.jwt.claims', json_build_object('sub', u, 'role', '
 
 create temp table fx as select (select id from public.orgs where code = 'cpc') as org,
   core.ulid() as ev, core.ulid() as dvA, core.ulid() as dvB, core.ulid() as dvC,
-  (select id from public.format_templates where lower(name) = 'regular (bracketing)' and deleted_at is null) as tpl,
+  (select id from public.format_templates where stages -> 0 ->> 'stage_type' = 'pool_play' and deleted_at is null order by id limit 1) as tpl,
   (select id from public.categories where code = 'novice' and deleted_at is null) as cat_novice,
   current_date + 30 as day1;
 grant select on fx to public;

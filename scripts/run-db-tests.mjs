@@ -27,7 +27,10 @@ const ASSERT =
 function transform(sql) {
   let out = sql.replace(
     /^select no_plan\(\);/m,
-    "select no_plan();\ncreate temp table _out(n serial, line text);\ngrant all on pg_temp._out to public;\ngrant all on sequence pg_temp._out_n_seq to public;",
+    "select no_plan();\ncreate temp table _out(n serial, line text);\ngrant all on pg_temp._out to public;\ngrant all on sequence pg_temp._out_n_seq to public;" +
+      // The live club may have CPC points switched on; every suite starts from the off setting (rolled back with the test),
+      // and the suites that test points switch it on themselves.
+      "\nupdate public.settings set value = 'false'::jsonb where key = 'ranks.cpc_points_enabled' and unit_id is null and deleted_at is null;",
   );
   out = out.replace(ASSERT, "insert into pg_temp._out(line) select $1(");
   out = out.replace(

@@ -11,7 +11,7 @@ grant select on fx to public;
 select cmp_ok((select count(*)::int from public.settings where org_id = (select org from fx) and deleted_at is null), '>=', 25, 'settings are seeded');
 select cmp_ok((select count(*)::int from public.lookups where org_id = (select org from fx) and deleted_at is null and type in ('payment_method', 'gender', 'court_surface', 'age_group', 'cancel_reason')), '>=', 21, 'lookup lists are seeded');
 select cmp_ok((select count(*)::int from public.scoring_rules where org_id = (select org from fx) and deleted_at is null), '>=', 5, 'scoring rules are seeded');
-select cmp_ok((select count(*)::int from public.format_templates where org_id = (select org from fx) and deleted_at is null), '>=', 4, 'format templates are seeded');
+select cmp_ok((select count(*)::int from public.format_templates where org_id = (select org from fx) and deleted_at is null), '>=', 3, 'format templates are seeded (the club keeps three after 1860)');
 select cmp_ok((select count(*)::int from public.categories where org_id = (select org from fx) and code in ('beginner', 'novice', 'intermediate', 'advanced') and deleted_at is null), '>=', 4, 'starter categories are seeded');
 
 -- ---- the defaults the documents promise

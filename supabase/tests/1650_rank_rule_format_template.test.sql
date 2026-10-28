@@ -54,7 +54,7 @@ update us set mid = (select m.id from public.members m join public.profiles p on
 -- Isolate expected behavior from the club's editable live rules. Everything is rolled back.
 update public.rank_rules set is_active = false where org_id = (select org from fx) and deleted_at is null;
 create temp table scope as select core.ulid() as wrong_rule, core.ulid() as match_rule, core.ulid() as global_rule,
-  (select id from public.format_templates where lower(name) = 'round robin' and deleted_at is null) as rr;
+  (select id from public.format_templates where stages -> 0 ->> 'stage_type' = 'round_robin' and jsonb_array_length(stages) = 1 and deleted_at is null order by id limit 1) as rr;
 grant select on scope to public;
 select is(has_column_privilege('authenticated', 'public.divisions', 'format_template_id', 'update'), false, 'division source template cannot be written directly');
 select pg_temp.as_user((select u from us where role = 'outsider')); set local role authenticated;

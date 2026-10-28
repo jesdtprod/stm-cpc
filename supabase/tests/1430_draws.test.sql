@@ -13,8 +13,8 @@ create temp table fx as select (select id from public.orgs where code = 'cpc') a
   core.ulid() as h1, core.ulid() as h2, core.ulid() as h3,
   core.ulid() as k1, core.ulid() as k2, core.ulid() as k3, core.ulid() as k4,
   core.ulid() as m1, core.ulid() as m2,
-  (select id from public.format_templates where lower(name) = 'regular (bracketing)' and deleted_at is null) as tpl_reg,
-  (select id from public.format_templates where lower(name) = 'round robin' and deleted_at is null) as tpl_rr,
+  (select id from public.format_templates where stages -> 0 ->> 'stage_type' = 'pool_play' and deleted_at is null order by id limit 1) as tpl_reg,
+  (select id from public.format_templates where stages -> 0 ->> 'stage_type' = 'round_robin' and jsonb_array_length(stages) = 1 and deleted_at is null order by id limit 1) as tpl_rr,
   (select id from public.categories where code = 'novice' and deleted_at is null) as cat_novice,
   current_date + 30 as day1;
 grant select on fx to public;
