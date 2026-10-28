@@ -20,6 +20,7 @@ import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import {
   assessPointsModal,
   cpcAdminPanel,
+  loadRatingBands,
   ratingCell,
   pointsHistoryModal,
   pointsHistoryTable,
@@ -132,6 +133,7 @@ export function createRankingPages({ api, client, session }) {
       mineStatus: "loading",
       points: [],
       pointsStatus: "loading",
+      bands: [],
       photos: new Map(),
     };
 
@@ -139,7 +141,7 @@ export function createRankingPages({ api, client, session }) {
       state.status = state.list.length ? "refreshing" : "loading";
       draw();
       try {
-        const [list, categories] = await Promise.all([
+        const [list, categories, bands] = await Promise.all([
           api.rpc("cpc_ranking_list", { p_category_id: state.category || null }),
           state.categories.length
             ? state.categories
@@ -147,7 +149,9 @@ export function createRankingPages({ api, client, session }) {
               c.from("categories").select("id,name").is("deleted_at", null)
                 .order("sort_order")
             ),
+          state.bands.length ? state.bands : loadRatingBands(api).catch(() => []),
         ]);
+        state.bands = bands ?? [];
         const memberId = session?.getState().access?.member_id;
         state.list = (list ?? []).map((row, index) => ({
           ...row,
@@ -366,13 +370,13 @@ export function createRankingPages({ api, client, session }) {
           key: "singles",
           label: "Singles Rating",
           align: "right",
-          render: (r) => ratingCell(r, "singles", Boolean(r.rank_name)),
+          render: (r) => ratingCell(r, "singles", Boolean(r.rank_name), state.bands),
         },
         {
           key: "doubles",
           label: "Doubles Rating",
           align: "right",
-          render: (r) => ratingCell(r, "doubles", Boolean(r.rank_name)),
+          render: (r) => ratingCell(r, "doubles", Boolean(r.rank_name), state.bands),
         },
         {
           key: "category",

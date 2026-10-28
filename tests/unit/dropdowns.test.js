@@ -933,9 +933,14 @@ Deno.test("ranking ratings: Singles and Doubles with three decimals, provisional
       singles_points: null, singles_matches: 0, singles_provisional: false,
       doubles_points: null, doubles_matches: 0, doubles_provisional: false, ...extra,
     });
+    // one stub serves categories and the rank bands: rows carry both shapes
+    const bandRows = [
+      { id: "b1", name: "Novice High (2.750–2.999)", rating_min: 2.75, rating_max: 2.999 },
+      { id: "b2", name: "Intermediate Low (3.000–3.499)", rating_min: 3, rating_max: 3.499 },
+    ];
     const page = createRankingPages({
       api: {
-        read: () => Promise.resolve([]),
+        read: () => Promise.resolve(bandRows),
         rpc: (name) =>
           Promise.resolve(
             name === "cpc_ranking_list"
@@ -956,9 +961,10 @@ Deno.test("ranking ratings: Singles and Doubles with three decimals, provisional
     const subs = page.querySelectorAll(".cpc-points-sub").map((n) => n.textContent);
     // columns per row: Singles, Doubles
     assert(values[0] === "3.040" && values[1] === "2.900", "Singles and Doubles show three decimals");
-    assert(subs[0] === "3 matches played", "An assessed rating is not called provisional");
-    assert(subs[1] === "8 matches played", "Matches are counted per discipline");
+    assert(subs[0] === "Intermediate Low", "The line under a rating is the rank it equals");
+    assert(subs[1] === "Novice High", "Singles and Doubles map to their own ranks");
     assert(values[2] === "3.400" && values[3] === "Unrated", "A member can be rated in one and unrated in the other");
+    assert(subs[2] === "Intermediate Low", "3.400 equals Intermediate Low");
     assert(subs[3] === "Not assessed yet", "A ranked member without a rating is Unrated");
     assert(values[4] === "Unrated" && subs[4] === "Provisional Beginner Low", "An unranked member shows the provisional fallback");
     assert(

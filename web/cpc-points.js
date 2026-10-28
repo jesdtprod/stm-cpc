@@ -20,7 +20,7 @@ function messageOf(e, fallback) {
 }
 
 /** Label for one rating: the value, or Unrated; and the smaller line under it. */
-export function ratingLabel({ points, matches }, hasRank = false) {
+export function ratingLabel({ points, matches }, hasRank = false, bands = []) {
   if (points === null || points === undefined) {
     return {
       value: "Unrated",
@@ -31,11 +31,32 @@ export function ratingLabel({ points, matches }, hasRank = false) {
   const count = Number(matches) || 0;
   return {
     value: formatPoints(points),
-    // Only an unrated player is called provisional; an assessed rating is shown as a normal rating.
-    sub: count === 0 ? "Assessed · no matches yet" : `${count} ${count === 1 ? "match" : "matches"} played`,
+    // The line below a rating is the rank that rating equals; only an unrated player is called provisional.
+    sub: equivalentRank(bands, points) ??
+      (count === 0 ? "Assessed · no matches yet" : `${count} ${count === 1 ? "match" : "matches"} played`),
     tone: "success",
   };
 }
+
+let bandCache = null;
+/** The rank bands (name, min, max) the club ratings map to, read once from the ranks table. */
+export async function loadRatingBands(api) {
+  if (bandCache) return bandCache;
+  const rows = await api.read((c) =>
+    c.from("ranks").select("name,rating_min,rating_max").is("deleted_at", null).not("rating_min", "is", null)
+  ) ?? [];
+  const bands = rows.filter((r) => r.rating_min != null && r.rating_max != null).map((r) => ({
+    name: String(r.name).replace(/\s*\(.*\)\s*$/, ""),
+    min: Number(r.rating_min),
+    max: Number(r.rating_max),
+  }));
+  if (bands.length) bandCache = bands;
+  return bands;
+}
+
+/** The rank a rating equals, from the bands (null when there are none). */
+export const equivalentRank = (bands, points) =>
+  (bands ?? []).find((b) => Number(points) >= b.min && Number(points) <= b.max)?.name ?? null;
 
 /** One discipline of a ranking-list row (singles_points, singles_matches, ...). */
 export const ratingOf = (row, discipline) => ({
@@ -46,10 +67,10 @@ export const ratingOf = (row, discipline) => ({
 });
 
 /** The table cell: the rating on top, the muted line below (shared .sub class). */
-export function ratingCell(row, discipline, hasRank) {
+export function ratingCell(row, discipline, hasRank, bands = []) {
   const rating = ratingOf(row, discipline);
   if (rating.points === undefined) return h("span", { class: "sub" }, "—");
-  const label = ratingLabel(rating, hasRank);
+  const label = ratingLabel(rating, hasRank, bands);
   return h(
     "div",
     { class: "cpc-points-cell" },
@@ -66,7 +87,7 @@ export async function loadMemberRatings(api, memberId) {
         .eq("member_id", memberId).is("deleted_at", null)
     ) ?? []
     : [];
-  const out = {};
+  const out = { bands: await loadRatingBands(api).catch(() => []) };
   for (const discipline of DISCIPLINES) {
     const r = rows.find((x) => x.discipline === discipline);
     const matches = r?.eligible_match_count ?? 0;

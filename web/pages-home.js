@@ -221,7 +221,7 @@ function memberCards(m) {
   const mobileRankBand = rankMatch ? rankMatch[2].replace(/\s+/g, "") : null;
   const ratingCard = (discipline, label) => {
     const rating = m.ratings?.[discipline] ?? {};
-    const text = ratingLabel(rating, Boolean(m.rank));
+    const text = ratingLabel(rating, Boolean(m.rank), m.ratings?.bands);
     return statCard({
       label,
       value: text.value,

@@ -949,7 +949,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           ...ratings,
         };
         const line = (discipline, withHistory) => {
-          const label = ratingLabel(ratings[discipline], false);
+          const label = ratingLabel(ratings[discipline], false, ratings.bands);
           return h(
             "span",
             { class: "member-rank-line" },
