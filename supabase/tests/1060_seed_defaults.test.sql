@@ -41,7 +41,7 @@ select is((select overflow from public.rank_ladders l join public.categories c o
 select is((select jsonb_array_length(stages) from public.format_templates where name = 'Regular (Bracketing)'), 2, 'Regular (Bracketing) is pools then a knockout');
 select is((select stages -> 1 -> 'config' ->> 'crossover_method' from public.format_templates where name = 'Regular (Bracketing)'), 'paired_groups_same_rank', 'with the club''s crossover rule');
 select is((select stages -> 0 ->> 'stage_type' from public.format_templates where name = 'Split single elimination (H and L)'), 'split_single_elimination', 'the split format is a split single elimination');
-select is((select games_to_win from public.scoring_rules where name = 'Best of 3 to 11'), 2::smallint, 'best of 3 needs two games');
+select is((select games_to_win from public.scoring_rules where name = 'Best of 3 Games' and deleted_at is null), 2::smallint, 'best of 3 needs two games');
 select is((select count(*)::int from public.scoring_rules where org_id = (select org from fx) and name = (select value #>> '{}' from public.settings where key = 'events.default_scoring_rule' and deleted_at is null)), 1,
   'the default scoring rule setting names a rule that exists');
 

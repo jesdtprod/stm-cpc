@@ -77,7 +77,7 @@ select is((select r ->> 'status' from r2), 'open', 'a new division is open');
 select is((select (r ->> 'stages')::int from r2), 2, 'Regular (Bracketing) copies its two stages');
 select is((select count(*)::int from public.division_stages where division_id = (select d1 from fx)), 2, 'the stage rows exist');
 select is((select array_agg(stage_type order by stage_no) from public.division_stages where division_id = (select d1 from fx)), array['pool_play', 'single_elimination'], 'in order');
-select is((select scoring_snapshot ->> 'name' from public.divisions where id = (select d1 from fx)), 'Single game to 11', 'the default scoring rule is copied in');
+select is((select scoring_snapshot ->> 'name' from public.divisions where id = (select d1 from fx)), 'Single Game to 11', 'the default scoring rule is copied in');
 select is((select jsonb_array_length(format_snapshot) from public.divisions where id = (select d1 from fx)), 2, 'the format is copied in');
 
 -- a later template edit does not change the division
