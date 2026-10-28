@@ -142,9 +142,9 @@ select is(core.registration_problem((select mid from us where role = 'b'), (sele
 select ok(core.registration_problem((select mid from us where role = 'b'), (select dv_d from fx), true) like 'This division is for a different category%',
   'b: their Doubles 3.750 is Intermediate, so the Novice doubles division is not, even though their Singles fits (the Club Rank is not used)');
 select is(core.registration_problem((select mid from us where role = 'd'), (select dv_d from fx), true),
-  'You have no doubles rating yet, so you cannot join a ranked division.', 'd has no Doubles rating, so a doubles division needs one');
+  'You have no doubles rating yet. Unrated players can join Beginner divisions that start at Beginner Low; ask an administrator to assess your rating.', 'd has no Doubles rating, so a doubles division needs one');
 select is(core.registration_problem((select mid from us where role = 'e'), (select dv_s from fx), true),
-  'You have no singles rating yet, so you cannot join a ranked division.', 'e has no Singles rating, so a singles division needs one');
+  'You have no singles rating yet. Unrated players can join Beginner divisions that start at Beginner Low; ask an administrator to assess your rating.', 'e has no Singles rating, so a singles division needs one');
 select is(core.registration_problem((select mid from us where role = 'e'), (select dv_d from fx), true), null::text,
   'e: Doubles 2.850 is Novice High, so the doubles division is open to them');
 
