@@ -121,6 +121,11 @@ export function createEventsPages({ api }) {
       guestDupr: {},
       divStatus: "ready",
     };
+    const selectableTemplates = () => state.templates.filter((t) =>
+      templateLabel(t.name).toLowerCase() !== "single elimination" &&
+      !(t.stages?.length === 1 &&
+        t.stages[0].stage_type === "single_elimination")
+    );
     const guestActions = createGuestEventActions({
       api, refresh, getEvent: () => state.open, getDivisions: () => state.divisions,
       getRanks: () => state.categories.flatMap((category) => (category.ladders ?? [])
@@ -403,17 +408,21 @@ export function createEventsPages({ api }) {
     // ---------------------------------------------------------------- events
     function eventModal(row) {
       const editing = Boolean(row);
+      const templates = selectableTemplates();
+      const savedTemplate = state.templates.find((t) => t.id === row?.default_format_template_id);
       const key = row?.id ?? api.newKey();
       const error = errorLine();
       const settingsLocked = editing && row.status !== "draft";
       const template = select("ev-format-tpl", "default_format_template_id", [
         { value: "", label: "Choose per division" },
-        ...state.templates.map((t) => ({ value: t.id, label: templateLabel(t.name) })),
+        ...templates.map((t) => ({ value: t.id, label: templateLabel(t.name) })),
         ...(row?.default_format_template_id &&
-            !state.templates.some((t) => t.id === row.default_format_template_id)
+            !templates.some((t) => t.id === row.default_format_template_id)
           ? [{
             value: row.default_format_template_id,
-            label: "Unavailable template (saved)",
+            label: savedTemplate
+              ? `${templateLabel(savedTemplate.name)} (saved)`
+              : "Unavailable template (saved)",
           }]
           : []),
       ], row?.default_format_template_id);
@@ -855,6 +864,7 @@ export function createEventsPages({ api }) {
       );
 
     function divisionModal(row) {
+      const templates = selectableTemplates();
       const ev = state.open;
       const editing = Boolean(row);
       const key = row?.id ?? api.newKey();
@@ -1042,11 +1052,13 @@ export function createEventsPages({ api }) {
             select(
               "dv-format-tpl",
               "template_id",
-              state.templates.map((t) => ({
+              templates.map((t) => ({
                 value: t.id,
                 label: templateLabel(t.name),
               })),
-              state.open.default_format_template_id ?? state.templates[0]?.id,
+              templates.some((t) => t.id === state.open.default_format_template_id)
+                ? state.open.default_format_template_id
+                : templates[0]?.id,
             ),
             "Uses the event default; change if needed.",
             "settings",
@@ -1860,6 +1872,15 @@ export function createEventsPages({ api }) {
           }),
         );
       }
+      eventActions.unshift(button({
+        label: "All Events",
+        icon: "chevl",
+        variant: "secondary",
+        onClick: () => {
+          state.open = null;
+          draw();
+        },
+      }));
       if (ev.status === "draft" || ev.status === "registration_closed") {
         eventActions.push(
           button({
@@ -1900,20 +1921,6 @@ export function createEventsPages({ api }) {
           }),
         );
       }
-
-      const navBar = h(
-        "nav",
-        { class: "event-detail-nav", "aria-label": "Event Navigation" },
-        button({
-          label: "All Events",
-          icon: "chevl",
-          variant: "secondary",
-          onClick: () => {
-            state.open = null;
-            draw();
-          },
-        }),
-      );
 
       let regWindowValue = "Not specified";
       if (ev.registration_opens_at && ev.registration_closes_at) {
@@ -2084,7 +2091,6 @@ export function createEventsPages({ api }) {
       return h(
         "div",
         { class: "stack event-detail-stack" },
-        navBar,
         summaryCard,
         wrapTable(activeTable),
       );

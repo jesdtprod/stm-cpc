@@ -48,7 +48,7 @@ Use this instead of loading the whole documents. Open a `docs/` section only whe
 - Members: imported or new sign-up → pending_approval → active (admin approves); also rejected, suspended, archived.
 - Bookings: members only; `pending_approval → confirmed → checked_in → completed`; admin approves; payment proof verified by admin when required (server-enforced setting).
 - Categories are skill levels; each has ranked levels (e.g., Novice Low/High); a member has one current rank. Ranks change **once per member after the whole event** (division finalization), never per match.
-- Split single elimination rule: won H bracket +1, lost H retain, won L retain, lost L −1.
+- Active split single elimination rule: won H bracket +1, lost H retain, won L retain, lost L −1. Accepted replacement: numerical CPC points (PLAN 8.4a–8.4d, `docs/CPC_RATING.md`); do not activate or backfill before the storage/finalization steps are verified.
 - Formats are stage pipelines: round robin, single elimination, pool_play (Regular/Bracketing: dynamic brackets A,B,C…, best N advance, crossover A1 v D1 style), split single elimination (Round 1 → H and L brackets). Draws are server-side, seeded, reproducible, idempotent.
 
 ## Where detail lives

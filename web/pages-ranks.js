@@ -1570,9 +1570,8 @@ export function createRanksPages({ api, getOrgId }) {
       h(
         "div",
         { class: "toolbar admin-members-toolbar has-status-badges" },
-        search,
+        h("div", { class: "ranks-search-filters" }, search, categoryHost),
         viewFilter,
-        categoryHost,
       ),
       body,
     );

@@ -349,8 +349,7 @@ const GROUPS = [
         type: "int",
         label: "Sign people out after",
         suffix: "minutes without activity",
-        min: 5,
-        max: 120,
+        min: 1,
         hint: "Applies the next time someone signs in.",
       },
     ],
@@ -634,10 +633,11 @@ export function createSettingsPages({ api }) {
         for (const [key, value] of Object.entries(edited)) {
           const item = ITEMS.find((i) => i.key === key);
           if (item.type === "int" || item.type === "money") {
+            const withinLimits = item.type === "money" ||
+              (value >= item.min && (item.max == null || value <= item.max));
             const ok = typeof value === "number" && Number.isFinite(value) &&
               (item.type === "money" ||
-                (Number.isInteger(value) && value >= item.min &&
-                  value <= item.max)) &&
+                (Number.isInteger(value) && withinLimits)) &&
               (item.type !== "money" ||
                 (value >= 0 && value <= 100000 &&
                   Math.round(value * 100) === value * 100));
@@ -645,6 +645,8 @@ export function createSettingsPages({ api }) {
               problems.push(
                 item.type === "money"
                   ? `${item.label}: enter an amount from 0 to 100,000 with at most two decimals.`
+                  : item.max == null
+                  ? `${item.label}: enter a whole number of at least ${item.min}.`
                   : `${item.label}: enter a whole number from ${item.min} to ${item.max}.`,
               );
             }

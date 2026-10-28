@@ -64,6 +64,12 @@ export function toProperCase(text) {
 
 /** Consistent template names, including older Split Single Elimination labels. */
 export function formatTemplateLabel(name) {
+  if (/^regular\s*\(bracketing\)$/i.test(String(name ?? "").trim())) {
+    return "Tournament";
+  }
+  if (/^round\s+robin$/i.test(String(name ?? "").trim())) {
+    return "Open Play";
+  }
   return toProperCase(
     String(name ?? "")
       .replace(/\s*\((?:H\s+and\s+L|High\s*\/\s*Low)\)\s*$/i, "")

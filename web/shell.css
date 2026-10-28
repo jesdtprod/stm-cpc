@@ -6012,10 +6012,7 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
   padding: 28px 32px;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    radial-gradient(120% 140% at 0% 0%, rgba(34, 110, 70, 0.35), rgba(34, 110,
-    70, 0) 60%),
-    linear-gradient(180deg, rgba(20, 44, 32, 0.9), rgba(11, 28, 20, 0.95));
+  background: var(--club-card-background);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255,
     0.06);
 }
@@ -7647,6 +7644,16 @@ body[data-admin-view="false"] .dashboard-pattern {
 }
 .admin-members-toolbar.has-status-badges > .member-status-filter {
   width: 100%;
+}
+.ranks-search-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.ranks-search-filters > .member-status-filter {
+  flex: 0 1 240px;
+  max-width: 40%;
 }
 .member-status-badges {
   display: flex;
@@ -10752,8 +10759,17 @@ body[data-member-view="true"] .member-header-logo {
     color: var(--text);
     min-width: 0;
   }
+  body .member-ranking-page .tbl-cell[data-label="Rank"] {
+    align-items: center;
+    text-align: center;
+  }
   body .member-ranking-page .ranking-rank-value {
-    display: contents;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: fit-content;
+    margin-inline: auto;
   }
   body .member-ranking-page .ranking-rank-desktop {
     display: none;
@@ -11851,7 +11867,7 @@ body[data-member-view="true"] .member-header-logo {
   padding: 0;
   overflow: hidden;
   border-radius: var(--r-modal);
-  background: var(--surface);
+  background: var(--club-card-background);
   border-color: rgba(223, 183, 86, 0.25);
 }
 .member-event-header {
@@ -12541,11 +12557,11 @@ body[data-member-view="true"] .member-header-logo {
   gap: 16px;
 }
 .public-court-card {
+  min-width: 0;
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: var(--r-modal);
-  background: linear-gradient(145deg, rgba(223, 183, 86, 0.035), transparent 55%),
-    linear-gradient(160deg, var(--surface-2), var(--surface));
+  background: var(--club-card-background);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
   display: flex;
   flex-direction: column;
@@ -12707,7 +12723,7 @@ body[data-member-view="true"] .member-header-logo {
 /* Skeleton Loading for Court Cards */
 .public-court-card.is-skeleton {
   border-color: rgba(223, 183, 86, 0.18);
-  background: var(--surface);
+  background: var(--club-card-background);
   pointer-events: none;
 }
 .public-court-card.is-skeleton .sk {
@@ -12890,8 +12906,7 @@ body[data-member-view="true"] .member-header-logo {
   gap: 24px;
   border-radius: 20px;
   border-color: rgba(223, 183, 86, 0.28);
-  background: radial-gradient(ellipse at top right, rgba(223, 183, 86, 0.055), transparent 55%),
-    linear-gradient(150deg, var(--surface-2), var(--surface) 65%);
+  background: var(--club-card-background);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 12px 32px rgba(0, 0, 0, 0.16);
 }
 .public-event-card .public-card-header {
@@ -12926,34 +12941,11 @@ body[data-member-view="true"] .member-header-logo {
 }
 .public-event-card > .public-event-meta {
   margin: 0;
-  padding: 20px;
-  gap: 20px 24px;
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.09);
-}
-.public-event-card .public-event-meta > div {
   padding: 0;
-  border: 0;
-  background: none;
-  border-radius: 0;
-}
-.public-event-card .public-event-meta dt {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  margin-bottom: 8px;
+  gap: 12px;
 }
 .public-event-card .public-event-meta dt .icon {
   color: var(--accent);
-}
-.public-event-card .public-event-meta dd {
-  font-size: 14px;
-  line-height: 1.5;
-}
-.public-event-card .public-meta-entry-fee dd {
-  color: var(--accent);
-  font-size: 16px;
 }
 .public-event-card .public-card-footer {
   padding-top: 20px;
@@ -13117,10 +13109,6 @@ body[data-member-view="true"] .member-header-logo {
   .public-event-card .public-card-header {
     gap: 6px 10px;
   }
-  .public-event-card > .public-event-meta {
-    padding: 16px;
-    gap: 16px;
-  }
 }
 @media (max-width: 640px) {
   .public-division-grid {
@@ -13141,7 +13129,7 @@ body[data-member-view="true"] .member-header-logo {
 /* ---- Modern Skeleton Loading for Public / Member Event Cards ---- */
 .public-event-card.is-skeleton {
   border-color: rgba(223, 183, 86, 0.18);
-  background: var(--surface);
+  background: var(--club-card-background);
   position: relative;
   overflow: hidden;
 }
@@ -13666,8 +13654,7 @@ body[data-member-view="true"] .member-header-logo {
 
 .public-member-card {
   border-radius: 16px;
-  background: linear-gradient(145deg, rgba(223, 183, 86, 0.035), transparent 55%),
-    linear-gradient(160deg, var(--surface-2), var(--surface));
+  background: var(--club-card-background);
   border: 1px solid var(--border);
   padding: clamp(16px, 1.5vw, 20px);
   display: flex;
@@ -13872,7 +13859,7 @@ body[data-member-view="true"] .member-header-logo {
 /* Skeleton Loading for Member Cards */
 .public-member-card.is-skeleton {
   border-color: rgba(223, 183, 86, 0.14);
-  background: var(--surface);
+  background: var(--club-card-background);
   pointer-events: none;
 }
 .public-member-card.is-skeleton .sk {

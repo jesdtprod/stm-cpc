@@ -221,6 +221,12 @@ Clicking a free time slot checks the member's existing bookings for the selected
 | `rank_history` | **Append-only** record of every change |
 
 ### 8.3 When ranks change: after the whole event
+
+The club has accepted a replacement based on numerical CPC points, delivered in
+PLAN 8.4a–8.4d. See [CPC points specification](CPC_RATING.md) for starting values,
+unrated status, bands and the cpc-v1 score/strength formula. Until that rollout is
+verified and activated, the existing H/L rules below remain the active engine.
+
 Rank movement is evaluated **once per member per division, when the division is finalized**, from the member's final result. Individual match results do not change ranks.
 
 Rules are data, editable by the admin without code changes. Each rule defines:

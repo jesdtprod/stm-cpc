@@ -112,7 +112,8 @@ have no shadows. Use `ui.js` components rather than new page-specific controls.
 - Rank management uses responsive category cards, shared identity icons and
   compact rank rows with grouped actions. Keep the full ladder visible inside a
   matching category so search never changes the rank order used for movement.
-  Search, category and view filters sit above the content; movement rules use
+  Search and the category dropdown share one row, with the dropdown on the right
+  at desktop and mobile sizes; view pills sit below. Movement rules use
   the shared grid and 10-row pagination. Rank and rule dialogs reuse icon fields,
   compact form grids, switches and decision callouts.
 - Scoring-rule dialogs group Match scoring and Tiebreak order into balanced
@@ -135,9 +136,20 @@ have no shadows. Use `ui.js` components rather than new page-specific controls.
 
 Display the format name as **Split Single Elimination** everywhere. Use the shared `formatTemplateLabel()` for saved template names so legacy capitalization and H/L suffixes do not appear in labels.
 
+Display the legacy **Regular (Bracketing)** template as **Tournament** and the
+existing **Round Robin** template as **Open Play**. New event and division format
+selectors omit standalone Single Elimination; Tournament, Open Play and Split
+Single Elimination remain available. Existing saved event defaults retain their
+IDs and can appear as saved choices when editing older events.
+
 The landing member strip shows a fresh random selection of up to 15 active members on each welcome-page open or refresh. It uses circular, overlapping uploaded photos with `object-fit: cover`; the same circles show initials if no usable photo exists, including image-load failures. Circles shrink proportionally to fit mobile widths; an empty club has no placeholder avatar. Keep the full active-member total beside the strip.
 
 Use one shared scale throughout the application:
+
+Public page headers, Club Event containers (public and member views), member cards
+and court cards share `--club-card-background`: the reference's forest-green
+gradient with a soft upper-left highlight. Loading cards use the same surface;
+the token has a matching light-theme variant.
 
 | Property | Standard |
 | --- | --- |
@@ -251,7 +263,7 @@ Use this order when the section is applicable:
 - Member event divisions sort Beginner, Novice, Intermediate, Advanced, then Elite. Within each category, show Men Low/High, Women Low/High, then Mixed Low/High. Divisions without a Low/High label follow those levels within their gender group.
 - Member Details Modal in admin uses a compact layout: Membership & Audit features an executive 3x2 grid (Row 1: Membership, Account, Club Ranking; Row 2: Reason on Record, Review Flags, DUPR ID with gold accent badge). Rank Assessment tiles and header paddings are compacted to reduce vertical height and fit profile sections comfortably without tall empty gaps.
 - The admin Event Detail view uses an executive top action toolbar (navigation on the left, record and lifecycle actions on the right) above a prominent tournament summary card with gold trophy branding, reference code, status pill, and 4 KPI tiles (Schedule, Venue, Entry Fee, Registration). Below the summary, segmented tab filters switch between Divisions and Registrations tables to prevent stacked duplicate search controls and giant stacked empty states.
-- Event Detail groups Guest Registration, Add Guest, Add Existing Player and Register Guest in a separate Player Registration panel with smaller muted subtext. All Events stays in the navigation row beside event controls. Mobile uses two-column button grids with at least 44px touch targets and consistent row heights; permission and event-state visibility rules are preserved.
+- Event Detail groups Guest Registration, Add Guest, Add Existing Player and Register Guest in a separate Player Registration panel with smaller muted subtext. All Events sits immediately before Edit Event inside the Event Controls group; when Edit Event is unavailable, All Events remains the first control. Mobile uses two-column button grids with at least 44px touch targets and consistent row heights; permission and event-state visibility rules are preserved.
 - Add Existing Player modal in admin Event Detail uses an executive search-and-select flow: header squircle with userPlus icon, secondary search button, debounced live query (250ms), and transitions from a search results list to a dedicated .staff-selected-card preview upon player selection. The preview features a userCheck avatar squircle, bold player name, Member/Guest badge, CPC ID/subtitle, and a Change button to re-open search.
 - Tournament Draw modal in admin Event Detail uses an executive seeding inspection layout: gold squircle header with shuffle icon and neutral tone, a randomized server draw audit callout with entry count, a scrollable structured entries panel with circular gold seed badges (tabular numbers without hash), bold participant names (doubles separated by gold ampersand with format/guest subtitles), Drawn status pills, and an audit warning callout when redoing the draw is available.
 - Events and Ranking desktop rows use the same round icon treatment as My Bookings. Ranking uses a compact 64px position column and places its standard searchable 240px category dropdown to the right of Search on desktop, with pills on the next row. Mobile stacks Search, Category, and pills. Free registrations use the shared green Free badge.

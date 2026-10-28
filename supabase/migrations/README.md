@@ -185,3 +185,52 @@ The member calendar reads the existing court notes field. Verify with
 entry limit and the count of requested/confirmed entries. Counts only; no
 registrant names or ids. Verify with `deno task db:test 1790` and the 1700
 regression.
+
+`1830_cpc_rating_calculation.sql` adds private, deterministic cpc-v1 points
+helpers for PLAN 8.4a. It does not initialize members or change finalization.
+Verify with `deno task db:test 1830_cpc_rating_calculation`; formula, bands and
+the remaining integration steps are documented in `docs/CPC_RATING.md`.
+
+`1840_cpc_rating_storage_snapshots.sql` (PLAN 8.4b) stores CPC points: current
+member state (NULL = unrated), append-only `member_cpc_rating_history`, guest
+assessments, and frozen per-division player/team-strength snapshots. RPCs:
+`set_member_cpc_rating`, `set_event_participant_cpc_rating` (`ranks.override`,
+reason, version, idempotency key), `initialize_member_cpc_ratings` (adds unrated
+rows only, never changes existing points or ranks) and
+`snapshot_division_cpc_ratings` (`scores.finalize`, after the draw). Nothing calls
+them from finalization yet (8.4c). Verify with
+`deno task db:test 1840_cpc_rating_storage_snapshots`. `1841_cpc_rating_rpc_grants.sql`
+grants the core functions to `authenticated` so the public wrappers can run.
+
+`1850_cpc_points_finalization.sql` (PLAN 8.4c) activates CPC points behind the
+setting `ranks.cpc_points_enabled` (default false). While it is on, a division's
+rating inputs are frozen at the draw (every player, guests included, needs assessed
+points or the draw is refused; events with the CPC opt-out are skipped). A division
+with frozen inputs is rated by points at finalization instead of H/L movement:
+`core.cpc_division_outcomes` computes the result from the played matches,
+`core.apply_cpc_points` writes append-only points history and moves the rank to the
+exact band. Corrections (including score-only ones) reverse each changed player's
+earlier delta relative to their current points and apply the new one. Divisions
+without frozen inputs keep the legacy rules. Verify with
+`deno task db:test 1850_cpc_points_finalization`, plus the 1500, 1510 and 1840 suites.
+
+`1860_retire_single_elimination_template.sql` soft-deletes the seeded plain "Single
+elimination" format template (inactive, with a reason); divisions and events that
+used it keep their history. The club's templates are Openplay, Split Single
+Elimination and Tournament. `1470_single_elimination` now creates its own template.
+
+`1870_rank_names_cpc_bands.sql` renames the eight Low/High ranks to "Beginner Low" ...
+"Advanced High" (the Novice names had swapped ranges typed into them). Names only: ids,
+codes, order, bands and starting flags are unchanged, and Open/Professional keeps its
+label. Verify with `deno task db:test 1870_rank_names_cpc_bands`.
+
+`1880_cpc_points_screens.sql` (PLAN 8.4d) adds `cpc_ranking_list` (every active member by points, unrated
+last; points visible to staff and to the member only), `cpc_points_history_view`, `cpc_points_status`, a
+guard that refuses turning `ranks.cpc_points_enabled` on until every active member has a points record, and puts
+the generated band back into the eight Low/High rank names (the screens read it from the name). Verify with
+`deno task db:test 1880_cpc_points_screens`.
+
+`1890_singles_doubles_ratings.sql` (PLAN 8.4e) gives every player a Singles and a Doubles rating: a `discipline`
+column on ratings, guest assessments, history and snapshots; assessment functions take the discipline; preparing
+members creates both records; a division's format picks the rating it uses; the club rank follows the higher
+rating; the list shows both. Verify with `deno task db:test 1890`-related suites: 1840, 1850, 1851, 1880.
