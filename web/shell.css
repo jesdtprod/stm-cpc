@@ -7415,6 +7415,9 @@ body[data-admin-view="false"] .dashboard-pattern {
   gap: 4px;
   min-width: 0;
 }
+.home-card-mobile-value {
+  display: none;
+}
 .admin-dashboard .member-stat-card .home-card-value {
   font-size: 32px;
   font-weight: 700;
@@ -7672,6 +7675,38 @@ body[data-admin-view="false"] .dashboard-pattern {
   max-width: 320px;
 }
 @media (max-width: 720px) {
+  .member-stat-copy .home-card-value-desktop {
+    display: none;
+  }
+  .member-stat-copy .home-card-label-desktop {
+    display: none;
+  }
+  .member-stat-copy .home-card-mobile-value {
+    display: grid;
+    gap: 2px;
+  }
+  .member-stat-copy .home-card-mobile-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .member-stat-copy .home-card-mobile-subvalue {
+    color: var(--text-2);
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+  .member-stat-copy .home-card-mobile-inline-label {
+    color: var(--text-2);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
   .member-list-filters > .field {
     max-width: none;
   }

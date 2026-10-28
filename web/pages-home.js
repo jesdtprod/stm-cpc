@@ -70,6 +70,9 @@ const STAFF_CARDS = [
 function statCard({
   label,
   value,
+  mobileValue = null,
+  mobileSubvalue = null,
+  mobileInlineLabel = null,
   hint,
   iconName,
   href,
@@ -125,11 +128,41 @@ function statCard({
               {
                 class: `home-card-value${
                   typeof value === "string" && isNaN(numValue) ? " is-text" : ""
-                }`,
+                }${mobileValue ? " home-card-value-desktop" : ""}`,
               },
               formattedValue,
             ),
-            h("span", { class: "home-card-label" }, label),
+            mobileValue
+              ? h(
+                "div",
+                { class: "home-card-mobile-value" },
+                h("div", { class: "home-card-value is-text" }, mobileValue),
+                mobileSubvalue
+                  ? h(
+                    "div",
+                    { class: "home-card-mobile-meta" },
+                    h("span", { class: "home-card-mobile-subvalue sub" }, mobileSubvalue),
+                    mobileInlineLabel
+                      ? h(
+                        "span",
+                        { class: "home-card-mobile-inline-label" },
+                        "— ",
+                        mobileInlineLabel,
+                      )
+                      : null,
+                  )
+                  : null,
+              )
+              : null,
+            h(
+              "span",
+              {
+                class: `home-card-label${
+                  mobileInlineLabel ? " home-card-label-desktop" : ""
+                }`,
+              },
+              label,
+            ),
           ),
           statusBadge,
         ),
@@ -180,6 +213,11 @@ function memberSections(m) {
 }
 
 function memberCards(m) {
+  const rankMatch = String(m.rank?.name ?? "").match(
+    /^(.*?)\s*\((\d\.\d{3}\s*[–-]\s*\d\.\d{3})\)$/,
+  );
+  const mobileRankName = rankMatch ? rankMatch[1].trim() : m.rank?.name;
+  const mobileRankBand = rankMatch ? rankMatch[2].replace(/\s+/g, "") : null;
   const next = m.next_booking
     ? `Next: ${m.next_booking.court}, ${
       formatDateTime(m.next_booking.starts_at)
@@ -193,6 +231,9 @@ function memberCards(m) {
     statCard({
       label: "Current Rank",
       value: m.rank?.name ?? "Not ranked yet",
+      mobileValue: mobileRankName,
+      mobileSubvalue: mobileRankBand,
+      mobileInlineLabel: "Current Rank",
       hint: m.rank ? m.rank.category : "The club sets your starting rank.",
       iconName: "medal",
       href: "#/ranking",
