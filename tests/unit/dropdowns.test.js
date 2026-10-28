@@ -924,6 +924,52 @@ Deno.test("ranking identity: actual CPC number appears below the player name wit
     clearAuth();
   }));
 
+Deno.test("ranking ratings: Singles and Doubles with three decimals, provisional and unrated labels", () =>
+  withDom(async (document) => {
+    setAuth({ signedIn: true, grants: [{ code: "members.read" }] });
+    const row = (id, extra) => ({
+      member_id: id, member_no: null, since: "2026-10-27T00:00:00Z",
+      display_name: `Player ${id}`, category_name: "Novice", rank_name: "Novice High (2.750–2.999)",
+      singles_points: null, singles_matches: 0, singles_provisional: false,
+      doubles_points: null, doubles_matches: 0, doubles_provisional: false, ...extra,
+    });
+    const page = createRankingPages({
+      api: {
+        read: () => Promise.resolve([]),
+        rpc: (name) =>
+          Promise.resolve(
+            name === "cpc_ranking_list"
+              ? [
+                row("a", { singles_points: 3.04, singles_matches: 3, singles_provisional: true, doubles_points: 2.9, doubles_matches: 8 }),
+                row("b", { singles_points: 3.4, singles_matches: 7 }),
+                row("c", { category_name: null, rank_name: null }),
+              ]
+              : name === "cpc_points_status"
+              ? { enabled: false, active_members: 3, prepared: 3, rated_singles: 2, rated_doubles: 1 }
+              : [],
+          ),
+      },
+    }).rankingPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const values = page.querySelectorAll(".cpc-points-value").map((n) => n.textContent);
+    const subs = page.querySelectorAll(".cpc-points-sub").map((n) => n.textContent);
+    // columns per row: Singles, Doubles
+    assert(values[0] === "3.040" && values[1] === "2.900", "Singles and Doubles show three decimals");
+    assert(subs[0] === "Provisional · 3 of 5 matches", "Under five matches is provisional");
+    assert(subs[1] === "8 matches played", "Five or more is established, per discipline");
+    assert(values[2] === "3.400" && values[3] === "Unrated", "A member can be rated in one and unrated in the other");
+    assert(subs[3] === "Not assessed yet", "A ranked member without a rating is Unrated");
+    assert(values[4] === "Unrated" && subs[4] === "Provisional Beginner Low", "An unranked member shows the provisional fallback");
+    assert(
+      page.textContent.includes("Singles Rating") && page.textContent.includes("Doubles Rating"),
+      "Two rating columns",
+    );
+    assert(!page.textContent.includes("CPC Points"), "The old CPC Points label is gone");
+    assert(!page.textContent.includes("null"), "No null text is written to the page");
+    clearAuth();
+  }));
+
 Deno.test("ranking photos: signed private images replace icons and missing photos use initials", () =>
   withDom(async (document) => {
     setAuth({ signedIn: true, grants: [{ code: "members.read" }] });
@@ -1760,11 +1806,11 @@ Deno.test("member details modal: consolidates status and audit into 1 unified se
     const statusStrip = auditCard.querySelector(".member-status-strip");
     assert(statusStrip, "Unified card must contain status strip");
 
-    // The status strip contains Membership, Account, Club Ranking
+    // The status strip contains Membership, Account, Club Ranking, Singles Rating and Doubles Rating
     const summaryItems = statusStrip.querySelectorAll(".member-summary-item");
     assert(
-      summaryItems.length === 3,
-      "Status strip must have 3 summary items (Membership, Account, Club Ranking)",
+      summaryItems.length === 5,
+      "Status strip must have 5 summary items (Membership, Account, Club Ranking, Singles Rating, Doubles Rating)",
     );
 
     // The audit card also contains Reason on Record and Review Flags
@@ -2038,11 +2084,11 @@ Deno.test("rank rules: template selector preserves scope and list displays the t
     const selector = () => dialog.querySelectorAll("select").find((s) => s.getAttribute("name") === "format_template_id");
     assert(selector().value === "", "New rules default to All Formats");
     assert(selector().options[0].textContent === "All Formats", "The unrestricted choice is explicit");
-    assert(selector().options[1].textContent === "Round Robin", "Template labels use title case");
+    assert(selector().options[1].textContent === "Open Play", "Round Robin templates use the Open Play label");
     dialog.close();
     page.querySelectorAll("div").find((el) => el.getAttribute("id") === "ranks-view").querySelectorAll("button")[1].click();
     assert(page.querySelector(".tbl").textContent.includes("Format Template"), "Rules list includes the template column");
-    assert(page.querySelector(".tbl").textContent.includes("Round Robin"), "The saved scope is visible in the list");
+    assert(page.querySelector(".tbl").textContent.includes("Open Play"), "The saved scope is visible in the list");
     page.querySelectorAll("button").find((b) => b.getAttribute("aria-label") === "Edit Fake Scoped Rule").click();
     dialog = document.body.querySelector("dialog");
     assert(selector().value === "fake-format", "Editing retains the saved template restriction");

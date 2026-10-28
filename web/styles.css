@@ -28,6 +28,9 @@
   --surface: #0E2218;
   --surface-2: #142E21;
   --surface-3: #1B3B2B;
+  --club-card-background:
+    radial-gradient(120% 140% at 0% 0%, rgba(34, 110, 70, 0.35), rgba(34, 110, 70, 0) 60%),
+    linear-gradient(180deg, rgba(20, 44, 32, 0.9), rgba(11, 28, 20, 0.95));
   --border: #234735;
   --text: #F5F9F6;
   --text-2: #9EB5A7;
@@ -71,6 +74,9 @@
   --surface: #ffffff;
   --surface-2: #eaf1ed;
   --surface-3: #d9e6de;
+  --club-card-background:
+    radial-gradient(120% 140% at 0% 0%, rgba(34, 110, 70, 0.08), rgba(34, 110, 70, 0) 60%),
+    linear-gradient(180deg, var(--surface), var(--surface-2));
   --border: #bed1c6;
   --text: #092114;
   --text-2: #415e4f;
@@ -4495,4 +4501,116 @@ p.member-id,
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
+}
+
+/* CPC points (PLAN 8.4d) */
+.cpc-points-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.cpc-points-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+.cpc-points-value.is-unrated {
+  color: var(--text-muted, inherit);
+  font-weight: 600;
+}
+.cpc-points-sub {
+  white-space: nowrap;
+}
+.ranking-rank-value {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  width: fit-content;
+  margin-inline: auto;
+}
+.ranking-rank-band {
+  align-self: stretch;
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: center;
+}
+.cpc-admin-panel {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 16px;
+  margin: 0;
+  padding: 16px 20px;
+}
+.cpc-admin-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(223, 183, 86, 0.3);
+  border-radius: 12px;
+  background: rgba(223, 183, 86, 0.1);
+  color: var(--accent);
+}
+.cpc-admin-icon .icon {
+  width: 20px;
+  height: 20px;
+}
+.cpc-admin-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.cpc-admin-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cpc-admin-description {
+  margin: 0;
+  line-height: 1.45;
+}
+.cpc-admin-actions {
+  justify-self: end;
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .cpc-points-cell {
+    align-items: flex-start;
+  }
+  .cpc-points-sub {
+    white-space: normal;
+  }
+  .cpc-admin-panel {
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 16px;
+  }
+  .cpc-admin-actions {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+  .cpc-admin-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Your Standing: the rank card spans the row; Singles and Doubles sit side by side, also on a phone. */
+@media (max-width: 600px) {
+  body .dash-page .home-section[aria-label="Your Standing"] .home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  body .dash-page .home-section[aria-label="Your Standing"] .home-card.is-wide {
+    grid-column: 1 / -1;
+  }
+  body .dash-page .home-section[aria-label="Your Standing"] .home-card:not(.is-wide) .home-card-value {
+    font-size: 24px;
+  }
 }

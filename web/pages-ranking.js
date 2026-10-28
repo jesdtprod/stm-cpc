@@ -17,6 +17,13 @@ import {
 import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
+import {
+  assessPointsModal,
+  cpcAdminPanel,
+  ratingCell,
+  pointsHistoryModal,
+  pointsHistoryTable,
+} from "./cpc-points.js";
 
 function messageOf(e, fallback) {
   const own = ["22023", "42501", "CP422"].includes(e?.code) && e.cause?.message;
@@ -123,6 +130,8 @@ export function createRankingPages({ api, client, session }) {
       category: "",
       mine: [],
       mineStatus: "loading",
+      points: [],
+      pointsStatus: "loading",
       photos: new Map(),
     };
 
@@ -131,7 +140,7 @@ export function createRankingPages({ api, client, session }) {
       draw();
       try {
         const [list, categories] = await Promise.all([
-          api.rpc("ranking_list", { p_category_id: state.category || null }),
+          api.rpc("cpc_ranking_list", { p_category_id: state.category || null }),
           state.categories.length
             ? state.categories
             : api.read((c) =>
@@ -177,6 +186,17 @@ export function createRankingPages({ api, client, session }) {
         state.mineStatus = "ready";
       } catch {
         state.mineStatus = "error";
+      }
+      draw();
+    }
+
+    async function loadPoints() {
+      state.pointsStatus = state.points.length ? "refreshing" : "loading";
+      try {
+        state.points = await api.rpc("cpc_points_history_view") ?? [];
+        state.pointsStatus = "ready";
+      } catch {
+        state.pointsStatus = "error";
       }
       draw();
     }
@@ -343,34 +363,43 @@ export function createRankingPages({ api, client, session }) {
           },
         },
         {
+          key: "singles",
+          label: "Singles Rating",
+          align: "right",
+          render: (r) => ratingCell(r, "singles", Boolean(r.rank_name)),
+        },
+        {
+          key: "doubles",
+          label: "Doubles Rating",
+          align: "right",
+          render: (r) => ratingCell(r, "doubles", Boolean(r.rank_name)),
+        },
+        {
           key: "category",
           label: "Category",
-          render: (r) => badge(r.category_name, "info"),
+          render: (r) => r.category_name ? badge(r.category_name, "info") : h("span", { class: "sub" }, "—"),
         },
         {
           key: "rank",
           label: "Rank",
+          align: "center",
           render: (r) => {
+            if (!r.rank_name) return badge("No rank yet", "neutral");
             const rank = splitRankLabel(r.rank_name);
             return h(
               "div",
               { class: "ranking-rank-value" },
-              h("span", { class: "ranking-rank-desktop" }, badge(r.rank_name, "success")),
-              h(
-                "span",
-                { class: "ranking-rank-mobile" },
-                badge(rank.name, "success"),
-                rank.band
-                  ? h("span", { class: "ranking-rank-band sub" }, rank.band)
-                  : null,
-              ),
+              badge(rank.name, "success"),
+              rank.band
+                ? h("span", { class: "ranking-rank-band sub" }, rank.band)
+                : null,
             );
           },
         },
         {
           key: "since",
           label: "Since",
-          render: (r) => formatDateTime(r.since),
+          render: (r) => r.since ? formatDateTime(r.since) : h("span", { class: "sub" }, "—"),
         },
       ];
       if (staff) {
@@ -378,7 +407,7 @@ export function createRankingPages({ api, client, session }) {
           key: "actions",
           label: "Action",
           align: "center",
-          actionCount: 2,
+          actionCount: can("ranks.override") ? 4 : 2,
           render: (r) =>
             h(
               "span",
@@ -389,6 +418,20 @@ export function createRankingPages({ api, client, session }) {
                 variant: "info",
                 onClick: () => historyModal(r),
               }),
+              iconButton({
+                label: `Rating history of ${r.display_name}`,
+                icon: "trophy",
+                variant: "info",
+                onClick: () => pointsHistoryModal(api, r.member_id, r.display_name),
+              }),
+              can("ranks.override")
+                ? iconButton({
+                  label: `Assess ratings of ${r.display_name}`,
+                  icon: "sliders",
+                  variant: "edit",
+                  onClick: () => assessPointsModal({ api, row: r, onDone: load }),
+                })
+                : null,
               can("ranks.override")
                 ? iconButton({
                   label: `Change the rank of ${r.display_name}`,
@@ -429,9 +472,9 @@ export function createRankingPages({ api, client, session }) {
           state: state.status === "refreshing" ? "ready" : state.status,
           ariaLabel: "Ranking",
           onRetry: load,
-          emptyTitle: can("members.read") ? "No ranked players yet" : "No rank to show",
+          emptyTitle: can("members.read") ? "No players yet" : "No rank to show",
           emptyText: can("members.read")
-            ? "Players appear here once they hold a rank."
+            ? "Active members appear here with their Singles and Doubles ratings and rank."
             : "Your rank will appear here once assigned and matching the selected category.",
         }),
       );
@@ -443,6 +486,7 @@ export function createRankingPages({ api, client, session }) {
         tabs: [
           { id: "ranking", label: "Ranking", badge: state.list.length },
           { id: "mine", label: "My Rank History", badge: state.mine.length },
+          { id: "points", label: "My Rating History", badge: state.points.length },
         ],
         onChange: (id) => {
           state.tab = id;
@@ -450,12 +494,21 @@ export function createRankingPages({ api, client, session }) {
         },
       }));
       body.replaceChildren(
-        state.tab === "ranking" ? rankingView() : historyTable(
-          state.mine,
-          state.mineStatus === "refreshing" ? "ready" : state.mineStatus,
-          loadMine,
-          tabsHost,
-        ),
+        state.tab === "ranking"
+          ? rankingView()
+          : state.tab === "points"
+          ? pointsHistoryTable(
+            state.points,
+            state.pointsStatus === "refreshing" ? "ready" : state.pointsStatus,
+            loadPoints,
+            tabsHost,
+          )
+          : historyTable(
+            state.mine,
+            state.mineStatus === "refreshing" ? "ready" : state.mineStatus,
+            loadMine,
+            tabsHost,
+          ),
       );
     }
 
@@ -464,18 +517,20 @@ export function createRankingPages({ api, client, session }) {
         iconName: "medal",
         eyebrow: "Club",
         title: "Ranking",
-        chip: "Ranks and History",
+        chip: "Ratings, Ranks and History",
         titleBadge: true,
         description:
           can("members.read")
-            ? "Every ranked player, highest first, and how ranks have changed."
-            : "Your current rank and how it has changed.",
+            ? "Every player by Singles and Doubles rating, highest first, and how ratings and ranks have changed."
+            : "Your Singles and Doubles ratings, current rank and how they have changed.",
       }),
+      ...(can("members.read") ? [cpcAdminPanel({ api, onChange: load })] : []),
       body,
     );
     // both lists load up front so each tab's count is right before it is opened
     load();
     loadMine();
+    loadPoints();
     return page;
   }
 

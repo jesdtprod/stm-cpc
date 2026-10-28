@@ -2,6 +2,7 @@
 // sections the caller is allowed to see; this page just draws what it receives.
 //   member : own rank, upcoming bookings, event registrations, unread notices
 //   staff  : approvals, payment proofs, bookings to approve, today's bookings, events in progress
+import { loadMemberRatings, ratingLabel } from "./cpc-points.js";
 import { attachPagePattern, h, icon } from "./ui.js";
 import { can, canAny, isAdminAccount } from "./lib/permissions.js";
 import { MEMBER_SHORTCUTS } from "./lib/member-shortcuts.js";
@@ -209,7 +210,7 @@ function statCard({
 
 function memberSections(m) {
   const cards = memberCards(m);
-  return { activity: cards.slice(1), standing: cards.slice(0, 1) };
+  return { activity: cards.slice(3), standing: cards.slice(0, 3) };
 }
 
 function memberCards(m) {
@@ -218,6 +219,24 @@ function memberCards(m) {
   );
   const mobileRankName = rankMatch ? rankMatch[1].trim() : m.rank?.name;
   const mobileRankBand = rankMatch ? rankMatch[2].replace(/\s+/g, "") : null;
+  const ratingCard = (discipline, label) => {
+    const rating = m.ratings?.[discipline] ?? {};
+    const text = ratingLabel(rating, Boolean(m.rank));
+    return statCard({
+      label,
+      value: text.value,
+      hint: text.sub,
+      iconName: "trophy",
+      href: "#/ranking",
+      kind: "activity",
+      pillLabel: rating.points == null
+        ? "Unrated"
+        : rating.provisional
+        ? "Provisional"
+        : "Rated",
+      goLabel: "See your rating history",
+    });
+  };
   const next = m.next_booking
     ? `Next: ${m.next_booking.court}, ${
       formatDateTime(m.next_booking.starts_at)
@@ -242,6 +261,8 @@ function memberCards(m) {
       goLabel: "See the ranking",
       wide: true,
     }),
+    ratingCard("singles", "Singles Rating"),
+    ratingCard("doubles", "Doubles Rating"),
     statCard({
       label: "Upcoming Bookings",
       value: m.upcoming_bookings,
@@ -1772,6 +1793,16 @@ export function createHomePages({ session, api, client }) {
               Number(await api.rpc("my_unread_count")) || 0;
           } catch {
             // keep the figure the dashboard gave
+          }
+        }
+        if (mode === "member" && data?.member) {
+          try {
+            data.member.ratings = await loadMemberRatings(
+              api,
+              session.getState().access?.member_id,
+            );
+          } catch {
+            // the card then shows Unrated
           }
         }
         if (!page.isConnected && !host.isConnected) return;

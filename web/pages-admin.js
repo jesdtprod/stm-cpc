@@ -22,6 +22,7 @@ import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatDate, formatDateTime } from "./lib/dates.js";
 import { formatMemberName } from "./lib/names.js";
 import { selfAssessmentCard } from "./member-self-assessment.js";
+import { assessPointsModal, loadMemberRatings, pointsHistoryModal, ratingLabel } from "./cpc-points.js";
 
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
@@ -692,6 +693,8 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       "Loading history…",
     );
     const rankEl = h("div", { class: "member-audit-rank" }, badge("Loading…", "neutral"));
+    const singlesEl = h("div", { class: "member-audit-rank" }, badge("Loading…", "neutral"));
+    const doublesEl = h("div", { class: "member-audit-rank" }, badge("Loading…", "neutral"));
 
     const statusBadge = badge(
       STATUS_LABEL[row.status] ?? row.status,
@@ -747,6 +750,18 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               { class: "member-summary-item" },
               h("span", { class: "kv-label" }, "Club Ranking"),
               rankEl,
+            ),
+            h(
+              "div",
+              { class: "member-summary-item" },
+              h("span", { class: "kv-label" }, "Singles Rating"),
+              singlesEl,
+            ),
+            h(
+              "div",
+              { class: "member-summary-item" },
+              h("span", { class: "kv-label" }, "Doubles Rating"),
+              doublesEl,
             ),
           ),
           h("div", { class: "member-card-divider", "aria-hidden": "true" }),
@@ -924,6 +939,55 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         );
       });
     drawRank();
+
+    // Ratings: Singles and Doubles with their provisional/unrated label, the rating history, and (ranks.override) an assessment.
+    const drawPoints = () =>
+      loadMemberRatings(api, row.id).then((ratings) => {
+        const entry = {
+          member_id: row.id,
+          display_name: formatMemberName(p) || "this member",
+          ...ratings,
+        };
+        const line = (discipline, withHistory) => {
+          const label = ratingLabel(ratings[discipline], false);
+          return h(
+            "span",
+            { class: "member-rank-line" },
+            h(
+              "span",
+              { class: "member-audit-rank-text" },
+              badge(label.value, label.tone),
+              h("span", { class: "sub member-audit-rank-band" }, label.sub),
+            ),
+            withHistory
+              ? iconButton({
+                label: "Rating History",
+                icon: "trophy",
+                size: "sm",
+                variant: "info",
+                onClick: () => pointsHistoryModal(api, row.id, entry.display_name),
+              })
+              : null,
+            can("ranks.override") && !row.deleted_at
+              ? iconButton({
+                label: ratings[discipline].points == null
+                  ? `Assess ${discipline} rating`
+                  : `Reassess ${discipline} rating`,
+                icon: "sliders",
+                size: "sm",
+                variant: "edit",
+                onClick: () => assessPointsModal({ api, row: entry, discipline, onDone: drawPoints }),
+              })
+              : null,
+          );
+        };
+        singlesEl.replaceChildren(line("singles", true));
+        doublesEl.replaceChildren(line("doubles", false));
+      }).catch(() => {
+        singlesEl.replaceChildren(h("span", { class: "badge badge-neutral" }, "—"));
+        doublesEl.replaceChildren(h("span", { class: "badge badge-neutral" }, "—"));
+      });
+    drawPoints();
 
     loadHistory(row).then((items) => {
       if (!items.length) {
