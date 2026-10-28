@@ -33,11 +33,11 @@ export function selfAssessmentCard(
       h(
         "div",
         { class: "profile-section-copy" },
-        h("h3", {}, "Rank Assessment"),
+        h("h3", { class: "profile-section-title" }, "Rank Assessment"),
         h(
           "p",
           { class: "profile-section-sub muted" },
-          "Submit your Singles and Doubles ratings once. Club admins manage later updates, and your Club Rank follows your higher rating.",
+          "Your Singles and Doubles ratings determine your Club Rank. Submit your starting ratings once; club admins manage later updates.",
         ),
       ),
     ),
@@ -67,7 +67,10 @@ export function selfAssessmentCard(
     return h(
       "div",
       { class: "assessment-summary-tile is-primary", "data-discipline": discipline },
-      h("span", { class: "assessment-label" }, label),
+      h("div", { class: "assessment-tile-heading" },
+        h("span", { class: "assessment-label" }, label),
+        icon("trophy"),
+      ),
       h("strong", { class: "assessment-rank" }, side.points == null ? "NR" : formatPoints(side.points)),
       h("span", { class: "sub" }, side.classification ?? "Not Rated"),
       h(
@@ -107,17 +110,18 @@ export function selfAssessmentCard(
     const clubTile = h(
       "div",
       { class: "assessment-summary-tile is-primary assessment-club", "data-tile": "club-rank" },
-      h("span", { class: "assessment-label" }, "Club Rank"),
-      h("strong", { class: "assessment-official-rank" }, club.name ?? "Not Rated"),
-      club.range ? h("span", { class: "sub" }, club.range) : h("span", { class: "sub" }, "No rating yet"),
-      club.best_points != null
-        ? h(
-          "span",
-          { class: "sub" },
-          `Based on: ${club.source === "doubles" ? "Doubles" : "Singles"} Rating (${formatPoints(club.best_points)})`,
-        )
-        : null,
-      h("span", { class: "sub" }, "Calculated automatically from your higher rating."),
+      h("span", { class: "section-icon", "aria-hidden": "true" }, icon("medal")),
+      h("div", { class: "assessment-club-copy" },
+        h("span", { class: "assessment-label" }, "Club Rank"),
+        h("strong", { class: "assessment-official-rank" }, club.name ?? "Not Rated"),
+        club.range ? h("span", { class: "sub" }, club.range) : h("span", { class: "sub" }, "No rating yet"),
+      ),
+      h("div", { class: "assessment-club-basis" },
+        badge("Automatic", "neutral"),
+        h("span", { class: "sub" }, club.best_points != null
+          ? `Based on: ${club.source === "doubles" ? "Doubles" : "Singles"} Rating (${formatPoints(club.best_points)})`
+          : "Your higher rating determines your rank."),
+      ),
     );
     const summary = h(
       "div",
@@ -141,10 +145,11 @@ export function selfAssessmentCard(
               class: "input", id, name: id, type: "number", inputmode: "decimal", min: "2", max: "8", step: "0.001",
               placeholder: "NR (not rated)",
             }),
+            h("span", { class: "sub" }, "2.000–8.000 · Up to three decimal places"),
           )
           : null;
-      const singles = field("self-singles", "Singles Rating (2.000–8.000)", data.singles);
-      const doubles = field("self-doubles", "Doubles Rating (2.000–8.000)", data.doubles);
+      const singles = field("self-singles", "Singles Rating", data.singles);
+      const doubles = field("self-doubles", "Doubles Rating", data.doubles);
       const read = (el) => {
         const raw = el?.querySelector("input").value.trim() ?? "";
         if (!raw) return { value: null };
@@ -154,8 +159,11 @@ export function selfAssessmentCard(
       form = h(
         "fieldset",
         { class: "self-assessment-controls" },
-        singles,
-        doubles,
+        h("div", { class: "assessment-form-head" },
+          h("h4", {}, "Set your starting ratings"),
+          h("p", { class: "sub" }, "Enter the ratings you know. Leave a field empty to keep it not rated."),
+        ),
+        h("div", { class: "assessment-fields" }, singles, doubles),
         error,
         h(
           "div",
@@ -210,7 +218,7 @@ export function selfAssessmentCard(
         { class: "assessment-content" },
         summary,
         form,
-        h(
+        locked ? h(
           "div",
           { class: "assessment-footer" },
           locked
@@ -221,7 +229,7 @@ export function selfAssessmentCard(
               h("span", {}, "Only an admin can update your ratings."),
             )
             : null,
-        ),
+        ) : null,
       ),
     );
   }

@@ -1926,12 +1926,15 @@ Deno.test("member details modal: consolidates status and audit into 1 unified se
     const statusStrip = auditCard.querySelector(".member-status-strip");
     assert(statusStrip, "Unified card must contain status strip");
 
-    // The status strip contains Membership, Account, Club Ranking, Singles Rating and Doubles Rating
+    // Account statuses and discipline ratings occupy separate rows.
     const summaryItems = statusStrip.querySelectorAll(".member-summary-item");
     assert(
-      summaryItems.length === 5,
-      "Status strip must have 5 summary items (Membership, Account, Club Ranking, Singles Rating, Doubles Rating)",
+      summaryItems.length === 3,
+      "Status strip must contain Membership, Account and Club Ranking",
     );
+    const ratingStrip = auditCard.querySelector(".member-rating-strip");
+    assert(ratingStrip?.querySelectorAll(".member-summary-item").length === 2,
+      "Separate rating row must contain Singles and Doubles");
 
     // The audit card also contains Reason on Record and Review Flags
     const detailsGrid = auditCard.querySelector(".member-details-grid");

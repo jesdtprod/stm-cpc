@@ -2,7 +2,7 @@
 // holds the shared pieces: the rating value with its provisional/unrated label, the history table, the assessment form
 // (ranks.override) and the admin panel that prepares the members and turns ratings on. Used by the Ranking, Home and
 // Member Details pages. Nothing here calculates a rating: the database does, and checks every permission.
-import { badge, dataTable, h, icon, openModal, toast } from "./ui.js";
+import { badge, dataTable, h, icon, openModal, selectField, toast } from "./ui.js";
 import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
 
@@ -101,10 +101,11 @@ export async function loadMemberRatings(api, memberId) {
   return out;
 }
 
-export function pointsHistoryTable(rows, state, onRetry, filter) {
+export function pointsHistoryTable(rows, state, onRetry, filter, searchable = false) {
   const signed = (n) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(3)}`;
   const table = dataTable({
     filter,
+    searchable,
     schema: {
       columns: [
         { key: "when", label: "When", render: (r) => formatDateTime(r.occurred_at) },
@@ -167,7 +168,7 @@ export function pointsHistoryTable(rows, state, onRetry, filter) {
   return table;
 }
 
-export async function pointsHistoryModal(api, memberId, name) {
+export async function pointsHistoryModal(api, memberId, name, row = null) {
   let rows = [];
   let status = "ready";
   try {
@@ -175,13 +176,36 @@ export async function pointsHistoryModal(api, memberId, name) {
   } catch {
     status = "error";
   }
+  const memberNo = row?.member_no;
   return openModal({
     title: "Rating History",
-    eyebrow: name,
+    eyebrow: memberNo ? `${name} • ${memberNo}` : name,
     icon: "clock",
+    tone: "info",
     size: "lg",
+    description: "Audit record of Singles and Doubles rating calculations, match outcomes, and starting assessments.",
     confirmLabel: "Close",
-    body: pointsHistoryTable(rows, status),
+    cancelLabel: null,
+    body: h(
+      "div",
+      { class: "stack modal-history-stack" },
+      h(
+        "div",
+        { class: "modal-callout points-modal-callout" },
+        h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon("clock")),
+        h(
+          "div",
+          { class: "modal-callout-text" },
+          h("strong", { class: "decision-impact-title" }, `Player Rating Audit · ${name}`),
+          h("div", { class: "decision-impact-text" }, "All rating adjustments, match results, and administrative assessments are tracked with full versioning."),
+        ),
+      ),
+      h(
+        "div",
+        { class: "modal-table-panel" },
+        pointsHistoryTable(rows, status, null, null, false),
+      ),
+    ),
     onConfirm: () => {},
   });
 }
@@ -195,41 +219,113 @@ export function assessPointsModal({ api, row, discipline = "singles", onDone }) 
   const key = api.newKey();
   const error = h("p", { class: "field-error form-error", role: "alert", hidden: true });
   const ratingFor = (d) => row.singles ? row[d] ?? {} : ratingOf(row, d);
-  const select = h(
-    "select",
-    { class: "input select-input", id: "cpc-discipline", name: "discipline" },
-    ...DISCIPLINES.map((d) => h("option", { value: d, selected: d === discipline }, `${DISCIPLINE_LABEL[d]} Rating`)),
-  );
   const input = h("input", {
-    class: "input", id: "cpc-points", name: "points", type: "number", inputmode: "decimal",
-    min: "2", max: "8", step: "0.001", required: true,
+    class: "input",
+    id: "cpc-points",
+    name: "points",
+    type: "number",
+    inputmode: "decimal",
+    min: "2",
+    max: "8",
+    step: "0.001",
+    placeholder: "e.g. 2.500",
+    required: true,
   });
+
+  const select = selectField({
+    id: "cpc-discipline",
+    name: "discipline",
+    label: "Rating Discipline",
+    searchable: false,
+    value: discipline,
+    options: DISCIPLINES.map((d) => ({
+      value: d,
+      label: `${DISCIPLINE_LABEL[d]} Rating`,
+    })),
+    onChange: () => sync(),
+  });
+
   const sync = () => {
     const current = ratingFor(select.value);
     input.value = current.points == null ? "" : formatPoints(current.points);
   };
   sync();
-  select.addEventListener("change", sync);
+
   return openModal({
     title: "Assess Rating",
-    eyebrow: row.display_name,
-    icon: "medal",
+    eyebrow: row.member_no ? `${row.display_name} • ${row.member_no}` : row.display_name,
+    icon: "sliders",
+    tone: "info",
+    size: "md",
     confirmLabel: "Save Rating",
+    cancelLabel: "Cancel",
     body: h(
       "div",
-      { class: "stack" },
+      { class: "stack modal-assess-stack" },
       h(
-        "p",
-        { class: "muted" },
-        "Sets the rating this player starts from in Singles or Doubles. It is kept in their rating history and the audit log. Genuine beginners start at 2.000.",
+        "div",
+        { class: "member-decision-subject assess-modal-subject" },
+        h(
+          "span",
+          { class: "member-avatar is-icon", "aria-hidden": "true" },
+          icon("user"),
+        ),
+        h(
+          "div",
+          { class: "member-meta" },
+          h(
+            "div",
+            { class: "member-decision-name" },
+            h("strong", { class: "member-name" }, row.display_name),
+            badge(
+              row.singles_points != null ? `Singles: ${formatPoints(row.singles_points)}` : "Singles: Unrated",
+              row.singles_points != null ? "success" : "neutral",
+            ),
+            badge(
+              row.doubles_points != null ? `Doubles: ${formatPoints(row.doubles_points)}` : "Doubles: Unrated",
+              row.doubles_points != null ? "success" : "neutral",
+            ),
+          ),
+          row.member_no ? h("span", { class: "sub member-id" }, `Member ID: ${row.member_no}`) : null,
+        ),
       ),
-      h("div", { class: "field" }, h("label", { for: "cpc-discipline" }, "Rating *"), select),
-      h("div", { class: "field" }, h("label", { for: "cpc-points" }, "Points (2.000–8.000) *"), input),
+      h(
+        "div",
+        { class: "modal-callout assess-modal-callout" },
+        h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon("sliders")),
+        h(
+          "div",
+          { class: "modal-callout-text" },
+          h("strong", { class: "decision-impact-title" }, "Rating Assessment"),
+          h(
+            "div",
+            { class: "decision-impact-text" },
+            "Sets the starting rating (2.000–8.000) for tournament seeding and matchmaking. Genuine beginners start at 2.000.",
+          ),
+        ),
+      ),
+      h("div", { class: "field" }, select),
+      h(
+        "div",
+        { class: "field" },
+        h("label", { for: "cpc-points" }, "Points (2.000–8.000) *"),
+        input,
+        h("span", { class: "field-hint" }, "Enter a starting rating from 2.000 to 8.000 with up to three decimals."),
+      ),
       h(
         "div",
         { class: "field" },
         h("label", { for: "cpc-reason" }, "Reason *"),
-        h("textarea", { class: "input textarea", id: "cpc-reason", name: "reason", rows: 3, maxlength: 500, required: true }),
+        h("textarea", {
+          class: "input textarea",
+          id: "cpc-reason",
+          name: "reason",
+          rows: 3,
+          maxlength: 500,
+          placeholder: "Explain the assessment change...",
+          required: true,
+        }),
+        h("span", { class: "field-hint" }, "Kept with the change in the audit log."),
       ),
       error,
     ),
@@ -239,8 +335,8 @@ export function assessPointsModal({ api, row, discipline = "singles", onDone }) 
         error.hidden = false;
         return false;
       };
-      const chosen = String(form.get("discipline") ?? "singles");
-      const raw = String(form.get("points") ?? "").trim();
+      const chosen = String(form.get("discipline") ?? select.value ?? "singles");
+      const raw = String(form.get("points") ?? input.value ?? "").trim();
       const points = Number(raw);
       if (!/^\d(\.\d{1,3})?$/.test(raw) || points < 2 || points > 8) {
         return fail("Enter a rating from 2.000 to 8.000 with at most three decimals.");

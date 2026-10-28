@@ -4595,8 +4595,132 @@ p.member-id,
 }
 
 /* Rank Assessment: Singles, Doubles and Club Rank cards (PLAN 8.4f). */
+.assessment-card {
+  border-color: rgba(223, 183, 86, 0.2);
+  background: linear-gradient(145deg, rgba(20, 43, 31, 0.86), rgba(8, 23, 16, 0.96));
+}
+.assessment-card .profile-section-head {
+  padding-bottom: 20px;
+  border-bottom-color: rgba(223, 183, 86, 0.12);
+}
+.assessment-card .profile-section-sub {
+  max-width: 76ch;
+  line-height: 1.6;
+}
 .assessment-summary.is-ratings {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.assessment-card .assessment-content {
+  gap: 24px;
+}
+.assessment-card .assessment-summary-tile {
+  padding: 24px;
+  gap: 8px;
+  border-radius: 14px;
+  border-color: rgba(170, 205, 181, 0.16);
+  background: linear-gradient(150deg, rgba(27, 54, 40, 0.52), rgba(10, 29, 20, 0.4));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.assessment-card .assessment-label {
+  color: var(--text-2);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.assessment-card .assessment-summary-tile > .sub,
+.assessment-card .assessment-club .sub {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.assessment-tile-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.assessment-tile-heading .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+  opacity: 0.7;
+}
+.assessment-card .assessment-rank {
+  margin-top: 4px;
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.assessment-card .assessment-club {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border-color: rgba(223, 183, 86, 0.22);
+  background: linear-gradient(110deg, rgba(223, 183, 86, 0.07), rgba(14, 35, 24, 0.5));
+}
+.assessment-club > .section-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(223, 183, 86, 0.24);
+  border-radius: 14px;
+  background: rgba(223, 183, 86, 0.08);
+  color: var(--accent);
+}
+.assessment-card .assessment-official-rank {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.assessment-card .assessment-footer {
+  padding-top: 0;
+  border-top: 0;
+}
+.assessment-card .assessment-lock-note {
+  font-size: 12px;
+}
+.assessment-card .assessment-lock-note .icon {
+  opacity: 0.7;
+}
+.assessment-club-copy,
+.assessment-club-basis {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.assessment-club-basis {
+  justify-items: end;
+  text-align: right;
+}
+.assessment-card .self-assessment-controls {
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.assessment-form-head {
+  display: grid;
+  gap: 4px;
+}
+.assessment-form-head h4,
+.assessment-form-head p {
+  margin: 0;
+}
+.assessment-form-head h4 {
+  font-size: 14px;
+}
+.assessment-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 16px;
+}
+.assessment-fields .field {
+  margin: 0;
 }
 .assessment-tile-foot {
   display: flex;
@@ -4605,10 +4729,11 @@ p.member-id,
   flex-wrap: wrap;
   gap: 8px;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 8px;
 }
-.assessment-when {
+.assessment-card .assessment-when {
   font-size: 11px;
+  margin-top: 4px;
 }
 @media (max-width: 900px) {
   .assessment-summary.is-ratings {
@@ -4619,7 +4744,18 @@ p.member-id,
   }
 }
 @media (max-width: 600px) {
+  .assessment-card .assessment-summary-tile {
+    padding: 20px;
+  }
   .assessment-summary.is-ratings {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .assessment-card .assessment-club {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+  .assessment-club-basis {
+    grid-column: 1 / -1;
+    justify-items: start;
+    text-align: left;
   }
 }

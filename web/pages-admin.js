@@ -751,6 +751,10 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               h("span", { class: "kv-label" }, "Club Ranking"),
               rankEl,
             ),
+          ),
+          h(
+            "div",
+            { class: "member-rating-strip" },
             h(
               "div",
               { class: "member-summary-item" },
@@ -949,6 +953,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               badge(label.value, label.tone),
               h("span", { class: "sub member-audit-rank-band" }, label.sub),
             ),
+            h("span", { class: "member-rating-actions" },
             withHistory
               ? iconButton({
                 label: "Rating History",
@@ -969,6 +974,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 onClick: () => assessPointsModal({ api, row: entry, discipline, onDone: drawPoints }),
               })
               : null,
+            ),
           );
         };
         singlesEl.replaceChildren(line("singles", true));

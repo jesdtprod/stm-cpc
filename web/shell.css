@@ -7665,19 +7665,6 @@ body[data-admin-view="false"] .dashboard-pattern {
   gap: 16px;
   min-width: 0;
 }
-.ranking-category-filter {
-  min-width: 0;
-}
-@media (min-width: 721px) {
-  .member-ranking-page .data-grid-toolbar:has(.ranking-category-filter) {
-    grid-template-columns: minmax(0, 1fr) 240px;
-    align-items: end;
-    gap: 12px 16px;
-  }
-  .member-ranking-page .data-grid-toolbar:has(.ranking-category-filter) > :last-child {
-    grid-column: 1 / -1;
-  }
-}
 .member-list-filters > .field {
   max-width: 320px;
 }
@@ -8379,21 +8366,30 @@ dialog.modal:has(.member-decision) {
   gap: 10px;
 }
 .member-audit-card.member-section-card {
-  padding: 12px 14px;
-  gap: 10px;
+  padding: 20px;
+  gap: 16px;
+}
+.member-rating-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+.member-audit-card .member-status-strip {
+  gap: 12px;
 }
 .member-audit-card .member-summary-item,
 .member-audit-card .member-details-grid > .kv-item {
-  padding: 8px 10px;
+  padding: 12px 16px;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  border-radius: 12px;
   background: rgba(0, 0, 0, 0.12);
-  gap: 4px;
+  gap: 8px;
 }
 .member-audit-card .member-details-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 .member-audit-card .member-summary-item > .badge,
 .member-audit-card .member-audit-rank {
@@ -8417,12 +8413,12 @@ dialog.modal:has(.member-decision) {
 }
 .member-audit-rank-text {
   display: flex;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 3px;
   width: fit-content;
-  max-width: calc(100% - 44px);
+  max-width: 100%;
   min-width: 0;
 }
 .member-audit-rank-text .badge {
@@ -8439,7 +8435,17 @@ dialog.modal:has(.member-decision) {
   font-weight: 500;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  white-space: normal;
+}
+.member-rating-actions {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  margin-left: auto;
+}
+.member-audit-rank .member-rating-actions .btn-icon {
+  margin-left: 0;
 }
 .member-audit-rank .btn-icon {
   flex-shrink: 0;
@@ -8538,6 +8544,9 @@ dialog.modal:has(.member-decision) {
   .member-profile-sections,
   .member-banner,
   .member-status-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .member-rating-strip {
     grid-template-columns: minmax(0, 1fr);
   }
   .member-summary-item {
@@ -10759,59 +10768,6 @@ body[data-member-view="true"] .member-header-logo {
     color: var(--text);
     min-width: 0;
   }
-  body .member-ranking-page .tbl-cell[data-label="Rank"] {
-    align-items: center;
-    text-align: center;
-  }
-  body .member-ranking-page .ranking-rank-value {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    width: fit-content;
-    margin-inline: auto;
-  }
-  body .member-ranking-page .ranking-rank-desktop {
-    display: none;
-  }
-  body .member-ranking-page .ranking-rank-mobile {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    align-self: flex-start;
-    gap: 4px;
-    width: fit-content;
-  }
-  body .member-ranking-page .ranking-rank-value .badge {
-    max-width: 100%;
-    white-space: nowrap;
-  }
-  body .member-ranking-page .ranking-rank-band {
-    display: block;
-    font-size: 11px;
-    line-height: 1.2;
-    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-  }
-
-  /* Since (Row 3, Left) */
-  body .member-ranking-page .tbl-cell[data-label="Since"] {
-    grid-column: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-    padding: 8px 0 0 !important;
-    gap: 3px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
-    min-width: 0;
-  }
-
   /* Action buttons (Row 3, Right) */
   body .member-ranking-page .tbl-cell.tbl-actions {
     grid-column: 2;
@@ -10845,9 +10801,6 @@ body[data-member-view="true"] .member-header-logo {
     justify-content: center;
   }
 
-  body .member-ranking-page .tbl-row:not(:has(.tbl-actions button)) .tbl-cell[data-label="Since"] {
-    grid-column: 1 / -1;
-  }
   body .member-ranking-page .tbl-actions:not(:has(button)) {
     display: none;
   }
@@ -13973,5 +13926,175 @@ body .public-page-hero .public-header-logo {
   }
   body .public-page-hero .public-header-logo {
     display: none;
+  }
+}
+
+
+/* Executive Ranking Page (matches Admin Members page design) */
+.ranking-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin: 0;
+}
+.ranking-toolbar .ranking-status-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ranking-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.ranking-toolbar-actions .select-field {
+  margin-bottom: 0;
+  min-width: 180px;
+}
+
+/* Executive CPC Admin Points Panel */
+.cpc-admin-panel {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px 20px;
+  margin: 0;
+  padding: 18px 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(223, 183, 86, 0.22);
+  background:
+    radial-gradient(100% 120% at 100% 0%, rgba(223, 183, 86, 0.08) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(18, 42, 30, 0.85) 0%, rgba(10, 24, 17, 0.94) 100%);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.cpc-admin-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(223, 183, 86, 0.35);
+  background: rgba(223, 183, 86, 0.12);
+  color: #dfb756;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.cpc-admin-head strong {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 720px) {
+  .ranking-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .ranking-toolbar-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .ranking-toolbar-actions .select-field,
+  .ranking-toolbar-actions .select-input {
+    width: 100%;
+  }
+  .ranking-toolbar .ranking-status-badges {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ---- Ranking Modals Executive Redesign ---- */
+.modal-history-stack,
+.modal-override-stack,
+.modal-assess-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-table-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.modal-table-panel .data-grid {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.modal-table-panel .data-grid-scroll {
+  border: none;
+}
+
+.modal-table-panel .tbl {
+  border: none;
+  background: transparent;
+}
+
+.modal-table-panel .tbl-foot {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.rank-modal-subject,
+.rank-override-subject,
+.assess-modal-subject {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.rank-modal-subject .member-meta,
+.rank-override-subject .member-meta,
+.assess-modal-subject .member-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rank-modal-subject .member-name,
+.rank-override-subject .member-name,
+.assess-modal-subject .member-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #F8FAFC;
+}
+
+.rank-modal-callout .modal-callout-icon,
+.points-modal-callout .modal-callout-icon,
+.assess-modal-callout .modal-callout-icon {
+  background: rgba(223, 183, 86, 0.15);
+  border: 1px solid rgba(223, 183, 86, 0.3);
+  color: var(--accent);
+}
+
+.modal-tone-warning .badge-icon.is-warning {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #FBBF24;
+}
+
+@media (max-width: 600px) {
+  .rank-modal-subject,
+  .rank-override-subject,
+  .assess-modal-subject {
+    padding: 10px 12px;
   }
 }
