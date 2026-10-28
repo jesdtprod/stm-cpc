@@ -17,6 +17,13 @@ import {
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatMemberName } from "./lib/names.js";
 
+function splitRankLabel(rank) {
+  const match = String(rank ?? "").match(/^(.*?)\s*\((\d\.\d{3}\s*[–-]\s*\d\.\d{3})\)$/);
+  return match
+    ? { name: match[1].trim(), band: match[2].replace(/\s+/g, "") }
+    : { name: rank, band: null };
+}
+
 export function createPublicPages({ api, client }) {
   function leaderboardPage() {
     const page = h("div", { class: "page" });
@@ -494,15 +501,19 @@ export function createPublicPages({ api, client }) {
                   "span",
                   { class: "public-member-meta-label" },
                   icon("medal"),
-                  "CPC Rank",
+                  "Club Rank",
                 ),
-                h(
-                  "div",
-                  { class: "public-member-meta-value" },
-                  m.rank
-                    ? badge(m.rank, "success")
-                    : badge("Not Ranked", "neutral"),
-                ),
+                (() => {
+                  const rank = splitRankLabel(m.rank);
+                  return h(
+                    "div",
+                    { class: "public-member-meta-value" },
+                    m.rank ? badge(rank.name, "success") : badge("Not Ranked", "neutral"),
+                    rank.band
+                      ? h("span", { class: "public-member-rating-band sub" }, rank.band)
+                      : null,
+                  );
+                })(),
               ),
             ),
           ),
@@ -565,7 +576,7 @@ export function createPublicPages({ api, client }) {
         chip: "Club Members",
         titleBadge: true,
         description:
-          "The players of Capitol Pickleball Club and their current CPC rank.",
+          "The players of Capitol Pickleball Club and their current Club Rank.",
       }),
       body,
     );

@@ -215,7 +215,7 @@ Clicking a free time slot checks the member's existing bookings for the selected
 | Table | Purpose |
 | --- | --- |
 | `rank_ladders` | One per category: name, order, overflow behavior, active flag |
-| `ranks` | Ordered ranks within a ladder: name, `sort_order` |
+| `ranks` | Ordered ranks within a ladder: name, `sort_order`, and an optional club skill-rating reference band |
 | `rank_rules` | Dynamic movement rules |
 | `member_ranks` | The member's current rank (one row per member) |
 | `rank_history` | **Append-only** record of every change |
@@ -254,6 +254,7 @@ Rules are data, editable by the admin without code changes. Each rule defines:
 - `rank_history` has a unique constraint on `(division_id, member_id)`, so a division cannot change a member's rank twice, even if finalization is retried.
 - A result corrected after finalization creates reversing history entries, then applies the corrected outcome.
 - Manual overrides require `ranks.override`, a reason, and an audit entry. Members cannot change their own rank.
+- CPC reference bands are: Beginner Low 2.000–2.249; Beginner High 2.250–2.499; Novice Low 2.500–2.749; Novice High 2.750–2.999; Intermediate Low 3.000–3.499; Intermediate High 3.500–3.999; Advanced Low 4.000–4.499; Advanced High 4.500–4.999; and Open/Professional 5.000–8.000. They are club reference values only and do not verify or synchronize a DUPR account.
 - Every change records: member, from, to, rule, and source division/event.
 
 ## 9. Tournament engine

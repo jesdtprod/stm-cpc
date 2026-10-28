@@ -104,6 +104,12 @@ const openFlags = (row) => (row.flags ?? []).filter((f) => !f.resolved_at);
 /** First letter upper case; the rest is left as typed (reasons are free text). */
 const sentence = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const cleanTerm = (t) => t.replace(/[%_,()*]/g, " ").trim().slice(0, 60);
+const splitRankLabel = (rank) => {
+  const match = String(rank ?? "").match(/^(.*?)\s*\((\d\.\d{3}\s*[–-]\s*\d\.\d{3})\)$/);
+  return match
+    ? { name: match[1].trim(), band: match[2].replace(/\s+/g, "") }
+    : { name: rank, band: null };
+};
 
 export function createAdminPages({ client, api, adminResetPassword }) {
   async function countOf(statuses, deleted = false) {
@@ -884,13 +890,21 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     // rank, and writes the rank history and audit rows.
     const drawRank = () =>
       loadRank(row).then((current) => {
+        const label = splitRankLabel(current?.text);
         rankEl.replaceChildren(
           h(
             "span",
             { class: "member-rank-line" },
-            current
-              ? h("span", { class: "badge badge-accent" }, current.text)
-              : h("span", { class: "badge badge-neutral" }, "Unranked"),
+            h(
+              "span",
+              { class: "member-audit-rank-text" },
+              current
+                ? h("span", { class: "badge badge-accent" }, label.name)
+                : h("span", { class: "badge badge-neutral" }, "Unranked"),
+              label.band
+                ? h("span", { class: "sub member-audit-rank-band" }, label.band)
+                : null,
+            ),
             can("ranks.override") && !row.deleted_at
               ? iconButton({
                 label: current ? "Change Rank" : "Set Rank",
@@ -1406,25 +1420,20 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         },
         {
           key: "rank",
-          label: "Rank",
+          label: "Club Rank",
           minWidth: 185,
           skeleton: "stack",
           render: (r) => {
             const rank = r.member_ranks?.find((entry) => !entry.deleted_at)
               ?.ranks;
+            const label = splitRankLabel(rank?.name);
             return h(
               "div",
               { class: "member-table-stack" },
-              rank ? rank.name : "Unranked",
-              h(
-                "span",
-                { class: "sub member-rank-date" },
-                r.joined_on
-                  ? `Member since ${formatDate(r.joined_on)}`
-                  : r.created_at
-                  ? `Added ${formatDate(r.created_at)}`
-                  : "—",
-              ),
+              h("span", { class: "member-rank-name" }, rank ? label.name : "Unranked"),
+              label.band
+                ? h("span", { class: "sub member-rank-band" }, label.band)
+                : null,
             );
           },
         },

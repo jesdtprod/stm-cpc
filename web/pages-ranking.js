@@ -23,6 +23,13 @@ function messageOf(e, fallback) {
   return own || e?.message || fallback;
 }
 
+function splitRankLabel(rank) {
+  const match = String(rank ?? "").match(/^(.*?)\s*\((\d\.\d{3}\s*[–-]\s*\d\.\d{3})\)$/);
+  return match
+    ? { name: match[1].trim(), band: match[2].replace(/\s+/g, "") }
+    : { name: rank, band: null };
+}
+
 export function createRankingPages({ api, client, session }) {
   function historyTable(rows, state, onRetry, filter) {
     const table = dataTable({
@@ -343,7 +350,22 @@ export function createRankingPages({ api, client, session }) {
         {
           key: "rank",
           label: "Rank",
-          render: (r) => badge(r.rank_name, "success"),
+          render: (r) => {
+            const rank = splitRankLabel(r.rank_name);
+            return h(
+              "div",
+              { class: "ranking-rank-value" },
+              h("span", { class: "ranking-rank-desktop" }, badge(r.rank_name, "success")),
+              h(
+                "span",
+                { class: "ranking-rank-mobile" },
+                badge(rank.name, "success"),
+                rank.band
+                  ? h("span", { class: "ranking-rank-band sub" }, rank.band)
+                  : null,
+              ),
+            );
+          },
         },
         {
           key: "since",

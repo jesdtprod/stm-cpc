@@ -20,7 +20,7 @@ const detail = (label, value, symbol, className = "") =>
 
 export function eventSummary(event) {
   const [label, tone] = STATUS[event.status] ?? [event.status, "neutral"];
-  const cpc = event.apply_cpc_rank_changes ? "CPC Ranked" : "No CPC Movement";
+  const cpc = event.apply_cpc_rank_changes ? "Club Ranked" : "No Club Rank Movement";
   const dupr = event.dupr_rated ? "DUPR Rated" : "DUPR Unrated";
   const count = Number(event.divisions_count ?? 0);
   const opens = event.registration_opens_at;

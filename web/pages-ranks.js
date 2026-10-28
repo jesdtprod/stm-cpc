@@ -34,6 +34,9 @@ const codeFrom = (name) =>
 
 const CATEGORY_SELECT = "id,code,name,sort_order,is_active,deleted_at," +
   "ladders:rank_ladders(id,overflow,is_active,deleted_at,version," +
+  "ranks(id,code,name,rating_min,rating_max,sort_order,is_starting,deleted_at,version))";
+const LEGACY_CATEGORY_SELECT = "id,code,name,sort_order,is_active,deleted_at," +
+  "ladders:rank_ladders(id,overflow,is_active,deleted_at,version," +
   "ranks(id,code,name,sort_order,is_starting,deleted_at,version))";
 const RULE_SELECT =
   "id,name,format_template_id,template:format_templates(name),conditions,action,levels,min_rank_id,max_rank_id,cooldown_days,exclude_forfeits,priority,is_active,version";
@@ -48,6 +51,18 @@ const liveRanks = (ladder) =>
   (ladder?.ranks ?? []).filter((r) => !r.deleted_at).sort((a, b) =>
     a.sort_order - b.sort_order
   );
+const ratingBand = (rank) => {
+  const min = Number(rank?.rating_min);
+  const max = Number(rank?.rating_max);
+  return Number.isFinite(min) && Number.isFinite(max)
+    ? `${min.toFixed(3)}–${max.toFixed(3)}`
+    : null;
+};
+const isRatingBandSchemaUnavailable = (error) => {
+  const cause = error?.cause ?? error;
+  return ["42703", "PGRST204", "PGRST205"].includes(cause?.code ?? error?.code) &&
+    /\brating_(?:min|max)\b/i.test(cause?.message ?? "");
+};
 
 /** The database's own messages are written for people; anything else gets a plain fallback. */
 function messageOf(e, fallback) {
@@ -76,6 +91,7 @@ export function createRanksPages({ api, getOrgId }) {
       term: "",
       category: "all",
       page: 1,
+      ratingBandsAvailable: true,
     };
     const search = searchControl({
       class: "input",
@@ -130,15 +146,30 @@ export function createRanksPages({ api, getOrgId }) {
     };
 
     // ----------------------------------------------------------------- data
+    const loadCategories = async () => {
+      try {
+        const cats = await api.read((c) =>
+          c.from("categories").select(CATEGORY_SELECT).is("deleted_at", null)
+            .order("sort_order")
+        );
+        state.ratingBandsAvailable = true;
+        return cats;
+      } catch (error) {
+        if (!isRatingBandSchemaUnavailable(error)) throw error;
+        state.ratingBandsAvailable = false;
+        return await api.read((c) =>
+          c.from("categories").select(LEGACY_CATEGORY_SELECT).is("deleted_at", null)
+            .order("sort_order")
+        );
+      }
+    };
+
     async function refresh() {
       state.status = state.cats.length ? "refreshing" : "loading";
       draw();
       try {
         const [cats, rules, templates] = await Promise.all([
-          api.read((c) =>
-            c.from("categories").select(CATEGORY_SELECT).is("deleted_at", null)
-              .order("sort_order")
-          ),
+          loadCategories(),
           api.read((c) =>
             c.from("rank_rules").select(RULE_SELECT).is("deleted_at", null)
               .order("priority").order("name")
@@ -249,6 +280,28 @@ export function createRanksPages({ api, getOrgId }) {
         readonly: editing,
         placeholder: `e.g. ${sampleCode}`,
       });
+      const ratingMinInput = h("input", {
+        class: "input",
+        id: "rk-rating-min",
+        name: "rating_min",
+        type: "number",
+        min: "0",
+        max: "8",
+        step: "0.001",
+        value: row?.rating_min ?? "",
+        placeholder: "e.g. 2.000",
+      });
+      const ratingMaxInput = h("input", {
+        class: "input",
+        id: "rk-rating-max",
+        name: "rating_max",
+        type: "number",
+        min: "0",
+        max: "8",
+        step: "0.001",
+        value: row?.rating_max ?? "",
+        placeholder: "e.g. 2.249",
+      });
       let touched = editing;
       codeInput.addEventListener("input", () => (touched = true));
       if (!editing) {
@@ -340,6 +393,24 @@ export function createRanksPages({ api, getOrgId }) {
               : "Lowercase letters, numbers, hyphen. Made from the name.",
             editing ? "lock" : "idCard",
           ),
+          state.ratingBandsAvailable
+            ? field(
+              "rk-rating-min",
+              "Rating Range From",
+              ratingMinInput,
+              "Optional club reference only; not a verified external rating.",
+              "medal",
+            )
+            : null,
+          state.ratingBandsAvailable
+            ? field(
+              "rk-rating-max",
+              "Rating Range To",
+              ratingMaxInput,
+              "Use three decimal places, up to 8.000.",
+              "medal",
+            )
+            : null,
           h(
             "div",
             { class: "form-grid-wide" },
@@ -393,6 +464,10 @@ export function createRanksPages({ api, getOrgId }) {
         onConfirm: async (form) => {
           const name = String(form.get("name") ?? "").trim();
           const code = String(form.get("code") ?? "").trim();
+          const minText = String(form.get("rating_min") ?? "").trim();
+          const maxText = String(form.get("rating_max") ?? "").trim();
+          const ratingMin = minText === "" ? null : Number(minText);
+          const ratingMax = maxText === "" ? null : Number(maxText);
           const makeStarting = form.get("is_starting") === "on";
           if (!name) return showError(error, "Enter a name.");
           if (!CODE_RE.test(code)) {
@@ -401,10 +476,26 @@ export function createRanksPages({ api, getOrgId }) {
               "The code uses lowercase letters, numbers, hyphen or underscore (up to 32).",
             );
           }
+          if (state.ratingBandsAvailable && (
+            (ratingMin === null) !== (ratingMax === null) ||
+            (ratingMin !== null &&
+              (!Number.isFinite(ratingMin) || !Number.isFinite(ratingMax) ||
+                ratingMin < 0 || ratingMax > 8 || ratingMin > ratingMax))
+          )) {
+            return showError(
+              error,
+              "Enter both rating values from 0.000 to 8.000, with the first value no higher than the second.",
+            );
+          }
           try {
             if (editing) {
               const done = await api.read((c) =>
-                c.from("ranks").update({ name }).eq("id", row.id).eq(
+                c.from("ranks").update({
+                  name,
+                  ...(state.ratingBandsAvailable
+                    ? { rating_min: ratingMin, rating_max: ratingMax }
+                    : {}),
+                }).eq("id", row.id).eq(
                   "version",
                   row.version,
                 ).select("id")
@@ -427,6 +518,9 @@ export function createRanksPages({ api, getOrgId }) {
                 ladder_id: ladder.id,
                 code,
                 name,
+                ...(state.ratingBandsAvailable
+                  ? { rating_min: ratingMin, rating_max: ratingMax }
+                  : {}),
                 sort_order: ranks.length
                   ? ranks[ranks.length - 1].sort_order + 1
                   : 0,
@@ -720,6 +814,9 @@ export function createRanksPages({ api, getOrgId }) {
                   "span",
                   { class: "rank-meta" },
                   h("span", { class: "sub member-subtext" }, r.code),
+                  ratingBand(r)
+                    ? h("span", { class: "sub member-subtext" }, ratingBand(r))
+                    : null,
                   r.is_starting ? badge("Starting Rank", "success") : null,
                 ),
               ),

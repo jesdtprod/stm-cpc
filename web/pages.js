@@ -49,14 +49,13 @@ function publicListPage({ api, hero, pick, renderCards, rpc = "public_landing_in
 
 function renderCourtCards(rows, state, onRetry) {
   if (state === "loading") {
-    const sk = (shape = "w-70") => h("span", { class: `sk ${shape}` });
     return h(
       "div",
       { class: "public-courts-grid", "aria-busy": "true" },
       ...Array.from({ length: 4 }, () =>
         h(
-          "div",
-          { class: "public-card public-court-card", "aria-hidden": "true" },
+          "article",
+          { class: "public-card public-court-card is-skeleton", "aria-hidden": "true" },
           h(
             "div",
             { class: "public-court-header" },
@@ -64,16 +63,15 @@ function renderCourtCards(rows, state, onRetry) {
               "div",
               { class: "public-court-title-group" },
               h("span", {
-                class: "sk member-avatar is-icon public-court-avatar",
-                style: "border-radius: var(--r-control);",
+                class: "sk member-avatar is-icon public-court-avatar sk-court-avatar",
               }),
               h(
                 "div",
                 { class: "public-court-title-copy", style: "flex: 1;" },
-                sk("w-50"),
+                h("span", { class: "sk sk-court-title" }),
               ),
             ),
-            h("span", { class: "sk sk-pill", style: "width: 70px; height: 22px;" }),
+            h("span", { class: "sk sk-pill sk-court-badge" }),
           ),
           h(
             "div",
@@ -81,30 +79,38 @@ function renderCourtCards(rows, state, onRetry) {
             h(
               "div",
               { class: "public-court-meta-tile" },
-              sk("w-40 sk-sub"),
-              sk("w-70"),
-              sk("w-40 sk-sub"),
+              h("span", { class: "sk sk-meta-label", style: "width: 105px;" }),
+              h("span", { class: "sk sk-court-hours-val" }),
+              h("span", { class: "sk sk-sub", style: "width: 58px;" }),
             ),
             h(
               "div",
               { class: "public-court-meta-tile" },
-              sk("w-40 sk-sub"),
-              sk("w-70"),
+              h("span", { class: "sk sk-meta-label", style: "width: 52px;" }),
+              h("span", { class: "sk sk-court-surface-val" }),
             ),
           ),
           h(
-            "div",
-            { class: "public-court-counts" },
-            ...Array.from({ length: 2 }, () =>
-              h("div", {}, sk("w-70 sk-sub"), sk("w-30"))
+            "dl",
+            { class: "public-court-counts", "aria-hidden": "true" },
+            h(
+              "div",
+              {},
+              h("dt", {}, h("span", { class: "sk sk-meta-label", style: "width: 76px;" })),
+              h("dd", {}, h("span", { class: "sk sk-court-count-val sk-vacant" })),
+            ),
+            h(
+              "div",
+              {},
+              h("dt", {}, h("span", { class: "sk sk-meta-label", style: "width: 86px;" })),
+              h("dd", {}, h("span", { class: "sk sk-court-count-val" })),
             ),
           ),
           h(
             "div",
             { class: "public-court-footer" },
             h("span", {
-              class: "sk",
-              style: "width: 100%; height: 44px; border-radius: var(--r-control);",
+              class: "sk sk-court-btn-primary",
             }),
           ),
         )),

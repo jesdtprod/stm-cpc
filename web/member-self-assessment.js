@@ -118,7 +118,7 @@ export function selfAssessmentCard(
       h(
         "div",
         { class: "assessment-summary-tile is-primary" },
-        h("span", { class: "assessment-label" }, "Official CPC Rank"),
+        h("span", { class: "assessment-label" }, "Official Club Rank"),
         h(
           "strong",
           { class: "assessment-official-rank" },
@@ -134,7 +134,7 @@ export function selfAssessmentCard(
         options,
         value: data.rank_id ?? "",
         hint: data.admin_edit
-          ? "Update the member's assessment without changing the official CPC rank."
+          ? "Update the member's assessment without changing the official Club Rank."
           : "Choose carefully. Once saved, only an admin can update it.",
       })
       : null;

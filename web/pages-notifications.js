@@ -296,7 +296,7 @@ export function createNotificationPages({ api, feed }) {
                     h("strong", { class: "notice-title" }, n.title),
                     h("span", { class: "notice-time" }, formatDateTime(n.created_at)),
                   ),
-                  n.body ? h("p", { class: "notice-body" }, n.body) : null,
+                  n.body ? h("p", { class: "notice-body sub" }, n.body) : null,
                 ),
                 n.url
                   ? h(

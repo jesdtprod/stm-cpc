@@ -290,7 +290,7 @@ const GROUPS = [
         title: "Public Member List",
         icon: "user",
         hint:
-          "Visitors see each member's display name, photo and CPC rank on the Members page. Never member IDs or contact details.",
+          "Visitors see each member's display name, photo and Club Rank on the Members page. Never member IDs or contact details.",
       },
     ],
   },

@@ -18,7 +18,7 @@ export class AuthFlowError extends Error {
 
 const MESSAGES = {
   invalid_credentials:
-    "Sign-in failed. Check your member ID or email and your password, or try again later.",
+    "Incorrect member ID, email, or password. Please try again.",
   captcha_failed: "Please complete the security check and try again.",
   account_disabled: "This account cannot sign in. Please contact the club.",
   password_expired:

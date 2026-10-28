@@ -93,6 +93,13 @@ select pg_temp.as_user((select u from us where role = 'b')); set local role auth
 select public.register_for_event((select r2 from fx), (select dv from fx));
 reset role;
 select ok(pg_temp.n((select mid from us where role = 'admin'), 'staff.registration_requested') >= 2, 'staff are told of each registration waiting for approval');
+select is((select body from public.member_notifications where member_id = (select mid from us where role = 'admin')
+  and kind = 'staff.registration_requested' and body like '%' || (select r1 from fx) limit 1),
+  E'Player: Zzyzx Aaron\nEvent: Zzyzx Notify Open\nDivision: Zzyzx Division\nStatus: Requested\nReference: ' || (select r1 from fx),
+  'staff registration alerts identify the player, event, division, status and reference');
+select ok(exists(select 1 from public.member_notifications where member_id = (select mid from us where role = 'admin')
+  and kind = 'staff.registration_requested' and body like E'Player: Zzyzx Bea\n%' and body like '%' || (select r2 from fx)),
+  'registrations in the same division can be distinguished');
 select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
 select public.decide_registration((select r1 from fx), 'approve', null);
 select public.decide_registration((select r2 from fx), 'approve', null);
@@ -100,6 +107,9 @@ select public.set_event_status((select ev from fx), 'registration_closed', null)
 select public.run_draw((select id from public.division_stages where division_id = (select dv from fx)));
 reset role;
 select is(pg_temp.n((select mid from us where role = 'a'), 'registration.confirmed'), 1, 'a registration is confirmed to the player');
+select is((select body from public.member_notifications where member_id = (select mid from us where role = 'a') and kind = 'registration.confirmed'),
+  E'Player: Zzyzx Aaron\nEvent: Zzyzx Notify Open\nDivision: Zzyzx Division\nStatus: Confirmed\nReference: ' || (select r1 from fx),
+  'confirmation includes the same entry details and the updated status');
 select is(pg_temp.n((select mid from us where role = 'a'), 'draw.made'), 1, 'the draw reaches the first player');
 select is(pg_temp.n((select mid from us where role = 'b'), 'draw.made'), 1, 'and the second');
 select is((select url from public.member_notifications where member_id = (select mid from us where role = 'a') and kind = 'draw.made'),

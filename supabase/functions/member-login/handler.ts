@@ -16,7 +16,7 @@
 //    password expired). No session is returned in those cases, and the Auth session is revoked.
 
 export const GENERIC_MESSAGE =
-  "Sign-in failed. Check your member ID or email and your password, or try again later.";
+  "Incorrect member ID, email, or password. Please try again.";
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const ID_PATTERN = /^CPC-\d{4}-\d{5}$/;
 export const EMAIL_DOMAIN = "members.cpc.app";

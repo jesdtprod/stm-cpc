@@ -573,7 +573,7 @@ export function createEventsPages({ api }) {
           h("div", { class: "form-grid-wide" }, switchToggle({
             id: "ev-cpc-ranks",
             name: "apply_cpc_rank_changes",
-            label: "Apply CPC Rank Changes",
+            label: "Apply Club Rank Changes",
             checked: row?.apply_cpc_rank_changes ?? true,
             disabled: settingsLocked,
             hint:
@@ -1180,32 +1180,128 @@ export function createEventsPages({ api }) {
           ...(e.guests ?? []).map((g) => g.display_name_snapshot)].filter(
           Boolean,
         ).join(" & ") || "—";
+      const parsePlayers = (e) => {
+        const list = [];
+        for (const m of e.members ?? []) {
+          const name = m.member?.person?.display_name;
+          if (name) list.push({ name, isGuest: false });
+        }
+        for (const g of e.guests ?? []) {
+          const name = g.display_name_snapshot;
+          if (name) list.push({ name, isGuest: true });
+        }
+        return list;
+      };
       const canRedo = stageOne(d)?.status === "drawn";
       return openModal({
-        title: "Draw",
+        title: "Tournament Draw",
         eyebrow: `${state.open.name} · ${d.name}`,
-        icon: "layers",
-        confirmLabel: canRedo ? "Redo the Draw" : "Close",
+        icon: "shuffle",
+        tone: "neutral",
+        size: "md",
+        cancelLabel: "Close",
+        confirmLabel: canRedo ? "Redo the Draw" : null,
         destructive: canRedo,
         body: h(
           "div",
-          { class: "stack" },
+          { class: "draw-modal-body" },
           h(
-            "p",
-            { class: "muted" },
-            "Made by the server from a random seed that is stored, so the draw can be checked later.",
+            "div",
+            { class: "modal-callout is-info draw-info-callout" },
+            h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon("shuffle")),
+            h(
+              "div",
+              { class: "modal-callout-text", style: "min-width: 0;" },
+              h("div", { class: "draw-callout-title" }, "Randomized Server Draw"),
+              h(
+                "div",
+                { class: "draw-callout-desc" },
+                "Drawn from a stored random seed for audit integrity. Establishes official bracket seed positions.",
+              ),
+            ),
           ),
-          h(
-            "ol",
-            { class: "draw-list" },
-            ...entries.map((e) => h("li", {}, names(e))),
-          ),
+          entries.length === 0
+            ? h(
+                "div",
+                { class: "tbl-state empty", style: "padding: 32px 16px;" },
+                h("span", { class: "badge-icon" }, icon("shuffle")),
+                h("p", { class: "muted" }, "No active entries have been drawn yet."),
+              )
+            : h(
+                "div",
+                { class: "draw-list-panel" },
+                h(
+                  "div",
+                  { class: "draw-list-head" },
+                  h("span", {}, "Seed"),
+                  h("span", {}, "Participant / Team"),
+                  h("span", { class: "draw-head-count" }, `${entries.length} Entries`),
+                ),
+                h(
+                  "div",
+                  { class: "draw-entries-scroll" },
+                  ...entries.map((e, idx) => {
+                    const seedNum = e.seed || idx + 1;
+                    const players = parsePlayers(e);
+                    const isDoubles = players.length > 1;
+                    const hasGuest = players.some((p) => p.isGuest);
+
+                    return h(
+                      "div",
+                      { class: "draw-entry-row" },
+                      h(
+                        "div",
+                        { class: "draw-seed-cell" },
+                        h("span", { class: "draw-seed-badge" }, String(seedNum)),
+                      ),
+                      h(
+                        "div",
+                        { class: "draw-entry-main" },
+                        h(
+                          "div",
+                          { class: "draw-team-names" },
+                          ...(isDoubles
+                            ? [
+                                h("span", { class: "draw-player-name" }, players[0].name),
+                                h("span", { class: "draw-team-amp" }, "&"),
+                                h("span", { class: "draw-player-name" }, players[1].name),
+                              ]
+                            : [h("span", { class: "draw-player-name" }, players[0]?.name || names(e))]),
+                        ),
+                        h(
+                          "div",
+                          { class: "draw-entry-sub sub" },
+                          icon(isDoubles ? "users" : "user"),
+                          h("span", {}, isDoubles ? "Doubles Pair" : "Singles Entry"),
+                          hasGuest
+                            ? h("span", { class: "draw-guest-tag" }, "· Guest")
+                            : null,
+                        ),
+                      ),
+                      h(
+                        "div",
+                        { class: "draw-status-cell" },
+                        h("span", { class: "draw-badge-drawn" }, "Drawn"),
+                      ),
+                    );
+                  }),
+                ),
+              ),
           canRedo
             ? h(
-              "p",
-              { class: "muted" },
-              "Redoing the draw replaces this order. The old draw is kept in the history.",
-            )
+                "div",
+                { class: "modal-callout is-warning draw-redo-callout" },
+                h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon("alert")),
+                h(
+                  "div",
+                  { class: "modal-callout-text" },
+                  h(
+                    "div",
+                    { class: "draw-callout-desc" },
+                    "Redoing the draw generates a new randomized order and resets scheduled matches. Previous draws remain archived in the audit log.",
+                  ),
+                ),
+              )
             : null,
         ),
         onConfirm: () => {
@@ -1858,7 +1954,7 @@ export function createEventsPages({ api }) {
                 "div",
                 { class: "event-summary-badges" },
                 badge(statusLabel, statusTone),
-                ev.apply_cpc_rank_changes ? badge("CPC Ranked", "info") : null,
+                ev.apply_cpc_rank_changes ? badge("Club Ranked", "info") : null,
                 ev.dupr_rated ? badge("DUPR Rated", "success") : null,
               ),
             ),

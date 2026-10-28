@@ -27,6 +27,7 @@ import { createAdminPages } from "../../web/pages-admin.js";
 import { createEventsPages, divisionStatusBadge } from "../../web/pages-events.js";
 import { createPublicPages } from "../../web/pages-public.js";
 import { createGuestEventActions } from "../../web/event-guests.js";
+import { bookingPage } from "../../web/pages.js";
 import { clearAuth, setAuth } from "../../web/lib/permissions.js";
 
 // Small DOM fixture for component events; rendered browser checks remain separate.
@@ -2209,4 +2210,155 @@ Deno.test("guest existing player: searchable list transitions to executive selec
     assert(rpcArgs.p_guest_person_id === null, "Passes null for guest_person_id for member");
 
     modal.remove();
+  }));
+
+Deno.test("court cards skeleton: loading state renders structured court cards with matching geometry", () =>
+  withDom(async () => {
+    const mockApi = {
+      rpc: () => new Promise(() => {}),
+    };
+    const page = bookingPage({ api: mockApi });
+    document.body.appendChild(page);
+
+    const grid = page.querySelector(".public-courts-grid");
+    assert(grid, "Courts grid exists");
+    assert(grid.getAttribute("aria-busy") === "true", "Grid is aria-busy");
+
+    const cards = grid.querySelectorAll(".is-skeleton");
+    assert(cards.length === 4, "Renders 4 skeleton court cards");
+    assert(cards[0].className.includes("public-court-card"), "Is a public-court-card");
+
+    const first = cards[0];
+    assert(first.querySelector(".sk-court-avatar"), "Has court avatar skeleton");
+    assert(first.querySelector(".sk-court-title"), "Has court title skeleton");
+    assert(first.querySelector(".sk-court-badge"), "Has court status badge skeleton");
+    assert(first.querySelector(".sk-court-hours-val"), "Has operating hours skeleton");
+    assert(first.querySelector(".sk-court-surface-val"), "Has surface skeleton");
+    assert(first.querySelector(".public-court-counts"), "Has court counts skeleton block");
+    assert(first.querySelector(".sk-vacant"), "Has vacant counts indicator skeleton");
+    assert(first.querySelector(".sk-court-btn-primary"), "Has primary reserve court button skeleton");
+
+    page.remove();
+  }));
+
+Deno.test("tournament draw modal: renders structured seeding list with seed badges and audit callout", () =>
+  withDom(async () => {
+    setAuth({
+      signedIn: true,
+      grants: ["events.manage", "events.admin_roster"].map((code) => ({ code, unit_id: null })),
+    });
+
+    const entriesData = [
+      {
+        id: "e-1",
+        seed: 1,
+        members: [
+          { member: { person: { display_name: "Player One" } } },
+          { member: { person: { display_name: "Player Two" } } },
+        ],
+        guests: [],
+      },
+      {
+        id: "e-2",
+        seed: 2,
+        members: [
+          { member: { person: { display_name: "Player Three" } } },
+        ],
+        guests: [
+          { display_name_snapshot: "Guest Player Four" },
+        ],
+      },
+    ];
+
+    const fakeDivision = {
+      id: "div-drawn",
+      name: "Men's Doubles Open",
+      status: "drawn",
+      stages: [{ id: "st-1", stage_no: 1, stage_type: "single_elimination", status: "drawn" }],
+    };
+
+    const fakeEvent = {
+      id: "ev-draw-test",
+      name: "Draw Test Tournament",
+      status: "in_progress",
+      allow_guest_players: true,
+      starts_on: "2030-11-01",
+      ends_on: "2030-11-02",
+      fee: 0,
+      divisions: [fakeDivision],
+    };
+
+    const api = {
+      newKey: () => "test-key",
+      rpc: () => Promise.resolve([]),
+      read: (build) => {
+        const q = {
+          select: () => q,
+          order: () => q,
+          is: () => q,
+          eq: () => q,
+          then: (resolve) => {
+            if (q.table === "events") resolve([fakeEvent]);
+            else if (q.table === "divisions") resolve([fakeDivision]);
+            else if (q.table === "entries") resolve(entriesData);
+            else resolve([]);
+          },
+        };
+        return build({
+          from: (table) => {
+            q.table = table;
+            return q;
+          },
+        });
+      },
+    };
+
+    const page = createEventsPages({ api }).eventsPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Navigate to event divisions
+    const divBtn = page.querySelectorAll("button").find(
+      (b) => b.getAttribute("aria-label") === "Divisions of Draw Test Tournament",
+    );
+    assert(divBtn, "Found Divisions button");
+    divBtn.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Click "View the draw for Men's Doubles Open"
+    const viewDrawBtn = page.querySelectorAll("button").find(
+      (b) => b.getAttribute("aria-label") === "View the draw for Men's Doubles Open",
+    );
+    assert(viewDrawBtn, "Found View the draw button");
+    await viewDrawBtn.click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const modal = document.body.querySelector("dialog");
+    assert(modal, "Draw modal opened");
+    assert(modal.querySelector(".draw-info-callout"), "Has draw info callout");
+    assert(modal.querySelector(".draw-list-panel"), "Has draw list panel");
+
+    const rows = modal.querySelectorAll(".draw-entry-row");
+    assert(rows.length === 2, "Renders 2 drawn entry rows");
+
+    // Seed badge on first row
+    const seedBadge = rows[0].querySelector(".draw-seed-badge");
+    assert(seedBadge, "Row 1 has seed badge");
+    assert(seedBadge.textContent === "1", "Seed badge has seed 1");
+
+    // Team names
+    const teamNames = rows[0].querySelector(".draw-team-names");
+    assert(teamNames, "Row 1 has team names");
+    assert(teamNames.textContent.includes("Player One"), "Shows Player One");
+    assert(teamNames.textContent.includes("Player Two"), "Shows Player Two");
+
+    // Guest tag on row 2
+    assert(rows[1].querySelector(".draw-guest-tag"), "Row 2 has guest indicator");
+
+    // Redo warning
+    assert(modal.querySelector(".draw-redo-callout"), "Has redo draw warning callout");
+
+    modal.close();
+    clearAuth();
+    page.remove();
   }));
