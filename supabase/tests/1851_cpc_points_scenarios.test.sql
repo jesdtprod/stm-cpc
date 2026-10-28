@@ -137,7 +137,8 @@ select public.finalize_division((select x5 from fx));
 select public.finalize_division((select x6 from fx));
 reset role;
 
-create function pg_temp.d(t numeric, o numeric, pf int, pa int) returns numeric language sql as $$ select core.cpc_rating_delta(t, o, pf, pa, 0) $$;
+-- cpc-v2: a first match to 11 (K 0.250); the team strengths no longer matter, only the margin
+create function pg_temp.d(t numeric, o numeric, pf int, pa int) returns numeric language sql as $$ select core.cpc_margin_delta(pf, pa, 11, 1, 0) $$;
 create function pg_temp.fin(p numeric, delta numeric) returns numeric language sql as $$ select core.cpc_rating_points(p + delta) $$;
 create function pg_temp.pts(p_role text) returns numeric language sql as
 $$ select r.points from public.member_cpc_ratings r where r.member_id = (select mid from us where role = p_role) and r.deleted_at is null
@@ -180,12 +181,12 @@ select is(pg_temp.pts('o1'), 2.900::numeric, 'the opted-out winner keeps 2.900')
 select is(pg_temp.pts('o2'), 2.900::numeric, 'and the loser keeps 2.900');
 select is(pg_temp.cnt('o1'), 0, 'and no played matches are counted');
 
--- ---- doubles: both partners get their own change from the team strengths (3.000 beats 2.500 but underperforms)
+-- ---- doubles: each partner gets the change of the match (K 0.250 x margin 7/11) added to their own starting rating
 select is(pg_temp.pts('d1'), pg_temp.fin(2.800, pg_temp.fin(2.800, pg_temp.d(3.0, 2.5, 11, 4)) - 2.800), 'partner 1 of the winning pair');
 select is(pg_temp.pts('d2'), pg_temp.fin(3.200, pg_temp.fin(2.800, pg_temp.d(3.0, 2.5, 11, 4)) - 2.800), 'partner 2 gets the same team result from their own start');
 select is(pg_temp.pts('d3'), pg_temp.fin(2.400, pg_temp.fin(2.400, pg_temp.d(2.5, 3.0, 4, 11)) - 2.400), 'a partner of the losing pair (an upset score gains)');
-select cmp_ok(pg_temp.pts('d1'), '<', 2.800::numeric, 'the stronger side won, but less than expected: its players lose points');
-select cmp_ok(pg_temp.pts('d3'), '>', 2.400::numeric, 'and the weaker side gains');
+select cmp_ok(pg_temp.pts('d1'), '>', 2.800::numeric, 'a partner of the winning pair gains: 11-4 at K 0.250');
+select cmp_ok(pg_temp.pts('d3'), '<', 2.400::numeric, 'and a partner of the losing pair loses');
 select is(pg_temp.cnt('d2'), 1, 'one match counted for each doubles partner');
 select is(pg_temp.rank_code('d2'), 'advanced-low', 'the club rank follows the higher rating: doubles 3.165 but singles 4.200 stays Advanced Low');
 select is((select r.points from public.member_cpc_ratings r where r.member_id = (select mid from us where role = 'd2') and r.discipline = 'singles' and r.deleted_at is null), 4.200::numeric, 'a doubles division never changes the singles rating');

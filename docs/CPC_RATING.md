@@ -81,7 +81,29 @@ finalizing at the same instant.
 The Professional tier keeps the existing `open` rank code and ID; the UI label
 will change in the screen step. The current database label is Open/Professional.
 
-## Calculation
+## Current formula: cpc-v2 (PLAN 8.8; replaces the cpc-v1 calculation below)
+
+The club formula depends on the player's own rating and the score margin, not on who they played:
+
+```
+new rating = rating + K * (own points - opponent points) / T
+rating = the player's own rating, or 3.500 when they have none (NR)
+T      = target game points of the match's scoring rule (so a final to 21 uses 21)
+K      = by the player's completed rated matches before the match:
+         0-5: 0.250 (provisional)   6-15: 0.150   16-30: 0.100   31+: 0.050
+```
+
+- Worked example, everyone NR, A wins 11-5: A = 3.500 + 0.250 x 6/11 = 3.636 (Intermediate High), B = 3.364 (Intermediate Low).
+- Singles and Doubles are counted separately. For a match of several games the margin is the total points difference
+  divided by T times the number of games. Each doubles partner gets the change from their own rating and own K.
+- As before, a player's changes over a division are added to the rating they started it with (frozen at the draw), applied
+  once at finalization, clamped to 2.000-8.000 and rounded to three decimals. Corrections reverse and replace the change.
+- A player with no rating no longer blocks a draw: they start at 3.500 and get their first rating from the division.
+  (Registration for a ranked division still needs a rating for the division's format; an administrator can enter an
+  unrated player with an override.)
+- The version is recorded on every snapshot and history row (`cpc-v2`); anything calculated under cpc-v1 keeps its version.
+
+## Calculation (cpc-v1, superseded)
 
 Initial club constants: scale = 0.500, established factor = 0.100, provisional
 factor = 0.200. These are CPC design choices, not claims about DUPR's constants.
