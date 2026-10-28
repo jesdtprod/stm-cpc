@@ -13,7 +13,7 @@ create temp table fx as select (select id from public.orgs where code = 'cpc') a
   (select id from public.categories where code = 'novice' and deleted_at is null) as cat_novice,
   (select r.id from public.ranks r join public.rank_ladders l on l.id = r.ladder_id join public.categories c on c.id = l.category_id
     where c.code = 'novice' and r.deleted_at is null order by r.sort_order desc limit 1) as novice_top,
-  (select id from public.format_templates where lower(name) = 'openplay' and deleted_at is null) as tpl,
+  (select id from public.format_templates where stages -> 0 ->> 'stage_type' = 'round_robin' and jsonb_array_length(stages) = 1 and deleted_at is null order by id limit 1) as tpl,
   current_date + 40 as day1;
 grant select on fx to public;
 
