@@ -426,6 +426,16 @@ export function createPublicPages({ api, client }) {
       });
 
       for (const m of visible) {
+        const active = m.is_active === true;
+        const status = badge(
+          icon(active ? "check" : "clock"),
+          active ? "success" : "neutral",
+        );
+        status.classList.add("public-member-status");
+        status.classList.add(active ? "is-active" : "is-inactive");
+        status.setAttribute("role", "img");
+        status.setAttribute("aria-label", active ? "Active" : "Not Active");
+        status.setAttribute("title", active ? "Active" : "Not Active");
         grid.append(
           h(
             "article",
@@ -451,6 +461,7 @@ export function createPublicPages({ api, client }) {
                   m.member_no || "Club Member",
                 ),
               ),
+              status,
             ),
             h("div", {
               class: "public-member-card-divider",

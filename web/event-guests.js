@@ -273,6 +273,9 @@ export function createGuestEventActions(
     const error = errorLine();
     let selected = null;
     let request = 0;
+    let debounceTimer = null;
+
+    const previewHost = h("div", { class: "staff-selected-preview" });
     const results = h("div", {
       class: "staff-results guest-player-results",
       role: "radiogroup",
@@ -287,17 +290,84 @@ export function createGuestEventActions(
     const status = h(
       "p",
       { class: "field-hint", role: "status" },
-      "Search existing members and guests.",
+      "Type at least 2 characters to search active members and guests.",
     );
+
+    function updatePreview(player) {
+      selected = player;
+      if (!player) {
+        previewHost.replaceChildren();
+        results.hidden = false;
+        status.hidden = false;
+        return;
+      }
+      results.hidden = true;
+      status.hidden = true;
+      const isMember = Boolean(player.member_id);
+      previewHost.replaceChildren(
+        h(
+          "div",
+          { class: "staff-selected-card" },
+          h(
+            "div",
+            { class: "staff-selected-identity" },
+            h(
+              "span",
+              {
+                class: "member-avatar is-icon staff-selected-avatar",
+                "aria-hidden": "true",
+              },
+              icon(isMember ? "userCheck" : "users"),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "staff-selected-header-row" },
+                h("strong", { class: "member-name" }, player.display_name),
+                badge(isMember ? "Member" : "Guest", isMember ? "info" : "neutral"),
+              ),
+              h(
+                "span",
+                { class: "sub member-subtext" },
+                isMember ? `Member ID: ${player.member_no}` : "Existing Guest Profile",
+              ),
+            ),
+          ),
+          button({
+            label: "Change",
+            icon: "refresh",
+            variant: "ghost",
+            class: "staff-change-btn",
+            onClick: (e) => {
+              e.preventDefault();
+              updatePreview(null);
+              const checkedRadio = Array.from(
+                results.querySelectorAll("input"),
+              ).find((i) => i.checked);
+              if (checkedRadio) checkedRadio.checked = false;
+              search.focus();
+            },
+          }),
+        ),
+      );
+    }
+
     const find = async () => {
       const current = ++request;
-      selected = null;
+      updatePreview(null);
       results.replaceChildren();
-      status.textContent = "Searching…";
+      const term = search.value.trim();
+      if (term.length < 2) {
+        status.textContent = "Type at least 2 characters to search.";
+        return;
+      }
+      status.textContent = "Searching club profiles…";
       try {
         const rows = await api.rpc("search_event_players", {
           p_event_id: event.id,
-          p_term: search.value,
+          p_term: term,
         });
         if (current !== request) return;
         status.textContent = rows?.length
@@ -314,7 +384,7 @@ export function createGuestEventActions(
                 name: "existing-event-player",
                 value: row.person_id,
                 onChange: () => {
-                  selected = row;
+                  updatePreview(row);
                 },
               }),
               h(
@@ -341,20 +411,38 @@ export function createGuestEventActions(
         status.textContent = "Search failed. Try again.";
       }
     };
+
     search.addEventListener("input", () => {
       ++request;
-      selected = null;
-      results.replaceChildren();
+      updatePreview(null);
+      clearTimeout(debounceTimer);
+      const text = search.value.trim();
+      if (!text) {
+        status.textContent = "Type at least 2 characters to search active members and guests.";
+        results.replaceChildren();
+        return;
+      }
+      if (text.length < 2) {
+        status.textContent = "Type at least 2 characters to search.";
+        results.replaceChildren();
+        return;
+      }
+      debounceTimer = setTimeout(() => {
+        find();
+      }, 250);
     });
+
     search.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
+        clearTimeout(debounceTimer);
         find();
       }
     });
+
     return openModal({
       title: "Add Existing Player",
-      icon: "search",
+      icon: "userPlus",
       eyebrow: event.name,
       description:
         "Reuse a member or guest identity. Members may partner with guests without changing their membership.",
@@ -376,9 +464,10 @@ export function createGuestEventActions(
             "div",
             { class: "guest-search-row" },
             search,
-            button({ label: "Search", icon: "search", variant: "primary", onClick: find }),
+            button({ label: "Search", icon: "search", variant: "secondary", onClick: find }),
           ),
           status,
+          previewHost,
           results,
         ),
         error,

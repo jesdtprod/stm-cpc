@@ -50,8 +50,8 @@ select is((select count(*)::int from jsonb_array_elements(public.public_members(
   'no internal member ID or contact data is returned');
 select is((select array_agg(k order by k) from (select distinct jsonb_object_keys(x) k
   from jsonb_array_elements(public.public_members() -> 'members') x) t),
-  array['category', 'first_name', 'last_name', 'member_no', 'middle_name', 'name', 'photo', 'rank', 'suffix'],
-  'only approved name fields, CPC number, photo, category and rank');
+  array['category', 'first_name', 'is_active', 'last_name', 'member_no', 'middle_name', 'name', 'photo', 'rank', 'suffix'],
+  'only approved name fields, CPC number, active flag, photo, category and rank');
 reset role;
 select is(core.public_member_photo((select 'fake/' || per || '.jpg' from ms where status = 'invited')), true,
   'an invited member''s photo may be signed');

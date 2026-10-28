@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/shell.css">
+  <link rel="stylesheet" href="/buttons.css">
+</head>
+<body style="background: #061c14; margin: 0; padding: 24px; box-sizing: border-box;">
+  <div id="app"></div>
+  <script type="module">
+    import { bookingPage } from "/pages.js";
+    const mockApi = {
+      rpc: () => new Promise(() => {}),
+    };
+    const page = bookingPage({ api: mockApi });
+    document.getElementById("app").appendChild(page);
+  </script>
+</body>
+</html>

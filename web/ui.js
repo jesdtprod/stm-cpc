@@ -89,9 +89,10 @@ export function button(
     title,
     ariaLabel,
     loading = false,
+    class: extraClass,
   },
 ) {
-  const cls = buttonClasses({ variant, size });
+  const cls = [buttonClasses({ variant, size }), extraClass].filter(Boolean).join(" ");
 
   const iconEl = iconName ? icon(iconName) : null;
   const children = iconPosition === "right" ? [label, iconEl] : [iconEl, label];
@@ -2788,8 +2789,8 @@ export function memberHero({
         class: "member-header-logo public-header-logo",
         src: "icons/cpc-logo-256.webp",
         alt: "Capitol Pickleball Club",
-        width: 72,
-        height: 72,
+        width: 128,
+        height: 128,
       })
       : null,
     h(
@@ -3510,15 +3511,23 @@ export function openModal(
       dialog.close();
       return;
     }
-    if (confirm.dataset.pending === "true") return;
-    confirm.dataset.pending = "true";
+    if (confirm.dataset?.pending === "true") return;
+    if (confirm.dataset) confirm.dataset.pending = "true";
     confirm.setAttribute("aria-busy", "true");
     confirm.disabled = true;
     try {
-      const keepOpen = await onConfirm?.(new FormData(form));
+      let formData;
+      try {
+        formData = typeof HTMLFormElement !== "undefined" && form instanceof HTMLFormElement
+          ? new FormData(form)
+          : new FormData();
+      } catch {
+        formData = new FormData();
+      }
+      const keepOpen = await onConfirm?.(formData);
       if (keepOpen !== false) dialog.close();
     } finally {
-      delete confirm.dataset.pending;
+      if (confirm.dataset) delete confirm.dataset.pending;
       confirm.removeAttribute("aria-busy");
       confirm.disabled = false;
     }

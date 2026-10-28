@@ -130,7 +130,7 @@ export function createBookingPages({ api, client, session }) {
           ]),
           api.read((c) =>
             c.from("courts").select(
-              "id,code,name,status,indoor,surface,sort_order",
+              "id,code,name,status,indoor,surface,notes,sort_order",
             )
               .is("deleted_at", null).eq("status", "available").order(
                 "sort_order",
@@ -675,6 +675,14 @@ export function createBookingPages({ api, client, session }) {
             ),
           ),
         ),
+        court.notes?.trim()
+          ? h(
+            "p",
+            { class: "court-card-note" },
+            icon("info"),
+            h("span", { class: "sub" }, court.notes.trim()),
+          )
+          : null,
         slots.length
           ? h(
             "div",

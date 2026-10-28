@@ -2121,3 +2121,92 @@ Deno.test("public members: renders executive cards, preserves search bar, and fi
     await new Promise((resolve) => setTimeout(resolve, 10));
     assert(page.querySelectorAll(".public-member-card").length === 4, "Restores cards on empty state clear");
   }));
+
+Deno.test("guest existing player: searchable list transitions to executive selected preview with change action", () =>
+  withDom(async (document) => {
+    let calledRpc = null;
+    let rpcArgs = null;
+    const players = [
+      { person_id: "p-1", display_name: "Kyle Marquez", member_id: "m-1", member_no: "CPC-2026-00001" },
+      { person_id: "p-2", display_name: "Maria Santos", member_id: null, member_no: null },
+    ];
+    const api = {
+      newKey: () => "part-key-1",
+      rpc: (method, args) => {
+        calledRpc = method;
+        rpcArgs = args;
+        if (method === "search_event_players") {
+          return Promise.resolve(players);
+        }
+        if (method === "create_event_participant") {
+          return Promise.resolve({ ok: true });
+        }
+        return Promise.resolve([]);
+      },
+    };
+    const guestActions = createGuestEventActions({
+      api,
+      getEvent: () => ({ id: "ev-1", name: "STM Halloween Tournament 2026" }),
+      getDivisions: () => [],
+      getRanks: () => [],
+      refresh: () => Promise.resolve(),
+    });
+
+    const modal = guestActions.addExisting();
+    document.body.append(modal);
+
+    assert(modal.textContent.includes("Add Existing Player"), "Modal header has title");
+    assert(modal.textContent.includes("Find Player"), "Section has Find Player");
+
+    const searchInput = modal.querySelector("input");
+    assert(searchInput, "Has search input");
+    searchInput.value = "Kyle";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    const results = modal.querySelectorAll(".guest-player-result");
+    assert(results.length === 2, "Found 2 matching players");
+    assert(results[0].textContent.includes("Kyle Marquez"), "First result is Kyle Marquez");
+    assert(results[0].textContent.includes("Member"), "Member badge shown");
+    assert(results[1].textContent.includes("Maria Santos"), "Second result is Maria Santos");
+    assert(results[1].textContent.includes("Guest"), "Guest badge shown");
+
+    // Select Kyle Marquez
+    const radio = results[0].querySelector("input");
+    radio.click();
+    radio.dispatchEvent(new Event("change", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Preview card must be shown
+    const preview = modal.querySelector(".staff-selected-card");
+    assert(preview, "Selected player card displayed");
+    assert(preview.textContent.includes("Kyle Marquez"), "Preview has player name");
+    assert(preview.textContent.includes("CPC-2026-00001"), "Preview has member ID");
+    assert(preview.textContent.includes("Member"), "Preview has Member badge");
+
+    // Change button
+    const changeBtn = preview.querySelector(".staff-change-btn");
+    assert(changeBtn, "Preview has Change button");
+    changeBtn.click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    assert(!modal.querySelector(".staff-selected-card"), "Selected card removed after clicking Change");
+    assert(modal.querySelectorAll(".guest-player-result").length === 2, "Results restored after Change");
+
+    // Re-select and submit
+    results[0].querySelector("input").click();
+    results[0].querySelector("input").dispatchEvent(new Event("change", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const confirmBtn = modal.querySelectorAll("button").find((b) => b.textContent.includes("Add Participant"));
+    assert(confirmBtn, "Confirm button found");
+    modal.querySelector("form").dispatchEvent(new Event("submit"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    assert(calledRpc === "create_event_participant", "Calls create_event_participant");
+    assert(rpcArgs.p_member_id === "m-1", "Passes member_id");
+    assert(rpcArgs.p_guest_person_id === null, "Passes null for guest_person_id for member");
+
+    modal.remove();
+  }));

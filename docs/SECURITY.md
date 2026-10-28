@@ -150,6 +150,9 @@ GitHub Pages cannot send security headers. Use these controls in every HTML file
 - The landing member strip returns at most 15 randomly selected active, nondeleted CPC members per request. Its storage policy permits anonymous reads of current photo paths for all eligible active CPC members, so a separate signing request remains valid independently of the next random selection. Unrelated uploads, other clubs, suspended/pending members and removed photos remain private. The bucket stays private; the landing page requests signed links with a five-minute lifetime. Already-issued links may remain usable until they expire.
 
 - The club explicitly permits the public Members directory to show saved first/last names, middle initial, extension and CPC member number alongside the existing photo/category/rank fields. Full middle names, internal IDs, birth dates and contact details stay excluded. The `public.members_enabled` switch gates the complete payload; this exception does not change public leaderboard/results or landing-strip fields.
+- Public Members additionally publishes an `is_active` boolean for the requested Active/Not Active card badges. It does not expose detailed membership statuses or status reasons, and does not expand the set of members eligible for publication.
+
+- The explicitly requested court notes and today's slot counts are public through `public_courts()`, restricted to available, nondeleted CPC courts. Its private counting helper has no anonymous/authenticated execution grant. The payload contains only court name/setting/surface/notes/usual hours and the Manila day/vacant/occupied counts, without court IDs, booking identities, occupied time ranges, rates or blackout reasons.
 
 ## 9. Public repository and secrets
 

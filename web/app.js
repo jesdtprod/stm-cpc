@@ -13,12 +13,18 @@ import {
   can,
   checkAccess,
   clearAuth,
+  isAdminAccount,
   onAuthChange,
   setAuth,
 } from "./lib/permissions.js";
 import { CHANNEL, createSession } from "./lib/session.js";
 import { restoreSession } from "./lib/startup.js";
-import { MEMBER_MENU_SETTINGS, setMemberMenu } from "./lib/member-menu.js";
+import {
+  createMemberMenuLive,
+  MEMBER_MENU_SETTINGS,
+  memberMenuHidden,
+  setMemberMenu,
+} from "./lib/member-menu.js";
 import { createDev, isLocalDev } from "./dev.js";
 import { createAccountPages } from "./pages-account.js";
 import { createAdminPages } from "./pages-admin.js";
@@ -73,6 +79,25 @@ const notificationFeed = createNotificationFeed({
     if (n.url) location.hash = n.url;
   },
 });
+
+// Member menu switches apply to open pages as soon as an admin saves them.
+const memberMenuLive = createMemberMenuLive({
+  client,
+  api,
+  onChange: () => {
+    shell.draw(currentPath());
+    if (menuHiddenHere(currentPath())) {
+      toast("This page was turned off by the club.");
+      location.hash = "#/";
+    } else if (currentPath() === "/") router.refresh();
+  },
+});
+// A signed-in member on a page the admin hid from the member menu goes home. Admin accounts keep every page.
+// Convenience only: the page's data stays guarded by the database.
+const menuHiddenHere = (path) =>
+  session.getState().status === "signed_in" && !isAdminAccount() &&
+  memberMenuHidden(path);
+addEventListener("cpc:member-menu", () => memberMenuLive.announce());
 
 // Sign-in goes through the member-login Edge Function (step 3.1). On localhost the self-check page can also
 // sign in with an email address (credentials.email), which is not available anywhere else.
@@ -130,8 +155,10 @@ const session = createSession({
       setAuth({ signedIn: true, grants: s.grants, gate: s.gate });
       if (s.gate) notificationFeed.stop();
       else notificationFeed.start();
+      memberMenuLive.start();
     } else {
       notificationFeed.stop();
+      memberMenuLive.stop();
       clearAuth();
       if (s.reason === "idle") {
         toast("You were signed out because of inactivity.");
@@ -324,7 +351,10 @@ const router = start(main, {
   onChange: (path) => shell.draw(path),
   notFound: notFoundPage,
   forbidden: forbiddenPage,
-  check: (access) => checkAccess(access, GATE_PAGES),
+  check: (access) =>
+    menuHiddenHere(currentPath())
+      ? { redirect: "#/" }
+      : checkAccess(access, GATE_PAGES),
 });
 
 // Sign-in or sign-out changes what the user may see: redraw the menu and re-check the page.

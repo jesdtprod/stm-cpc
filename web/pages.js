@@ -1,6 +1,10 @@
 import { badge, button, h, icon, kpiCard, memberHero, pageHeader } from "./ui.js";
 import { formatCourtTime as time } from "./lib/dates.js";
-import { eventSummary, eventSummarySkeleton } from "./event-summary.js";
+import {
+  eventDivisions,
+  eventSummary,
+  eventSummarySkeleton,
+} from "./event-summary.js";
 
 export { componentsPage } from "./pages-components.js";
 
@@ -28,12 +32,12 @@ export function homePage() {
 // Public courts and events come from public_landing_info (1540/1550): names, dates, place, status, fee,
 // court settings and usual hours only. Nothing about members leaves the database.
 // One loader per page: draw loading cards, then the rows (or the error state with retry).
-function publicListPage({ api, hero, pick, renderCards }) {
+function publicListPage({ api, hero, pick, renderCards, rpc = "public_landing_info" }) {
   const host = h("div", { class: "public-page-body" });
   async function load() {
     host.replaceChildren(renderCards([], "loading", load));
     try {
-      const info = await api.rpc("public_landing_info");
+      const info = await api.rpc(rpc);
       host.replaceChildren(renderCards(pick(info) ?? [], "ready", load));
     } catch {
       host.replaceChildren(renderCards([], "error", load));
@@ -67,7 +71,6 @@ function renderCourtCards(rows, state, onRetry) {
                 "div",
                 { class: "public-court-title-copy", style: "flex: 1;" },
                 sk("w-50"),
-                sk("w-30 sk-sub"),
               ),
             ),
             h("span", { class: "sk sk-pill", style: "width: 70px; height: 22px;" }),
@@ -80,6 +83,7 @@ function renderCourtCards(rows, state, onRetry) {
               { class: "public-court-meta-tile" },
               sk("w-40 sk-sub"),
               sk("w-70"),
+              sk("w-40 sk-sub"),
             ),
             h(
               "div",
@@ -90,10 +94,17 @@ function renderCourtCards(rows, state, onRetry) {
           ),
           h(
             "div",
+            { class: "public-court-counts" },
+            ...Array.from({ length: 2 }, () =>
+              h("div", {}, sk("w-70 sk-sub"), sk("w-30"))
+            ),
+          ),
+          h(
+            "div",
             { class: "public-court-footer" },
             h("span", {
               class: "sk",
-              style: "width: 100%; height: 38px; border-radius: var(--r-control);",
+              style: "width: 100%; height: 44px; border-radius: var(--r-control);",
             }),
           ),
         )),
@@ -134,7 +145,7 @@ function renderCourtCards(rows, state, onRetry) {
         ? `${time(c.hours.opens)} – ${time(c.hours.closes, true)}`
         : "—";
       const daysText = c.hours?.days >= 7
-        ? "Every day"
+        ? "Everyday"
         : c.hours?.days
         ? `${c.hours.days} days a week`
         : "Operating Days";
@@ -157,11 +168,6 @@ function renderCourtCards(rows, state, onRetry) {
               "div",
               { class: "public-court-title-copy" },
               h("h2", { class: "public-court-title" }, c.name),
-              h(
-                "span",
-                { class: "sub" },
-                [c.indoor ? "Indoor" : "Outdoor", c.surface || null].filter(Boolean).join(" · "),
-              ),
             ),
           ),
           badge(c.indoor ? "Indoor" : "Outdoor", "neutral"),
@@ -172,7 +178,12 @@ function renderCourtCards(rows, state, onRetry) {
           h(
             "div",
             { class: "public-court-meta-tile" },
-            h("span", { class: "public-court-meta-label" }, icon("clock"), "Hours"),
+            h(
+              "span",
+              { class: "public-court-meta-label" },
+              icon("clock"),
+              "Operating Hours",
+            ),
             h("span", { class: "public-court-meta-val" }, hoursText),
             h("span", { class: "sub" }, daysText),
           ),
@@ -181,17 +192,45 @@ function renderCourtCards(rows, state, onRetry) {
             { class: "public-court-meta-tile" },
             h("span", { class: "public-court-meta-label" }, icon("layers"), "Surface"),
             h("span", { class: "public-court-meta-val" }, c.surface || "Standard"),
-            h("span", { class: "sub" }, "Court Surface"),
           ),
         ),
+        h(
+          "dl",
+          { class: "public-court-counts", "aria-label": "Today's court slots" },
+          h(
+            "div",
+            {},
+            h("dt", {}, "Vacant Today"),
+            h("dd", {}, c.availability?.vacant ?? "—"),
+          ),
+          h(
+            "div",
+            {},
+            h("dt", {}, "Occupied Today"),
+            h("dd", {}, c.availability?.occupied ?? "—"),
+          ),
+        ),
+        c.notes?.trim()
+          ? h(
+            "p",
+            { class: "court-card-note" },
+            icon("info"),
+            h("span", { class: "sub" }, c.notes.trim()),
+          )
+          : null,
         h(
           "div",
           { class: "public-court-footer" },
           h(
             "a",
-            { class: "btn btn-outline btn-block", href: "#/book" },
-            icon("calendar"),
-            "Reserve Court",
+            { class: "btn btn-primary btn-block", href: "#/book" },
+            h(
+              "span",
+              { class: "public-court-reserve-label" },
+              icon("calendar"),
+              "Reserve Court",
+            ),
+            icon("chevr"),
           ),
         ),
       );
@@ -276,6 +315,7 @@ function renderEventCards(rows, state, onRetry) {
         "article",
         { class: "public-card public-event-card", "aria-label": e.name },
         ...eventSummary(e),
+        eventDivisions(e.divisions),
         h(
           "div",
           { class: "public-card-footer" },
@@ -300,6 +340,7 @@ function renderEventCards(rows, state, onRetry) {
 export function bookingPage({ api }) {
   return publicListPage({
     api,
+    rpc: "public_courts",
     hero: memberHero({
       iconName: "calendar",
       eyebrow: "Courts",

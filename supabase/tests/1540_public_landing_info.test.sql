@@ -44,11 +44,14 @@ select is((select array_agg(k order by k) from li, jsonb_object_keys(j) k), arra
 select is((select count(*)::int from li, jsonb_array_elements(j -> 'events') e where e ->> 'name' = 'Zzyzx Open'), 1, 'an event open to the club is shown');
 select is((select count(*)::int from li, jsonb_array_elements(j -> 'events') e where e ->> 'name' in ('Zzyzx Draft', 'Zzyzx Cancelled', 'Zzyzx Past')), 0, 'a draft, a cancelled and a past event are not');
 select is((select array_agg(k order by k) from li, jsonb_array_elements(j -> 'events') e, jsonb_object_keys(e) k where e ->> 'name' = 'Zzyzx Open'),
-  array['ends_on', 'fee', 'location', 'name', 'starts_on', 'status'], 'an event shows only its name, dates, place, status and fee');
+  array['apply_cpc_rank_changes', 'default_format_template_name', 'divisions', 'divisions_count', 'dupr_rated', 'ends_on', 'fee', 'location', 'name', 'registration_closes_at', 'registration_opens_at', 'starts_on', 'status'], 'an event exposes only the currently approved public fields');
 select is((select (e ->> 'fee')::numeric from li, jsonb_array_elements(j -> 'events') e where e ->> 'name' = 'Zzyzx Open'), 250::numeric, 'the fee is public');
 select is((select count(*)::int from li, jsonb_array_elements(j -> 'courts') c where c ->> 'name' = 'Zzyzx Court 1'), 1, 'a bookable court is shown');
 select is((select count(*)::int from li, jsonb_array_elements(j -> 'courts') c where c ->> 'name' in ('Zzyzx Court 2', 'Zzyzx Court 3')), 0, 'a closed and a deleted court are not');
-select is((select c -> 'hours' ->> 'opens' || '-' || (c -> 'hours' ->> 'closes') || ' ' || (c -> 'hours' ->> 'days') from li, jsonb_array_elements(j -> 'courts') c where c ->> 'name' = 'Zzyzx Court 1'), '07:00-22:00 7', 'with its opening hours');
+select ok((select (c->'hours'->>'opens')::time <= time '07:00'
+  and (c->'hours'->>'closes')::time >= time '22:00' and (c->'hours'->>'days')::integer = 7
+  from li, jsonb_array_elements(j->'courts') c where c->>'name'='Zzyzx Court 1'),
+  'usual hours include the fake court schedule and any shared club hours');
 select is((select array_agg(k order by k) from li, jsonb_array_elements(j -> 'courts') c, jsonb_object_keys(c) k where c ->> 'name' = 'Zzyzx Court 1'),
   array['hours', 'indoor', 'name', 'surface'], 'a court shows only its name, setting, surface and hours');
 select is(position('zzyzx.private' in (select j::text from li)), 0, 'no email address anywhere in it');

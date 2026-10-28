@@ -71,7 +71,12 @@ export function eventSummary(event) {
         "calendar",
       ),
       detail("Registration Window", window, "clock", "public-meta-span2"),
-      detail("Venue", event.location || "To Be Announced", "grid"),
+      detail(
+        "Entry Fee",
+        Number(event.fee) > 0 ? formatMoney(event.fee) : "Free",
+        "currency",
+        "public-meta-entry-fee",
+      ),
       detail(
         "Divisions",
         `${count} ${count === 1 ? "Division" : "Divisions"}`,
@@ -85,13 +90,100 @@ export function eventSummary(event) {
         "copy",
       ),
       detail(
-        "Entry Fee",
-        Number(event.fee) > 0 ? formatMoney(event.fee) : "Free",
-        "currency",
+        "Venue",
+        event.location || "To Be Announced",
+        "grid",
         "public-meta-span2",
       ),
     ),
   ];
+}
+
+const GENDER_LABEL = { male: "Men", female: "Women", mixed: "Mixed" };
+
+// Public division cards: type, who may enter, and entries taken against the limit (counts only).
+export function eventDivisions(divisions = []) {
+  if (!divisions.length) return null;
+  return h(
+    "section",
+    { class: "public-event-divisions", "aria-label": "Divisions" },
+    h(
+      "h3",
+      { class: "public-event-divisions-title" },
+      icon("layers"),
+      "Divisions",
+    ),
+    h(
+      "ul",
+      { class: "public-division-grid" },
+      ...divisions.map((d) => {
+        const taken = Number(d.taken ?? 0);
+        const max = Number(d.max_entries ?? 0);
+        const full = max > 0 && taken >= max;
+        const ranks = d.min_rank && d.max_rank
+          ? d.min_rank === d.max_rank
+            ? `Rank ${d.min_rank}`
+            : `Ranks ${d.min_rank} – ${d.max_rank}`
+          : d.min_rank
+          ? `Rank ${d.min_rank} and Up`
+          : d.max_rank
+          ? `Up to Rank ${d.max_rank}`
+          : null;
+        return h(
+          "li",
+          { class: "public-division-card" },
+          h(
+            "div",
+            { class: "public-division-head" },
+            h(
+              "div",
+              { class: "public-division-copy" },
+              h("strong", { class: "public-division-name" }, d.name),
+              h(
+                "span",
+                { class: "sub" },
+                [
+                  d.format === "doubles" ? "Doubles" : "Singles",
+                  GENDER_LABEL[d.gender],
+                ].filter(Boolean).join(" · "),
+              ),
+            ),
+            full ? badge("Full", "warning") : badge("Open", "success"),
+          ),
+          h(
+            "div",
+            { class: "public-division-who" },
+            icon("user"),
+            h(
+              "span",
+              {},
+              [d.category, ranks, d.age_group].filter(Boolean).join(" · ") ||
+                "All Members",
+            ),
+          ),
+          h(
+            "div",
+            { class: "public-division-entries" },
+            h("span", { class: "sub" }, "Registered"),
+            h(
+              "strong",
+              {},
+              max > 0 ? `${taken} / ${max}` : `${taken} · No Limit`,
+            ),
+          ),
+          max > 0
+            ? h("progress", {
+              class: "member-event-capacity public-division-capacity",
+              value: Math.min(taken, max),
+              max,
+              "aria-label":
+                `${taken} of ${max} entries registered for ${d.name}`,
+            })
+            : null,
+        );
+      }),
+    ),
+  );
 }
 
 export function eventSummarySkeleton() {

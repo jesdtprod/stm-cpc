@@ -696,6 +696,9 @@ export function createSettingsPages({ api }) {
             failures.push(`${label}: ${own || e.message}`);
           }
         }
+        if (saved && group.id === "member_menu") {
+          dispatchEvent(new CustomEvent("cpc:member-menu"));
+        }
         if (saved) {
           toast(
             saved === 1 ? "Setting saved." : `${saved} settings saved.`,

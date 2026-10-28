@@ -573,7 +573,7 @@ export function createCourtsPages({ api, getOrgId }) {
                 placeholder: "Access, equipment or maintenance details...",
               }, row?.notes ?? ""),
               "file",
-              "Optional. Up to 300 characters.",
+              "Shown on public court and booking cards. Optional, up to 300 characters.",
             ),
           ),
           h("div", { class: "form-grid-wide" }, error),

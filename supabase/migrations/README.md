@@ -165,3 +165,23 @@ the browser's total, search and 12-card pagination cover the complete directory.
 Publication settings, status exclusions, ordering and approved fields remain
 the same. Verify with `deno task db:test 1780` (1,005 fake imported members in a
 rolled-back transaction), plus the 1770 and 1750 regressions.
+
+`1781_public_member_active_badges.sql` adds an `is_active` boolean to the public
+Members payload for Active/Not Active badges. Detailed statuses and reasons stay
+private; existing publication, eligibility and full-directory behavior stay the
+same. Verify with `deno task db:test 1781_public_member_active_badges` and the
+1750/1770/1780 regressions.
+
+`1782_public_court_notes_and_counts.sql` adds `public_courts()` for public court
+cards: notes, usual hours and today's vacant/occupied slot counts, using Manila
+time, configured slot duration, effective court hours, live reservations and
+blackouts. The counting helper remains private. Booking identities, time ranges,
+rates and blackout reasons are excluded; closed/deleted courts stay hidden.
+The member calendar reads the existing court notes field. Verify with
+`deno task db:test 1782_public_court_notes_and_counts` (18 assertions).
+
+`1790_public_event_divisions.sql` adds a `divisions` array to each event in
+`public_landing_info()`: name, format, gender, age group, category, rank range,
+entry limit and the count of requested/confirmed entries. Counts only; no
+registrant names or ids. Verify with `deno task db:test 1790` and the 1700
+regression.

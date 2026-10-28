@@ -22,3 +22,54 @@ export function setMemberMenu(rows = []) {
 export function memberMenuHidden(path) {
   return hidden.has(String(path).replace(/^#/, ""));
 }
+
+// Live menu (Settings > Member Menu). After an admin saves a member_menu switch, announce() sends an empty Realtime
+// broadcast; every signed-in page that hears it reads the switches again (under row-level security) and redraws.
+// The broadcast carries nothing, so a forged one can only cause a harmless re-read. Returning to the tab also re-reads,
+// in case a broadcast was missed.
+const LIVE_TOPIC = "member-menu";
+
+export function createMemberMenuLive({ client, api, onChange }) {
+  let channel = null;
+
+  async function reload() {
+    try {
+      const rows = await api.read((c) =>
+        c.from("settings").select("key,value")
+          .in("key", Object.keys(MEMBER_MENU_SETTINGS))
+          .is("unit_id", null).is("deleted_at", null)
+      );
+      const before = [...hidden].sort().join();
+      setMemberMenu(Array.isArray(rows) ? rows : []);
+      if ([...hidden].sort().join() !== before) onChange?.();
+    } catch {
+      // keep the menu as it was
+    }
+  }
+
+  function onVisible() {
+    if (document.visibilityState === "visible") reload();
+  }
+
+  function start() {
+    if (channel) return;
+    channel = client.channel(LIVE_TOPIC)
+      .on("broadcast", { event: "changed" }, reload)
+      .subscribe();
+    document.addEventListener("visibilitychange", onVisible);
+  }
+
+  function stop() {
+    if (!channel) return;
+    document.removeEventListener("visibilitychange", onVisible);
+    client.removeChannel(channel);
+    channel = null;
+  }
+
+  function announce() {
+    reload();
+    channel?.send({ type: "broadcast", event: "changed", payload: {} });
+  }
+
+  return { start, stop, announce };
+}
