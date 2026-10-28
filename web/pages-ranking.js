@@ -19,12 +19,18 @@ import { formatDateTime } from "./lib/dates.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import {
   assessPointsModal,
-  cpcAdminPanel,
   loadRatingBands,
   ratingCell,
   pointsHistoryModal,
   pointsHistoryTable,
 } from "./cpc-points.js";
+
+function splitRankLabel(rank) {
+  const match = String(rank ?? "").match(/^(.*?)\s*\((\d\.\d{3}\s*[–-]\s*\d\.\d{3})\)$/);
+  return match
+    ? { name: match[1].trim(), band: match[2].replace(/\s+/g, "") }
+    : { name: rank, band: null };
+}
 
 export function createRankingPages({ api, client, session }) {
   function historyTable(rows, state, onRetry, filter, searchable = false) {
@@ -36,11 +42,13 @@ export function createRankingPages({ api, client, session }) {
           {
             key: "when",
             label: "When",
-            render: (r) => formatDateTime(r.occurred_at),
+            width: 210,
+            render: (r) => h("span", { class: "rank-history-timestamp" }, formatDateTime(r.occurred_at)),
           },
           {
             key: "change",
             label: "Rank Change",
+            minWidth: 360,
             render: (r) => {
               const flow = r.from_name && r.from_name !== r.to_name
                 ? h(
@@ -249,22 +257,6 @@ export function createRankingPages({ api, client, session }) {
     }
 
     // ------------------------------------------------------------ modals
-    async function loadRanks() {
-      if (state.ranks.length) return;
-      const rows = await api.read((c) =>
-        c.from("ranks").select(
-          "id,name,sort_order,ladder:rank_ladders(category:categories(name,sort_order))",
-        ).is("deleted_at", null)
-      ) ?? [];
-      state.ranks = rows.sort((a, b) =>
-        (a.ladder?.category?.sort_order ?? 0) -
-          (b.ladder?.category?.sort_order ?? 0) || a.sort_order - b.sort_order
-      );
-    }
-
-    const errorLine = () =>
-      h("p", { class: "field-error form-error", role: "alert", hidden: true });
-
     async function historyModal(row) {
       let rows = [];
       let status = "ready";
@@ -329,130 +321,6 @@ export function createRankingPages({ api, client, session }) {
       });
     }
 
-    async function overrideModal(row) {
-      try {
-        await loadRanks();
-      } catch {
-        toast("The ranks could not be loaded.", { tone: "danger" });
-        return;
-      }
-      const key = api.newKey();
-      const error = errorLine();
-      const rankSelect = selectField({
-        id: "ov-rank",
-        name: "rank_id",
-        label: "New Rank",
-        value: row.rank_id,
-        searchable: true,
-        placeholder: "Search or select rank...",
-        options: state.ranks.map((r) => ({
-          value: r.id,
-          label: `${r.ladder?.category?.name ?? ""} · ${r.name}`,
-        })),
-      });
-
-      return openModal({
-        title: "Change Rank by Hand",
-        eyebrow: row.member_no ? `${row.display_name} • ${row.member_no}` : row.display_name,
-        icon: "medal",
-        tone: "warning",
-        size: "md",
-        destructive: true,
-        confirmLabel: "Set Rank",
-        cancelLabel: "Cancel",
-        body: h(
-          "div",
-          { class: "stack modal-override-stack" },
-          h(
-            "div",
-            { class: "member-decision-subject rank-override-subject" },
-            h(
-              "span",
-              { class: "member-avatar ranking-player-photo", "aria-hidden": "true" },
-              avatarImage(state.photos?.get?.(row.member_id), row.display_name),
-            ),
-            h(
-              "div",
-              { class: "member-meta" },
-              h(
-                "div",
-                { class: "member-decision-name" },
-                h("strong", { class: "member-name" }, row.display_name),
-                badge(
-                  row.rank_name ? `Current: ${splitRankLabel(row.rank_name).name}` : "Unranked",
-                  row.rank_name ? "warning" : "neutral",
-                ),
-              ),
-              row.member_no ? h("span", { class: "sub member-id" }, `Member ID: ${row.member_no}`) : null,
-            ),
-          ),
-          h(
-            "div",
-            { class: "modal-callout is-warning" },
-            h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon("alert")),
-            h(
-              "div",
-              { class: "modal-callout-text" },
-              h("strong", { class: "decision-impact-title" }, "Manual Rank Override"),
-              h(
-                "div",
-                { class: "decision-impact-text" },
-                "This overrides automated rank rules. It is recorded in the member's rank history and club audit log. You cannot change your own rank.",
-              ),
-            ),
-          ),
-          h(
-            "div",
-            { class: "field" },
-            rankSelect,
-          ),
-          h(
-            "div",
-            { class: "field" },
-            h("label", { for: "ov-reason" }, "Reason *"),
-            h("textarea", {
-              class: "input textarea",
-              id: "ov-reason",
-              name: "reason",
-              rows: 3,
-              maxlength: 500,
-              placeholder: "Explain the reason for this rank override...",
-              required: true,
-            }),
-            h("span", { class: "field-hint" }, "Reason of at least 3 characters. Kept in the audit log."),
-          ),
-          error,
-        ),
-        onConfirm: async (form) => {
-          const reason = String(form.get("reason") ?? "").trim();
-          const rankId = String(form.get("rank_id") ?? rankSelect.value ?? "");
-          const fail = (m) => {
-            error.textContent = m;
-            error.hidden = false;
-            return false;
-          };
-          if (!rankId) {
-            return fail("Please choose a new rank.");
-          }
-          if (reason.length < 3) {
-            return fail("Give a reason of at least 3 characters.");
-          }
-          try {
-            await api.rpc("override_member_rank", {
-              p_member_id: row.member_id,
-              p_rank_id: rankId,
-              p_reason: reason,
-              p_key: key,
-            });
-            toast("Rank changed.", { tone: "success" });
-            await load();
-          } catch (e) {
-            return fail(messageOf(e, "That did not work. Try again."));
-          }
-        },
-      });
-    }
-
     // ------------------------------------------------------------ views
     function rankingView() {
       const staff = can("members.read");
@@ -497,13 +365,13 @@ export function createRankingPages({ api, client, session }) {
         },
         {
           key: "singles",
-          label: "Singles Rating",
+          label: "Club Single Rating",
           align: "right",
           render: (r) => ratingCell(r, "singles", Boolean(r.rank_name), state.bands),
         },
         {
           key: "doubles",
-          label: "Doubles Rating",
+          label: "Club Doubles Rating",
           align: "right",
           render: (r) => ratingCell(r, "doubles", Boolean(r.rank_name), state.bands),
         },
@@ -514,7 +382,7 @@ export function createRankingPages({ api, client, session }) {
         },
         {
           key: "rank",
-          label: "Rank",
+          label: "Club Rank",
           render: (r) => {
             if (!r.rank_name) return badge("No rank yet", "neutral");
             return badge(r.rank_name.replace(/\s*\(\d\.\d{3}\s*[–-]\s*\d\.\d{3}\)$/, ""), "success");
@@ -526,7 +394,7 @@ export function createRankingPages({ api, client, session }) {
           key: "actions",
           label: "Action",
           align: "center",
-          actionCount: can("ranks.override") ? 4 : 2,
+          actionCount: can("ranks.override") ? 3 : 2,
           render: (r) =>
             h(
               "span",
@@ -549,14 +417,6 @@ export function createRankingPages({ api, client, session }) {
                   icon: "sliders",
                   variant: "edit",
                   onClick: () => assessPointsModal({ api, row: r, onDone: load }),
-                })
-                : null,
-              can("ranks.override")
-                ? iconButton({
-                  label: `Change the rank of ${r.display_name}`,
-                  icon: "edit",
-                  variant: "edit",
-                  onClick: () => overrideModal(r),
                 })
                 : null,
             ),
@@ -624,7 +484,6 @@ export function createRankingPages({ api, client, session }) {
 
     page.append(
       hero,
-      ...(can("members.read") ? [cpcAdminPanel({ api, onChange: load })] : []),
       toolbar,
       directoryCard,
     );

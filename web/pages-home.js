@@ -84,6 +84,7 @@ function statCard({
   clearLabel = "All Clear",
   goLabel = null,
   wide = false,
+  fractionDigits = null,
 }) {
   const numValue = Number(value);
   const isAttention = attention || (kind === "pending" && numValue > 0);
@@ -107,7 +108,10 @@ function statCard({
 
   const formattedValue = (typeof value === "number" ||
       (!isNaN(numValue) && typeof value === "string" && value.trim() !== ""))
-    ? new Intl.NumberFormat("en-PH").format(numValue)
+    ? new Intl.NumberFormat("en-PH", fractionDigits == null ? {} : {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).format(numValue)
     : (value ?? "0");
 
   const body = [
@@ -225,6 +229,7 @@ function memberCards(m) {
     return statCard({
       label,
       value: text.value,
+      fractionDigits: 3,
       hint: text.sub,
       iconName: "trophy",
       href: "#/ranking",

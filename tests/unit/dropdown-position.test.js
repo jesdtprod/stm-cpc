@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { dropdownPosition } from "../../web/lib/dropdown-position.js";
 
 function fixture(
-  { top = 100, viewportHeight = 800, height = 300, parent } = {},
+  { top = 100, viewportHeight = 800, height = 300, parent, center = false } = {},
 ) {
   let rect = { top, bottom: top + 44 };
   let resize;
   let disconnected = false;
   const view = Object.assign(new EventTarget(), {
     innerHeight: viewportHeight,
+    innerWidth: 1000,
     visualViewport: Object.assign(new EventTarget(), {
       offsetTop: 0,
       height: viewportHeight,
@@ -29,12 +30,13 @@ function fixture(
     ownerDocument: doc,
     parentElement: parent,
     isConnected: true,
-    getBoundingClientRect: () => rect,
+    getBoundingClientRect: () => ({ ...rect, left: 400 }),
   };
   const attrs = {};
   const styles = {};
   const popup = {
     hidden: false,
+    offsetWidth: 540,
     get offsetHeight() {
       const limit = Number.parseFloat(styles["--dropdown-max-height"]);
       return Number.isFinite(limit) ? Math.min(height, limit) : height;
@@ -47,7 +49,7 @@ function fixture(
     style: { setProperty: (name, value) => styles[name] = value },
   };
   return {
-    position: dropdownPosition(trigger, popup),
+    position: dropdownPosition(trigger, popup, { center }),
     attrs,
     styles,
     view,
@@ -58,6 +60,23 @@ function fixture(
     disconnected: () => disconnected,
   };
 }
+
+Deno.test("calendar placement: centers wide popups within a clipping modal", () => {
+  const f = fixture({
+    center: true,
+    parent: {
+      overflowY: "auto",
+      clientTop: 0,
+      clientHeight: 700,
+      clientWidth: 600,
+      getBoundingClientRect: () => ({ top: 0, left: 100 }),
+    },
+  });
+  f.position.start();
+  assert.equal(f.styles["--dropdown-max-width"], "584px");
+  assert.equal(f.styles["--dropdown-left"], "-270px");
+  f.position.stop();
+});
 
 Deno.test("dropdown placement: opens below when it fits and above near the bottom", () => {
   const f = fixture();

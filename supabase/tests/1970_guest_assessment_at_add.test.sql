@@ -10,6 +10,7 @@ create temp table fx as select (select id from public.orgs where code = 'cpc') a
   core.ulid() as g1, core.ulid() as g2, core.ulid() as g3, core.ulid() as g4,
   core.ulid() as p1, core.ulid() as p2, core.ulid() as p3, core.ulid() as p4,
   core.ulid() as r1, core.ulid() as r2, core.ulid() as r3, core.ulid() as r4,
+  core.ulid() as nr_person, core.ulid() as nr_participant,
   (select id from public.categories where code = 'novice' and deleted_at is null) as cat_novice,
   (select id from public.format_templates where stages -> 0 ->> 'stage_type' = 'round_robin' and jsonb_array_length(stages) = 1 and deleted_at is null order by id limit 1) as tpl,
   current_date + 80 as day1;
@@ -48,8 +49,14 @@ select is(core.cpc_points_enabled((select org from fx)), true, 'ratings are on f
 
 select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
 -- Add Guest takes the assessment
-select throws_ok(format('select public.create_guest_event_participant(%L, %L, %L, ''No Rating Guest'', null, null, null, null, null, null)', (select p1 from fx), (select ev from fx), (select g1 from fx)),
-  '22023', null, 'with ratings on, a guest must be assessed when added');
+select lives_ok(format('select public.create_guest_event_participant(%L, %L, %L, ''No Rating Guest'', null, null, null, null, null, null)', (select nr_participant from fx), (select ev from fx), (select nr_person from fx)),
+  'with ratings on, an unrated guest can be added');
+select lives_ok(format('select public.create_guest_event_participant(%L, %L, %L, ''No Rating Guest'', null, null, null, null, null, null)', (select nr_participant from fx), (select ev from fx), (select nr_person from fx)),
+  'unrated guest creation is safe to retry');
+select is((select count(*)::int from public.event_participant_cpc_ratings where participant_id = (select nr_participant from fx)),0,
+  'unrated creation does not invent a numerical rating');
+select throws_ok(format('select public.register_guest_for_event(%L, %L, %L, null)',core.ulid(),(select dv_s from fx),(select nr_participant from fx)),
+  '22023',null,'creating NR guest does not bypass higher-division eligibility');
 select throws_ok(format('select public.create_guest_event_participant(%L, %L, %L, ''Bad Rating Guest'', null, null, null, null, 9, null)', (select p1 from fx), (select ev from fx), (select g1 from fx)),
   '22023', null, 'a rating above 8.000 is refused');
 select lives_ok(format('select public.create_guest_event_participant(%L, %L, %L, ''Guest Doubles'', null, null, null, null, 2.600, 2.700)', (select p1 from fx), (select ev from fx), (select g1 from fx)),

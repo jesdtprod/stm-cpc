@@ -8366,8 +8366,8 @@ dialog.modal:has(.member-decision) {
   gap: 10px;
 }
 .member-audit-card.member-section-card {
-  padding: 20px;
-  gap: 16px;
+  padding: 16px;
+  gap: 12px;
 }
 .member-rating-strip {
   display: grid;
@@ -8380,11 +8380,11 @@ dialog.modal:has(.member-decision) {
 }
 .member-audit-card .member-summary-item,
 .member-audit-card .member-details-grid > .kv-item {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.12);
-  gap: 8px;
+  gap: 4px;
 }
 .member-audit-card .member-details-grid {
   display: grid;
@@ -8396,7 +8396,7 @@ dialog.modal:has(.member-decision) {
   margin-block: auto;
 }
 .member-audit-card .member-summary-item {
-  min-height: 58px;
+  min-height: 0;
 }
 .member-audit-rank {
   width: 100%;
@@ -8472,7 +8472,7 @@ dialog.modal:has(.member-decision) {
 .member-profile-sections {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 .member-section-card {
   border-radius: 14px;
@@ -10755,7 +10755,7 @@ body[data-member-view="true"] .member-header-logo {
 
   /* Category & Rank (Row 2) */
   body .member-ranking-page .tbl-cell[data-label="Category"],
-  body .member-ranking-page .tbl-cell[data-label="Rank"] {
+  body .member-ranking-page .tbl-cell[data-label="Club Rank"] {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -11233,7 +11233,7 @@ body[data-member-view="true"] .member-header-logo {
 .notice-card {
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   padding: 14px 18px;
   text-align: left;
@@ -11383,6 +11383,7 @@ body[data-member-view="true"] .member-header-logo {
 }
 
 .notice-arrow {
+  margin-top: 2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -11626,9 +11627,7 @@ body[data-member-view="true"] .member-header-logo {
   font-weight: 500;
 }
 .event-summary-roster {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 16px;
   flex-wrap: wrap;
   padding: 14px 16px;
@@ -11636,6 +11635,51 @@ body[data-member-view="true"] .member-header-logo {
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.06);
   margin-top: 2px;
+}
+.event-detail-navigation {
+  display: flex;
+}
+.event-detail-navigation .btn {
+  min-height: 36px;
+  padding: 6px 10px;
+}
+.event-roster-workflow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.event-roster-step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.event-roster-step-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.event-roster-step > .sub {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.event-roster-step .event-roster-actions,
+.event-roster-step > .btn {
+  margin-top: auto;
+}
+.event-roster-step.is-registration {
+  border-color: rgba(16, 185, 129, 0.25);
+}
+@media (max-width: 900px) {
+  .event-roster-workflow {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .event-roster-toolbar {
   display: flex;
@@ -13232,6 +13276,35 @@ body[data-member-view="true"] .member-header-logo {
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 /* Guest Management Modals Redesign */
+.guest-edit-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.guest-edit-form .field {
+  margin: 0;
+  min-width: 0;
+}
+.guest-edit-form .guest-modal-section,
+.guest-edit-section {
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+}
+.guest-edit-form p.sub {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.guest-edit-form p.sub:empty {
+  display: none;
+}
+@media (max-width: 720px) {
+  .guest-edit-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .guest-modal-section {
   display: flex;
   flex-direction: column;
@@ -13869,6 +13942,20 @@ body[data-member-view="true"] .member-header-logo {
 }
 
 /* Compact Member Details Modal Overrides */
+.member-details-modal .member-profile-sections .member-section-card {
+  padding: 12px 16px;
+  gap: 12px;
+}
+.member-details-modal .member-profile-sections .member-details-grid {
+  gap: 12px;
+}
+.member-details-modal .timeline-list {
+  gap: 12px;
+  margin-top: 0;
+}
+.member-details-modal .timeline-content {
+  gap: 4px;
+}
 .modal:has(.member-details-modal) .modal-head {
   padding: 16px 20px;
 }
@@ -14097,4 +14184,176 @@ body .public-page-hero .public-header-logo {
   .assess-modal-subject {
     padding: 10px 12px;
   }
+}
+
+/* Registration Decision Subject & Reason Modals */
+.registration-decision-subject {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.registration-decision-subject .member-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.registration-decision-subject .member-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #F8FAFC;
+}
+
+.registration-decision-subject .member-id {
+  font-size: 12px;
+  color: #94A3B8;
+  font-family: inherit;
+}
+
+.modal-reason-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .registration-decision-subject {
+    padding: 10px 12px;
+  }
+}
+
+/* Registration Details Grid & Tiles */
+.registration-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 540px) {
+  .registration-info-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.registration-info-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+}
+
+.registration-info-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.registration-info-value {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #F8FAFC;
+  font-size: 13.5px;
+}
+
+.registration-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.reference-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  color: #94A3B8;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Multi-Column Details Grid for Notification Cards */
+.notice-details-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 16px;
+  padding: 12px 14px;
+  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+@media (max-width: 820px) {
+  .notice-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .notice-details-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.notice-detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.notice-detail-col.is-wide {
+  grid-column: 1 / -1;
+}
+
+.notice-detail-col.is-event {
+  grid-column: span 3;
+}
+
+.notice-detail-col.is-division-wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 820px) {
+  .notice-detail-col.is-event,
+  .notice-detail-col.is-division-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.notice-detail-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.notice-detail-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: #F8FAFC;
+  overflow-wrap: anywhere;
 }

@@ -2280,7 +2280,7 @@ export function calendarDropdown(
     popover.append(header, weekdaysRow, daysGrid, presetsBar);
   };
 
-  const position = dropdownPosition(triggerBtn, popover);
+  const position = dropdownPosition(triggerBtn, popover, { center: true });
   const closeOutside = (event) => {
     if (!container.contains(event.target)) toggleCalendar(false);
   };

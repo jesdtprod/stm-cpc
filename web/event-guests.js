@@ -39,7 +39,7 @@ const fail = (error, e) => {
 };
 
 export function createGuestEventActions(
-  { api, refresh, getEvent, getDivisions, getRanks },
+  { api, refresh, getEvent, getDivisions },
 ) {
   function policy() {
     const event = getEvent();
@@ -207,8 +207,41 @@ export function createGuestEventActions(
           h(
             "div",
             { class: "guest-modal-section-head" },
+            h("span", { class: "section-icon is-sm", "aria-hidden": "true" }, icon("trophy")),
+            h("span", { class: "guest-modal-section-title" }, "Guest Assessment (Optional)"),
+          ),
+          h(
+            "div",
+            { class: "form-grid-2" },
+            field(
+              "guest-singles",
+              "Singles Rating",
+              h("input", {
+                id: "guest-singles", name: "guest-singles", class: "input", type: "number", inputmode: "decimal",
+                min: "2", max: "8", step: "0.001", placeholder: "NR (not rated)",
+              }),
+              "2.000–8.000, used for singles divisions.",
+            ),
+            field(
+              "guest-doubles",
+              "Doubles Rating",
+              h("input", {
+                id: "guest-doubles", name: "guest-doubles", class: "input", type: "number", inputmode: "decimal",
+                min: "2", max: "8", step: "0.001", placeholder: "NR (not rated)",
+              }),
+              "2.000–8.000, used for doubles divisions.",
+            ),
+          ),
+          h("p", { class: "sub" }, "Leave either rating blank for Unrated. Unrated guests may join Beginner divisions starting at Beginner Low; other divisions require an eligible rating."),
+        ),
+        h(
+          "div",
+          { class: "guest-modal-section" },
+          h(
+            "div",
+            { class: "guest-modal-section-head" },
             h("span", { class: "section-icon is-sm", "aria-hidden": "true" }, icon("medal")),
-            h("span", { class: "guest-modal-section-title" }, "Rating (Optional)"),
+            h("span", { class: "guest-modal-section-title" }, "DUPR (Optional)"),
           ),
           field(
             "guest-dupr-id",
@@ -239,26 +272,214 @@ export function createGuestEventActions(
             new Error("DUPR ID must contain 1 to 32 letters or numbers."),
           );
         }
+        const rating = (id) => {
+          const raw = String(form.get(id) ?? "").trim();
+          if (!raw) return { value: null };
+          const n = Number(raw);
+          return /^\d(\.\d{1,3})?$/.test(raw) && n >= 2 && n <= 8 ? { value: n } : { invalid: true };
+        };
+        const singles = rating("guest-singles");
+        const doubles = rating("guest-doubles");
+        if (singles.invalid || doubles.invalid) {
+          return fail(error, new Error("Enter a rating from 2.000 to 8.000 with at most three decimals."));
+        }
         try {
-          await api.rpc(
-            duprId
-              ? "create_guest_event_participant"
-              : "create_event_participant",
-            {
-              p_id: participantId,
-              p_event_id: event.id,
-              p_guest_person_id: personId,
-              p_guest_name: String(form.get("guest-name") ?? "").trim(),
-              p_guest_mobile: String(form.get("guest-mobile") ?? "").trim() ||
-                null,
-              p_guest_gender: form.get("guest-gender") || null,
-              p_guest_birth_date: form.get("guest-dob") || null,
-              ...(duprId ? { p_dupr_id: duprId } : {}),
-            },
-          );
+          await api.rpc("create_guest_event_participant", {
+            p_id: participantId,
+            p_event_id: event.id,
+            p_guest_person_id: personId,
+            p_guest_name: String(form.get("guest-name") ?? "").trim(),
+            p_guest_mobile: String(form.get("guest-mobile") ?? "").trim() || null,
+            p_guest_gender: form.get("guest-gender") || null,
+            p_guest_birth_date: form.get("guest-dob") || null,
+            p_dupr_id: duprId || null,
+            p_singles_rating: singles.value,
+            p_doubles_rating: doubles.value,
+          });
           toast("Guest added. Use Register Guest to select a division.", {
             tone: "success",
           });
+          await refresh();
+        } catch (e) {
+          return fail(error, e);
+        }
+      },
+    });
+  }
+
+  // Edit a guest (events.admin_roster): the profile (name, mobile, gender, birth date, DUPR ID) and the Singles and Doubles
+  // ratings. The database refuses a rating change without a reason, a frozen rating, and any change that would make the
+  // guest ineligible for a division they are already in. Registrations keep the name they were made under.
+  async function editGuest(participantId = "") {
+    const event = getEvent();
+    let players;
+    try {
+      players = await api.rpc("event_participant_choices", { p_event_id: event.id });
+    } catch (e) {
+      toast(e?.cause?.message || e.message, { tone: "error" });
+      return;
+    }
+    const guests = (players ?? []).filter((p) => !p.member_id);
+    if (!guests.length) {
+      toast("There are no guests to edit yet.", { tone: "warning" });
+      return;
+    }
+    const error = errorLine();
+    let loaded = null;
+    let intent = null;
+    const guestSelect = select(
+      "edit-guest",
+      guests.map((g) => [g.id, g.display_name]),
+      guests.some((g) => g.id === participantId) ? participantId : guests[0].id,
+    );
+    const nameInput = h("input", { id: "edit-name", name: "edit-name", class: "input", required: true, maxlength: 120 });
+    const mobileInput = h("input", { id: "edit-mobile", name: "edit-mobile", type: "tel", class: "input", maxlength: 40 });
+    const genderSelect = select("edit-gender", [["", "Not provided"], ["male", "Male"], ["female", "Female"]]);
+    const dobInput = dateControl({ id: "edit-dob", name: "edit-dob" });
+    const duprInput = h("input", {
+      id: "edit-dupr", name: "edit-dupr", class: "input", maxlength: 32, autocapitalize: "characters", autocomplete: "off",
+    });
+    const ratingInput = (id) =>
+      h("input", {
+        id, name: id, class: "input", type: "number", inputmode: "decimal", min: "2", max: "8", step: "0.001",
+        placeholder: "NR (not rated)",
+      });
+    const singlesInput = ratingInput("edit-singles");
+    const doublesInput = ratingInput("edit-doubles");
+    const singlesNote = h("p", { class: "sub" });
+    const doublesNote = h("p", { class: "sub" });
+    const reasonInput = h("textarea", {
+      id: "edit-reason", name: "edit-reason", class: "input textarea", rows: 2, maxlength: 500,
+      placeholder: "Required when a rating changes.",
+    });
+
+    async function loadGuest() {
+      error.hidden = true;
+      try {
+        loaded = await api.rpc("event_guest_profile", { p_participant_id: guestSelect.value });
+      } catch (e) {
+        fail(error, e);
+        return;
+      }
+      nameInput.value = loaded.display_name ?? "";
+      mobileInput.value = loaded.mobile ?? "";
+      genderSelect.value = loaded.gender ?? "";
+      dobInput.value = loaded.date_of_birth ?? "";
+      duprInput.value = loaded.dupr_id ?? "";
+      for (const [discipline, input, note] of [["singles", singlesInput, singlesNote], ["doubles", doublesInput, doublesNote]]) {
+        const side = loaded[discipline] ?? {};
+        input.value = side.points == null ? "" : Number(side.points).toFixed(3);
+        input.disabled = Boolean(side.frozen);
+        note.textContent = side.frozen
+          ? "Frozen: this guest is in a drawn division, so the rating can't change."
+          : side.points == null
+          ? "Not rated (NR). Enter a rating to assess the guest."
+          : "";
+      }
+      reasonInput.value = "";
+    }
+    guestSelect.addEventListener("change", loadGuest);
+    loadGuest();
+
+    const section = (iconName, title, ...children) =>
+      h(
+        "div",
+        { class: "form-section event-registration-partner-panel guest-edit-section" },
+        h(
+          "div",
+          { class: "guest-modal-section-head" },
+          h("span", { class: "section-icon is-sm", "aria-hidden": "true" }, icon(iconName)),
+          h("span", { class: "guest-modal-section-title" }, title),
+        ),
+        ...children,
+      );
+    return openModal({
+      title: "Edit Guest",
+      icon: "user",
+      eyebrow: "Guest Management",
+      size: "lg",
+      description: event.name,
+      confirmLabel: "Save Changes",
+      body: h(
+        "div",
+        { class: "stack guest-edit-form" },
+        h("div", { class: "event-registration-summary-card guest-edit-selector" },
+          field("edit-guest", "Choose Guest", guestSelect),
+        ),
+        h("div", { class: "guest-edit-layout" },
+        section(
+          "user",
+          "Guest Details",
+          h("div", { class: "form-grid-2" },
+          field("edit-name", "Full Name *", inputWithIcon(nameInput, "user")),
+          field("edit-mobile", "Mobile", inputWithIcon(mobileInput, "phone")),
+          ),
+          h(
+            "div",
+            { class: "form-grid-2" },
+            field("edit-gender", "Gender", genderSelect),
+            field("edit-dob", "Birth Date", dobInput),
+          ),
+          field("edit-dupr", "DUPR ID (Optional)", inputWithIcon(duprInput, "medal")),
+        ),
+        section(
+          "trophy",
+          "Club Ratings",
+          h(
+            "div",
+            { class: "form-grid-2" },
+            field("edit-singles", "Singles Rating", singlesInput, "2.000–8.000"),
+            field("edit-doubles", "Doubles Rating", doublesInput, "2.000–8.000"),
+          ),
+          singlesNote,
+          doublesNote,
+          field("edit-reason", "Reason for a rating change", reasonInput),
+        ),
+        ),
+        h("p", { class: "event-registration-partner-tip" }, icon("info"),
+          h("span", {}, "Existing registrations keep their original player names. A reason is required when changing a rating."),
+        ),
+        error,
+      ),
+      onConfirm: async () => {
+        error.hidden = true;
+        if (!loaded) return fail(error, new Error("The guest could not be loaded. Close and try again."));
+        const rating = (input) => {
+          const raw = input.value.trim();
+          if (!raw) return { value: null };
+          const n = Number(raw);
+          return /^\d(\.\d{1,3})?$/.test(raw) && n >= 2 && n <= 8 ? { value: n } : { invalid: true };
+        };
+        const singles = rating(singlesInput);
+        const doubles = rating(doublesInput);
+        if (singles.invalid || doubles.invalid) {
+          return fail(error, new Error("Enter a rating from 2.000 to 8.000 with at most three decimals."));
+        }
+        const duprId = duprInput.value.trim().toUpperCase();
+        if (duprId && !/^[A-Z0-9]{1,32}$/.test(duprId)) {
+          return fail(error, new Error("DUPR ID must contain 1 to 32 letters or numbers."));
+        }
+        const changed = (value, side) => value != null && Number(value) !== Number(side?.points ?? Number.NaN);
+        const reason = reasonInput.value.trim();
+        if ((changed(singles.value, loaded.singles) || changed(doubles.value, loaded.doubles)) && reason.length < 3) {
+          return fail(error, new Error("Give a reason of at least 3 characters for changing a rating."));
+        }
+        const payload = {
+          p_participant_id: guestSelect.value,
+          p_name: nameInput.value.trim(),
+          p_mobile: mobileInput.value.trim() || null,
+          p_gender: genderSelect.value || null,
+          p_birth_date: dobInput.value || null,
+          p_dupr_id: duprId || null,
+          p_singles_rating: singles.value,
+          p_doubles_rating: doubles.value,
+          p_reason: reason || null,
+        };
+        const fingerprint = JSON.stringify(payload);
+        if (intent?.fingerprint !== fingerprint) intent = { fingerprint, key: api.newKey() };
+        try {
+          await api.rpc("update_event_guest", { ...payload, p_key: intent.key });
+          toast("Guest updated.", { tone: "success" });
           await refresh();
         } catch (e) {
           return fail(error, e);
@@ -517,10 +738,21 @@ export function createGuestEventActions(
     }
     const key = api.newKey();
     const error = errorLine();
-    const ranks = [
-      ["", "Choose assessed rank"],
-      ...getRanks().map((r) => [r.id, r.label]),
-    ];
+    // The guest's stored ratings (assessed when the guest was added): registering uses the one for the division's format.
+    let ratingRows = [];
+    try {
+      ratingRows = await api.rpc("guest_participant_ratings", { p_event_id: event.id }) ?? [];
+    } catch {
+      ratingRows = [];
+    }
+    const ratingOf = (participantId, discipline) =>
+      ratingRows.find((r) => r.participant_id === participantId && r.discipline === discipline)?.points ?? null;
+    const ratingNote = (participantId, format) => {
+      const value = ratingOf(participantId, format);
+      return value == null
+        ? `Unrated for ${format}. May register in Beginner divisions starting at Beginner Low.`
+        : `${format === "doubles" ? "Doubles" : "Singles"} rating ${Number(value).toFixed(3)} (assessed when the guest was added).`;
+    };
     const source = change?.row;
     const defaultPartner = source?.guest_partner_participant_id ??
       players?.find((p) =>
@@ -538,90 +770,215 @@ export function createGuestEventActions(
       });
       return;
     }
+    // The partner list belongs to the chosen division and the chosen guest: a doubles division needs a partner (members who
+    // are eligible for it, and guests without an entry), the guest being registered is never offered, and a singles
+    // division has no partner. The database repeats every check when the guest is registered.
+    const guestSelect = select(
+      "guest-player",
+      guests.filter((p) =>
+        !change || change.kind !== "move" ||
+        p.id === source.guest_participant_id
+      ).map((p) => [p.id, p.display_name]),
+      source?.guest_participant_id ?? guests[0].id,
+    );
+    const divisionSelect = select(
+      "guest-division",
+      divisions.map((d) => [d.id, d.name]),
+      divisions.some((d) => d.id === divisionId) ? divisionId : divisions[0]?.id,
+    );
+    const partnerSelect = h("select", { id: "guest-partner", name: "guest-partner", hidden: true },
+      h("option", { value: "" }, "Loading partners…"));
+    const partnerTerm = searchControl({
+      id: "guest-partner-search", class: "input", maxlength: 60,
+      placeholder: "Partner's name or member ID", "aria-label": "Find doubles partner",
+    });
+    const partnerStatus = h("p", { class: "sub form-help-text", role: "status" }, "Type at least 2 letters or numbers.");
+    const partnerResults = h("div", { class: "staff-results", role: "radiogroup", "aria-label": "Eligible doubles partners" });
+    const partnerPreview = h("div", { class: "partner-preview-host" });
+    function showPartner() {
+      const selected = partners.find((p) => p.id === partnerSelect.value);
+      partnerPreview.replaceChildren();
+      partnerResults.hidden = Boolean(selected);
+      partnerStatus.hidden = Boolean(selected);
+      if (selected) partnerPreview.append(h("div", { class: "staff-selected-card" },
+        h("div", { class: "member-meta" },
+          h("strong", { class: "member-name" }, selected.display_name),
+          h("span", { class: "sub member-subtext" }, selected.member_no || "Guest"),
+        ),
+        button({ label: "Change", icon: "refresh", variant: "ghost", onClick: () => {
+          partnerSelect.value = "";
+          partnerResults.replaceChildren();
+          partnerStatus.textContent = "Type at least 2 letters or numbers.";
+          showPartner();
+          syncPartnerFields();
+          partnerTerm.focus();
+        } }),
+      ));
+    }
+    function searchPartners() {
+      partnerSelect.value = "";
+      showPartner();
+      syncPartnerFields();
+      const term = partnerTerm.value.trim().toLocaleLowerCase();
+      partnerResults.replaceChildren();
+      if (partnerProblem) {
+        partnerStatus.textContent = partnerProblem;
+        return;
+      }
+      if (term.length < 2) {
+        partnerStatus.textContent = "Type at least 2 letters or numbers.";
+        return;
+      }
+      const found = partners.filter((p) => `${p.display_name} ${p.member_no ?? ""}`.toLocaleLowerCase().includes(term));
+      partnerStatus.textContent = found.length ? `${found.length} found. Choose one below.` : "No eligible partners match.";
+      partnerResults.replaceChildren(...found.map((p) => h("label", { class: "staff-result" },
+        h("input", { type: "radio", name: "guest-partner-result", value: p.id, onChange: () => {
+          partnerSelect.value = p.id;
+          showPartner();
+          syncPartnerFields();
+        } }),
+        h("span", { class: "member-meta" },
+          h("strong", { class: "member-name" }, p.display_name),
+          h("span", { class: "sub member-subtext" }, p.member_no || "Guest"),
+        ),
+        badge(p.is_guest ? "Guest" : "Member", p.is_guest ? "neutral" : "info"),
+      )));
+    }
+    partnerTerm.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); searchPartners(); }
+    });
+    const partnerRatingNote = h("p", { class: "sub field-hint", hidden: true });
+    const guestRatingNote = h("p", { class: "sub field-hint" });
+    const partnerPanel = h(
+      "div",
+      { class: "form-section event-registration-partner-panel" },
+      h(
+        "div",
+        { class: "event-registration-partner-head" },
+        h("div", { class: "event-registration-partner-label" }, icon("userPlus"), h("strong", {}, "Doubles Partner *")),
+        badge("Required", "warning"),
+      ),
+      partnerSelect,
+      h("div", { class: "guest-search-row" }, partnerTerm,
+        button({ label: "Search", icon: "search", variant: "secondary", onClick: searchPartners }),
+      ),
+      partnerStatus,
+      partnerResults,
+      partnerPreview,
+      partnerRatingNote,
+      h("p", { class: "event-registration-partner-tip" }, icon("info"),
+        h("span", {}, "Both players must fit this division. Unrated players are allowed in Beginner divisions starting at Beginner Low. Only eligible partners without an entry are listed."),
+      ),
+    );
+    let partners = [];
+    let partnerProblem = "";
+    let partnerLoad = 0;
+    const memberParticipantIds = new Map();
+    let wantedPartner = defaultPartner;
+    const formatOf = () => divisions.find((d) => d.id === divisionSelect.value)?.format ?? "singles";
+    const isDoubles = () => formatOf() === "doubles";
+    const partnerIsGuest = () => isDoubles() && partners.find((x) => x.id === partnerSelect.value)?.is_guest === true;
+    const syncPartnerFields = () => {
+      partnerPanel.hidden = !isDoubles();
+      partnerRatingNote.hidden = !partnerIsGuest();
+      if (partnerIsGuest()) partnerRatingNote.textContent = ratingNote(partnerSelect.value, "doubles");
+      guestRatingNote.textContent = ratingNote(guestSelect.value, formatOf());
+      if (partnerProblem) partnerStatus.textContent = partnerProblem;
+    };
+    async function loadPartners() {
+      const request = ++partnerLoad;
+      partnerProblem = "";
+      partners = [];
+      partnerResults.replaceChildren();
+      partnerPreview.replaceChildren();
+      partnerTerm.value = "";
+      partnerStatus.textContent = "Type at least 2 letters or numbers.";
+      if (!isDoubles()) {
+        partners = [];
+        partnerSelect.replaceChildren(h("option", { value: "" }, "No partner (singles)"));
+        partnerSelect.value = "";
+        syncPartnerFields();
+        return;
+      }
+      partnerSelect.replaceChildren(h("option", { value: "" }, "Loading partners…"));
+      try {
+        const args = {
+          p_division_id: divisionSelect.value,
+          p_guest_participant_id: guestSelect.value,
+        };
+        const [rows, eligibility] = await Promise.all([
+          api.rpc("eligible_event_partners", args),
+          api.rpc("guest_division_eligibility", args),
+        ]);
+        if (request !== partnerLoad) return;
+        partnerProblem = eligibility?.eligible === false ? eligibility.reason || "Choose a division that fits this guest." : "";
+        partners = partnerProblem ? [] : (rows ?? []).map((p) => ({ ...p, participant_id: p.id, id: p.id ?? `member:${p.member_id}` }));
+      } catch (e) {
+        if (request !== partnerLoad) return;
+        partnerProblem = ["22023", "42501"].includes(e?.code)
+          ? e.cause?.message || e.message
+          : "Partner eligibility could not be checked. Change the guest or division to retry.";
+        partners = [];
+      }
+      partnerSelect.replaceChildren(
+        h("option", { value: "" }, partners.length ? "Choose a partner" : "No eligible partner available"),
+        ...partners.map((x) => h("option", { value: x.id }, `${x.display_name} · ${x.member_no || "Guest"}`)),
+      );
+      partnerSelect.value = partners.some((x) => x.id === wantedPartner) ? wantedPartner : "";
+      showPartner();
+      syncPartnerFields();
+    }
+    divisionSelect.addEventListener("change", () => {
+      wantedPartner = "";
+      loadPartners();
+    });
+    guestSelect.addEventListener("change", () => {
+      wantedPartner = partnerSelect.value;
+      loadPartners();
+    });
+    partnerSelect.addEventListener("change", syncPartnerFields);
+    loadPartners();
     return openModal({
       title: change
         ? (change.kind === "move" ? "Move Guest Entry" : "Replace Players")
         : "Register Guest",
-      icon: "layers",
-      eyebrow: event.name,
+      icon: "trophy",
+      eyebrow: "Event Registration",
       description: change
         ? "The original registration is kept in history. Fees use the current event price. Payment credit follows the same guest payer; a replacement payer needs their own payment."
-        : "Administrators may register guests while registration is open or closed. Eligibility, capacity and payment rules still apply.",
+        : event.name,
       confirmLabel: change ? "Save Change" : "Register Guest",
       body: h(
         "div",
-        { class: "stack" },
-        h(
-          "div",
-          { class: "guest-modal-section" },
-          h(
-            "div",
-            { class: "guest-modal-section-head" },
-            h("span", { class: "section-icon is-sm", "aria-hidden": "true" }, icon("user")),
-            h("span", { class: "guest-modal-section-title" }, "Guest & Rank Assessment"),
-          ),
-          field(
-            "guest-player",
-            "Guest *",
-            select(
-              "guest-player",
-              guests.filter((p) =>
-                !change || change.kind !== "move" ||
-                p.id === source.guest_participant_id
-              ).map((p) => [p.id, p.display_name]),
-              source?.guest_participant_id ?? guests[0].id,
+        { class: "stack guest-registration-form" },
+        h("div", { class: "event-registration-summary-card" },
+          h("div", { class: "event-registration-summary-header" },
+            h("div", { class: "event-registration-summary-title-col" },
+              h("span", { class: "eyebrow" }, "Tournament Division"),
+              h("strong", { class: "event-registration-division-title" }, event.name),
+            ),
+            h("div", { class: "event-registration-summary-badges" },
+              Number(event.fee) > 0 ? badge(formatMoney(event.fee), "primary") : badge("Free Entry", "success"),
+              badge("Admin Entry", "info"),
             ),
           ),
-          field(
-            "guest-rank",
-            "Assessed Guest Rank *",
-            select("guest-rank", ranks, source?.guest_rank_id ?? ""),
-            "An authorized staff member assesses the guest. The server checks the division's category and rank band.",
-          ),
+          field("guest-division", "Division *", divisionSelect),
         ),
         h(
           "div",
-          { class: "guest-modal-section" },
+          { class: "form-section event-registration-partner-panel" },
           h(
             "div",
-            { class: "guest-modal-section-head" },
-            h("span", { class: "section-icon is-sm", "aria-hidden": "true" }, icon("trophy")),
-            h("span", { class: "guest-modal-section-title" }, "Division & Team"),
+            { class: "event-registration-partner-head" },
+            h("div", { class: "event-registration-partner-label" }, icon("user"), h("strong", {}, "Guest & Assessment")),
+            badge("Required", "warning"),
           ),
-          field(
-            "guest-division",
-            "Division *",
-            select(
-              "guest-division",
-              divisions.map((
-                d,
-              ) => [d.id, d.name]),
-              divisions.some((d) => d.id === divisionId)
-                ? divisionId
-                : divisions[0]?.id,
-            ),
-          ),
-          field(
-            "guest-partner",
-            "Doubles Partner",
-            select("guest-partner", [
-              ["", "No partner (singles)"],
-              ...(players ?? []).map((
-                p,
-              ) => [p.id, `${p.display_name} · ${p.member_no || "Guest"}`]),
-            ], defaultPartner),
-            "Add the partner to the event participant list first. Singles take no partner.",
-          ),
-          field(
-            "guest-partner-rank",
-            "Assessed Partner Rank",
-            select(
-              "guest-partner-rank",
-              ranks,
-              source?.guest_partner_rank_id ?? "",
-            ),
-            "Choose only for a guest partner. A member's rank is read from their profile.",
-          ),
+          field("guest-player", "Guest *", guestSelect),
+          guestRatingNote,
+        ),
+        partnerPanel,
+        h("p", { class: "event-registration-partner-tip" }, icon("info"),
+          h("span", {}, "Admins may register guests while registration is open or closed. Eligibility, capacity and payment rules apply."),
         ),
         change
           ? h(
@@ -654,13 +1011,27 @@ export function createGuestEventActions(
       ),
       onConfirm: async (form) => {
         try {
+          if (isDoubles() && !form.get("guest-partner")) {
+            return fail(error, new Error("Choose a doubles partner."));
+          }
+          const selectedPartner = partners.find((p) => p.id === form.get("guest-partner"));
+          let partnerId = isDoubles() ? form.get("guest-partner") || null : null;
+          if (isDoubles() && selectedPartner?.member_id && !selectedPartner.participant_id) {
+            if (!memberParticipantIds.has(selectedPartner.member_id)) memberParticipantIds.set(selectedPartner.member_id, api.newKey());
+            const participant = await api.rpc("ensure_event_member_participant", {
+              p_id: memberParticipantIds.get(selectedPartner.member_id),
+              p_event_id: event.id,
+              p_member_id: selectedPartner.member_id,
+            });
+            partnerId = participant.id;
+          }
           const request = {
             p_id: key,
             p_division_id: form.get("guest-division"),
             p_participant_id: form.get("guest-player"),
-            p_rank_id: form.get("guest-rank") || null,
-            p_partner_participant_id: form.get("guest-partner") || null,
-            p_partner_rank_id: form.get("guest-partner-rank") || null,
+            p_rank_id: null,
+            p_partner_participant_id: partnerId,
+            p_partner_rank_id: null,
           };
           if (change) {
             delete request.p_participant_id;
@@ -856,6 +1227,7 @@ export function createGuestEventActions(
   return {
     policy,
     addGuest,
+    editGuest,
     addExisting,
     register,
     payment,

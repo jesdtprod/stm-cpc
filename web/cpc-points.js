@@ -5,6 +5,7 @@
 import { badge, dataTable, h, icon, openModal, selectField, toast } from "./ui.js";
 import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
+import { avatarImage } from "./lib/avatar.js";
 
 export const PROVISIONAL_MATCHES = 5;
 export const DISCIPLINES = ["singles", "doubles"];
@@ -55,8 +56,14 @@ export async function loadRatingBands(api) {
 }
 
 /** The rank a rating equals, from the bands (null when there are none). */
-export const equivalentRank = (bands, points) =>
-  (bands ?? []).find((b) => Number(points) >= b.min && Number(points) <= b.max)?.name ?? null;
+export const equivalentRank = (bands, points) => {
+  const list = bands ?? [];
+  const found = list.find((b) => Number(points) >= b.min && Number(points) <= b.max)?.name;
+  if (found) return found;
+  // a rating below the lowest band (under 2.000) is the lowest rank
+  const lowest = list.reduce((low, b) => (low == null || b.min < low.min ? b : low), null);
+  return lowest && Number(points) < lowest.min ? lowest.name : null;
+};
 
 /** One discipline of a ranking-list row (singles_points, singles_matches, ...). */
 export const ratingOf = (row, discipline) => ({
@@ -168,7 +175,7 @@ export function pointsHistoryTable(rows, state, onRetry, filter, searchable = fa
   return table;
 }
 
-export async function pointsHistoryModal(api, memberId, name, row = null) {
+export async function pointsHistoryModal(api, memberId, name, row = null, discipline = null) {
   let rows = [];
   let status = "ready";
   try {
@@ -176,14 +183,16 @@ export async function pointsHistoryModal(api, memberId, name, row = null) {
   } catch {
     status = "error";
   }
+  const disciplineLabel = DISCIPLINE_LABEL[discipline];
+  if (disciplineLabel) rows = rows.filter((entry) => entry.discipline === discipline);
   const memberNo = row?.member_no;
   return openModal({
-    title: "Rating History",
+    title: disciplineLabel ? `${disciplineLabel} Rating History` : "Rating History",
     eyebrow: memberNo ? `${name} • ${memberNo}` : name,
     icon: "clock",
     tone: "info",
     size: "lg",
-    description: "Audit record of Singles and Doubles rating calculations, match outcomes, and starting assessments.",
+    description: `Audit record of ${disciplineLabel ?? "Singles and Doubles"} rating calculations, match outcomes, and starting assessments.`,
     confirmLabel: "Close",
     cancelLabel: null,
     body: h(
@@ -191,12 +200,33 @@ export async function pointsHistoryModal(api, memberId, name, row = null) {
       { class: "stack modal-history-stack" },
       h(
         "div",
+        { class: "member-decision-subject points-modal-subject" },
+        h(
+          "span",
+          { class: "member-avatar ranking-player-photo", "aria-hidden": "true" },
+          avatarImage(null, name),
+        ),
+        h(
+          "div",
+          { class: "member-meta" },
+          h(
+            "div",
+            { class: "member-decision-name" },
+            h("strong", { class: "member-name" }, name),
+            disciplineLabel ? badge(disciplineLabel, "info") : badge("Singles & Doubles", "info"),
+            row?.rank_name ? badge(row.rank_name.replace(/\s*\(\d\.\d{3}\s*[–-]\s*\d\.\d{3}\)/, ""), "success") : null,
+          ),
+          memberNo ? h("span", { class: "sub member-id" }, `Member ID: ${memberNo}`) : null,
+        ),
+      ),
+      h(
+        "div",
         { class: "modal-callout points-modal-callout" },
         h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon("clock")),
         h(
           "div",
           { class: "modal-callout-text" },
-          h("strong", { class: "decision-impact-title" }, `Player Rating Audit · ${name}`),
+          h("strong", { class: "decision-impact-title" }, `Player Rating Audit • ${name}`),
           h("div", { class: "decision-impact-text" }, "All rating adjustments, match results, and administrative assessments are tracked with full versioning."),
         ),
       ),
@@ -210,11 +240,6 @@ export async function pointsHistoryModal(api, memberId, name, row = null) {
   });
 }
 
-/**
- * Admin form: assess a starting value (ranks.override) for Singles or Doubles. Versioned and idempotent; the database
- * records and audits it. `row` is a ranking-list row (singles_points, doubles_version, ...) or `{ member_id, display_name,
- * singles: {...}, doubles: {...} }` as returned by loadMemberRatings.
- */
 export function assessPointsModal({ api, row, discipline = "singles", onDone }) {
   const key = api.newKey();
   const error = h("p", { class: "field-error form-error", role: "alert", hidden: true });

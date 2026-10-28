@@ -28,7 +28,87 @@ function notificationMeta(n) {
   if (text.includes("draw") || text.includes("tournament") || text.includes("match") || text.includes("bracket")) {
     return { iconName: "trophy", tone: "accent" };
   }
+  if (text.includes("registration") || text.includes("event") || text.includes("roster")) {
+    return { iconName: "ticket", tone: "info" };
+  }
   return { iconName: "inbox", tone: "neutral" };
+}
+
+function parseNoticeDetails(text) {
+  if (!text || typeof text !== "string") return null;
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) return null;
+  const entries = [];
+  for (const line of lines) {
+    const colonIdx = line.indexOf(":");
+    if (colonIdx > 0 && colonIdx < line.length - 1) {
+      const key = line.slice(0, colonIdx).trim();
+      const value = line.slice(colonIdx + 1).trim();
+      if (key.length <= 25 && /^[A-Za-z0-9\s_-]+$/.test(key)) {
+        entries.push({ key, value });
+        continue;
+      }
+    }
+    return null;
+  }
+  return entries.length >= 2 ? entries : null;
+}
+
+function renderNoticeBody(body) {
+  if (!body) return null;
+  const details = parseNoticeDetails(body);
+  if (!details) {
+    return h("p", { class: "notice-body sub" }, body);
+  }
+  const ORDER = ["player", "partner", "division", "status", "event", "reference"];
+  const sorted = [...details].sort((a, b) => {
+    const idxA = ORDER.indexOf(a.key.toLowerCase());
+    const idxB = ORDER.indexOf(b.key.toLowerCase());
+    return (idxA !== -1 ? idxA : 99) - (idxB !== -1 ? idxB : 99);
+  });
+  const hasPartner = sorted.some((d) => d.key.toLowerCase() === "partner");
+
+  return h(
+    "div",
+    { class: "notice-details-grid" },
+    ...sorted.map(({ key, value }) => {
+      const lowerKey = key.toLowerCase();
+      const isStatus = lowerKey === "status";
+      const isRef = lowerKey === "reference";
+      const isEvent = lowerKey === "event";
+      const isDivision = lowerKey === "division";
+
+      let valEl;
+      if (isStatus) {
+        const lowerVal = value.toLowerCase();
+        const tone = lowerVal === "confirmed" || lowerVal === "approved"
+          ? "success"
+          : lowerVal === "waitlisted"
+          ? "info"
+          : lowerVal === "requested"
+          ? "warning"
+          : lowerVal === "rejected" || lowerVal === "withdrawn"
+          ? "danger"
+          : "neutral";
+        valEl = h("span", { class: "badges" }, badge(value, tone));
+      } else if (isRef) {
+        valEl = h("code", { class: "reference-code" }, value);
+      } else {
+        valEl = h("span", { class: "notice-detail-val" }, value);
+      }
+
+      let colClass = "notice-detail-col";
+      if (isEvent) colClass += " is-event";
+      else if (isDivision && !hasPartner) colClass += " is-division-wide";
+
+      return h(
+        "div",
+        { class: colClass },
+        h("span", { class: "notice-detail-label" }, key),
+        valEl,
+      );
+    }),
+  );
 }
 
 export function createNotificationPages({ api, feed }) {
@@ -296,7 +376,7 @@ export function createNotificationPages({ api, feed }) {
                     h("strong", { class: "notice-title" }, n.title),
                     h("span", { class: "notice-time" }, formatDateTime(n.created_at)),
                   ),
-                  n.body ? h("p", { class: "notice-body sub" }, n.body) : null,
+                  renderNoticeBody(n.body),
                 ),
                 n.url
                   ? h(

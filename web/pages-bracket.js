@@ -69,6 +69,7 @@ export function createBracketPages({ api }) {
       matches: [],
       results: [],
       detail: "loading",
+      scoringRules: null,
     };
 
     const stage = () =>
@@ -82,13 +83,18 @@ export function createBracketPages({ api }) {
       try {
         const rows = await api.read((c) =>
           c.from("divisions").select(
-            "id,name,status,format,category:categories(name),event:events(name),stages:division_stages(id,stage_no,stage_type,status,scoring_rule_snapshot)",
+            "id,name,status,format,category:categories(name),event:events(name),stages:division_stages(id,stage_no,stage_type,status,scoring_rule_snapshot,round_scoring)",
           ).eq("id", divisionId)
         );
         const division = rows?.[0];
         if (!division) throw new Error("not found");
         division.stages.sort((a, b) => a.stage_no - b.stage_no);
         state.division = division;
+        if (can("events.manage") && division.stages.some((x) => x.stage_type === "split_single_elimination")) {
+          state.scoringRules ??= await api.read((c) =>
+            c.from("scoring_rules").select("id,name").is("deleted_at", null).eq("is_active", true).order("name")
+          ).catch(() => []);
+        }
         state.stageId ??= (division.stages.find((s) =>
           ["drawn", "in_progress"].includes(s.status)
         ) ?? division.stages[0])?.id;
@@ -176,19 +182,29 @@ export function createBracketPages({ api }) {
       }
       return { games };
     }
-    const maxGamesOf = () =>
-      2 * (stage()?.scoring_rule_snapshot?.games_to_win ?? 1) - 1;
-    const rule = () => stage()?.scoring_rule_snapshot ?? {};
-    const ruleText = () =>
-      `Play to ${rule().points_per_game}, win by ${rule().win_by}${
-        rule().point_cap ? `, cap ${rule().point_cap}` : ""
-      }. First to ${rule().games_to_win} game${
-        rule().games_to_win > 1 ? "s" : ""
+    // Split Single Elimination: a bracket round (counted back from the final) can have its own rule; the database decides
+    // the same way (core.match_scoring_rule). Round 1 and anything not set use the stage rule.
+    const ROUND_LABEL = { 0: "final", 1: "semifinal", 2: "quarterfinal" };
+    const rule = (m) => {
+      const st = stage();
+      const base = st?.scoring_rule_snapshot ?? {};
+      if (!m || st?.stage_type !== "split_single_elimination" || !["H", "L"].includes(m.group_label) || !(m.round_no > 1)) {
+        return base;
+      }
+      const last = Math.max(...state.matches.filter((x) => x.group_label === m.group_label).map((x) => x.round_no));
+      return st.round_scoring?.[m.group_label]?.[ROUND_LABEL[last - m.round_no]] ?? base;
+    };
+    const maxGamesOf = (m) => 2 * (rule(m).games_to_win ?? 1) - 1;
+    const ruleText = (m) =>
+      `Play to ${rule(m).points_per_game}, win by ${rule(m).win_by}${
+        rule(m).point_cap ? `, cap ${rule(m).point_cap}` : ""
+      }. First to ${rule(m).games_to_win} game${
+        rule(m).games_to_win > 1 ? "s" : ""
       } wins.`;
 
     function scoreModal(m) {
       const error = errorLine();
-      const max = maxGamesOf();
+      const max = maxGamesOf(m);
       const canFinal = can("scores.finalize");
       return openModal({
         title: "Enter the score",
@@ -198,7 +214,7 @@ export function createBracketPages({ api }) {
         body: h(
           "div",
           { class: "stack" },
-          h("p", { class: "muted" }, ruleText()),
+          h("p", { class: "muted" }, ruleText(m)),
           h(
             "div",
             { class: "score-head" },
@@ -275,7 +291,7 @@ export function createBracketPages({ api }) {
           h(
             "p",
             { class: "muted" },
-            `The other side wins with the forfeit score (${rule().forfeit_score}–0 in each game).`,
+            `The other side wins with the forfeit score (${rule(m).forfeit_score}–0 in each game).`,
           ),
           h(
             "div",
@@ -327,7 +343,7 @@ export function createBracketPages({ api }) {
 
     function correctModal(m) {
       const error = errorLine();
-      const max = maxGamesOf();
+      const max = maxGamesOf(m);
       return openModal({
         title: "Correct the Result",
         eyebrow: `${m.a_name} v ${m.b_name}`,
@@ -340,7 +356,7 @@ export function createBracketPages({ api }) {
           h(
             "p",
             { class: "muted" },
-            `${ruleText()} The old result is voided and kept in the history.`,
+            `${ruleText(m)} The old result is voided and kept in the history.`,
           ),
           ...gameRows(m, max),
           h(
@@ -800,6 +816,80 @@ export function createBracketPages({ api }) {
       );
     }
 
+    // Scoring by Round (Split Single Elimination, events.manage): a rule for the H and the L bracket quarterfinals,
+    // semifinals and finals. Set after Round 1 and before the quarterfinals start; the database locks it after that.
+    function roundScoringPanel() {
+      const s = stage();
+      if (s?.stage_type !== "split_single_elimination" || !can("events.manage")) return null;
+      const rules = state.scoringRules ?? [];
+      const locked = state.matches.some((m) => ["H", "L"].includes(m.group_label) && !["scheduled", "void"].includes(m.status));
+      const base = s.scoring_rule_snapshot?.name ?? "the division rule";
+      const idByName = new Map(rules.map((r) => [r.name, r.id]));
+      const selects = {};
+      const field = (group, round, label) => {
+        const id = `rs-${group}-${round}`;
+        const select = h(
+          "select",
+          { class: "input select-input", id, name: id, disabled: locked },
+          h("option", { value: "" }, `Division rule (${base})`),
+          ...rules.map((r) => h("option", { value: r.id }, r.name)),
+        );
+        select.value = idByName.get(s.round_scoring?.[group]?.[round]?.name) ?? "";
+        selects[`${group}.${round}`] = select;
+        return h("div", { class: "field" }, h("label", { for: id }, label), select);
+      };
+      const bracket = (group, title) =>
+        h(
+          "div",
+          { class: "round-scoring-bracket" },
+          h("h4", {}, title),
+          field(group, "quarterfinal", "Quarterfinals"),
+          field(group, "semifinal", "Semifinals"),
+          field(group, "final", "Finals"),
+        );
+      const error = errorLine();
+      const save = button({
+        label: "Save Round Scoring",
+        icon: "check",
+        variant: "primary",
+        type: "button",
+        disabled: locked,
+        onClick: async () => {
+          error.hidden = true;
+          const rulesOut = { H: {}, L: {} };
+          for (const [key, select] of Object.entries(selects)) {
+            const [group, round] = key.split(".");
+            if (select.value) rulesOut[group][round] = select.value;
+          }
+          try {
+            await api.rpc("set_stage_round_scoring", { p_stage_id: s.id, p_rules: rulesOut, p_key: api.newKey() });
+            toast("Round scoring saved.", { tone: "success" });
+            await load();
+          } catch (e) {
+            showError(
+              error,
+              ["22023", "42501"].includes(e?.code) ? e.cause?.message || e.message : "The round scoring could not be saved. Try again.",
+            );
+          }
+        },
+      });
+      return h(
+        "section",
+        { class: "card round-scoring-panel", "aria-label": "Scoring by Round" },
+        h("h3", {}, "Scoring by Round"),
+        h(
+          "p",
+          { class: "sub" },
+          locked
+            ? "Locked: the bracket rounds have started. Round 1 and any round left on the division rule use " + base + "."
+            : `Round 1 uses ${base}. Choose a rule for each round of the H and L brackets; set this before the quarterfinals start.`,
+        ),
+        h("div", { class: "round-scoring-grid" }, bracket("H", "H Bracket"), bracket("L", "L Bracket")),
+        error,
+        locked ? null : h("div", { class: "actions" }, save),
+      );
+    }
+
     function draw() {
       if (state.status === "error") {
         body.replaceChildren(
@@ -887,6 +977,7 @@ export function createBracketPages({ api }) {
             : null,
           resultsView(),
           stageTabs,
+          roundScoringPanel(),
           s?.stage_type === "single_elimination" ? championLine() : null,
           s?.stage_type === "single_elimination" ||
             s?.stage_type === "split_single_elimination"

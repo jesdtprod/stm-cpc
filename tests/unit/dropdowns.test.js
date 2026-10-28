@@ -19,10 +19,13 @@ import {
 } from "../../web/ui.js";
 import { createRanksPages } from "../../web/pages-ranks.js";
 import { createScoringPages } from "../../web/pages-scoring.js";
+import { createBracketPages } from "../../web/pages-bracket.js";
+import { equivalentRank } from "../../web/cpc-points.js";
 import { createStaffPages } from "../../web/pages-staff.js";
 import { createBookingAdminPages } from "../../web/pages-bookings-admin.js";
 import { createMemberEventsPages } from "../../web/pages-events-member.js";
 import { createRankingPages } from "../../web/pages-ranking.js";
+import { assessPointsModal, pointsHistoryModal } from "../../web/cpc-points.js";
 import { createAdminPages } from "../../web/pages-admin.js";
 import { createEventsPages, divisionStatusBadge } from "../../web/pages-events.js";
 import { createPublicPages } from "../../web/pages-public.js";
@@ -880,6 +883,71 @@ Deno.test("member events: one shared search filters divisions and retains regist
     );
   }));
 
+Deno.test("member events: guest partner search selects and submits the guest-specific registration", () =>
+  withDom(async (document) => {
+    const writes = [];
+    const api = {
+      newKey: () => "fake-guest-registration",
+      read: () => Promise.resolve([]),
+      rpc: (name, args) => {
+        if (name === "eligible_division_partners") return Promise.resolve([
+          { member_id: null, guest_participant_id: "fake-guest", display_name: "Fake Eligible Guest", member_no: null },
+        ]);
+        if (name === "register_for_event_with_guest") {
+          writes.push(args);
+          return Promise.resolve({ status: "confirmed" });
+        }
+        return Promise.resolve([{
+          id: "fake-event", name: "Fake Open", starts_on: "2099-01-01", ends_on: "2099-01-01",
+          divisions: [{ id: "fake-doubles", name: "Beginner Doubles", format: "doubles", taken: 0 }],
+        }]);
+      },
+    };
+    const page = createMemberEventsPages({ api, client: {}, session: { getState: () => ({}) } }).eventsPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await page.querySelectorAll("button").find((b) => b.getAttribute("aria-label") === "Register").click();
+    const dialog = document.body.querySelector("dialog");
+    const term = dialog.querySelectorAll("input").find((el) => el.getAttribute("id") === "rg-term");
+    term.value = "Fake";
+    await dialog.querySelectorAll("button").find((b) => b.textContent.includes("Search") && b.getAttribute("aria-label") !== "Clear Search").click();
+    const radio = dialog.querySelectorAll("input").find((el) => el.getAttribute("name") === "partner");
+    assert(radio?.value === "fake-guest", "Guest result retains participant identity");
+    radio.dispatchEvent(new Event("change"));
+    assert(dialog.querySelector(".staff-selected-card").textContent.includes("Event Guest"), "Guest preview does not invent a member ID");
+    dialog.querySelector("form").dispatchEvent(new Event("submit"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert(writes.length === 1 && writes[0].p_guest_participant_id === "fake-guest", "Guest partner uses the guest-specific save RPC");
+    assert(!("p_partner_member_id" in writes[0]), "Guest ID must not be passed as a member ID");
+  }));
+
+Deno.test("member events: saved status replaces registration and partner controls remain read-only", () =>
+  withDom(async (document) => {
+    for (const [status, label] of [["requested", "Waiting for Approval"], ["waitlisted", "Waitlisted"], ["confirmed", "Approved"]]) {
+      const api = {
+        read: () => Promise.resolve([]),
+        rpc: () => Promise.resolve([{
+          id: "fake-event", name: "Fake Event", starts_on: "2099-01-01", ends_on: "2099-01-01",
+          divisions: [{ id: "fake-division", name: "Fake Doubles", format: "doubles", taken: 1,
+            problem: "Old eligibility warning", mine: { id: "fake-registration", status, fee: 0, is_owner: false } }],
+        }]),
+      };
+      const page = createMemberEventsPages({ api, client: {}, session: { getState: () => ({}) } }).eventsPage();
+      document.body.append(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      assert(page.textContent.toLowerCase().includes(label.toLowerCase()), `Shows saved ${status} status: ${page.textContent}`);
+      assert(!page.textContent.includes("Old eligibility warning"), "Existing registration overrides eligibility warning");
+      const actions = page.querySelectorAll("button");
+      assert(!actions.some((b) => b.getAttribute("aria-label") === "Register"), "Cannot offer duplicate registration");
+      await actions.find((b) => b.getAttribute("aria-label") === "View Registration").click();
+      const dialog = document.body.querySelector("dialog");
+      assert(dialog.textContent.includes("registered as a doubles partner"), "Explains partner registration ownership");
+      assert(!dialog.querySelectorAll("button").some((b) => /Withdraw|Pay Entry Fee/.test(b.textContent)), "Partner cannot pay or withdraw owner registration");
+      dialog.close();
+      page.remove();
+    }
+  }));
+
 Deno.test("ranking identity: actual CPC number appears below the player name without invented IDs", () =>
   withDom(async (document) => {
     setAuth({ signedIn: true, grants: [{ code: "members.read" }] });
@@ -969,7 +1037,7 @@ Deno.test("ranking ratings: Singles and Doubles with three decimals, provisional
     assert(subs[3] === "Not assessed yet", "A ranked member without a rating is Unrated");
     assert(values[4] === "Unrated" && subs[4] === "Provisional Beginner Low", "An unranked member shows the provisional fallback");
     assert(
-      page.textContent.includes("Singles Rating") && page.textContent.includes("Doubles Rating"),
+      page.textContent.includes("Club Single Rating") && page.textContent.includes("Club Doubles Rating"),
       "Two rating columns",
     );
     assert(!page.textContent.includes("CPC Points"), "The old CPC Points label is gone");
@@ -1022,6 +1090,151 @@ Deno.test("rank assessment: Singles, Doubles and an automatic Club Rank card", (
     document.body.append(viewer);
     await new Promise((resolve) => setTimeout(resolve, 0));
     assert(viewer.querySelectorAll("button").length === 0, "Without ranks.override there are no edit buttons");
+  }));
+
+Deno.test("bracket scoring by round: H and L rules per round, locked once a bracket match starts", () =>
+  withDom(async (document) => {
+    setAuth({ signedIn: true, grants: [{ code: "events.manage" }, { code: "scores.enter" }] });
+    const previousLocation = globalThis.location;
+    globalThis.location = { hash: "#/bracket?division=d1" };
+    const stageRow = {
+      id: "s1", stage_no: 1, stage_type: "split_single_elimination", status: "in_progress",
+      scoring_rule_snapshot: { name: "Single Game to 11", games_to_win: 1, points_per_game: 11, win_by: 2, forfeit_score: 11 },
+      round_scoring: {
+        H: { semifinal: { name: "Single Game to 15" }, final: { name: "Single Game to 21" } },
+        L: { final: { name: "Single Game to 15" } },
+      },
+    };
+    const rules = [
+      { id: "r11", name: "Single Game to 11" }, { id: "r15", name: "Single Game to 15" }, { id: "r21", name: "Single Game to 21" },
+    ];
+    const build = (matchStatus) => {
+      const calls = [];
+      const api = {
+        newKey: () => "key",
+        read: (fn) => {
+          const wanted = String(fn).includes("scoring_rules");
+          return Promise.resolve(wanted ? rules : [{
+            id: "d1", name: "Split Sixteen", status: "in_progress", format: "singles", category: { name: "Novice" },
+            event: { name: "Test Event" }, stages: [stageRow],
+          }]);
+        },
+        rpc: (name, args) => {
+          calls.push([name, args]);
+          if (name === "stage_matches") {
+            return Promise.resolve([
+              { match_id: "m1", round_no: 1, match_no: 1, group_label: null, status: "completed", a_name: "A", b_name: "B", games: [] },
+              { match_id: "m2", round_no: 2, match_no: 1, group_label: "H", status: matchStatus, a_name: "C", b_name: "D", games: [] },
+              { match_id: "m3", round_no: 3, match_no: 1, group_label: "H", status: "scheduled", a_name: "E", b_name: "F", games: [] },
+              { match_id: "m4", round_no: 4, match_no: 1, group_label: "H", status: "scheduled", a_name: "G", b_name: "H", games: [] },
+            ]);
+          }
+          return Promise.resolve([]);
+        },
+      };
+      return { api, calls };
+    };
+    try {
+      const open = build("scheduled");
+      const page = createBracketPages({ api: open.api }).bracketPage();
+      document.body.append(page);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      const panel = page.querySelector(".round-scoring-panel");
+      assert(panel, "The Scoring by Round panel is shown for a split division to an event manager");
+      const selects = panel.querySelectorAll("select");
+      assert(selects.length === 6, "Quarterfinals, semifinals and finals for the H and L brackets");
+      const valueOf = (id) => selects.find((x) => x.getAttribute("id") === id)?.value;
+      assert(valueOf("rs-H-semifinal") === "r15" && valueOf("rs-H-final") === "r21", "The saved H rules are preselected");
+      assert(valueOf("rs-L-final") === "r15" && valueOf("rs-L-semifinal") === "", "The L bracket has its own rules; unset rounds use the division rule");
+      assert(selects.every((x) => !x.disabled), "Open for editing before the quarterfinals start");
+      assert(panel.querySelectorAll("button").length === 1, "A Save button");
+
+      const started = build("completed");
+      const lockedPage = createBracketPages({ api: started.api }).bracketPage();
+      document.body.append(lockedPage);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      const lockedPanel = lockedPage.querySelector(".round-scoring-panel");
+      assert(lockedPanel.querySelectorAll("select").every((x) => x.disabled), "Locked once a bracket match has started");
+      assert(lockedPanel.textContent.includes("Locked"), "The lock is explained");
+      assert(lockedPanel.querySelectorAll("button").length === 0, "No Save button when locked");
+    } finally {
+      globalThis.location = previousLocation;
+      clearAuth();
+    }
+  }));
+
+Deno.test("equivalent rank: a rating below 2.000 is the lowest rank", () => {
+  const bands = [
+    { name: "Beginner Low", min: 2, max: 2.249 }, { name: "Beginner High", min: 2.25, max: 2.499 },
+  ];
+  assert(equivalentRank(bands, 1.851) === "Beginner Low", "1.851 is Beginner Low");
+  assert(equivalentRank(bands, 0) === "Beginner Low", "0.000 is Beginner Low");
+  assert(equivalentRank(bands, 2.3) === "Beginner High", "inside a band is that band");
+  assert(equivalentRank([], 1.5) === null, "no bands, no rank");
+});
+
+Deno.test("member events: my registrations refresh by themselves when an administrator changes one", () =>
+  withDom(async (document) => {
+    let optionCalls = 0;
+    let handler = null;
+    let removed = 0;
+    const channel = {
+      on(type, filter, callback) {
+        assert(type === "postgres_changes" && ["registrations", "events", "divisions"].includes(filter.table), "Listens to registration screen changes");
+        if (filter.table === "registrations") handler = callback;
+        return channel;
+      },
+      subscribe() { return channel; },
+    };
+    const api = {
+      read: () => Promise.resolve([]),
+      rpc: (name) => {
+        if (name === "my_event_options") optionCalls += 1;
+        return Promise.resolve([]);
+      },
+    };
+    const page = createMemberEventsPages({
+      api,
+      client: { channel: () => channel, removeChannel: () => { removed += 1; } },
+      session: { getState: () => ({}) },
+    }).eventsPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    assert(handler, "The page subscribes to live registration changes");
+    const before = optionCalls;
+    handler({ eventType: "UPDATE", new: { id: "r1", status: "confirmed" } });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    assert(optionCalls === before + 1, "An administrator's change reloads the list without a page reload");
+    Object.defineProperty(page, "isConnected", { value: false, configurable: true });
+    handler({ eventType: "UPDATE", new: { id: "r1" } });
+    assert(removed === 1, "A page that has been left stops listening");
+  }));
+
+Deno.test("admin events: registration changes refresh the event list without opening an event", () =>
+  withDom(async (document) => {
+    let reads = 0;
+    let registrationChanged;
+    const channel = {
+      on(type, filter, callback) { if (filter.table === "registrations") registrationChanged = callback; return this; },
+      subscribe() { return this; },
+    };
+    const api = {
+      rpc: () => Promise.resolve([]),
+      read: (build) => {
+        const q = { select: () => q, order: () => q, is: () => q, eq: () => q,
+          then: (resolve) => { if (q.table === "events") reads += 1; return resolve([]); } };
+        return build({ from: (table) => { q.table = table; return q; } });
+      },
+    };
+    const page = createEventsPages({ api, client: { channel: () => channel, removeChannel: () => {} } }).eventsPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const before = reads;
+    registrationChanged({ eventType: "INSERT", new: { status: "requested" } });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    assert(reads > before, "Admin event list reloads for a new registration");
+    Object.defineProperty(page, "isConnected", { value: false, configurable: true });
+    registrationChanged({});
   }));
 
 Deno.test("ranking photos: signed private images replace icons and missing photos use initials", () =>
@@ -1949,8 +2162,9 @@ Deno.test("member details modal: consolidates status and audit into 1 unified se
     );
     assert(
       detailsGrid.textContent.includes("DUPR ID"),
-      "Must include DUPR ID",
+      "Membership & Audit includes DUPR ID",
     );
+    assert(!document.querySelector(".member-details-modal .assessment-card"), "Ratings must not repeat in a second assessment panel");
 
     modal.close();
     clearAuth();
@@ -1997,7 +2211,124 @@ Deno.test("guest forms: policy and guest identity use shared accessible controls
     modal.close();
   }));
 
-Deno.test("guest registration: primary selection excludes members and supports mixed partners", () =>
+Deno.test("guest registration: guests only as primary; doubles need an eligible partner who is never the selected guest", () =>
+  withDom(async () => {
+    const calls = [];
+    let blockedGuest = false;
+    const actions = createGuestEventActions({
+      api: {
+        newKey: () => "fake-key",
+        rpc: (name, args) => {
+          calls.push({ name, args });
+          if (name === "guest_division_eligibility") return Promise.resolve({
+            eligible: !blockedGuest,
+            reason: blockedGuest ? "Guest rating: Novice High. Choose a division that fits this rating." : null,
+          });
+          if (name === "eligible_event_partners") {
+            // the database already left out the guest being registered and the ineligible members
+            return Promise.resolve([
+              { id: "guest-two", display_name: "Fake Guest Two", member_id: null, member_no: null, is_guest: true },
+              { id: "member-one", display_name: "Fake Member", member_id: "fake-member", member_no: "CPC-2030-99999", is_guest: false },
+              { id: null, display_name: "Fake Club Member", member_id: "new-club-member", member_no: "CPC-2030-88888", is_guest: false },
+            ]);
+          }
+          if (name === "guest_participant_ratings") {
+            return Promise.resolve([{ participant_id: "guest-one", discipline: "doubles", points: 2.7 }]);
+          }
+          return Promise.resolve([
+            { id: "guest-one", display_name: "Fake Guest", member_id: null },
+            { id: "guest-two", display_name: "Fake Guest Two", member_id: null },
+            { id: "member-one", display_name: "Fake Member", member_id: "fake-member", member_no: "CPC-2030-99999" },
+          ]);
+        },
+      },
+      refresh: () => {}, getEvent: () => ({ id: "fake-event", name: "Fake Guest Event" }),
+      getDivisions: () => [{ id: "fake-doubles", name: "Fake Doubles", status: "open", format: "doubles" }],
+      getRanks: () => [{ id: "fake-rank", label: "Novice: Low" }],
+    });
+    const modal = await actions.register("fake-doubles");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const controls = modal.querySelectorAll("select");
+    const guest = controls.find((el) => el.getAttribute("name") === "guest-player");
+    const partner = controls.find((el) => el.getAttribute("name") === "guest-partner");
+    assert(guest.querySelectorAll("option").length === 2, "Primary guest picker must exclude members");
+    const labels = partner.querySelectorAll("option").map((o) => o.textContent);
+    assert(labels.length === 4 && labels[0] === "Choose a partner", "A doubles division offers only the eligible partners");
+    assert(!labels.some((l) => l.includes("No partner")), "No singles option for a doubles division");
+    assert(!labels.some((l) => l.includes("Fake Guest ·") || l === "Fake Guest"), "The guest being registered is not offered as a partner");
+    assert(!modal.textContent.includes("Assessed Guest Rank") && !modal.textContent.includes("Assessed Partner Rank"), "No assessed rank is asked for when registering");
+    assert(modal.textContent.includes("Doubles rating 2.700"), "The guest's stored rating for this division's format is shown");
+    const asked = calls.find((c) => c.name === "eligible_event_partners");
+    assert(asked?.args.p_division_id === "fake-doubles" && asked.args.p_guest_participant_id === "guest-one", "The list is asked for this division and this guest");
+    const search = modal.querySelectorAll("input").find((el) => el.getAttribute("id") === "guest-partner-search");
+    assert(search && partner.hidden, "Partner picker uses search rather than a visible dropdown");
+    search.value = "99999";
+    await modal.querySelectorAll("button").find((b) => b.textContent.includes("Search")).click();
+    const result = modal.querySelectorAll("input").find((el) => el.getAttribute("name") === "guest-partner-result");
+    assert(result?.value === "member-one", "Search matches an eligible partner by member number");
+    result.dispatchEvent(new Event("change", { bubbles: true }));
+    assert(partner.value === "member-one", "Selected search result supplies the registration partner");
+    assert(modal.querySelector(".staff-selected-card")?.textContent.includes("Fake Member"), "Shows the selected partner preview");
+    await modal.querySelectorAll("button").find((b) => b.textContent.includes("Change")).click();
+    search.value = "88888";
+    await modal.querySelectorAll("button").find((b) => b.textContent.includes("Search") && b.getAttribute("aria-label") !== "Clear Search").click();
+    const clubResult = modal.querySelectorAll("input").find((el) => el.getAttribute("name") === "guest-partner-result");
+    assert(clubResult?.value === "member:new-club-member", "Eligible club member without an event identity can be searched");
+    blockedGuest = true;
+    guest.dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    search.value = "Fake";
+    await modal.querySelectorAll("button").find((b) => b.textContent.includes("Search") && b.getAttribute("aria-label") !== "Clear Search").click();
+    assert(modal.textContent.includes("Guest rating: Novice High. Choose a division that fits this rating."),
+      "Searching preserves the server's guest eligibility explanation");
+    assert(!modal.querySelectorAll("input").some((el) => el.getAttribute("name") === "guest-partner-result"),
+      "Ineligible lead guest cannot select a partner");
+    modal.close();
+  }));
+
+Deno.test("add guest: the assessment (Singles and Doubles rating) is entered here, once", () =>
+  withDom(async () => {
+    const calls = [];
+    const actions = createGuestEventActions({
+      api: { newKey: () => "fake-key", rpc: (name, args) => { calls.push({ name, args }); return Promise.resolve([]); } },
+      refresh: () => {}, getEvent: () => ({ id: "fake-event", name: "Fake Guest Event" }),
+      getDivisions: () => [],
+    });
+    const modal = await actions.addGuest();
+    const ids = modal.querySelectorAll("input").map((el) => el.getAttribute("id"));
+    assert(ids.includes("guest-singles") && ids.includes("guest-doubles"), "Add Guest has a Singles and a Doubles rating");
+    assert(modal.textContent.includes("Guest Assessment"), "The assessment section is shown");
+    assert(!modal.textContent.includes("Assessed Guest Rank"), "No categorical rank is asked for");
+    modal.close();
+  }));
+
+Deno.test("add guest: blank ratings are submitted as Unrated", () =>
+  withDom(async () => {
+    const calls = [];
+    const actions = createGuestEventActions({
+      api: { newKey: () => "fake-new-id", rpc: (name, args) => { calls.push({ name, args }); return Promise.resolve({}); } },
+      refresh: () => {}, getEvent: () => ({ id: "fake-event", name: "Fake Event" }),
+      getDivisions: () => [], getRanks: () => [],
+    });
+    const modal = actions.addGuest();
+    assert(modal.textContent.includes("Guest Assessment (Optional)"), "Assessment is clearly optional");
+    const OriginalFormData = globalThis.FormData;
+    globalThis.FormData = class {
+      get(name) { return name === "guest-name" ? "Fake Unrated Guest" : ""; }
+    };
+    try {
+      modal.querySelector("form").dispatchEvent(new Event("submit"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const saved = calls.find((c) => c.name === "create_guest_event_participant");
+      assert(saved?.args.p_singles_rating === null && saved.args.p_doubles_rating === null,
+        "Both blank ratings reach the API as null rather than blocking or assigning zero");
+    } finally {
+      globalThis.FormData = OriginalFormData;
+      modal.close();
+    }
+  }));
+
+Deno.test("edit guest: loads the guest's profile and ratings, frozen ratings are locked", () =>
   withDom(async () => {
     const calls = [];
     const actions = createGuestEventActions({
@@ -2005,24 +2336,30 @@ Deno.test("guest registration: primary selection excludes members and supports m
         newKey: () => "fake-key",
         rpc: (name, args) => {
           calls.push({ name, args });
+          if (name === "event_guest_profile") {
+            return Promise.resolve({
+              participant_id: "guest-one", display_name: "Fake Guest", mobile: "0917", gender: "male", date_of_birth: "1990-05-05",
+              dupr_id: "DUPR1", singles: { points: 2.6, frozen: true }, doubles: { points: null, frozen: false },
+            });
+          }
           return Promise.resolve([
             { id: "guest-one", display_name: "Fake Guest", member_id: null },
             { id: "member-one", display_name: "Fake Member", member_id: "fake-member", member_no: "CPC-2030-99999" },
           ]);
         },
       },
-      refresh: () => {}, getEvent: () => ({ id: "fake-event", name: "Fake Guest Event" }),
-      getDivisions: () => [{ id: "fake-doubles", name: "Fake Doubles", status: "open" }],
-      getRanks: () => [{ id: "fake-rank", label: "Novice: Low" }],
+      refresh: () => {}, getEvent: () => ({ id: "fake-event", name: "Fake Guest Event" }), getDivisions: () => [],
     });
-    const modal = await actions.register("fake-doubles");
-    const controls = modal.querySelectorAll("select");
-    const guest = controls.find((el) => el.getAttribute("name") === "guest-player");
-    const partner = controls.find((el) => el.getAttribute("name") === "guest-partner");
-    assert(guest.querySelectorAll("option").length === 1, "Primary guest picker must exclude members");
-    assert(partner.querySelectorAll("option").length === 3, "Partner picker accepts guests and members");
-    assert(modal.textContent.includes("Assessed Guest Rank"));
-    assert(calls.length === 1 && calls[0].name === "event_participant_choices");
+    const modal = await actions.editGuest("guest-one");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const input = (id) => modal.querySelectorAll("input").find((el) => el.getAttribute("id") === id);
+    const guestSelect = modal.querySelectorAll("select").find((el) => el.getAttribute("name") === "edit-guest");
+    assert(guestSelect.querySelectorAll("option").length === 1, "Only guests can be edited, not members");
+    assert(input("edit-name").value === "Fake Guest" && input("edit-dupr").value === "DUPR1", "The profile is filled in");
+    assert(input("edit-singles").value === "2.600" && input("edit-singles").disabled, "A frozen Singles rating is shown and locked");
+    assert(input("edit-doubles").value === "" && !input("edit-doubles").disabled, "An unrated side is empty (NR) and can be assessed");
+    assert(modal.textContent.includes("Frozen") && modal.textContent.includes("Not rated (NR)"), "The notes explain each rating");
+    assert(calls.some((c) => c.name === "event_guest_profile" && c.args.p_participant_id === "guest-one"), "The guest is loaded from the database");
     modal.close();
   }));
 
@@ -2076,7 +2413,7 @@ Deno.test("admin guest roster: management permissions alone do not show guest wr
         page.querySelectorAll("button").find((b) => b.getAttribute("aria-label") === "Divisions of Fake Admin Event").click();
         await new Promise((resolve) => setTimeout(resolve, 0));
         const labels = page.querySelectorAll("button").map((b) => b.textContent);
-        for (const label of ["Add Guest", "Add Existing Player", "Register Guest", "Guest Registration"]) {
+        for (const label of ["Add Guest", "Find Existing Player", "Register Guest", "Guest Settings"]) {
           assert(labels.includes(label) === administrator, `${label} is admin-only in closed events`);
         }
         page.remove();
@@ -2221,7 +2558,7 @@ Deno.test("rank rules: template selector preserves scope and list displays the t
 Deno.test("public members: renders executive cards, preserves search bar, and filters in real time", () =>
   withDom(async (document) => {
     const fakeMembers = [
-      { name: "Carlyn Bless Guarde", photo: null, category: "Intermediate", rank: "Intermediate Low", member_no: "CPC-001" },
+      { name: "Carlyn Bless Guarde", photo: null, category: "Intermediate", rank: "Intermediate Low (3.000–3.499)", member_no: "CPC-001", singles_points: 3.125, doubles_points: 2 },
       { name: "Arian Samama", photo: null, category: "Novice", rank: "Novice High", member_no: "CPC-002" },
       { name: "Kyle Marquez", photo: null, category: "Novice", rank: "Novice Low", member_no: "CPC-003" },
       { name: "Aaron L. Alam", photo: null, category: null, rank: null, member_no: "CPC-004" },
@@ -2255,6 +2592,8 @@ Deno.test("public members: renders executive cards, preserves search bar, and fi
     assert(firstCard.querySelector(".public-member-name").textContent.includes("Guarde"), "Displays member name");
     assert(firstCard.querySelector(".public-member-sub").textContent === "CPC-001", "Displays CPC number");
     assert(firstCard.textContent.includes("Intermediate Low"), "Displays rank badge");
+    assert(!firstCard.textContent.includes("3.000–3.499"), "Hides the Club Rank range");
+    assert(firstCard.textContent.includes("3.125") && firstCard.textContent.includes("2.000"), "Shows both club ratings with three decimals");
 
     // Check unranked member
     const unrankedCard = cards[3];
@@ -2528,6 +2867,122 @@ Deno.test("tournament draw modal: renders structured seeding list with seed badg
     assert(modal.querySelector(".draw-redo-callout"), "Has redo draw warning callout");
 
     modal.close();
+    clearAuth();
+    page.remove();
+  }));
+
+Deno.test("ranking modals: rank history, rating history and assess rating follow executive anatomy; no manual rank button", () =>
+  withDom(async (document) => {
+    setAuth({
+      signedIn: true,
+      grants: [{ code: "members.read" }, { code: "ranks.override" }],
+    });
+
+    const mockApi = {
+      newKey: () => "test-idem-key",
+      read: () =>
+        Promise.resolve([
+          { id: "cat-1", name: "Intermediate" },
+          { id: "r-1", name: "Intermediate Low", sort_order: 1, ladder: { category: { name: "Intermediate" } } },
+        ]),
+      rpc: (name) => {
+        if (name === "cpc_ranking_list") {
+          return Promise.resolve([
+            {
+              member_id: "m-1",
+              member_no: "CPC-001",
+              display_name: "Player One",
+              category_name: "Intermediate",
+              rank_name: "Intermediate Low",
+              singles_points: 3.2,
+              doubles_points: 3.1,
+            },
+          ]);
+        }
+        if (name === "rank_history_view") {
+          return Promise.resolve([
+            {
+              occurred_at: "2026-10-27T08:05:00Z",
+              from_name: "Novice High",
+              to_name: "Intermediate Low",
+              reason: "Override: Change Rank",
+            },
+          ]);
+        }
+        if (name === "cpc_points_history_view") {
+          return Promise.resolve([
+            {
+              occurred_at: "2026-10-28T13:51:00Z",
+              discipline: "doubles",
+              points_before: null,
+              points_after: 2.8,
+              entry_type: "admin_assessment",
+              reason: "Self Assessment",
+            },
+          ]);
+        }
+        return Promise.resolve([]);
+      },
+    };
+
+    const pages = createRankingPages({ api: mockApi });
+    const page = pages.rankingPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // 1. Rank History Modal
+    const rankHistoryBtn = page.querySelectorAll("button").find(
+      (b) => b.getAttribute("aria-label")?.includes("Rank history of"),
+    );
+    assert(rankHistoryBtn, "Found rank history action button");
+    await rankHistoryBtn.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const rankModal = document.body.querySelector("dialog");
+    assert(rankModal, "Rank History dialog opened");
+    assert(rankModal.querySelector(".rank-modal-subject"), "Rank History has member preview subject");
+    assert(rankModal.querySelector(".rank-modal-callout"), "Rank History has audit callout");
+    assert(rankModal.querySelector(".modal-table-panel"), "Rank History has table panel container");
+    assert(!rankModal.querySelector('input[type="search"]'), "Rank History modal has NO search box");
+    rankModal.close();
+
+    // 2. Rating History Modal
+    const ratingHistoryBtn = page.querySelectorAll("button").find(
+      (b) => b.getAttribute("aria-label")?.includes("Rating history of"),
+    );
+    assert(ratingHistoryBtn, "Found rating history action button");
+    await ratingHistoryBtn.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const ratingModal = document.body.querySelector("dialog");
+    assert(ratingModal, "Rating History dialog opened");
+    assert(ratingModal.querySelector(".points-modal-subject"), "Rating History has member preview subject");
+    assert(ratingModal.querySelector(".points-modal-callout"), "Rating History has audit callout");
+    assert(ratingModal.querySelector(".modal-table-panel"), "Rating History has table panel container");
+    assert(!ratingModal.querySelector('input[type="search"]'), "Rating History modal has NO search box");
+    ratingModal.close();
+
+    // 3. Assess Rating Modal
+    const assessBtn = page.querySelectorAll("button").find(
+      (b) => b.getAttribute("aria-label")?.includes("Assess ratings of"),
+    );
+    assert(assessBtn, "Found assess ratings action button");
+    await assessBtn.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const assessModal = document.body.querySelector("dialog");
+    assert(assessModal, "Assess Rating dialog opened");
+    assert(assessModal.querySelector(".assess-modal-subject"), "Assess Rating has member preview subject");
+    assert(assessModal.querySelector(".assess-modal-callout"), "Assess Rating has assessment callout");
+    assert(assessModal.querySelector(".searchable-select-wrap"), "Assess Rating uses searchableSelect / selectField");
+    assert(assessModal.querySelectorAll("input").find((i) => i.id === "cpc-points" || i.getAttribute?.("id") === "cpc-points"), "Assess Rating has points input");
+    assert(assessModal.querySelectorAll("textarea").find((t) => t.id === "cpc-reason" || t.getAttribute?.("id") === "cpc-reason"), "Assess Rating has reason textarea");
+    assessModal.close();
+
+    // The Club Rank is automatic: there is no manual rank override button
+    const labels = page.querySelectorAll("button").map((b) => b.getAttribute("aria-label") ?? "");
+    assert(!labels.some((l) => l.includes("Change the rank of")), "No manual rank override button");
+
     clearAuth();
     page.remove();
   }));

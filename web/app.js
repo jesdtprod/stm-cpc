@@ -248,7 +248,7 @@ route("/admin/courts", () => courtsPages.courtsPage(), "Courts", {
   permission: "courts.manage",
 });
 
-const eventsPages = createEventsPages({ api });
+const eventsPages = createEventsPages({ api, client });
 route("/admin/events", () => eventsPages.eventsPage(), "Events", {
   permission: "events.manage",
 });

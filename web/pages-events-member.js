@@ -23,6 +23,7 @@ import { formatDate } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 import { ulid } from "./lib/ulid.js";
 import { eventSummary, eventSummarySkeleton } from "./event-summary.js";
+import { watchRegistrationChanges } from "./lib/registration-live.js";
 
 const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 const PROOF_TYPES = [
@@ -39,7 +40,7 @@ const METHOD_LABEL = {
 };
 const REG_STATUS = {
   requested: ["Waiting for Approval", "warning"],
-  confirmed: ["Confirmed", "success"],
+  confirmed: ["Approved", "success"],
   waitlisted: ["Waitlisted", "info"],
   withdrawn: ["Withdrawn", "neutral"],
   rejected: ["Rejected", "danger"],
@@ -132,7 +133,7 @@ export function createMemberEventsPages({ api, client, session }) {
           api.rpc("my_event_options"),
           api.read((c) =>
             c.from("registrations").select(
-              "id,status,status_reason,fee_snapshot,meta,division:divisions(id,name,status),event:events(name,starts_on)",
+              "id,member_id,status,status_reason,fee_snapshot,meta,division:divisions(id,name,status),event:events(name,starts_on)",
             ).order("created_at", { ascending: false }).limit(100)
           ),
           loadSettings([
@@ -158,7 +159,20 @@ export function createMemberEventsPages({ api, client, session }) {
             (ev.divisions ?? []).length,
           divisions: [...(ev.divisions ?? [])].sort(compareDivisions),
         }));
-        state.mine = mine ?? [];
+        const memberId = session.getState().access?.member_id;
+        state.mine = (mine ?? []).map((r) => ({ ...r, is_owner: Boolean(memberId && r.member_id === memberId) }));
+        for (const ev of state.options) {
+          for (const d of ev.divisions ?? []) {
+            if (!d.mine) continue;
+            const known = state.mine.find((r) => r.id === d.mine.id);
+            if (known) known.is_owner = d.mine.is_owner;
+            else state.mine.push({
+              id: d.mine.id, status: d.mine.status, is_owner: d.mine.is_owner,
+              fee_snapshot: d.mine.fee, division: { id: d.id, name: d.name, status: "open" },
+              event: { name: ev.name, starts_on: ev.starts_on },
+            });
+          }
+        }
         state.settings = settings;
         const ids = state.mine.map((r) => r.id);
         const totals = ids.length
@@ -206,7 +220,7 @@ export function createMemberEventsPages({ api, client, session }) {
       const summary = h(
         "p",
         { class: "sub form-help-text" },
-        "Search by partner's name or member ID. Only members eligible for this division are listed.",
+        "Search by partner's name or member ID. Eligible members and event guests are listed.",
       );
       const results = h("div", { class: "staff-results" });
       const term = searchControl({
@@ -254,7 +268,7 @@ export function createMemberEventsPages({ api, client, session }) {
                 h(
                   "span",
                   { class: "sub member-subtext" },
-                  `Member ID: ${p.member_no}`,
+                  p.guest_participant_id ? "Event Guest" : `Member ID: ${p.member_no}`,
                 ),
               ),
             ),
@@ -286,13 +300,13 @@ export function createMemberEventsPages({ api, client, session }) {
         }
         summary.textContent = "Searching players…";
         try {
-          const rows = await api.rpc("eligible_partners", { p_division_id: d.id, p_term: text });
+          const rows = await api.rpc("eligible_division_partners", { p_division_id: d.id, p_term: text });
           const players = (rows ?? []).filter((r) =>
-            r.member_id !== profile()?.id
+            r.guest_participant_id || r.member_id !== profile()?.id
           );
           summary.textContent = players.length
             ? `${players.length} found. Choose one below.`
-            : "No eligible members match. Your partner must be an active member whose rating fits this division.";
+            : "No eligible partners match. Both players must fit this division; unrated guests may join Beginner divisions starting at Beginner Low.";
           results.replaceChildren(
             ...players.map((r) =>
               h(
@@ -301,7 +315,7 @@ export function createMemberEventsPages({ api, client, session }) {
                 h("input", {
                   type: "radio",
                   name: "partner",
-                  value: r.member_id,
+                  value: r.guest_participant_id ?? r.member_id,
                   onChange: () => updatePartner(r),
                 }),
                 h("span", {
@@ -315,10 +329,10 @@ export function createMemberEventsPages({ api, client, session }) {
                   h(
                     "span",
                     { class: "sub member-subtext" },
-                    r.member_no,
+                    r.member_no || "Event Guest",
                   ),
                 ),
-                badge("Active", "success"),
+                badge(r.guest_participant_id ? "Guest" : "Active", r.guest_participant_id ? "neutral" : "success"),
               )
             ),
           );
@@ -431,7 +445,7 @@ export function createMemberEventsPages({ api, client, session }) {
             h(
               "span",
               {},
-              "Your partner must also be an active club member eligible for this division.",
+              "Choose an eligible member or event guest. Unrated guests may join Beginner divisions starting at Beginner Low.",
             ),
           ),
         )
@@ -455,10 +469,11 @@ export function createMemberEventsPages({ api, client, session }) {
         onConfirm: async () => {
           if (doubles && !partner) return fail("Choose your doubles partner.");
           try {
-            const r = await api.rpc("register_for_event", {
-              p_id: regIdFor(`${d.id}:${partner?.member_id ?? ""}`),
+            const guestPartner = partner?.guest_participant_id;
+            const r = await api.rpc(guestPartner ? "register_for_event_with_guest" : "register_for_event", {
+              p_id: regIdFor(`${d.id}:${guestPartner ? `guest:${guestPartner}` : partner?.member_id ?? ""}`),
               p_division_id: d.id,
-              p_partner_member_id: partner?.member_id ?? null,
+              ...(guestPartner ? { p_guest_participant_id: guestPartner } : { p_partner_member_id: partner?.member_id ?? null }),
             });
             toast(
               r.status === "waitlisted"
@@ -483,21 +498,60 @@ export function createMemberEventsPages({ api, client, session }) {
         role: "alert",
         hidden: true,
       });
+      const eventName = r.event?.name ?? "Tournament";
+      const divName = r.division?.name ?? "Division";
+      const isConfirmed = r.status === "confirmed";
+      const fee = Number(r.fee_snapshot ?? 0);
+
+      const calloutText = isConfirmed && fee > 0
+        ? "Your fee charge is reversed on your account. If you already paid, the club will return or credit it."
+        : "Your place will be released and offered to the next player on the waitlist, if there is one.";
+
       return openModal({
         title: "Withdraw Your Registration",
-        eyebrow: `${r.event?.name ?? ""} · ${r.division?.name ?? ""}`,
+        eyebrow: `${eventName} • ${divName}`,
+        description: "Withdraw yourself from this event division. Your registration will be cancelled.",
         icon: "alert",
+        tone: "danger",
         confirmLabel: "Withdraw",
         destructive: true,
         body: h(
           "div",
-          { class: "stack" },
+          { class: "stack modal-reason-stack" },
           h(
-            "p",
-            {},
-            r.status === "confirmed" && Number(r.fee_snapshot) > 0
-              ? "Your fee charge is reversed. If you already paid, the club will return it."
-              : "Your place goes to the next person waiting, if there is one.",
+            "div",
+            { class: "member-decision-subject registration-decision-subject" },
+            h(
+              "span",
+              { class: "member-avatar is-icon", "aria-hidden": "true" },
+              icon("alert"),
+            ),
+            h(
+              "div",
+              { class: "member-meta" },
+              h(
+                "div",
+                { class: "member-decision-name" },
+                h("strong", { class: "member-name" }, eventName),
+                badge(isConfirmed ? "Confirmed" : "Waitlisted", isConfirmed ? "success" : "info"),
+                badge(divName, "info"),
+              ),
+              h("span", { class: "sub member-id" }, [
+                divName,
+                fee > 0 ? `Fee: ${formatMoney(fee)}` : "Free",
+              ].join(" · ")),
+            ),
+          ),
+          h(
+            "div",
+            { class: "modal-callout is-danger" },
+            h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon("alert")),
+            h(
+              "div",
+              { class: "modal-callout-text" },
+              h("strong", { class: "decision-impact-title" }, "Registration Withdrawal"),
+              h("div", { class: "decision-impact-text" }, calloutText),
+            ),
           ),
           h(
             "div",
@@ -509,7 +563,9 @@ export function createMemberEventsPages({ api, client, session }) {
               name: "reason",
               rows: 2,
               maxlength: 500,
+              placeholder: "Optional reason for withdrawing...",
             }),
+            h("p", { class: "field-hint muted" }, "Optional note for club administrators."),
           ),
           error,
         ),
@@ -688,6 +744,237 @@ export function createMemberEventsPages({ api, client, session }) {
     }
 
     // --------------------------------------------------------------- views
+    function viewRegistration(ev, d) {
+      const r = d.mine;
+      const own = r.is_owner !== false;
+      const fee = Number(r.fee ?? 0);
+      const paid = Number(r.paid ?? 0);
+      const pending = Number(r.pending ?? 0);
+      const due = Math.max(0, fee - paid - pending);
+      const row = state.mine.find((item) => item.id === r.id);
+      const [statusText, statusTone] = REG_STATUS[r.status] ?? [r.status, "neutral"];
+
+      let modalIcon = "ticket";
+      let modalTone = "neutral";
+      let descText = "Your division entry details and standing.";
+      let calloutTone = "info";
+      let calloutIcon = "info";
+      let calloutTitle = "Registration Standing";
+      let calloutText = "Your registration details are recorded with the tournament organizers.";
+
+      if (r.status === "confirmed") {
+        modalIcon = "trophy";
+        modalTone = "success";
+        descText = "Your entry is approved. You are registered in this division roster.";
+        calloutTone = "success";
+        calloutIcon = "calendarCheck";
+        calloutTitle = "Confirmed Participant";
+        calloutText = "Your spot is secured. Check the tournament draw and schedule in the Bracket tab once published.";
+      } else if (r.status === "waitlisted") {
+        modalIcon = "clock";
+        modalTone = "info";
+        descText = "Your entry is on the waitlist. You will be notified if a spot opens up.";
+        calloutTone = "info";
+        calloutIcon = "info";
+        calloutTitle = "Waitlist Standing";
+        calloutText = "Your place in line is saved. If an active team withdraws, the next waitlisted player will be promoted.";
+      } else if (r.status === "requested") {
+        modalIcon = "ticket";
+        modalTone = "warning";
+        descText = "Your registration was received and is awaiting committee review.";
+        calloutTone = "warning";
+        calloutIcon = "alert";
+        calloutTitle = "Pending Approval";
+        calloutText = "Tournament organizers will review division eligibility and verify any required payment proof.";
+      } else if (r.status === "rejected") {
+        modalIcon = "x";
+        modalTone = "danger";
+        descText = "This registration was not approved by tournament organizers.";
+        calloutTone = "danger";
+        calloutIcon = "alert";
+        calloutTitle = "Registration Declined";
+        calloutText = r.status_reason || "Contact tournament organizers if you have questions regarding this registration.";
+      } else if (r.status === "withdrawn") {
+        modalIcon = "alert";
+        modalTone = "danger";
+        descText = "This registration has been withdrawn from the division roster.";
+        calloutTone = "danger";
+        calloutIcon = "alert";
+        calloutTitle = "Registration Withdrawn";
+        calloutText = "This spot has been released and is no longer active in the event.";
+      }
+
+      const subjectEl = h(
+        "div",
+        { class: "member-decision-subject registration-decision-subject" },
+        h(
+          "span",
+          { class: "member-avatar is-icon", "aria-hidden": "true" },
+          icon("trophy"),
+        ),
+        h(
+          "div",
+          { class: "member-meta" },
+          h(
+            "div",
+            { class: "member-decision-name" },
+            h("strong", { class: "member-name" }, d.name),
+            badge(statusText, statusTone),
+            badge(d.format === "doubles" ? "Doubles" : "Singles", "neutral"),
+            d.category ? badge(d.category, "info") : null,
+          ),
+          h("span", { class: "sub member-id" }, [
+            ev.name,
+            when(ev.starts_on),
+            ev.location,
+          ].filter(Boolean).join(" · ")),
+        ),
+      );
+
+      const feeValue = fee > 0
+        ? (due > 0
+          ? badge(`Due: ${formatMoney(due)}`, "warning")
+          : badge("Paid in Full", "success"))
+        : badge("Free Entry", "success");
+
+      const feeSub = fee > 0
+        ? `Total: ${formatMoney(fee)}${paid > 0 ? ` · Paid: ${formatMoney(paid)}` : ""}`
+        : "No payment required";
+
+      const detailsGrid = h(
+        "div",
+        { class: "registration-info-grid" },
+        h(
+          "div",
+          { class: "registration-info-tile" },
+          h("span", { class: "registration-info-label" }, "Standing & Role"),
+          h(
+            "div",
+            { class: "registration-info-value" },
+            h("div", { class: "badges" }, badge(statusText, statusTone)),
+            h(
+              "span",
+              { class: "sub" },
+              own
+                ? "You manage this registration."
+                : "You are registered as a doubles partner. The registration owner manages payment and withdrawal.",
+            ),
+          ),
+        ),
+        h(
+          "div",
+          { class: "registration-info-tile" },
+          h("span", { class: "registration-info-label" }, "Entry Payment"),
+          h(
+            "div",
+            { class: "registration-info-value" },
+            h("div", { class: "badges" }, feeValue),
+            h("span", { class: "sub" }, feeSub),
+          ),
+        ),
+        h(
+          "div",
+          { class: "registration-info-tile" },
+          h("span", { class: "registration-info-label" }, "Division Field"),
+          h(
+            "div",
+            { class: "registration-info-value" },
+            h("strong", {}, d.max_entries ? `${d.taken} of ${d.max_entries}` : String(d.taken)),
+            h("span", { class: "sub" }, d.max_entries ? "Confirmed / capped entries" : "Total entries"),
+          ),
+        ),
+        h(
+          "div",
+          { class: "registration-info-tile" },
+          h("span", { class: "registration-info-label" }, "Reference ID"),
+          h(
+            "div",
+            { class: "registration-info-value" },
+            h("code", { class: "reference-code" }, r.id),
+            h("span", { class: "sub" }, "Registration key"),
+          ),
+        ),
+      );
+
+      const calloutEl = h(
+        "div",
+        { class: `modal-callout is-${calloutTone}` },
+        h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon(calloutIcon)),
+        h(
+          "div",
+          { class: "modal-callout-text" },
+          h("strong", { class: "decision-impact-title" }, calloutTitle),
+          h("div", { class: "decision-impact-text" }, calloutText),
+        ),
+      );
+
+      let dialog;
+      const actionButtons = [];
+      if (own && due > 0 && row) {
+        actionButtons.push(
+          button({
+            label: "Pay Entry Fee",
+            icon: "currency",
+            variant: "primary",
+            onClick: () => {
+              dialog?.close();
+              payModal(row);
+            },
+          }),
+        );
+      }
+      if (d.status && ["drawn", "in_progress", "finalized"].includes(d.status)) {
+        actionButtons.push(
+          button({
+            label: "View Bracket",
+            icon: "layers",
+            variant: "secondary",
+            onClick: () => {
+              dialog?.close();
+              location.hash = `#/bracket?division=${d.id}`;
+            },
+          }),
+        );
+      }
+      if (own && row && ["requested", "confirmed", "waitlisted"].includes(r.status) && (d.status === "open" || ev.status === "registration_open")) {
+        actionButtons.push(
+          button({
+            label: "Withdraw Registration",
+            icon: "x",
+            variant: "danger",
+            onClick: () => {
+              dialog?.close();
+              withdrawModal(row);
+            },
+          }),
+        );
+      }
+
+      const actionsEl = actionButtons.length
+        ? h("div", { class: "registration-actions-row" }, ...actionButtons)
+        : null;
+
+      dialog = openModal({
+        title: "Your Registration",
+        eyebrow: `${ev.name} • ${d.name}`,
+        icon: modalIcon,
+        tone: modalTone,
+        description: descText,
+        confirmLabel: "Close",
+        cancelLabel: null,
+        body: h(
+          "div",
+          { class: "stack modal-reason-stack" },
+          subjectEl,
+          detailsGrid,
+          calloutEl,
+          actionsEl,
+        ),
+      });
+
+      return dialog;
+    }
+
     function divisionsTable(ev, viewState = "ready") {
       const divisionBadge = (d) =>
         d.mine
@@ -723,7 +1010,7 @@ export function createMemberEventsPages({ api, client, session }) {
                         "div",
                         { class: "member-event-division-identity" },
                         h("span", {
-                          class: `member-avatar is-icon ${d.problem ? "is-restricted" : "is-eligible"}`,
+                          class: `member-avatar is-icon ${d.problem && !d.mine ? "is-restricted" : "is-eligible"}`,
                           "aria-hidden": "true",
                         }, icon("trophy")),
                         h(
@@ -752,7 +1039,7 @@ export function createMemberEventsPages({ api, client, session }) {
                         divisionBadge(d),
                       ),
                     ),
-                    d.problem
+                    d.problem && !d.mine
                       ? h(
                         "div",
                         { class: "member-event-restriction-note" },
@@ -806,7 +1093,10 @@ export function createMemberEventsPages({ api, client, session }) {
                 align: "center",
                 actionCount: 1,
                 render: (d) =>
-                  !d.mine && !d.problem
+                  d.mine ? iconButton({
+                    icon: "eye", label: "View Registration", variant: "info",
+                    onClick: () => viewRegistration(ev, d),
+                  }) : !d.problem
                     ? iconButton({
                       icon: "userPlus",
                       label: d.max_entries && d.taken >= d.max_entries
@@ -994,7 +1284,7 @@ export function createMemberEventsPages({ api, client, session }) {
                 return h(
                   "span",
                   { class: "row-actions" },
-                  live && remaining(r) > 0
+                  live && r.is_owner !== false && remaining(r) > 0
                     ? iconButton({
                       icon: "currency",
                       label: "Pay",
@@ -1014,7 +1304,7 @@ export function createMemberEventsPages({ api, client, session }) {
                       },
                     })
                     : null,
-                  live && r.division?.status === "open"
+                  live && r.is_owner !== false && r.division?.status === "open"
                     ? iconButton({
                       icon: "x",
                       label: "Withdraw",
@@ -1078,6 +1368,8 @@ export function createMemberEventsPages({ api, client, session }) {
       body,
     );
     refresh();
+
+    watchRegistrationChanges({ client, page, refresh });
     return page;
   }
 

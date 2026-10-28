@@ -5,6 +5,7 @@
 //     chosen format and scoring rule when it is created, so later edits to a template never change a running event.
 //   * Creates are idempotent (the new row's ID is made when the form opens). Everything is written by database
 //     functions that check the caller; this page shows their answers in plain words. Times are Asia/Manila.
+import { watchRegistrationChanges } from "./lib/registration-live.js";
 import {
   adminHero,
   attachPagePattern,
@@ -25,6 +26,7 @@ import {
   formatTemplateLabel as templateLabel,
 } from "./ui.js";
 import { formatDate } from "./lib/dates.js";
+import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatMoney } from "./lib/money.js";
 import { can } from "./lib/permissions.js";
 import { createGuestEventActions } from "./event-guests.js";
@@ -69,7 +71,7 @@ const REG_STATUS = {
   rejected: ["Rejected", "danger"],
 };
 const REG_SELECT =
-  "id,division_id,status,status_reason,fee_snapshot,meta,guest_participant_id,guest_partner_participant_id,guest_name_snapshot,guest_partner_name_snapshot,guest_rank_id,guest_partner_rank_id,division:divisions(name,status),member:members(member_no,person:persons(display_name))";
+  "id,division_id,member_id,status,status_reason,fee_snapshot,meta,guest_participant_id,guest_partner_participant_id,guest_name_snapshot,guest_partner_name_snapshot,guest_rank_id,guest_partner_rank_id,division:divisions(name,status),member:members(member_no,person:persons(display_name))";
 const GENDER_LABEL = { male: "Men", female: "Women", mixed: "Mixed" };
 const MANILA_OFFSET_MS = 8 * 3600 * 1000;
 const EVENT_SELECT =
@@ -99,7 +101,7 @@ function messageOf(e, fallback) {
   return own || e?.message || fallback;
 }
 
-export function createEventsPages({ api }) {
+export function createEventsPages({ api, client }) {
   function eventsPage() {
     const page = h("div", {
       class: "page admin-dashboard admin-members-page admin-events-page",
@@ -243,6 +245,16 @@ export function createEventsPages({ api }) {
         state.partners = Object.fromEntries(
           (partners ?? []).map((m) => [m.id, m]),
         );
+        state.photos = new Map();
+        if (client && can("events.manage") && regs.length) {
+          try {
+            const rows = await api.rpc("registration_photos", { p_event_id: state.open.id }) ?? [];
+            const urls = await signedAvatarUrls(client, rows.map((x) => x.avatar_path));
+            state.photos = new Map(rows.map((x) => [x.member_id, urls.get(x.avatar_path)]));
+          } catch {
+            state.photos = new Map();
+          }
+        }
       } catch {
         state.regs = [];
       }
@@ -287,102 +299,163 @@ export function createEventsPages({ api }) {
         ),
       );
 
+    function registrationSubject(r) {
+      const name = r.guest_name_snapshot ?? r.member?.person?.display_name ?? "Participant";
+      const memberNo = r.member?.member_no;
+      const isGuest = Boolean(r.guest_participant_id);
+      const divName = r.division?.name ?? state.divisions?.find((d) => d.id === r.division_id)?.name ?? "";
+      const eventName = state.open?.name ?? "";
+      const [statusText, statusTone] = REG_STATUS[r.status] ?? [r.status, "neutral"];
+      const fee = Number(r.fee_snapshot ?? 0);
+      const paid = Number(state.pays?.[r.id]?.verified_total ?? 0);
+
+      const subItems = [
+        memberNo ? `Member ID: ${memberNo}` : (isGuest ? "Guest Player" : null),
+        eventName && divName ? `${eventName} · ${divName}` : (divName || eventName || null),
+        fee > 0 ? `Fee: ${formatMoney(fee)}${paid >= fee ? " (Paid)" : ""}` : "Free",
+      ].filter(Boolean);
+
+      return h(
+        "div",
+        { class: "member-decision-subject registration-decision-subject" },
+        h(
+          "span",
+          { class: "member-avatar ranking-player-photo", "aria-hidden": "true" },
+          avatarImage(state.photos?.get?.(r.member_id), name),
+        ),
+        h(
+          "div",
+          { class: "member-meta" },
+          h(
+            "div",
+            { class: "member-decision-name" },
+            h("strong", { class: "member-name" }, name),
+            badge(statusText, statusTone),
+            badge(isGuest ? "Guest" : "Member", "neutral"),
+            divName ? badge(divName, "info") : null,
+          ),
+          subItems.length
+            ? h("span", { class: "sub member-id" }, subItems.join(" · "))
+            : null,
+        ),
+      );
+    }
+
     /** Asks for a reason, then runs the action. */
-    function reasonModal({ title, eyebrow, note, confirmLabel, run, done }) {
+    function reasonModal({
+      title,
+      eyebrow,
+      description,
+      subject,
+      calloutTitle = "Action Impact",
+      calloutText,
+      note,
+      calloutTone = "danger",
+      calloutIcon = "alert",
+      icon: modalIcon = "alert",
+      tone: modalTone = "danger",
+      confirmLabel,
+      destructive = true,
+      placeholder = "Provide context or explanation for this decision...",
+      run,
+      done,
+    }) {
       const error = errorLine();
       const count = h("output", {
         class: "decision-reason-count",
         id: "ev-reason-count",
         for: "ev-reason",
       }, "0 / 500");
+
+      const finalCalloutText = calloutText ?? note;
+
+      const subjectEl = subject
+        ? subject
+        : eyebrow
+        ? h(
+          "div",
+          { class: "member-decision-subject registration-decision-subject" },
+          h(
+            "span",
+            { class: "member-avatar is-icon", "aria-hidden": "true" },
+            icon(modalIcon),
+          ),
+          h(
+            "div",
+            { class: "member-meta" },
+            h(
+              "div",
+              { class: "member-decision-name" },
+              h("strong", { class: "member-name" }, eyebrow),
+            ),
+            h("span", { class: "sub member-id" }, title),
+          ),
+        )
+        : null;
+
+      const calloutEl = finalCalloutText
+        ? h(
+          "div",
+          { class: `modal-callout is-${calloutTone}` },
+          h(
+            "span",
+            { class: "modal-callout-icon", "aria-hidden": "true" },
+            icon(calloutIcon),
+          ),
+          h(
+            "div",
+            { class: "modal-callout-text" },
+            h("strong", { class: "decision-impact-title" }, calloutTitle),
+            h("div", { class: "decision-impact-text" }, finalCalloutText),
+          ),
+        )
+        : null;
+
       return openModal({
         title,
         eyebrow,
-        icon: "alert",
+        description: description || "Kept in the club audit log. A written reason is required.",
+        icon: modalIcon,
+        tone: modalTone,
         confirmLabel,
-        destructive: true,
+        destructive,
         body: h(
           "div",
-          { class: "member-decision" },
-          eyebrow
-            ? h(
-              "div",
-              { class: "member-decision-subject" },
-              h(
-                "span",
-                { class: "member-avatar is-icon", "aria-hidden": "true" },
-                icon("trophy"),
-              ),
-              h(
-                "div",
-                { class: "member-meta" },
-                h(
-                  "div",
-                  { class: "member-decision-name" },
-                  h("strong", { class: "member-name" }, eyebrow),
-                ),
-                h("span", { class: "sub member-subtext" }, title),
-              ),
-            )
-            : null,
+          { class: "stack modal-reason-stack" },
+          subjectEl,
+          calloutEl,
           h(
             "div",
-            { class: "stack" },
-            note
-              ? h(
-                "div",
-                { class: "modal-callout is-danger" },
-                h(
-                  "span",
-                  { class: "modal-callout-icon", "aria-hidden": "true" },
-                  icon("alert"),
-                ),
-                h(
-                  "div",
-                  { class: "modal-callout-text" },
-                  h(
-                    "strong",
-                    { class: "decision-impact-title" },
-                    "Action Impact",
-                  ),
-                  h("p", { class: "decision-impact-text" }, note),
-                ),
-              )
-              : null,
+            { class: "field" },
             h(
               "div",
-              { class: "field" },
+              { class: "decision-field-heading" },
               h(
-                "div",
-                { class: "decision-field-heading" },
-                h(
-                  "label",
-                  { for: "ev-reason" },
-                  "Reason",
-                  h("span", { class: "decision-required" }, " *"),
-                ),
-                count,
+                "label",
+                { for: "ev-reason" },
+                "Reason",
+                h("span", { class: "decision-required" }, " *"),
               ),
-              h("textarea", {
-                class: "input textarea",
-                id: "ev-reason",
-                name: "reason",
-                rows: 4,
-                minlength: 3,
-                maxlength: 500,
-                required: true,
-                placeholder:
-                  "Provide context or explanation for this decision...",
-                "aria-describedby": "ev-reason-help ev-reason-count",
-                onInput: (event) => {
-                  count.textContent = `${event.target.value.length} / 500`;
-                },
-              }),
-              h("p", {
-                class: "muted decision-reason-help",
-                id: "ev-reason-help",
-              }, "Kept in the history. 3 to 500 characters."),
+              count,
             ),
+            h("textarea", {
+              class: "input textarea",
+              id: "ev-reason",
+              name: "reason",
+              rows: 3,
+              minlength: 3,
+              maxlength: 500,
+              required: true,
+              placeholder,
+              "aria-describedby": "ev-reason-help ev-reason-count",
+              onInput: (event) => {
+                count.textContent = `${event.target.value.length} / 500`;
+              },
+            }),
+            h("p", {
+              class: "muted field-hint decision-reason-help",
+              id: "ev-reason-help",
+            }, "Reason of at least 3 characters. Kept in the audit log."),
           ),
           error,
         ),
@@ -1653,10 +1726,24 @@ export function createEventsPages({ api }) {
     }
 
     function rejectRegistration(r) {
+      const name = r.guest_name_snapshot ?? r.member?.person?.display_name ?? "Participant";
+      const memberNo = r.member?.member_no;
+      const isGuest = Boolean(r.guest_participant_id);
+
       return reasonModal({
         title: "Reject This Registration",
-        eyebrow: r.guest_name_snapshot ?? r.member?.person?.display_name ?? "",
+        eyebrow: memberNo ? `${name} • ${memberNo}` : `${name} • ${isGuest ? "GUEST" : "MEMBER"}`,
+        description: "Reject this pending registration request. The player will not be added to the division roster.",
+        subject: registrationSubject(r),
+        calloutTitle: "Registration Rejection",
+        calloutText: "Rejecting this registration denies the player entry to the division roster. An audit record is logged.",
+        calloutTone: "danger",
+        calloutIcon: "alert",
+        icon: "x",
+        tone: "danger",
         confirmLabel: "Reject",
+        destructive: true,
+        placeholder: "Explain the reason for rejecting this registration...",
         run: (reason) =>
           api.rpc("decide_registration", {
             p_registration_id: r.id,
@@ -1668,13 +1755,33 @@ export function createEventsPages({ api }) {
     }
 
     function withdrawRegistration(r) {
+      const name = r.guest_name_snapshot ?? r.member?.person?.display_name ?? "Participant";
+      const memberNo = r.member?.member_no;
+      const isGuest = Boolean(r.guest_participant_id);
+      const fee = Number(r.fee_snapshot ?? 0);
+      const isConfirmed = r.status === "confirmed";
+      const isWaitlisted = r.status === "waitlisted";
+
+      const calloutText = isConfirmed && fee > 0
+        ? `The fee charge of ${formatMoney(fee)} is reversed on the player's account. Void any payment separately if money is handed back. If the bracket draw has already been generated, line positions and match schedules may need adjustment.`
+        : (isWaitlisted
+          ? "This removes the player from the division waitlist. Their place in line will be cancelled."
+          : "Withdrawal removes the player from the active division roster. Any waitlisted player will be eligible to claim this spot.");
+
       return reasonModal({
         title: "Withdraw This Registration",
-        eyebrow: r.guest_name_snapshot ?? r.member?.person?.display_name ?? "",
-        note: r.status === "confirmed" && Number(r.fee_snapshot) > 0
-          ? "The fee charge is reversed on the player's account. Void any payment separately if money is handed back."
-          : null,
+        eyebrow: memberNo ? `${name} • ${memberNo}` : `${name} • ${isGuest ? "GUEST" : "MEMBER"}`,
+        description: "Withdraw this player from the event roster. Their spot will be freed or offered to the next waitlisted player.",
+        subject: registrationSubject(r),
+        calloutTitle: "Registration Withdrawal",
+        calloutText,
+        calloutTone: "danger",
+        calloutIcon: "alert",
+        icon: "alert",
+        tone: "danger",
         confirmLabel: "Withdraw",
+        destructive: true,
+        placeholder: "Explain the reason for withdrawing this registration...",
         run: (reason) =>
           api.rpc("withdraw_registration", {
             p_registration_id: r.id,
@@ -1708,37 +1815,45 @@ export function createEventsPages({ api }) {
               key: "member",
               label: "Player",
               render: (r) => {
-                const partner = state.partners[r.meta?.partner_member_id];
-                return h(
-                  "span",
-                  {},
-                  r.guest_name_snapshot ?? r.member?.person?.display_name ?? "—",
+                // A member shows their photo; a guest shows initials.
+                const person = ({ name, sub, photo }) =>
                   h(
-                    "span",
-                    { class: "sub" },
-                    [
+                    "div",
+                    { class: "registration-person" },
+                    h("span", { class: "member-avatar registration-avatar", "aria-hidden": "true" }, avatarImage(photo, name)),
+                    h(
+                      "div",
+                      { class: "registration-person-text" },
+                      h("div", { class: "registration-person-name" }, h("strong", {}, name)),
+                      sub ? h("span", { class: "sub" }, sub) : null,
+                    ),
+                  );
+                return h(
+                  "div",
+                  { class: "registration-team" },
+                  person({
+                    name: r.guest_name_snapshot ?? r.member?.person?.display_name ?? "—",
+                    photo: state.photos?.get(r.member_id),
+                    sub: [
                       r.member?.member_no,
                       r.guest_participant_id ? "Guest" : null,
                       state.guestDupr[r.guest_participant_id] ? `DUPR ID: ${state.guestDupr[r.guest_participant_id]} (self-reported)` : null,
-                      r.guest_partner_name_snapshot ? `with ${r.guest_partner_name_snapshot}` : null,
-                      state.guestDupr[r.guest_partner_participant_id] ? `Partner DUPR ID: ${state.guestDupr[r.guest_partner_participant_id]} (self-reported)` : null,
-                      partner
-                        ? `with ${
-                          partner.person?.display_name ?? partner.member_no
-                        }`
-                        : null,
-                      r.meta?.override_reason
-                        ? `Exception: ${r.meta.override_reason}`
-                        : null,
+                      r.meta?.override_reason ? `Exception: ${r.meta.override_reason}` : null,
                     ].filter(Boolean).join(" · "),
-                  ),
+                  }),
                 );
               },
             },
             {
               key: "division",
               label: "Division",
-              render: (r) => r.division?.name ?? "—",
+              render: (r) => {
+                const partnerName = r.guest_partner_name_snapshot || state.partners[r.meta?.partner_member_id]?.person?.display_name;
+                return h("div", { class: "member-table-stack" },
+                  h("span", {}, r.division?.name ?? "—"),
+                  partnerName ? h("span", { class: "sub" }, partnerName) : null,
+                );
+              },
             },
             {
               key: "paid",
@@ -1774,13 +1889,16 @@ export function createEventsPages({ api }) {
               key: "actions",
               label: "Action",
               align: "center",
-              actionCount: can("events.admin_roster") ? 5 : 3,
-              render: (r) => h("span", { class: "row-actions" },
+              actionCount: can("events.admin_roster") ? 6 : 3,
+              render: (r) => r.status === "withdrawn" ? null : h("span", { class: "row-actions" },
                 r.guest_participant_id && can("events.admin_roster") && ["requested", "confirmed"].includes(r.status) && r.division?.status === "open" && ["registration_open", "registration_closed"].includes(state.open.status)
                   ? [
                     iconButton({ label: `Move division for ${r.guest_name_snapshot}`, icon: "shuffle", size: "sm", variant: "info", onClick: () => guestActions.change(r, "move") }),
                     iconButton({ label: `Replace players for ${r.guest_name_snapshot}`, icon: "edit", size: "sm", variant: "edit", onClick: () => guestActions.change(r, "replace") }),
                   ] : null,
+                r.guest_participant_id && can("events.admin_roster")
+                  ? iconButton({ label: `Edit guest ${r.guest_name_snapshot}`, icon: "user", size: "sm", variant: "edit", onClick: () => guestActions.editGuest(r.guest_participant_id) })
+                  : null,
                 r.guest_participant_id && ["requested", "waitlisted", "confirmed"].includes(r.status) && can("payments.submit") &&
                   Number(r.fee_snapshot) > Number(state.pays[r.id]?.verified_total ?? 0) + Number(state.pays[r.id]?.pending_total ?? 0)
                   ? iconButton({ label: `Record payment for ${r.guest_name_snapshot}`, icon: "file", size: "sm", variant: "info",
@@ -1850,16 +1968,19 @@ export function createEventsPages({ api }) {
 
       const eventActions = [];
       const rosterActions = [];
+      let guestSettings = null;
+      let registerGuest = null;
       if (Object.hasOwn(ev, "allow_guest_players") && beforeDraw(ev) && can("events.admin_roster")) {
-        rosterActions.push(button({ label: "Guest Registration", icon: "user", variant: "secondary", onClick: guestActions.policy }));
+        guestSettings = button({ label: "Guest Settings", icon: "settings", variant: "secondary", size: "sm", onClick: guestActions.policy });
       }
       if (ev.allow_guest_players && beforeDraw(ev) && can("events.admin_roster")) {
         rosterActions.push(
           button({ label: "Add Guest", icon: "plus", variant: "secondary", onClick: guestActions.addGuest }),
-          button({ label: "Add Existing Player", icon: "search", variant: "secondary", onClick: guestActions.addExisting }),
+          button({ label: "Edit Guest", icon: "edit", variant: "secondary", onClick: () => guestActions.editGuest() }),
+          button({ label: "Find Existing Player", icon: "search", variant: "secondary", onClick: guestActions.addExisting }),
         );
         if (["registration_open", "registration_closed"].includes(ev.status)) {
-          rosterActions.push(button({ label: "Register Guest", icon: "layers", variant: "primary", onClick: () => guestActions.register() }));
+          registerGuest = button({ label: "Register Guest", icon: "userPlus", variant: "primary", onClick: () => guestActions.register() });
         }
       }
       if (beforeDraw(ev)) {
@@ -1872,15 +1993,15 @@ export function createEventsPages({ api }) {
           }),
         );
       }
-      eventActions.unshift(button({
+      const backToEvents = button({
         label: "All Events",
         icon: "chevl",
-        variant: "secondary",
+        variant: "ghost",
         onClick: () => {
           state.open = null;
           draw();
         },
-      }));
+      });
       if (ev.status === "draft" || ev.status === "registration_closed") {
         eventActions.push(
           button({
@@ -1941,6 +2062,7 @@ export function createEventsPages({ api }) {
       const summaryCard = h(
         "div",
         { class: "event-summary-card" },
+        h("nav", { class: "event-detail-navigation", "aria-label": "Event navigation" }, backToEvents),
         h(
           "div",
           { class: "event-summary-header" },
@@ -2038,7 +2160,7 @@ export function createEventsPages({ api }) {
             h("p", { class: "cancel-alert-text" }, `Cancelled: ${ev.cancel_reason}`),
           )
           : null,
-        rosterActions.length
+        guestSettings || rosterActions.length || registerGuest
           ? h(
             "section",
             {
@@ -2047,24 +2169,32 @@ export function createEventsPages({ api }) {
             },
             h(
               "div",
-              { class: "event-roster-heading" },
+              { class: "event-roster-toolbar" },
+              h("div", { class: "event-roster-heading" },
               h("span", { class: "event-roster-icon", "aria-hidden": "true" }, icon("userPlus")),
               h(
                 "div",
                 { class: "event-roster-copy" },
-                h("strong", { class: "event-roster-title" }, "Guest & Roster Management"),
-                h("span", { class: "sub" }, "Guest registration policy, profile creation, and tournament entries"),
+                h("strong", { class: "event-roster-title" }, "Guest Management"),
+                h("span", { class: "sub" }, "Prepare a player profile, then register the guest in a division."),
               ),
+              ),
+              guestSettings,
             ),
-            h(
+            rosterActions.length ? h(
               "div",
-              {
-                class: "event-roster-actions",
-                role: "group",
-                "aria-label": "Guest Registration Actions",
-              },
-              ...rosterActions,
-            ),
+              { class: "event-roster-workflow" },
+              h("div", { class: "event-roster-step" },
+                h("span", { class: "event-roster-step-label" }, "1 · Prepare players"),
+                h("p", { class: "sub" }, "Create a guest profile, find an existing player, or update their details."),
+                h("div", { class: "event-roster-actions", role: "group", "aria-label": "Player profile actions" }, ...rosterActions),
+              ),
+              registerGuest ? h("div", { class: "event-roster-step is-registration" },
+                h("span", { class: "event-roster-step-label" }, "2 · Register in a division"),
+                h("p", { class: "sub" }, "Choose the guest, division and doubles partner to create an entry."),
+                registerGuest,
+              ) : null,
+            ) : null,
           )
           : null,
       );
@@ -2126,6 +2256,8 @@ export function createEventsPages({ api }) {
       body,
     );
     refresh();
+
+    watchRegistrationChanges({ client, page, refresh });
     return page;
   }
 

@@ -16,6 +16,7 @@ import {
 } from "./ui.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatMemberName } from "./lib/names.js";
+import { formatPoints } from "./cpc-points.js";
 
 function splitRankLabel(rank) {
   const match = String(rank ?? "").match(/^(.*?)\s*\((\d\.\d{3}\s*[–-]\s*\d\.\d{3})\)$/);
@@ -318,18 +319,12 @@ export function createPublicPages({ api, client }) {
               h(
                 "div",
                 { class: "public-member-meta-grid" },
-                h(
+                ...Array.from({ length: 4 }, () => h(
                   "div",
                   { class: "public-member-meta-tile" },
                   h("span", { class: "sk sk-tile-label" }),
                   h("span", { class: "sk sk-tile-badge" }),
-                ),
-                h(
-                  "div",
-                  { class: "public-member-meta-tile" },
-                  h("span", { class: "sk sk-tile-label" }),
-                  h("span", { class: "sk sk-tile-badge" }),
-                ),
+                )),
               ),
             ),
           );
@@ -509,11 +504,16 @@ export function createPublicPages({ api, client }) {
                     "div",
                     { class: "public-member-meta-value" },
                     m.rank ? badge(rank.name, "success") : badge("Not Ranked", "neutral"),
-                    rank.band
-                      ? h("span", { class: "public-member-rating-band sub" }, rank.band)
-                      : null,
                   );
                 })(),
+              ),
+              ...[["singles_points", "Singles Rating"], ["doubles_points", "Doubles Rating"]].map(([key, label]) =>
+                h("div", { class: "public-member-meta-tile" },
+                  h("span", { class: "public-member-meta-label" }, icon("trophy"), label),
+                  h("div", { class: "public-member-meta-value" },
+                    badge(m[key] == null ? "Unrated" : formatPoints(m[key]), m[key] == null ? "neutral" : "success"),
+                  ),
+                )
               ),
             ),
           ),

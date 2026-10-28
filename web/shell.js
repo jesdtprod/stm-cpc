@@ -38,7 +38,7 @@ const GROUPS = [
       { path: "/admin/members", label: "Members", icon: "user" },
       { path: "/admin/import", label: "Member Import", icon: "upload" },
       { path: "/admin/categories", label: "Categories", icon: "layers" },
-      { path: "/admin/ranks", label: "Ranks", icon: "layers" },
+      // Ranks management is hidden from the menu: the Club Rank is automatic (the route /admin/ranks still exists).
     ],
   },
   {

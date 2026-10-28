@@ -69,19 +69,12 @@ export function selfAssessmentCard(
       { class: "assessment-summary-tile is-primary", "data-discipline": discipline },
       h("div", { class: "assessment-tile-heading" },
         h("span", { class: "assessment-label" }, label),
-        icon("trophy"),
-      ),
-      h("strong", { class: "assessment-rank" }, side.points == null ? "NR" : formatPoints(side.points)),
-      h("span", { class: "sub" }, side.classification ?? "Not Rated"),
-      h(
-        "div",
-        { class: "assessment-tile-foot" },
-        badge(STATUS_LABEL[side.status] ?? STATUS_LABEL.NR, side.status === "NR" ? "neutral" : "success"),
         editable
           ? button({
             label: side.points == null ? "Assess" : "Edit",
             icon: "edit",
             variant: "secondary",
+            size: "sm",
             type: "button",
             onClick: () =>
               assessPointsModal({
@@ -96,7 +89,14 @@ export function selfAssessmentCard(
                 onDone: load,
               }),
           })
-          : null,
+          : icon("trophy"),
+      ),
+      h("strong", { class: "assessment-rank" }, side.points == null ? "NR" : formatPoints(side.points)),
+      h("span", { class: "sub" }, side.classification ?? "Not Rated"),
+      h(
+        "div",
+        { class: "assessment-tile-foot" },
+        badge(STATUS_LABEL[side.status] ?? STATUS_LABEL.NR, side.status === "NR" ? "neutral" : "success"),
       ),
       side.updated_at
         ? h("span", { class: "sub assessment-when" }, formatDateTime(side.updated_at))

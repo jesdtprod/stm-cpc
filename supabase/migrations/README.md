@@ -240,3 +240,21 @@ rating; the list shows both. Verify with `deno task db:test 1890`-related suites
 change), add the members' one-time `submit_member_ratings` and the profile data `get_member_ratings`, make event
 eligibility use the rating for the division's format, reconcile the stored ranks once, and refuse manual rank overrides
 while ratings are on. Verify with `deno task db:test 1900_club_rank_automatic`.
+
+## Public member ratings
+
+`2120_registration_live_partners.sql` permits participant-scoped partner reads for registration realtime and publishes event/division changes. It grants no writes. Verify with `deno task db:test 2050_member_guest_partners` and `deno test --no-check --allow-read=web tests/unit/registration-live.test.js`.
+
+`2110_member_registration_status.sql` includes member partners in division registration status and exposes ownership so only owners receive payment/withdrawal controls. Verify with `deno task db:test 2050_member_guest_partners`.
+
+`2070_optional_guest_assessment.sql` makes both ratings optional in Add Guest, preserving NR and all registration eligibility checks. Verify with `deno task db:test 1970_guest_assessment_at_add`.
+
+`2060_guest_partner_club_members.sql` extends admin guest-partner choices to all eligible active club members and adds an admin-only idempotent member-participant preparation RPC. Verify with `deno task db:test 1960_eligible_event_partners`.
+
+`2050_member_guest_partners.sql` adds member-facing eligible guest search and member-owned registration with an existing guest partner. Confirmation and waitlist promotion build mixed rosters using the existing payment/approval lifecycle. Verify with `deno task db:test 2050_member_guest_partners` after applying migrations.
+
+`2040_unrated_guest_beginner_low.sql` permits NR guests as leads and partners only in Beginner divisions starting at Beginner Low, without assigning points. Search and save retain all other eligibility checks. Verify with `deno task db:test 1960_eligible_event_partners`.
+
+`2030_guest_partner_rating_eligibility.sql` filters guest partner choices with stored Doubles ratings and the same division eligibility rules used at save. It rejects supplied-rank overrides when ratings are enabled. Apply it, then verify with `deno task db:test 1960_eligible_event_partners`.
+
+`1930_public_member_ratings.sql` adds only current Singles and Doubles rating values to `public_members()` under the existing publication switch and member eligibility. Private assessment details remain excluded. Verify with `deno task db:test 1930_public_member_ratings` after applying the migration.

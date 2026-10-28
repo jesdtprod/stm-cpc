@@ -21,7 +21,6 @@ import { can } from "./lib/permissions.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatDate, formatDateTime } from "./lib/dates.js";
 import { formatMemberName } from "./lib/names.js";
-import { selfAssessmentCard } from "./member-self-assessment.js";
 import { assessPointsModal, loadMemberRatings, pointsHistoryModal, ratingLabel } from "./cpc-points.js";
 
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
@@ -787,9 +786,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             ),
             kv(
               "DUPR ID",
-              p.dupr_id
-                ? h("span", { class: "badge badge-accent" }, p.dupr_id)
-                : h("span", { class: "muted" }, "None"),
+              p.dupr_id ? badge(p.dupr_id, "neutral") : h("span", { class: "muted" }, "None"),
             ),
             row.deleted_at
               ? kv(
@@ -801,10 +798,6 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           ),
         ),
         // Structured Profile Section Cards
-        !row.deleted_at ? selfAssessmentCard({
-          api, memberId: row.id, staff: true, canEdit: can("ranks.override"),
-          name: formatMemberName(row.persons),
-        }) : null,
         h(
           "div",
           { class: "member-profile-sections" },
@@ -869,12 +862,6 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 p.gender
                   ? p.gender.replace(/\b[a-z]/g, (c) => c.toUpperCase())
                   : "—",
-              ),
-              kv(
-                "DUPR ID",
-                p.dupr_id
-                  ? h("span", { class: "badge badge-accent" }, p.dupr_id)
-                  : "None",
               ),
               kv(
                 "Emergency Contact",
@@ -942,7 +929,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           display_name: formatMemberName(p) || "this member",
           ...ratings,
         };
-        const line = (discipline, withHistory) => {
+        const line = (discipline) => {
           const label = ratingLabel(ratings[discipline], false, ratings.bands);
           return h(
             "span",
@@ -954,15 +941,13 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               h("span", { class: "sub member-audit-rank-band" }, label.sub),
             ),
             h("span", { class: "member-rating-actions" },
-            withHistory
-              ? iconButton({
-                label: "Rating History",
+              iconButton({
+                label: `${discipline === "singles" ? "Singles" : "Doubles"} Rating History`,
                 icon: "trophy",
                 size: "sm",
                 variant: "info",
-                onClick: () => pointsHistoryModal(api, row.id, entry.display_name),
-              })
-              : null,
+                onClick: () => pointsHistoryModal(api, row.id, entry.display_name, row, discipline),
+              }),
             can("ranks.override") && !row.deleted_at
               ? iconButton({
                 label: ratings[discipline].points == null
@@ -971,14 +956,17 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 icon: "sliders",
                 size: "sm",
                 variant: "edit",
-                onClick: () => assessPointsModal({ api, row: entry, discipline, onDone: drawPoints }),
+                onClick: () => assessPointsModal({
+                  api, row: entry, discipline,
+                  onDone: () => { drawPoints(); drawRank(); },
+                }),
               })
               : null,
             ),
           );
         };
-        singlesEl.replaceChildren(line("singles", true));
-        doublesEl.replaceChildren(line("doubles", false));
+        singlesEl.replaceChildren(line("singles"));
+        doublesEl.replaceChildren(line("doubles"));
       }).catch(() => {
         singlesEl.replaceChildren(h("span", { class: "badge badge-neutral" }, "—"));
         doublesEl.replaceChildren(h("span", { class: "badge badge-neutral" }, "—"));
@@ -1388,7 +1376,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             return h(
               "div",
               { class: "member-table-stack" },
-              h("span", { class: "member-rank-name" }, rank ? label.name : "Unranked"),
+              badge(rank ? label.name : "Unranked", rank ? "success" : "neutral"),
               label.band
                 ? h("span", { class: "sub member-rank-band" }, label.band)
                 : null,

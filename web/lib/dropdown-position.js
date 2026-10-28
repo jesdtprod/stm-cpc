@@ -1,5 +1,5 @@
 // Keep shared dropdowns inside the viewport and any scrolling modal body.
-export function dropdownPosition(trigger, popup) {
+export function dropdownPosition(trigger, popup, { center = false } = {}) {
   const doc = trigger.ownerDocument ?? globalThis.document;
   const view = doc?.defaultView ?? globalThis;
   let active = false;
@@ -15,19 +15,34 @@ export function dropdownPosition(trigger, popup) {
       (viewport?.height ?? view.innerHeight ??
         doc.documentElement.clientHeight) -
       8;
+    let left = (viewport?.offsetLeft ?? 0) + 8;
+    let right = (viewport?.offsetLeft ?? 0) +
+      (viewport?.width ?? view.innerWidth ?? doc.documentElement?.clientWidth ?? 1024) - 8;
     for (
       let parent = trigger.parentElement;
       parent;
       parent = parent.parentElement
     ) {
       const style = view.getComputedStyle(parent);
-      if (!/(auto|scroll|hidden|clip)/.test(style.overflowY)) continue;
+      if (!/(auto|scroll|hidden|clip)/.test(`${style.overflowY} ${style.overflowX}`)) continue;
       const rect = parent.getBoundingClientRect();
+      if (center && Number.isFinite(rect.left) && parent.clientWidth) {
+        left = Math.max(left, rect.left + (parent.clientLeft ?? 0) + 8);
+        right = Math.min(right, rect.left + (parent.clientLeft ?? 0) + parent.clientWidth - 8);
+      }
+      if (!/(auto|scroll|hidden|clip)/.test(style.overflowY)) continue;
       const innerTop = rect.top + parent.clientTop;
       top = Math.max(top, innerTop + 8);
       bottom = Math.min(bottom, innerTop + parent.clientHeight - 8);
     }
     const rect = trigger.getBoundingClientRect();
+    if (center) {
+      const availableWidth = Math.max(0, right - left);
+      popup.style.setProperty("--dropdown-max-width", `${availableWidth}px`);
+      const width = Math.min(popup.offsetWidth, availableWidth);
+      const origin = popup.offsetParent?.getBoundingClientRect().left ?? rect.left;
+      popup.style.setProperty("--dropdown-left", `${left + (availableWidth - width) / 2 - origin}px`);
+    }
     naturalHeight = Math.max(
       naturalHeight,
       popup.scrollHeight,
