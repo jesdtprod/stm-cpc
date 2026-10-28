@@ -29,6 +29,9 @@ PLAN 8.4e (migration 1890): every player has two ratings, Singles and Doubles, e
 its own history and provisional count. A singles division updates only Singles and a doubles division (mixed
 included) only Doubles; a player needs an assessed rating for the division's format before a draw. The club
 rank follows the higher of the two ratings that exist. Screens say "Singles Rating" and "Doubles Rating".
+Only an unrated player is labelled provisional ("Unrated · Provisional Beginner Low"); an assessed
+rating shows as a normal rating with its matches played. The faster movement during the first five matches
+stays in the calculation but is not shown as a label.
 
 PLAN 8.4d (migrations 1880, web/cpc-points.js): the Ranking, Home and Member Details screens show
 points to three decimals with Provisional (first five matches) and Unrated labels, plus the points

@@ -956,8 +956,8 @@ Deno.test("ranking ratings: Singles and Doubles with three decimals, provisional
     const subs = page.querySelectorAll(".cpc-points-sub").map((n) => n.textContent);
     // columns per row: Singles, Doubles
     assert(values[0] === "3.040" && values[1] === "2.900", "Singles and Doubles show three decimals");
-    assert(subs[0] === "Provisional · 3 of 5 matches", "Under five matches is provisional");
-    assert(subs[1] === "8 matches played", "Five or more is established, per discipline");
+    assert(subs[0] === "3 matches played", "An assessed rating is not called provisional");
+    assert(subs[1] === "8 matches played", "Matches are counted per discipline");
     assert(values[2] === "3.400" && values[3] === "Unrated", "A member can be rated in one and unrated in the other");
     assert(subs[3] === "Not assessed yet", "A ranked member without a rating is Unrated");
     assert(values[4] === "Unrated" && subs[4] === "Provisional Beginner Low", "An unranked member shows the provisional fallback");
@@ -966,6 +966,7 @@ Deno.test("ranking ratings: Singles and Doubles with three decimals, provisional
       "Two rating columns",
     );
     assert(!page.textContent.includes("CPC Points"), "The old CPC Points label is gone");
+    assert(subs.every((t) => !t.startsWith("Provisional ·")), "Only an unranked unrated member shows a provisional line");
     assert(!page.textContent.includes("null"), "No null text is written to the page");
     clearAuth();
   }));

@@ -229,11 +229,7 @@ function memberCards(m) {
       iconName: "trophy",
       href: "#/ranking",
       kind: "activity",
-      pillLabel: rating.points == null
-        ? "Unrated"
-        : rating.provisional
-        ? "Provisional"
-        : "Rated",
+      pillLabel: rating.points == null ? "Unrated" : "Rated",
       goLabel: "See your rating history",
     });
   };

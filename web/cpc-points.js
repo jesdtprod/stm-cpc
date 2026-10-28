@@ -20,7 +20,7 @@ function messageOf(e, fallback) {
 }
 
 /** Label for one rating: the value, or Unrated; and the smaller line under it. */
-export function ratingLabel({ points, matches, provisional }, hasRank = false) {
+export function ratingLabel({ points, matches }, hasRank = false) {
   if (points === null || points === undefined) {
     return {
       value: "Unrated",
@@ -31,10 +31,9 @@ export function ratingLabel({ points, matches, provisional }, hasRank = false) {
   const count = Number(matches) || 0;
   return {
     value: formatPoints(points),
-    sub: provisional
-      ? `Provisional · ${Math.min(count, PROVISIONAL_MATCHES)} of ${PROVISIONAL_MATCHES} matches`
-      : `${count} matches played`,
-    tone: provisional ? "warning" : "success",
+    // Only an unrated player is called provisional; an assessed rating is shown as a normal rating.
+    sub: count === 0 ? "Assessed · no matches yet" : `${count} ${count === 1 ? "match" : "matches"} played`,
+    tone: "success",
   };
 }
 
