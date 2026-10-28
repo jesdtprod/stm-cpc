@@ -3,9 +3,21 @@
 //     names at all and this page says so.
 //   * What is shown is fixed by the server: display name, category and rank for the leaderboard; division, category, date and
 //     the podium (top three, display names) for results. No member IDs, contact details, scores or history.
-import { badge, dataTable, h, memberHero, tabs } from "./ui.js";
+import {
+  badge,
+  button,
+  dataTable,
+  h,
+  icon,
+  memberHero,
+  pagination,
+  searchControl,
+  tabs,
+} from "./ui.js";
+import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
+import { formatMemberName } from "./lib/names.js";
 
-export function createPublicPages({ api }) {
+export function createPublicPages({ api, client }) {
   function leaderboardPage() {
     const page = h("div", { class: "page" });
     const tabsHost = h("div", {});
@@ -218,5 +230,337 @@ export function createPublicPages({ api }) {
     return page;
   }
 
-  return { leaderboardPage };
+  // Members: directory names, CPC numbers, photos and ranks; internal IDs stay private.
+  function membersPage() {
+    const page = h("div", { class: "page public-members-page" });
+    const body = h("div", { class: "public-body" });
+    const state = {
+      status: "loading",
+      info: null,
+      photos: new Map(),
+      search: "",
+      page: 1,
+      pageSize: 12,
+    };
+
+    const searchInput = searchControl({
+      class: "input",
+      placeholder: "Search members",
+      "aria-label": "Search members",
+      value: "",
+      disabled: true,
+      onInput: (e) => {
+        state.search = e.target.value;
+        state.page = 1;
+        renderCards();
+      },
+    });
+
+    const searchWrap = h(
+      "div",
+      { class: "public-members-search-wrap" },
+      searchInput,
+    );
+    const contentArea = h("div", { class: "public-members-content" });
+
+    function renderCards() {
+      if (state.status === "ready" && !state.info?.enabled) {
+        searchWrap.hidden = true;
+        contentArea.replaceChildren(
+          h(
+            "div",
+            { class: "card public-members-not-published" },
+            h("h2", {}, "The member list is not published"),
+            h(
+              "p",
+              { class: "muted" },
+              "The club has not made this page public. Members can see the ranking after signing in.",
+            ),
+            h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In"),
+          ),
+        );
+        return;
+      }
+
+      searchWrap.hidden = false;
+
+      if (state.status === "loading") {
+        searchInput.disabled = true;
+        const skeletonGrid = h("div", {
+          class: "public-members-grid",
+          "aria-busy": "true",
+          "aria-label": "Loading members",
+        });
+        for (let i = 0; i < 12; i++) {
+          skeletonGrid.append(
+            h(
+              "article",
+              { class: "public-member-card is-skeleton", "aria-hidden": "true" },
+              h(
+                "div",
+                { class: "public-member-card-header" },
+                h("span", { class: "sk sk-avatar" }),
+                h(
+                  "div",
+                  { class: "public-member-card-identity" },
+                  h("span", { class: "sk sk-name" }),
+                  h("span", { class: "sk sk-sub" }),
+                ),
+              ),
+              h("div", { class: "public-member-card-divider" }),
+              h(
+                "div",
+                { class: "public-member-meta-grid" },
+                h(
+                  "div",
+                  { class: "public-member-meta-tile" },
+                  h("span", { class: "sk sk-tile-label" }),
+                  h("span", { class: "sk sk-tile-badge" }),
+                ),
+                h(
+                  "div",
+                  { class: "public-member-meta-tile" },
+                  h("span", { class: "sk sk-tile-label" }),
+                  h("span", { class: "sk sk-tile-badge" }),
+                ),
+              ),
+            ),
+          );
+        }
+        contentArea.replaceChildren(skeletonGrid);
+        return;
+      }
+
+      if (state.status === "error") {
+        searchInput.disabled = true;
+        contentArea.replaceChildren(
+          h(
+            "div",
+            { class: "tbl-state error public-members-state", role: "alert" },
+            h("span", { class: "badge-icon" }, icon("alert")),
+            h("h2", {}, "Could not load members"),
+            h(
+              "p",
+              { class: "muted" },
+              "Something went wrong loading the club member list. Try again.",
+            ),
+            button({ label: "Retry", icon: "refresh", onClick: load }),
+          ),
+        );
+        return;
+      }
+
+      searchInput.disabled = false;
+      const allMembers = state.info?.members ?? [];
+      if (allMembers.length === 0) {
+        contentArea.replaceChildren(
+          h(
+            "div",
+            { class: "tbl-state public-members-state" },
+            h("span", { class: "badge-icon" }, icon("inbox")),
+            h("h2", {}, "No members yet"),
+            h(
+              "p",
+              { class: "muted" },
+              "Club members appear here once they join.",
+            ),
+          ),
+        );
+        return;
+      }
+
+      const normalize = (text) =>
+        String(text || "")
+          .normalize("NFKD")
+          .replace(/\p{M}/gu, "")
+          .toLocaleLowerCase();
+      const terms = normalize(state.search).trim().split(/\s+/).filter(Boolean);
+      const filtered = allMembers.filter((m) => {
+        if (!terms.length) return true;
+        const text = normalize(
+          `${m.name} ${m.member_no ?? ""} ${m.category ?? ""} ${m.rank ?? ""}`,
+        );
+        return terms.every((t) => text.includes(t));
+      });
+
+      if (filtered.length === 0) {
+        contentArea.replaceChildren(
+          h(
+            "div",
+            {
+              class: "tbl-state tbl-search-empty public-members-state",
+              role: "status",
+            },
+            h("span", { class: "badge-icon" }, icon("search")),
+            h("h2", {}, "No matching members"),
+            h(
+              "p",
+              { class: "muted" },
+              "Try another search or clear the search box.",
+            ),
+            button({
+              label: "Clear Search",
+              icon: "x",
+              onClick: () => {
+                searchInput.value = "";
+                state.search = "";
+                state.page = 1;
+                renderCards();
+                searchInput.focus();
+              },
+            }),
+          ),
+        );
+        return;
+      }
+
+      const pages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
+      if (state.page > pages) state.page = pages;
+      const start = (state.page - 1) * state.pageSize;
+      const visible = filtered.slice(start, start + state.pageSize);
+
+      const grid = h("div", {
+        class: "public-members-grid",
+        role: "region",
+        "aria-label": "Club Members Cards",
+      });
+
+      for (const m of visible) {
+        grid.append(
+          h(
+            "article",
+            { class: "public-member-card" },
+            h(
+              "div",
+              { class: "public-member-card-header" },
+              h(
+                "span",
+                {
+                  class: "member-avatar ranking-player-photo public-member-avatar",
+                  "aria-hidden": "true",
+                },
+                avatarImage(state.photos.get(m.photo), m.name),
+              ),
+              h(
+                "div",
+                { class: "public-member-card-identity" },
+                h("h3", { class: "public-member-name", title: m.name }, m.name),
+                h(
+                  "span",
+                  { class: "public-member-sub sub" },
+                  m.member_no || "Club Member",
+                ),
+              ),
+            ),
+            h("div", {
+              class: "public-member-card-divider",
+              "aria-hidden": "true",
+            }),
+            h(
+              "div",
+              { class: "public-member-meta-grid" },
+              h(
+                "div",
+                { class: "public-member-meta-tile" },
+                h(
+                  "span",
+                  { class: "public-member-meta-label" },
+                  icon("layers"),
+                  "Category",
+                ),
+                h(
+                  "div",
+                  { class: "public-member-meta-value" },
+                  m.category
+                    ? badge(m.category, "info")
+                    : h("span", { class: "public-member-unranked" }, "—"),
+                ),
+              ),
+              h(
+                "div",
+                { class: "public-member-meta-tile" },
+                h(
+                  "span",
+                  { class: "public-member-meta-label" },
+                  icon("medal"),
+                  "CPC Rank",
+                ),
+                h(
+                  "div",
+                  { class: "public-member-meta-value" },
+                  m.rank
+                    ? badge(m.rank, "success")
+                    : badge("Not Ranked", "neutral"),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      const pager = pagination({
+        compactMobile: true,
+        page: state.page,
+        pageSize: state.pageSize,
+        total: filtered.length,
+        onPage: (p) => {
+          state.page = p;
+          renderCards();
+          grid.scrollIntoView?.({ behavior: "smooth", block: "start" });
+        },
+      });
+
+      const pagerWrap = h(
+        "div",
+        { class: "public-members-pager-wrap" },
+        pager,
+      );
+
+      contentArea.replaceChildren(grid, pagerWrap);
+    }
+
+    async function load() {
+      state.status = "loading";
+      renderCards();
+      try {
+        state.info = await api.rpc("public_members");
+        if (state.info?.members) {
+          state.info.members = state.info.members.map((m) => ({
+            ...m,
+            name: formatMemberName({ ...m, display_name: m.name }),
+          }));
+        }
+        state.status = "ready";
+        renderCards();
+        // photos follow the names, so the list never waits for them
+        const paths = (state.info?.members ?? []).map((m) => m.photo);
+        if (client && paths.some(Boolean)) {
+          state.photos = await signedAvatarUrls(client, paths);
+          if (page.isConnected) renderCards();
+        }
+      } catch {
+        state.status = "error";
+        renderCards();
+      }
+    }
+
+    body.append(searchWrap, contentArea);
+    page.append(
+      memberHero({
+        iconName: "user",
+        eyebrow: "Club",
+        title: "Our Members",
+        publicHeader: true,
+        chip: "Club Members",
+        titleBadge: true,
+        description:
+          "The players of Capitol Pickleball Club and their current CPC rank.",
+      }),
+      body,
+    );
+    load();
+    return page;
+  }
+
+  return { leaderboardPage, membersPage };
 }

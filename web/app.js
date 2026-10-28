@@ -239,13 +239,14 @@ route(
   "signedIn",
 );
 
-const publicPages = createPublicPages({ api });
+const publicPages = createPublicPages({ api, client });
 route(
   "/leaderboard",
   () => publicPages.leaderboardPage(),
   "Leaderboard",
   "public",
 );
+route("/members", () => publicPages.membersPage(), "Members", "public");
 
 const rankingPages = createRankingPages({ api, client, session });
 route("/ranking", () => rankingPages.rankingPage(), "Ranking", "signedIn");

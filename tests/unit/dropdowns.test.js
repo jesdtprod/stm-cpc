@@ -25,6 +25,7 @@ import { createMemberEventsPages } from "../../web/pages-events-member.js";
 import { createRankingPages } from "../../web/pages-ranking.js";
 import { createAdminPages } from "../../web/pages-admin.js";
 import { createEventsPages, divisionStatusBadge } from "../../web/pages-events.js";
+import { createPublicPages } from "../../web/pages-public.js";
 import { createGuestEventActions } from "../../web/event-guests.js";
 import { clearAuth, setAuth } from "../../web/lib/permissions.js";
 
@@ -1381,6 +1382,50 @@ Deno.test("pagination: empty lists have no visible footer or controls", () =>
     );
   }));
 
+Deno.test("pagination: compact mobile controls retain the current page and end navigation", () =>
+  withDom(() => {
+    for (const [page, expected] of [
+      [1, [1, 2, 3]],
+      [4, [3, 4, 5]],
+      [119, [118, 119, 120]],
+      [120, [118, 119, 120]],
+    ]) {
+      let selected;
+      const pager = pagination({
+        page,
+        pageSize: 12,
+        total: 1429,
+        compactMobile: true,
+        onPage: (next) => selected = next,
+      });
+      const buttons = pager.querySelectorAll("button");
+      const numbered = buttons.filter((button) =>
+        button.getAttribute("aria-label")?.startsWith("Page ") &&
+        !button.className.split(" ").includes("pager-extra-page")
+      );
+      assert(
+        JSON.stringify(numbered.map((button) => Number(button.textContent))) ===
+          JSON.stringify(expected),
+        "Mobile must keep three useful page links at the start, middle and end",
+      );
+      assert(
+        numbered.some((button) => button.getAttribute("aria-current") === "page"),
+        "The current page must never be hidden on mobile",
+      );
+      const previous = buttons.find((button) =>
+        button.getAttribute("aria-label") === "Previous Page"
+      );
+      const next = buttons.find((button) =>
+        button.getAttribute("aria-label") === "Next Page"
+      );
+      assert(previous.disabled === (page === 1));
+      assert(next.disabled === (page === 120));
+      numbered[0].click();
+      assert(selected === expected[0], "Compact page links must still navigate");
+      assert(buttons.length === 7, "Desktop keeps its five numbered page links");
+    }
+  }));
+
 Deno.test("pagination: shared default is ten records with correct range and navigation", () =>
   withDom(() => {
     let page;
@@ -1732,6 +1777,10 @@ Deno.test("member details modal: consolidates status and audit into 1 unified se
       detailsGrid.textContent.includes("Review Flags"),
       "Must include Review Flags",
     );
+    assert(
+      detailsGrid.textContent.includes("DUPR ID"),
+      "Must include DUPR ID",
+    );
 
     modal.close();
     clearAuth();
@@ -1997,4 +2046,78 @@ Deno.test("rank rules: template selector preserves scope and list displays the t
     dialog = document.body.querySelector("dialog");
     assert(selector().value === "fake-format", "Editing retains the saved template restriction");
     dialog.close();
+  }));
+
+Deno.test("public members: renders executive cards, preserves search bar, and filters in real time", () =>
+  withDom(async (document) => {
+    const fakeMembers = [
+      { name: "Carlyn Bless Guarde", photo: null, category: "Intermediate", rank: "Intermediate Low", member_no: "CPC-001" },
+      { name: "Arian Samama", photo: null, category: "Novice", rank: "Novice High", member_no: "CPC-002" },
+      { name: "Kyle Marquez", photo: null, category: "Novice", rank: "Novice Low", member_no: "CPC-003" },
+      { name: "Aaron L. Alam", photo: null, category: null, rank: null, member_no: "CPC-004" },
+    ];
+    const api = {
+      rpc: (method) => {
+        if (method === "public_members") {
+          return Promise.resolve({ enabled: true, members: fakeMembers });
+        }
+        return Promise.resolve(null);
+      },
+    };
+    const pages = createPublicPages({ api, client: null });
+    const page = pages.membersPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // Search bar is present and not removed
+    const searchInput = page.querySelector('input');
+    assert(searchInput, "Search bar must be present");
+    assert(searchInput.getAttribute("placeholder") === "Search members", "Search placeholder matches");
+
+    // Grid of cards
+    const grid = page.querySelector(".public-members-grid");
+    assert(grid, "Card grid must exist");
+    const cards = grid.querySelectorAll(".public-member-card");
+    assert(cards.length === 4, "Renders 4 member cards");
+
+    // Check card details
+    const firstCard = cards[0];
+    assert(firstCard.querySelector(".public-member-name").textContent.includes("Guarde"), "Displays member name");
+    assert(firstCard.querySelector(".public-member-sub").textContent === "CPC-001", "Displays CPC number");
+    assert(firstCard.textContent.includes("Intermediate Low"), "Displays rank badge");
+
+    // Check unranked member
+    const unrankedCard = cards[3];
+    assert(unrankedCard.textContent.includes("Not Ranked"), "Displays Not Ranked badge");
+
+    // Real-time search
+    searchInput.value = "Guarde";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const filteredCards = page.querySelectorAll(".public-member-card");
+    assert(filteredCards.length === 1, "Filters cards in real time");
+    assert(filteredCards[0].textContent.includes("Guarde"), "Matching card displayed");
+
+    // Clear search
+    searchInput.value = "";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert(page.querySelectorAll(".public-member-card").length === 4, "Restores all cards after clear");
+
+    // Empty search state
+    searchInput.value = "NonexistentPlayer";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const empty = page.querySelector(".public-members-state");
+    assert(empty, "Empty state must be displayed");
+    assert(empty.textContent.includes("No matching members"), "Empty state message shown");
+
+    // Clear search button in empty state
+    const clearBtn = empty.querySelector("button");
+    assert(clearBtn, "Clear button in empty state");
+    clearBtn.click();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert(page.querySelectorAll(".public-member-card").length === 4, "Restores cards on empty state clear");
   }));

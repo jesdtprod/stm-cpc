@@ -24,12 +24,14 @@ select is(
     and (has_table_privilege('anon', c.oid, 'select') or has_table_privilege('anon', c.oid, 'insert')
       or has_table_privilege('anon', c.oid, 'update') or has_table_privilege('anon', c.oid, 'delete'))),
   0, 'anon has no privilege on any table in public or core');
--- except the public pages' read-only functions (1330, 1540, 1550), which return only what the club publishes
+-- except the public pages' read-only functions (1330, 1540, 1550, 1750), which return only what the club publishes,
+-- and the yes/no photo check the public Members page's storage policy needs (1750)
 select is(
   (select count(*)::int from pg_proc p where p.pronamespace in ('public'::regnamespace, 'core'::regnamespace)
     and has_function_privilege('anon', p.oid, 'execute')
     and p.oid::regprocedure::text not in ('club_home_stats()', 'public_landing_info()', 'public_results()',
-                                          'public_leaderboard(text)')),
+                                          'public_leaderboard(text)', 'public_members()',
+                                          'core.public_member_photo(text)')),
   0, 'anon cannot execute any function in public or core except the public page functions');
 select is(has_function_privilege('authenticated', 'public.my_permissions()', 'execute'), true, 'authenticated can call my_permissions');
 select is(has_function_privilege('authenticated', 'core.has_permission(text,text,text)', 'execute'), true, 'authenticated can evaluate policies (has_permission)');

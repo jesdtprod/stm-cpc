@@ -645,32 +645,27 @@ function loadingView(mode = "member") {
 }
 
 export function createHomePages({ session, api, client }) {
-  async function renderMemberBadges(target, badges, fallbackInitials) {
+  async function renderMemberBadges(target, badges) {
     const members = Array.isArray(badges)
       ? badges
+        .filter((badge) => badge && typeof badge === "object")
         .slice(0, 15)
         .map((badge) => ({
-          initials: String(badge?.initials ?? "")
-            .replace(/[^a-z]/gi, "")
-            .slice(0, 2)
-            .toUpperCase(),
+          initials: Array.from(String(badge.initials ?? "").replace(/[^\p{L}\p{N}]/gu, ""))
+            .slice(0, 2).join("").toUpperCase() || "C",
           photoPath: typeof badge?.avatar_path === "string"
             ? badge.avatar_path
             : null,
         }))
-        .filter((member) => member.initials)
       : [];
-    const visibleMembers = members.length ? members : [{
-      initials: String(fallbackInitials ?? "C").replace(/[^a-z]/gi, "").slice(0, 2)
-        .toUpperCase() || "C",
-      photoPath: null,
-    }];
+    const visibleMembers = members;
     const circles = visibleMembers.map((member) =>
       h("span", { class: "cpc-member-account" }, member.initials)
     );
 
     target.replaceChildren(...circles);
-    target.hidden = false;
+    target.hidden = visibleMembers.length === 0;
+    if (!visibleMembers.length) return;
     const urls = await signedAvatarUrls(
       client,
       visibleMembers.map((member) => member.photoPath),
@@ -698,11 +693,7 @@ export function createHomePages({ session, api, client }) {
       target.textContent = `${
         new Intl.NumberFormat("en-PH").format(count)
       } Active Club Member${count === 1 ? "" : "s"}`;
-      const initials = String(stats?.member_initials ?? "C")
-        .replace(/[^a-z]/gi, "")
-        .slice(0, 2)
-        .toUpperCase();
-      await renderMemberBadges(accountIndicators, stats?.member_badges, initials);
+      await renderMemberBadges(accountIndicators, stats?.member_badges);
     } catch {
       if (target.isConnected) target.textContent = "Active club members";
     }
@@ -1300,8 +1291,7 @@ export function createHomePages({ session, api, client }) {
     );
     const memberAccounts = h(
       "div",
-      { class: "cpc-member-accounts", "aria-hidden": "true" },
-      h("span", { class: "cpc-member-account" }, "C"),
+      { class: "cpc-member-accounts", "aria-hidden": "true", hidden: true },
     );
     const heroSection = h(
       "section",

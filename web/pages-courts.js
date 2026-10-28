@@ -671,8 +671,15 @@ export function createCourtsPages({ api, getOrgId }) {
             {
               key: "status",
               label: "Status",
+              minWidth: 160,
               render: (r) =>
                 badge(...(STATUS[r.status] ?? [r.status, "neutral"])),
+            },
+            {
+              key: "notes",
+              label: "Notes",
+              minWidth: 220,
+              render: (r) => h("span", { class: "court-notes" }, r.notes?.trim() || "—"),
             },
             {
               key: "actions",

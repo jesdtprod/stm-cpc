@@ -283,6 +283,15 @@ const GROUPS = [
         hint:
           "Visitors who are not signed in see each ranked player's display name, category and rank. Nothing else.",
       },
+      {
+        key: "public.members_enabled",
+        type: "switch",
+        label: "Show the member list to everyone",
+        title: "Public Member List",
+        icon: "user",
+        hint:
+          "Visitors see each member's display name, photo and CPC rank on the Members page. Never member IDs or contact details.",
+      },
     ],
   },
   {
@@ -450,13 +459,21 @@ export function createSettingsPages({ api }) {
         onClick: () => show(group),
       });
       const status = h("div", { class: "settings-status", role: "status" });
+      const changeCount = h("span", {
+        class: "settings-change-count", role: "status", "aria-live": "polite",
+      }, "No unsaved changes");
 
       function touch(key, value) {
         const item = ITEMS.find((i) => i.key === key);
         if (same(value, current[key])) delete edited[key];
         else edited[key] = value;
         delete bad[key];
-        const dirty = Object.keys(edited).length > 0;
+        const count = Object.keys(edited).length;
+        const dirty = count > 0;
+        changeCount.textContent = count
+          ? `${count} unsaved ${count === 1 ? "change" : "changes"}`
+          : "No unsaved changes";
+        changeCount.classList.toggle("is-dirty", dirty);
         saveBtn.disabled = !dirty;
         resetBtn.disabled = !dirty;
         status.replaceChildren();
@@ -548,7 +565,7 @@ export function createSettingsPages({ api }) {
               id,
               label: item.label,
               value: value ?? "",
-              rows: 4,
+              rows: 3,
               hint: item.hint,
               onInput: (e) => touch(item.key, e.target.value),
             });
@@ -569,20 +586,22 @@ export function createSettingsPages({ api }) {
               "fieldset",
               { class: "settings-methods" },
               h("legend", {}, item.label),
-              ...METHODS.map((m) =>
-                checkbox({
-                  id: `${id}-${m.value}`,
-                  label: m.label,
-                  checked: chosen.has(m.value),
-                  onChange: (on) => {
-                    if (on) chosen.add(m.value);
-                    else chosen.delete(m.value);
-                    touch(
-                      item.key,
-                      METHODS.map((x) => x.value).filter((v) => chosen.has(v)),
-                    );
-                  },
-                })
+              h("div", { class: "settings-method-options" },
+                ...METHODS.map((m) =>
+                  checkbox({
+                    id: `${id}-${m.value}`,
+                    label: m.label,
+                    checked: chosen.has(m.value),
+                    onChange: (on) => {
+                      if (on) chosen.add(m.value);
+                      else chosen.delete(m.value);
+                      touch(
+                        item.key,
+                        METHODS.map((x) => x.value).filter((v) => chosen.has(v)),
+                      );
+                    },
+                  })
+                ),
               ),
             );
           }
@@ -701,7 +720,7 @@ export function createSettingsPages({ api }) {
       const header = h(
         "div",
         { class: "settings-card-header" },
-        h("div", { class: "settings-header-icon-squircle" }, icon(group.icon || "settings")),
+        h("div", { class: "section-icon settings-header-icon-squircle", "aria-hidden": "true" }, icon(group.icon || "settings")),
         h(
           "div",
           { class: "settings-header-meta" },
@@ -737,15 +756,15 @@ export function createSettingsPages({ api }) {
           "div",
           { class: "settings-audit-box-header" },
           icon("file"),
-          h("span", { class: "settings-audit-box-title" }, "Audit Trail Reason"),
+          h("label", { class: "settings-audit-box-title", for: "setting-reason" }, "Reason for Change"),
           h("span", { class: "settings-audit-box-tag" }, "Optional"),
         ),
         textareaField({
           id: "setting-reason",
           label: "",
-          placeholder: "Provide context or explanation for this change (e.g., Seasonal maintenance, updated club policy)...",
+          placeholder: "Add a short note about this change...",
           rows: 2,
-          hint: "Recorded in the immutable club audit ledger with your member ID and Manila timestamp.",
+          hint: "Help other admins understand why these settings were updated.",
         }),
       );
 
@@ -756,7 +775,10 @@ export function createSettingsPages({ api }) {
           "div",
           { class: "settings-audit-notice" },
           icon("info"),
-          h("span", {}, "Changes take effect immediately and are logged to the club audit trail."),
+          h("div", { class: "settings-footer-copy" },
+            changeCount,
+            h("span", {}, "Saved changes are recorded in the club audit trail."),
+          ),
         ),
         h(
           "div",

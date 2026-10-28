@@ -96,7 +96,7 @@ const FLAG_SHORT = {
 
 const SELECT =
   "id,member_no,status,status_reason,joined_on,created_at,profile_id,deleted_at,delete_reason," +
-  "persons!inner(display_name,first_name,middle_name,last_name,suffix,avatar_path,mobile,email,gender,date_of_birth,address_text,emergency_name,emergency_relationship,emergency_phone)," +
+  "persons!inner(display_name,first_name,middle_name,last_name,suffix,avatar_path,mobile,email,gender,date_of_birth,dupr_id,address_text,emergency_name,emergency_relationship,emergency_phone)," +
   "flags:member_review_flags!member_review_flags_member_id_fkey(kind,resolved_at)," +
   "member_ranks(deleted_at,ranks(name,rank_ladders(categories(name))))";
 
@@ -760,6 +760,12 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 )
                 : h("span", { class: "muted" }, "None"),
             ),
+            kv(
+              "DUPR ID",
+              p.dupr_id
+                ? h("span", { class: "badge badge-accent" }, p.dupr_id)
+                : h("span", { class: "muted" }, "None"),
+            ),
             row.deleted_at
               ? kv(
                 "Deleted Record",
@@ -837,6 +843,12 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 p.gender
                   ? p.gender.replace(/\b[a-z]/g, (c) => c.toUpperCase())
                   : "—",
+              ),
+              kv(
+                "DUPR ID",
+                p.dupr_id
+                  ? h("span", { class: "badge badge-accent" }, p.dupr_id)
+                  : "None",
               ),
               kv(
                 "Emergency Contact",
@@ -1321,20 +1333,20 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         {
           key: "mobile",
           label: "Contact",
-          minWidth: 280,
+          minWidth: 240,
           skeleton: "stack",
           render: (r) =>
             h(
               "div",
               { class: "member-table-stack" },
               r.persons.mobile ?? "—",
-              h("span", { class: "sub member-contact-email" }, r.persons.email ?? "No Email"),
+              h("span", { class: "sub member-contact-email", title: r.persons.email ?? "No Email" }, r.persons.email ?? "No Email"),
             ),
         },
         {
           key: "status",
           label: "Status",
-          width: 140,
+          width: 180,
           skeleton: "badge-stack",
           render: (r) =>
             h(
@@ -1349,6 +1361,8 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 { class: "sub" },
                 r.deleted_at
                   ? "Deleted"
+                  : r.status === "active"
+                  ? "Approved"
                   : r.status === "imported"
                   ? "Not Signed In Yet"
                   : ((sentence(r.status_reason) ?? "").toLowerCase() !==
@@ -1393,6 +1407,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         {
           key: "rank",
           label: "Rank",
+          minWidth: 185,
           skeleton: "stack",
           render: (r) => {
             const rank = r.member_ranks?.find((entry) => !entry.deleted_at)
@@ -1403,7 +1418,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               rank ? rank.name : "Unranked",
               h(
                 "span",
-                { class: "sub" },
+                { class: "sub member-rank-date" },
                 r.joined_on
                   ? `Member since ${formatDate(r.joined_on)}`
                   : r.created_at

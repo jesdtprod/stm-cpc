@@ -428,7 +428,9 @@ export function createShell(
             height: 128,
           }));
         }
-      } else logo?.remove();
+      } else if (!memberHeader.classList.contains("public-page-hero")) {
+        logo?.remove();
+      }
     }
     for (const page of document.querySelectorAll("main .page")) {
       page.classList.toggle("admin-reference-page", isAdminPath);
@@ -696,6 +698,13 @@ export function createShell(
                   iconName: "trophy",
                   active: isEvents,
                   href: "#/events",
+                }),
+                tab({
+                  label: "Members",
+                  detail: "Our players and ranks",
+                  iconName: "user",
+                  active: path === "/members",
+                  href: "#/members",
                 }),
                 tab({
                   label: "Profile",

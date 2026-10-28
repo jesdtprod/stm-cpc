@@ -2770,6 +2770,7 @@ export function memberHero({
   iconName = "calendar",
   actions = [],
   titleBadge = false,
+  publicHeader = false,
 }) {
   const heading = h(
     "h1",
@@ -2778,7 +2779,19 @@ export function memberHero({
   );
   return h(
     "section",
-    { class: "dash-hero is-plain", "aria-label": title },
+    {
+      class: `dash-hero is-plain${publicHeader ? " public-page-hero" : ""}`,
+      "aria-label": title,
+    },
+    publicHeader
+      ? h("img", {
+        class: "member-header-logo public-header-logo",
+        src: "icons/cpc-logo-256.webp",
+        alt: "Capitol Pickleball Club",
+        width: 72,
+        height: 72,
+      })
+      : null,
     h(
       "div",
       { class: "dash-hero-copy" },
@@ -3330,7 +3343,7 @@ export function dataTable(
 
 /** Footer with the visible range and total; never shows "1–0". */
 export function pagination(
-  { page = 1, pageSize = DEFAULT_PAGE_SIZE, total, onPage },
+  { page = 1, pageSize = DEFAULT_PAGE_SIZE, total, onPage, compactMobile = false },
 ) {
   if (total <= 0) return h("div", { class: "pager", hidden: true });
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -3352,10 +3365,15 @@ export function pagination(
     }, icon("chevl")),
   );
   const first = Math.max(1, Math.min(current - 2, pages - 4));
+  const mobileFirst = Math.max(1, Math.min(current - 1, pages - 2));
   for (let p = first; p <= Math.min(pages, first + 4); p++) {
     nav.append(
       h("button", {
-        class: "btn btn-icon",
+        class: `btn btn-icon${
+          compactMobile && (p < mobileFirst || p > mobileFirst + 2)
+            ? " pager-extra-page"
+            : ""
+        }`,
         type: "button",
         "aria-label": `Page ${p}`,
         "aria-current": p === current ? "page" : null,
@@ -3374,7 +3392,7 @@ export function pagination(
   );
   return h(
     "div",
-    { class: "pager" },
+    { class: `pager${compactMobile ? " is-mobile-compact" : ""}` },
     h(
       "span",
       { class: "pager-summary", role: "status", "aria-live": "polite" },

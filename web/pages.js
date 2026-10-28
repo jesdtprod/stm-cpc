@@ -304,6 +304,7 @@ export function bookingPage({ api }) {
       iconName: "calendar",
       eyebrow: "Courts",
       title: "Court Booking",
+      publicHeader: true,
       description:
         "Our courts and their usual hours. Sign in as a member to reserve a time.",
       chip: "Court Availability",
@@ -323,6 +324,7 @@ export function eventsPage({ api }) {
       iconName: "trophy",
       eyebrow: "Competition",
       title: "Club Events & Tournaments",
+      publicHeader: true,
       description:
         "Upcoming and running club events. Sign in as a member to register.",
       chip: "Public Events",

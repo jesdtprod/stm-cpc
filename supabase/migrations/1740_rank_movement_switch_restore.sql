@@ -1,4 +1,4 @@
--- 1720_rank_movement_switch_restore: the Settings switch "Ranks move up and down after events" (ranks.movement_enabled,
+-- 1740_rank_movement_switch_restore: the Settings switch "Ranks move up and down after events" (ranks.movement_enabled,
 -- added to the rank engine in 1550) was dropped when 1640 and 1650 rewrote core.apply_rank_movement. With the switch
 -- off, divisions still finalize and results are kept, but nobody's rank moves. Otherwise the function is as 1650: the
 -- per-event opt-out (apply_cpc_rank_changes) and format-template rules are unchanged.

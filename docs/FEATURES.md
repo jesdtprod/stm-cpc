@@ -430,8 +430,10 @@ Scoped to the club (organization) and validated, audited, and enforced on the se
 
 ## 11. Landing / welcome page
 
+- The public Members directory uses the same shared name formatter as staff Members: Last Name, First Name, middle initial and extension when saved; otherwise the proper-case display name. Show the actual CPC member number beneath the name, as explicitly requested by the club. Publish only the middle initial, never the full middle name, internal IDs or contact details. Existing publication settings and membership eligibility still apply.
+- The public Members total includes every eligible member, without a 1,000-member cap; pagination still displays 12 cards at a time and search covers the complete directory. Admin's All total can differ because it also includes statuses excluded from public publication.
 - Public, static page on GitHub Pages: club introduction, upcoming events, court information, how to join, and a sign-in entry.
-- The member strip shows at most 15 active members using uploaded profile photos, falling back to initials when absent, unavailable or broken. Only the selected photo paths and initials are exposed; names, contact details and member numbers are not added. Photos stay in the private avatar bucket and use five-minute signed links.
+- The member strip draws a fresh random sample of at most 15 active, nondeleted CPC members whenever the welcome page opens or refreshes. It uses uploaded profile photos, falling back to initials when absent, unavailable or broken; smaller clubs show all eligible members and empty clubs show no placeholder person. The total remains the full active-member count. The payload exposes only selected photo paths and initials; names, contact details and member numbers are not added. Current photos of all eligible active members can receive five-minute signed links from the private avatar bucket so signing is independent of the next random draw.
 - Public data comes only from narrow `security_invoker` views exposing the minimum columns. No personal data is shown unless explicitly decided (for example published results with display names).
 - Follows `UI_DESIGN.md`, loads fast, works as a PWA entry, and contains no secrets.
 

@@ -134,7 +134,34 @@ official club ranks load read-only when no estimate exists; no backfill is made.
 Completed retries still replay after locking. Verify with `deno task db:test 1730`
 and the updated `deno task db:test 1720` regression suite.
 
-`1720_rank_movement_switch_restore.sql` puts back the `ranks.movement_enabled`
+`1740_rank_movement_switch_restore.sql` puts back the `ranks.movement_enabled`
 check in `core.apply_rank_movement`, lost when 1640 and 1650 rewrote the rank
 engine. With the switch off, divisions finalize and results are kept, but no
 rank moves.
+
+`1750_public_members.sql` adds the public Members page data: `public_members()`
+returns display name, photo path and CPC rank/category for active, imported and
+invited members (never member IDs or contact data), behind the Settings switch
+`public.members_enabled` (on by default). A storage policy lets visitors sign
+only those members' photos while the page is published.
+
+`1760_random_active_member_strip.sql` draws up to 15 distinct active, nondeleted
+CPC members at random for each `club_home_stats()` request, preserving the full
+active count and the initials/photo-path payload. It replaces 1661's selection-
+dependent storage policy with eligibility checks for current active CPC photos,
+so a separate signing request cannot lose access because another draw differs.
+The avatar bucket stays private; unrelated uploads and inactive members remain
+excluded. Verify with `deno task db:test 1760` and `deno task db:test 1661`.
+
+`1770_public_member_names_and_numbers.sql` adds the explicitly approved CPC
+member number and saved name parts to `public_members()`. The browser reuses
+the staff Members formatter; only the middle initial leaves the database.
+Internal IDs and contact data remain excluded, and disabling publication hides
+the complete payload. Verify with `deno task db:test 1770` and `deno task db:test 1750`.
+
+`1780_public_members_full_directory.sql` removes the old 1,000-member truncation
+from `public_members()`. The payload includes every eligible public member, so
+the browser's total, search and 12-card pagination cover the complete directory.
+Publication settings, status exclusions, ordering and approved fields remain
+the same. Verify with `deno task db:test 1780` (1,005 fake imported members in a
+rolled-back transaction), plus the 1770 and 1750 regressions.

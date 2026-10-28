@@ -18,7 +18,7 @@ select is(
    where p.pronamespace = 'public'::regnamespace and p.prosecdef
     and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))
     and p.oid::regprocedure::text not in (
-      'club_home_stats()', 'public_landing_info()', 'public_results()', 'public_leaderboard(text)',
+      'club_home_stats()', 'public_landing_info()', 'public_results()', 'public_leaderboard(text)', 'public_members()',
       'change_guest_registration(text,text,text,text,text,text,text,text,text)',
       'create_event_participant(text,text,text,text,text,text,text,date)',
       'create_guest_event_participant(text,text,text,text,text,text,date,text)',
@@ -33,7 +33,7 @@ select is(
   (select count(*)::int from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef
     and has_function_privilege('anon', p.oid, 'execute')
     and p.oid::regprocedure::text not in ('club_home_stats()', 'public_landing_info()', 'public_results()',
-                                          'public_leaderboard(text)')),
+                                          'public_leaderboard(text)', 'public_members()')),
   0, 'only the public page functions are open to anon');
 
 select is(
