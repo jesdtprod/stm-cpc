@@ -676,7 +676,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     });
   }
 
-  function detailsModal(row, onChange) {
+  function detailsModal(row, _onChange) {
     const p = row.persons;
     const kv = (label, value, wide = false) =>
       h(
@@ -799,6 +799,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         // Structured Profile Section Cards
         !row.deleted_at ? selfAssessmentCard({
           api, memberId: row.id, staff: true, canEdit: can("ranks.override"),
+          name: formatMemberName(row.persons),
         }) : null,
         h(
           "div",
@@ -920,17 +921,6 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                 ? h("span", { class: "sub member-audit-rank-band" }, label.band)
                 : null,
             ),
-            can("ranks.override") && !row.deleted_at
-              ? iconButton({
-                label: current ? "Change Rank" : "Set Rank",
-                icon: "medal",
-                size: "sm",
-                variant: "edit",
-                onClick: () => setRankModal(row, current, async () => {
-                  await Promise.all([drawRank(), onChange?.()]);
-                }),
-              })
-              : null,
           ),
         );
       }).catch(() => {
@@ -1056,108 +1046,6 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         text: rk.name,
       }
       : null;
-  }
-
-  async function setRankModal(row, current, onDone) {
-    let ranks;
-    try {
-      ranks = await api.read((c) =>
-        c.from("ranks").select(
-          "id,name,sort_order,rank_ladders!inner(categories!inner(name,sort_order))",
-        ).is("deleted_at", null)
-      ) ?? [];
-    } catch {
-      toast("The ranks could not be loaded.", { tone: "error" });
-      return;
-    }
-    ranks.sort((a, b) =>
-      (a.rank_ladders.categories.sort_order -
-        b.rank_ladders.categories.sort_order) || (a.sort_order - b.sort_order)
-    );
-    const key = api.newKey();
-    const error = h("p", {
-      class: "field-error form-error",
-      role: "alert",
-      hidden: true,
-    });
-    openModal({
-      title: current ? "Change Rank" : "Set Rank",
-      eyebrow: `${formatMemberName(row.persons)} · ${
-        current ? `now ${current.text}` : "unranked"
-      }`,
-      icon: "medal",
-      tone: "warning",
-      confirmLabel: "Set Rank",
-      body: h(
-        "div",
-        { class: "stack" },
-        h(
-          "p",
-          { class: "muted" },
-          "This overrides the rank rules. It is kept in the member's rank history and the audit log. You cannot change your own rank.",
-        ),
-        h(
-          "div",
-          { class: "field" },
-          h("label", { for: "set-rank" }, "New Rank *"),
-          selectControl(
-            { class: "input", id: "set-rank", name: "rank", required: true },
-            h("option", { value: "" }, "Choose a rank"),
-            ...ranks.map((r) =>
-              h(
-                "option",
-                { value: r.id, selected: r.id === current?.id },
-                r.name,
-              )
-            ),
-          ),
-        ),
-        h(
-          "div",
-          { class: "field" },
-          h("label", { for: "set-rank-reason" }, "Reason *"),
-          h("textarea", {
-            class: "input textarea",
-            id: "set-rank-reason",
-            name: "reason",
-            rows: 3,
-            maxlength: 500,
-            required: true,
-          }),
-        ),
-        error,
-      ),
-      onConfirm: async (form) => {
-        const rankId = String(form.get("rank") ?? "");
-        const reason = String(form.get("reason") ?? "").trim();
-        const fail = (m) => {
-          error.textContent = m;
-          error.hidden = false;
-          return false;
-        };
-        if (!rankId) return fail("Choose a rank.");
-        if (rankId === current?.id) {
-          return fail("The member is already at that rank.");
-        }
-        if (reason.length < 3) {
-          return fail("Give a reason of at least 3 characters.");
-        }
-        try {
-          await api.rpc("override_member_rank", {
-            p_member_id: row.id,
-            p_rank_id: rankId,
-            p_reason: reason,
-            p_key: key,
-          });
-          toast(`${formatMemberName(row.persons)}: rank set.`, { tone: "success" });
-          await onDone?.();
-        } catch (e) {
-          return fail(
-            e.cause?.message || e.message || "That did not work. Try again.",
-          );
-        }
-      },
-    });
   }
 
   async function loadHistory(row) {

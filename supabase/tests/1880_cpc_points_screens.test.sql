@@ -68,7 +68,7 @@ select is((select singles_provisional from staff_list where member_id = (select 
 select is((select singles_provisional from staff_list where member_id = (select mid from us where role = 'b')), false, 'five or more is established');
 select is((select singles_points from staff_list where member_id = (select mid from us where role = 'c')), null::numeric, 'a member with no assessment is unrated (NULL, not zero)');
 select is((select singles_provisional from staff_list where member_id = (select mid from us where role = 'c')), false, 'and is not called provisional');
-select is((select rank_name from staff_list where member_id = (select mid from us where role = 'c')), null::text, 'an unranked member has no rank name');
+select is((select rank_name from staff_list where member_id = (select mid from us where role = 'c')), 'Novice Low (2.500–2.749)', 'a member rated only in Doubles has the Club Rank of that rating');
 select is((select singles_matches from staff_list where member_id = (select mid from us where role = 'b')), 7, 'staff see the played-match count');
 select ok((select singles_version from staff_list where member_id = (select mid from us where role = 'b')) >= 1, 'and the version needed to reassess');
 select is((select array_agg(member_id order by pos) from (select member_id, row_number() over () as pos from staff_list

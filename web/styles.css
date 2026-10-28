@@ -4522,24 +4522,6 @@ p.member-id,
 .cpc-points-sub {
   white-space: nowrap;
 }
-.ranking-rank-value {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  width: fit-content;
-  margin-inline: auto;
-}
-.ranking-rank-band {
-  align-self: stretch;
-  width: 100%;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  text-align: center;
-}
 .cpc-admin-panel {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) auto;
@@ -4601,16 +4583,43 @@ p.member-id,
   }
 }
 
-/* Your Standing: the rank card spans the row; Singles and Doubles sit side by side, also on a phone. */
+/* Your Standing: stack every card on a phone so rating labels and values remain readable. */
 @media (max-width: 600px) {
   body .dash-page .home-section[aria-label="Your Standing"] .home-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
   body .dash-page .home-section[aria-label="Your Standing"] .home-card.is-wide {
     grid-column: 1 / -1;
   }
-  body .dash-page .home-section[aria-label="Your Standing"] .home-card:not(.is-wide) .home-card-value {
-    font-size: 24px;
+}
+
+/* Rank Assessment: Singles, Doubles and Club Rank cards (PLAN 8.4f). */
+.assessment-summary.is-ratings {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.assessment-tile-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+.assessment-when {
+  font-size: 11px;
+}
+@media (max-width: 900px) {
+  .assessment-summary.is-ratings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .assessment-summary.is-ratings .assessment-club {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 600px) {
+  .assessment-summary.is-ratings {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

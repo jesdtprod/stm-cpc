@@ -234,3 +234,9 @@ the generated band back into the eight Low/High rank names (the screens read it 
 column on ratings, guest assessments, history and snapshots; assessment functions take the discipline; preparing
 members creates both records; a division's format picks the rating it uses; the club rank follows the higher
 rating; the list shows both. Verify with `deno task db:test 1890`-related suites: 1840, 1850, 1851, 1880.
+
+`1900_club_rank_automatic.sql` and `1910_club_rank_read_only.sql` (PLAN 8.4f) make the Club Rank automatic
+(`core.sync_member_club_rank`: the classification of the higher of the Singles and Doubles ratings, rank history only on a
+change), add the members' one-time `submit_member_ratings` and the profile data `get_member_ratings`, make event
+eligibility use the rating for the division's format, reconcile the stored ranks once, and refuse manual rank overrides
+while ratings are on. Verify with `deno task db:test 1900_club_rank_automatic`.

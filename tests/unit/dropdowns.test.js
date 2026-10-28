@@ -26,6 +26,7 @@ import { createRankingPages } from "../../web/pages-ranking.js";
 import { createAdminPages } from "../../web/pages-admin.js";
 import { createEventsPages, divisionStatusBadge } from "../../web/pages-events.js";
 import { createPublicPages } from "../../web/pages-public.js";
+import { selfAssessmentCard } from "../../web/member-self-assessment.js";
 import { createGuestEventActions } from "../../web/event-guests.js";
 import { bookingPage } from "../../web/pages.js";
 import { clearAuth, setAuth } from "../../web/lib/permissions.js";
@@ -977,6 +978,52 @@ Deno.test("ranking ratings: Singles and Doubles with three decimals, provisional
     clearAuth();
   }));
 
+Deno.test("rank assessment: Singles, Doubles and an automatic Club Rank card", () =>
+  withDom(async (document) => {
+    const payload = (extra = {}) => ({
+      member_id: "fake-member", admin_edit: false, self: true, can_self_submit: false,
+      singles: { points: 3.865, classification: "Intermediate High", status: "admin", matches: 0, version: 2, locked: true, updated_at: null },
+      doubles: { points: 2.929, classification: "Novice High", status: "self", matches: 0, version: 1, locked: true, updated_at: null },
+      club_rank: { name: "Intermediate High", range: "3.500–3.999", best_points: 3.865, source: "singles" },
+      ...extra,
+    });
+    const make = (data, opts = {}) =>
+      selfAssessmentCard({ api: { rpc: () => Promise.resolve(data), newKey: () => "k" }, ...opts });
+
+    const locked = make(payload());
+    document.body.append(locked);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const text = locked.textContent;
+    assert(text.includes("Singles Rating") && text.includes("3.865") && text.includes("Intermediate High"), "Singles card");
+    assert(text.includes("Doubles Rating") && text.includes("2.929") && text.includes("Novice High"), "Doubles card");
+    assert(text.includes("Club Rank") && text.includes("3.500–3.999"), "Club Rank card with its range");
+    assert(text.includes("Based on: Singles Rating (3.865)"), "Club Rank names the rating it is based on");
+    assert(text.includes("Admin Assessed") && text.includes("Self-Assessed"), "Assessment status per rating");
+    assert(text.includes("Only an admin can update your ratings."), "A submitted rating is locked for the member");
+    assert(!locked.querySelector("input"), "No inputs once submitted");
+
+    const nr = make(payload({
+      can_self_submit: true,
+      singles: { points: null, classification: null, status: "NR", matches: 0, version: 0, locked: false, updated_at: null },
+      doubles: { points: null, classification: null, status: "NR", matches: 0, version: 0, locked: false, updated_at: null },
+      club_rank: { name: "Not Rated", range: null, best_points: null, source: null },
+    }));
+    document.body.append(nr);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert(nr.textContent.includes("NR") && nr.textContent.includes("Not Rated"), "NR is shown, never zero");
+    assert(nr.querySelectorAll("input").length === 2, "A member with no ratings sees the two submission fields");
+
+    const admin = make(payload({ admin_edit: true, self: false }), { staff: true, canEdit: true });
+    document.body.append(admin);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert(admin.querySelectorAll("button").length === 2, "An administrator can edit Singles and Doubles independently");
+    assert(!admin.querySelector("input"), "Administrators do not get the member submission form");
+    const viewer = make(payload({ admin_edit: true, self: false }), { staff: true, canEdit: false });
+    document.body.append(viewer);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert(viewer.querySelectorAll("button").length === 0, "Without ranks.override there are no edit buttons");
+  }));
+
 Deno.test("ranking photos: signed private images replace icons and missing photos use initials", () =>
   withDom(async (document) => {
     setAuth({ signedIn: true, grants: [{ code: "members.read" }] });
@@ -1047,6 +1094,72 @@ Deno.test("ranking photos: signed private images replace icons and missing photo
       !page.querySelector(".mobile-record-icon"),
       "Player rows must no longer show the generic ranking icon",
     );
+    clearAuth();
+  }));
+
+Deno.test("ranking page redesign: renders executive hero, directory card, segmented tabs and no search box", () =>
+  withDom(async (document) => {
+    setAuth({ signedIn: true, grants: [{ code: "members.read" }] });
+    const page = createRankingPages({
+      api: {
+        read: () => Promise.resolve([
+          { id: "cat-1", name: "Intermediate" },
+          { id: "cat-2", name: "Novice" },
+        ]),
+        rpc: (name) =>
+          Promise.resolve(
+            name === "cpc_ranking_list"
+              ? [
+                {
+                  member_id: "m-1",
+                  member_no: "CPC-001",
+                  display_name: "Player One",
+                  category_name: "Intermediate",
+                  rank_name: "Intermediate Low",
+                  singles_points: 3.2,
+                  singles_matches: 6,
+                  doubles_points: 3.1,
+                  doubles_matches: 6,
+                },
+              ]
+              : name === "cpc_points_status"
+              ? { enabled: true, active_members: 1, prepared: 1, rated_singles: 1, rated_doubles: 1 }
+              : name === "rank_history_view"
+              ? []
+              : name === "cpc_points_history_view"
+              ? []
+              : [],
+          ),
+      },
+    }).rankingPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Executive hero
+    const hero = page.querySelector(".dash-hero");
+    assert(hero, "Must render executive admin hero");
+    assert(hero.classList.contains ? hero.classList.contains("is-admin") : hero.className.includes("is-admin"), "Hero is admin styled");
+    assert(hero.textContent.includes("Ratings & Ranking"), "Hero chip for ranking");
+    assert(hero.textContent.includes("Refresh List"), "Hero refresh action");
+
+    // Directory card wrapper
+    assert(page.querySelector(".ranking-directory-card"), "Table wrapped in directory card");
+
+    // Segmented tab badges
+    const statusBadges = page.querySelector(".ranking-status-badges");
+    assert(statusBadges, "Status badges container exists");
+    const tabs = statusBadges.querySelectorAll(".tab-btn");
+    assert(tabs.length === 3, "Three ranking tabs");
+    assert(tabs[0].textContent.includes("Ranking"), "First tab is Ranking");
+    assert(tabs[1].textContent.includes("My Rank History"), "Second tab is My Rank History");
+    assert(tabs[2].textContent.includes("My Rating History"), "Third tab is My Rating History");
+
+    // Ranking has no category selector; tabs sit directly above the directory card.
+    assert(!page.querySelector(".ranking-category-filter"), "Category filter is not rendered");
+
+    // Crucial requirement: NO search box on ranking page
+    assert(!page.querySelector('input[type="search"]'), "Must not render any search box");
+
     clearAuth();
   }));
 

@@ -4,15 +4,14 @@
 //   * My rank history: the member's own rank_history exactly as recorded: moves, reversals after a correction and the moves
 //     that were reversed. Nothing here changes a rank except the override, which the database checks and audits.
 import {
+  adminHero,
+  attachPagePattern,
   badge,
+  button,
   dataTable,
   h,
   iconButton,
-  memberHero,
   openModal,
-  selectField,
-  tableFilter,
-  toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
@@ -26,22 +25,11 @@ import {
   pointsHistoryTable,
 } from "./cpc-points.js";
 
-function messageOf(e, fallback) {
-  const own = ["22023", "42501", "CP422"].includes(e?.code) && e.cause?.message;
-  return own || e?.message || fallback;
-}
-
-function splitRankLabel(rank) {
-  const match = String(rank ?? "").match(/^(.*?)\s*\((\d\.\d{3}\s*[–-]\s*\d\.\d{3})\)$/);
-  return match
-    ? { name: match[1].trim(), band: match[2].replace(/\s+/g, "") }
-    : { name: rank, band: null };
-}
-
 export function createRankingPages({ api, client, session }) {
-  function historyTable(rows, state, onRetry, filter) {
+  function historyTable(rows, state, onRetry, filter, searchable = false) {
     const table = dataTable({
       filter,
+      searchable,
       schema: {
         columns: [
           {
@@ -119,16 +107,16 @@ export function createRankingPages({ api, client, session }) {
   }
 
   function rankingPage() {
-    const page = h("div", { class: "page member-ranking-page" });
-    const tabsHost = h("div", {});
-    const body = h("div", { class: "ranking-body" });
+    const page = h("div", {
+      class: "page admin-dashboard admin-members-page member-ranking-page ranking-page",
+    });
+    attachPagePattern(page);
+
     const state = {
       tab: "ranking",
       status: "loading",
       list: [],
-      categories: [],
       ranks: [],
-      category: "",
       mine: [],
       mineStatus: "loading",
       points: [],
@@ -137,18 +125,73 @@ export function createRankingPages({ api, client, session }) {
       photos: new Map(),
     };
 
+    const TABS = [
+      { id: "ranking", label: "Ranking" },
+      { id: "mine", label: "My Rank History" },
+      { id: "points", label: "My Rating History" },
+    ];
+
+    const statusButtons = TABS.map((item) =>
+      h("button", {
+        type: "button",
+        class: "tab-btn",
+        "aria-pressed": String(item.id === state.tab),
+        onClick: () => {
+          state.tab = item.id;
+          drawStatusFilter();
+          draw();
+        },
+      }, item.label, badge("0", "neutral"))
+    );
+
+    const statusFilter = h(
+      "div",
+      {
+        class: "member-status-badges ranking-status-badges",
+        role: "group",
+        "aria-label": "Filter ranking view",
+      },
+      ...statusButtons,
+    );
+
+    const toolbar = h(
+      "div",
+      { class: "toolbar admin-members-toolbar ranking-toolbar has-status-badges" },
+      statusFilter,
+    );
+
+    const tableHost = h("div", { class: "table-host" });
+    const directoryCard = h(
+      "div",
+      { class: "member-directory-card ranking-directory-card" },
+      tableHost,
+    );
+
+    function drawStatusFilter() {
+      const counts = {
+        ranking: state.list.length,
+        mine: state.mine.length,
+        points: state.points.length,
+      };
+      TABS.forEach((item, index) => {
+        const count = counts[item.id] ?? 0;
+        statusButtons[index].replaceChildren(
+          item.label,
+          badge(String(count), "neutral"),
+        );
+        statusButtons[index].setAttribute(
+          "aria-pressed",
+          String(item.id === state.tab),
+        );
+      });
+    }
+
     async function load() {
       state.status = state.list.length ? "refreshing" : "loading";
       draw();
       try {
-        const [list, categories, bands] = await Promise.all([
-          api.rpc("cpc_ranking_list", { p_category_id: state.category || null }),
-          state.categories.length
-            ? state.categories
-            : api.read((c) =>
-              c.from("categories").select("id,name").is("deleted_at", null)
-                .order("sort_order")
-            ),
+        const [list, bands] = await Promise.all([
+          api.rpc("cpc_ranking_list", { p_category_id: null }),
           state.bands.length ? state.bands : loadRatingBands(api).catch(() => []),
         ]);
         state.bands = bands ?? [];
@@ -157,7 +200,6 @@ export function createRankingPages({ api, client, session }) {
           ...row,
           position: index + 1,
         })).filter((row) => can("members.read") || row.member_id === memberId);
-        state.categories = categories ?? [];
         if (client && state.list.length) {
           try {
             const photos = await api.rpc("ranking_photos", {
@@ -205,23 +247,7 @@ export function createRankingPages({ api, client, session }) {
       draw();
     }
 
-    async function loadRanks() {
-      if (state.ranks.length) return;
-      const rows = await api.read((c) =>
-        c.from("ranks").select(
-          "id,name,sort_order,ladder:rank_ladders(category:categories(name,sort_order))",
-        ).is("deleted_at", null)
-      ) ?? [];
-      state.ranks = rows.sort((a, b) =>
-        (a.ladder?.category?.sort_order ?? 0) -
-          (b.ladder?.category?.sort_order ?? 0) || a.sort_order - b.sort_order
-      );
-    }
-
     // ------------------------------------------------------------ modals
-    const errorLine = () =>
-      h("p", { class: "field-error form-error", role: "alert", hidden: true });
-
     async function historyModal(row) {
       let rows = [];
       let status = "ready";
@@ -240,87 +266,6 @@ export function createRankingPages({ api, client, session }) {
         confirmLabel: "Close",
         body: historyTable(rows, status),
         onConfirm: () => {},
-      });
-    }
-
-    async function overrideModal(row) {
-      try {
-        await loadRanks();
-      } catch {
-        toast("The ranks could not be loaded.", { tone: "danger" });
-        return;
-      }
-      const key = api.newKey();
-      const error = errorLine();
-      const select = h(
-        "select",
-        { class: "input select-input", id: "ov-rank", name: "rank_id" },
-        ...state.ranks.map((r) =>
-          h(
-            "option",
-            { value: r.id, selected: r.id === row.rank_id },
-            `${r.ladder?.category?.name ?? ""} · ${r.name}`,
-          )
-        ),
-      );
-      return openModal({
-        title: "Change Rank by Hand",
-        eyebrow: `${row.display_name} · now ${row.rank_name}`,
-        icon: "medal",
-        confirmLabel: "Set Rank",
-        destructive: true,
-        body: h(
-          "div",
-          { class: "stack" },
-          h(
-            "p",
-            { class: "muted" },
-            "This overrides the rank rules. It is kept in the member's rank history and the audit log. You cannot change your own rank.",
-          ),
-          h(
-            "div",
-            { class: "field" },
-            h("label", { for: "ov-rank" }, "New Rank *"),
-            select,
-          ),
-          h(
-            "div",
-            { class: "field" },
-            h("label", { for: "ov-reason" }, "Reason *"),
-            h("textarea", {
-              class: "input textarea",
-              id: "ov-reason",
-              name: "reason",
-              rows: 3,
-              maxlength: 500,
-              required: true,
-            }),
-          ),
-          error,
-        ),
-        onConfirm: async (form) => {
-          const reason = String(form.get("reason") ?? "").trim();
-          const fail = (m) => {
-            error.textContent = m;
-            error.hidden = false;
-            return false;
-          };
-          if (reason.length < 3) {
-            return fail("Give a reason of at least 3 characters.");
-          }
-          try {
-            await api.rpc("override_member_rank", {
-              p_member_id: row.member_id,
-              p_rank_id: String(form.get("rank_id")),
-              p_reason: reason,
-              p_key: key,
-            });
-            toast("Rank changed.", { tone: "success" });
-            await load();
-          } catch (e) {
-            return fail(messageOf(e, "That did not work. Try again."));
-          }
-        },
       });
     }
 
@@ -386,24 +331,10 @@ export function createRankingPages({ api, client, session }) {
         {
           key: "rank",
           label: "Rank",
-          align: "center",
           render: (r) => {
             if (!r.rank_name) return badge("No rank yet", "neutral");
-            const rank = splitRankLabel(r.rank_name);
-            return h(
-              "div",
-              { class: "ranking-rank-value" },
-              badge(rank.name, "success"),
-              rank.band
-                ? h("span", { class: "ranking-rank-band sub" }, rank.band)
-                : null,
-            );
+            return badge(r.rank_name.replace(/\s*\(\d\.\d{3}\s*[–-]\s*\d\.\d{3}\)$/, ""), "success");
           },
-        },
-        {
-          key: "since",
-          label: "Since",
-          render: (r) => r.since ? formatDateTime(r.since) : h("span", { class: "sub" }, "—"),
         },
       ];
       if (staff) {
@@ -411,7 +342,7 @@ export function createRankingPages({ api, client, session }) {
           key: "actions",
           label: "Action",
           align: "center",
-          actionCount: can("ranks.override") ? 4 : 2,
+          actionCount: can("ranks.override") ? 3 : 2,
           render: (r) =>
             h(
               "span",
@@ -436,68 +367,27 @@ export function createRankingPages({ api, client, session }) {
                   onClick: () => assessPointsModal({ api, row: r, onDone: load }),
                 })
                 : null,
-              can("ranks.override")
-                ? iconButton({
-                  label: `Change the rank of ${r.display_name}`,
-                  icon: "edit",
-                  variant: "edit",
-                  onClick: () => overrideModal(r),
-                })
-                : null,
             ),
         });
       }
-      const filter = h(
-        "div",
-        { class: "ranking-category-filter" },
-        selectField({
-          id: "rk-cat",
-          ariaLabel: "Filter ranking by category",
-          value: state.category,
-          options: [
-            { value: "", label: "All Categories" },
-            ...state.categories.map((c) => ({ value: c.id, label: c.name })),
-          ],
-          onChange: (e) => {
-            state.category = e.target.value;
-            load();
-          },
-        }),
-      );
-      return h(
-        "div",
-        { class: "stack" },
-        dataTable({
-          searchState: state,
-          filter: tabsHost,
-          searchActions: filter,
-          schema: { columns },
-          rows: state.list,
-          state: state.status === "refreshing" ? "ready" : state.status,
-          ariaLabel: "Ranking",
-          onRetry: load,
-          emptyTitle: can("members.read") ? "No players yet" : "No rank to show",
-          emptyText: can("members.read")
-            ? "Active members appear here with their Singles and Doubles ratings and rank."
-            : "Your rank will appear here once assigned and matching the selected category.",
-        }),
-      );
+      return dataTable({
+        pageSize: 10,
+        schema: { columns },
+        rows: state.list,
+        state: state.status === "refreshing" ? "ready" : state.status,
+        searchable: false,
+        ariaLabel: "Ranking",
+        onRetry: load,
+        emptyTitle: can("members.read") ? "No players yet" : "No rank to show",
+        emptyText: can("members.read")
+          ? "Active members appear here with their Singles and Doubles ratings and rank."
+          : "Your rank will appear here once assigned and matching the selected category.",
+      });
     }
 
     function draw() {
-      tabsHost.replaceChildren(tableFilter({
-        activeId: state.tab,
-        tabs: [
-          { id: "ranking", label: "Ranking", badge: state.list.length },
-          { id: "mine", label: "My Rank History", badge: state.mine.length },
-          { id: "points", label: "My Rating History", badge: state.points.length },
-        ],
-        onChange: (id) => {
-          state.tab = id;
-          draw();
-        },
-      }));
-      body.replaceChildren(
+      drawStatusFilter();
+      tableHost.replaceChildren(
         state.tab === "ranking"
           ? rankingView()
           : state.tab === "points"
@@ -505,31 +395,46 @@ export function createRankingPages({ api, client, session }) {
             state.points,
             state.pointsStatus === "refreshing" ? "ready" : state.pointsStatus,
             loadPoints,
-            tabsHost,
+            null,
+            false,
           )
           : historyTable(
             state.mine,
             state.mineStatus === "refreshing" ? "ready" : state.mineStatus,
             loadMine,
-            tabsHost,
+            null,
+            false,
           ),
       );
     }
 
+    const isAdmin = can("members.read");
+    const hero = adminHero({
+      title: "Club Ranking",
+      chip: "Ratings & Ranking",
+      roleLabel: isAdmin ? "Admin Console" : "Club Member",
+      description: isAdmin
+        ? "Every player by Singles and Doubles rating, highest first, and how ratings and ranks have changed."
+        : "Your Singles and Doubles ratings, current rank and how they have changed.",
+      actions: [
+        button({
+          label: "Refresh List",
+          icon: "refresh",
+          variant: "secondary",
+          onClick: () => {
+            load();
+            loadMine();
+            loadPoints();
+          },
+        }),
+      ],
+    });
+
     page.append(
-      memberHero({
-        iconName: "medal",
-        eyebrow: "Club",
-        title: "Ranking",
-        chip: "Ratings, Ranks and History",
-        titleBadge: true,
-        description:
-          can("members.read")
-            ? "Every player by Singles and Doubles rating, highest first, and how ratings and ranks have changed."
-            : "Your Singles and Doubles ratings, current rank and how they have changed.",
-      }),
+      hero,
       ...(can("members.read") ? [cpcAdminPanel({ api, onChange: load })] : []),
-      body,
+      toolbar,
+      directoryCard,
     );
     // both lists load up front so each tab's count is right before it is opened
     load();
