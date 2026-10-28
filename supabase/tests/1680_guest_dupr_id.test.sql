@@ -24,7 +24,7 @@ create temp table fx as select core.ulid() as ev,core.ulid() as ev2,core.ulid() 
   core.ulid() as p1,core.ulid() as p2,core.ulid() as optional,
   'FAKE'||core.ulid() as dupr1,'FAKE'||core.ulid() as dupr2;
 grant select on us,fx to public;
-select is(has_function_privilege('anon','public.create_guest_event_participant(text,text,text,text,text,text,date,text)','execute'),false,'anonymous callers cannot create guests with DUPR IDs');
+select is(has_function_privilege('anon','public.create_guest_event_participant(text,text,text,text,text,text,date,text,numeric,numeric)','execute'),false,'anonymous callers cannot create guests with DUPR IDs');
 select pg_temp.as_user((select u from us where role='admin')); set local role authenticated;
 select public.create_event((select ev from fx),'Fake Guest DUPR Event','2030-11-01','2030-11-02',null,0,null,null);
 select public.create_event((select ev2 from fx),'Fake Guest DUPR Event Two','2030-11-01','2030-11-02',null,0,null,null);
