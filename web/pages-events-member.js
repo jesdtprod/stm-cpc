@@ -206,7 +206,7 @@ export function createMemberEventsPages({ api, client, session }) {
       const summary = h(
         "p",
         { class: "sub form-help-text" },
-        "Search by partner's name or member ID. Active members only.",
+        "Search by partner's name or member ID. Only members eligible for this division are listed.",
       );
       const results = h("div", { class: "staff-results" });
       const term = searchControl({
@@ -286,13 +286,13 @@ export function createMemberEventsPages({ api, client, session }) {
         }
         summary.textContent = "Searching players…";
         try {
-          const rows = await api.rpc("find_players", { p_term: text });
+          const rows = await api.rpc("eligible_partners", { p_division_id: d.id, p_term: text });
           const players = (rows ?? []).filter((r) =>
             r.member_id !== profile()?.id
           );
           summary.textContent = players.length
             ? `${players.length} found. Choose one below.`
-            : "No active members match. Your partner must be an active club member.";
+            : "No eligible members match. Your partner must be an active member whose rating fits this division.";
           results.replaceChildren(
             ...players.map((r) =>
               h(
