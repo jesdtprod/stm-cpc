@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/shell.css">
+  <link rel="stylesheet" href="/buttons.css">
+  <style>
+    /* Proposed new skeleton styles */
+    .public-court-card.is-skeleton {
+      border-color: rgba(223, 183, 86, 0.18);
+      background: var(--surface);
+      pointer-events: none;
+    }
+    .public-court-card.is-skeleton .sk {
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.035) 0%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.035) 100%
+      );
+      background-size: 200% 100%;
+      animation: sk-shimmer 1.8s ease-in-out infinite;
+    }
+    .sk-court-avatar {
+      border-radius: var(--r-control) !important;
+      background: linear-gradient(
+        135deg,
+        rgba(223, 183, 86, 0.14) 0%,
+        rgba(223, 183, 86, 0.04) 100%
+      ) !important;
+      border: 1px solid rgba(223, 183, 86, 0.28) !important;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+    }
+    .sk-court-avatar::after {
+      content: "";
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: rgba(223, 183, 86, 0.26);
+    }
+    .sk-court-title {
+      width: 140px;
+      max-width: 80%;
+      height: 18px;
+      border-radius: 4px;
+      display: block;
+    }
+    .sk-court-badge {
+      width: 68px;
+      height: 22px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.06) !important;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .sk-court-hours-val {
+      width: 154px;
+      max-width: 80%;
+      height: 20px;
+      border-radius: 4px;
+      display: block;
+    }
+    .sk-court-surface-val {
+      width: 95px;
+      height: 14px;
+      border-radius: 4px;
+      display: block;
+    }
+    .sk-court-count-val {
+      width: 32px;
+      height: 22px;
+      border-radius: 4px;
+      display: block;
+    }
+    .sk-court-count-val.sk-vacant {
+      background: linear-gradient(
+        90deg,
+        rgba(74, 222, 128, 0.15) 0%,
+        rgba(74, 222, 128, 0.3) 50%,
+        rgba(74, 222, 128, 0.15) 100%
+      ) !important;
+      border: 1px solid rgba(74, 222, 128, 0.25);
+    }
+    .sk-court-btn-primary {
+      width: 100%;
+      height: 44px;
+      border-radius: var(--r-control);
+      background: linear-gradient(
+        90deg,
+        rgba(74, 222, 128, 0.18) 0%,
+        rgba(74, 222, 128, 0.35) 50%,
+        rgba(74, 222, 128, 0.18) 100%
+      ) !important;
+      border: 1px solid rgba(74, 222, 128, 0.35);
+      display: block;
+    }
+  </style>
+</head>
+<body style="background: #061c14; margin: 0; padding: 24px; box-sizing: border-box;">
+  <h2 style="color: #fff; font-family: sans-serif; margin-bottom: 16px;">Top: Skeleton Loading | Bottom: Populated Data</h2>
+  <div id="skeleton-grid" class="public-courts-grid" style="margin-bottom: 40px;"></div>
+  <div id="populated-grid" class="public-courts-grid"></div>
+
+  <script type="module">
+    import { h, badge, icon } from "/ui.js";
+
+    function makeSkeletonCard() {
+      return h(
+        "article",
+        { class: "public-card public-court-card is-skeleton", "aria-hidden": "true" },
+        h(
+          "div",
+          { class: "public-court-header" },
+          h(
+            "div",
+            { class: "public-court-title-group" },
+            h("span", {
+              class: "sk member-avatar is-icon public-court-avatar sk-court-avatar",
+            }),
+            h(
+              "div",
+              { class: "public-court-title-copy", style: "flex: 1;" },
+              h("span", { class: "sk sk-court-title" }),
+            ),
+          ),
+          h("span", { class: "sk sk-pill sk-court-badge" }),
+        ),
+        h(
+          "div",
+          { class: "public-court-meta" },
+          h(
+            "div",
+            { class: "public-court-meta-tile" },
+            h("span", { class: "sk sk-meta-label", style: "width: 105px;" }),
+            h("span", { class: "sk sk-court-hours-val" }),
+            h("span", { class: "sk sk-sub", style: "width: 58px;" }),
+          ),
+          h(
+            "div",
+            { class: "public-court-meta-tile" },
+            h("span", { class: "sk sk-meta-label", style: "width: 52px;" }),
+            h("span", { class: "sk sk-court-surface-val" }),
+          ),
+        ),
+        h(
+          "dl",
+          { class: "public-court-counts", "aria-hidden": "true" },
+          h(
+            "div",
+            {},
+            h("dt", {}, h("span", { class: "sk sk-meta-label", style: "width: 76px;" })),
+            h("dd", {}, h("span", { class: "sk sk-court-count-val sk-vacant" })),
+          ),
+          h(
+            "div",
+            {},
+            h("dt", {}, h("span", { class: "sk sk-meta-label", style: "width: 86px;" })),
+            h("dd", {}, h("span", { class: "sk sk-court-count-val" })),
+          ),
+        ),
+        h(
+          "div",
+          { class: "public-court-footer" },
+          h("span", {
+            class: "sk sk-court-btn-primary",
+          }),
+        ),
+      );
+    }
+
+    const skContainer = document.getElementById("skeleton-grid");
+    for (let i = 0; i < 3; i++) {
+      skContainer.appendChild(makeSkeletonCard());
+    }
+
+    const popContainer = document.getElementById("populated-grid");
+    const courts = [
+      { name: "Court 1 (Tournament)", indoor: false, surface: "Outdoor Acrylic", hours: "6:00 AM – 10:00 PM", days: "Everyday", vacant: 4, occupied: 1 },
+      { name: "Court 2 (Pickleball)", indoor: false, surface: "Outdoor Acrylic", hours: "6:00 AM – 10:00 PM", days: "Everyday", vacant: 5, occupied: 0 },
+      { name: "Court 3 (Pickleball)", indoor: true, surface: "Indoor Hardwood", hours: "8:00 AM – 8:00 PM", days: "6 days a week", vacant: 2, occupied: 3 },
+    ];
+
+    for (const c of courts) {
+      popContainer.appendChild(
+        h(
+          "article",
+          { class: "public-card public-court-card" },
+          h(
+            "div",
+            { class: "public-court-header" },
+            h(
+              "div",
+              { class: "public-court-title-group" },
+              h(
+                "span",
+                { class: "member-avatar is-icon public-court-avatar", "aria-hidden": "true" },
+                icon("grid"),
+              ),
+              h(
+                "div",
+                { class: "public-court-title-copy" },
+                h("h2", { class: "public-court-title" }, c.name),
+              ),
+            ),
+            badge(c.indoor ? "Indoor" : "Outdoor", "neutral"),
+          ),
+          h(
+            "div",
+            { class: "public-court-meta" },
+            h(
+              "div",
+              { class: "public-court-meta-tile" },
+              h(
+                "span",
+                { class: "public-court-meta-label" },
+                icon("clock"),
+                "Operating Hours",
+              ),
+              h("span", { class: "public-court-meta-val" }, c.hours),
+              h("span", { class: "sub" }, c.days),
+            ),
+            h(
+              "div",
+              { class: "public-court-meta-tile" },
+              h("span", { class: "public-court-meta-label" }, icon("layers"), "Surface"),
+              h("span", { class: "public-court-meta-val" }, c.surface),
+            ),
+          ),
+          h(
+            "dl",
+            { class: "public-court-counts" },
+            h(
+              "div",
+              {},
+              h("dt", {}, "Vacant Today"),
+              h("dd", {}, c.vacant),
+            ),
+            h(
+              "div",
+              {},
+              h("dt", {}, "Occupied Today"),
+              h("dd", {}, c.occupied),
+            ),
+          ),
+          h(
+            "div",
+            { class: "public-court-footer" },
+            h(
+              "a",
+              { class: "btn btn-primary btn-block", href: "#/book" },
+              h(
+                "span",
+                { class: "public-court-reserve-label" },
+                icon("calendar"),
+                "Reserve Court",
+              ),
+              icon("chevr"),
+            ),
+          ),
+        )
+      );
+    }
+  </script>
+</body>
+</html>
