@@ -171,9 +171,9 @@ select is((select count(*)::int from public.member_cpc_rating_history where divi
 select is(pg_temp.pts('u1'), 8.000::numeric, 'a 7.990 player who beats an equal player is capped at 8.000');
 select is(pg_temp.rank_code('u1'), 'open', 'and is Professional (Open)');
 select is(pg_temp.pts('u2'), pg_temp.fin(7.990, pg_temp.d(7.99, 7.99, 4, 11)), 'the equal 7.990 player who lost drops by the same amount');
-select is(pg_temp.pts('u4'), 2.000::numeric, 'a 2.010 player who loses to an equal player is floored at 2.000');
+select is(pg_temp.pts('u4'), 1.851::numeric, 'a 2.010 player who loses 11-4 to an equal player is rated 1.851: the real rating is kept below 2.000');
 select is(pg_temp.pts('u3'), pg_temp.fin(2.010, pg_temp.d(2.01, 2.01, 11, 4)), 'the equal 2.010 winner gains');
-select is(pg_temp.rank_code('u4'), 'beginner-low', 'a 2.000 player is Beginner Low');
+select is(pg_temp.rank_code('u4'), 'beginner-low', 'and a rating below 2.000 is Beginner Low');
 
 -- ---- the event opt-out
 select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select x5 from fx)), 0, 'no points history for the opted-out event');

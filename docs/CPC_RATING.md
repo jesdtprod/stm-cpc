@@ -101,6 +101,9 @@ K      = by the player's completed rated matches before the match:
 - A player with no rating no longer blocks a draw: they start at 3.500 and get their first rating from the division.
   (Registration for a ranked division still needs a rating for the division's format; an administrator can enter an
   unrated player with an override.)
+- A rating is kept exactly as calculated, even below 2.000 (for example 1.851); the floor is 0.000 and the ceiling 8.000.
+  Any rating below 2.250, including one below 2.000, is classified Beginner Low. A typed (assessed) rating keeps the
+  2.000-8.000 range; only results of play can take a rating below 2.000.
 - The version is recorded on every snapshot and history row (`cpc-v2`); anything calculated under cpc-v1 keeps its version.
 
 ## Calculation (cpc-v1, superseded)

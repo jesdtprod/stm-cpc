@@ -24,7 +24,8 @@ select throws_ok($$select core.cpc_rating_band_code(8.001)$$, '22023', null, 'ou
 select throws_ok($$select core.cpc_rating_band_code(2.2499)$$, '22023', null, 'ambiguous precision rejected');
 select throws_ok($$select core.cpc_rating_band_code('NaN')$$, '22023', null, 'NaN is not a rating');
 
-select is(core.cpc_rating_points(1.950), 2.000, 'division points stop at the floor');
+select is(core.cpc_rating_points(1.950), 1.950, 'a result below 2.000 is kept as it is (cpc-v2)');
+select is(core.cpc_rating_points(-0.5), 0.000, 'division points stop at the 0.000 floor');
 select is(core.cpc_rating_points(8.150), 8.000, 'division points stop at the ceiling');
 select is(core.cpc_rating_points(2.7495), 2.750, 'division points round once to three decimals');
 select is(core.cpc_rating_band_code(core.cpc_rating_points(2.7495)), 'novice-high', 'rounded points determine promotion');
