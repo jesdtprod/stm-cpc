@@ -198,6 +198,15 @@ const accountPages = createAccountPages({
   getAccessToken: async () =>
     (await client.auth.getSession()).data.session?.access_token,
 });
+// Check membership availability before leaving the page for any signup link.
+document.addEventListener("click", (event) => {
+  const link = event.target.closest?.('a[href="#/signup"]');
+  if (!link || event.defaultPrevented || event.button !== 0 ||
+    event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  void accountPages.requestSignup();
+});
+
 route("/signin", () => accountPages.signInPage(), "Sign In", "public");
 route(
   "/signup",

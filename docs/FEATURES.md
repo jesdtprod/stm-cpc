@@ -135,6 +135,7 @@ Imported members start at `imported`. New sign-ups start directly at `pending_ap
 - Possible duplicates of existing members (same name and birth date, or same mobile number) are flagged for the admin instead of silently creating a second record.
 - The applicant has no permissions beyond viewing their own status and completing their profile until approved.
 - Approval and rejection are permissioned RPCs that record actor, time, and reason; they are idempotent and audited. A setting controls auto-approval of imported members after first login (default: manual approval). New sign-ups are never auto-approved.
+- When Member Applications is disabled, Join Club and Sign Up clicks keep visitors on their current page and show the shared registration-closed modal before the form or CAPTCHA loads. Direct signup URLs show the same modal over the normal sign-in screen. If availability cannot be checked, show an unavailable notice and do not open the form.
 - Public Supabase sign-ups remain disabled; every account is created by an Edge Function.
 
 ### 4.5 Profile

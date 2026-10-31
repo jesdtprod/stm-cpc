@@ -1,0 +1,16 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+grant execute on all functions in schema extensions to public;
+select no_plan();
+select is(has_function_privilege('anon', 'public.membership_applications_open()', 'execute'), true, 'visitors can check availability');
+select is(has_function_privilege('anon', 'core.signup_enabled()', 'execute'), false, 'private signup internals stay private');
+update public.settings set value = 'false'::jsonb where key = 'members.signup_enabled' and unit_id is null and deleted_at is null;
+set local role anon;
+select is(public.membership_applications_open(), false, 'disabled membership is closed for visitors');
+reset role;
+update public.settings set value = 'true'::jsonb where key = 'members.signup_enabled' and unit_id is null and deleted_at is null;
+set local role anon;
+select is(public.membership_applications_open(), true, 'enabled membership is open for visitors');
+reset role;
+select * from finish();
+rollback;

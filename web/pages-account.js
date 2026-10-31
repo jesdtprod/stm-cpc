@@ -10,6 +10,7 @@ import {
   field,
   h,
   icon,
+  openModal,
   pageHeader,
   searchableSelect,
   selectControl,
@@ -36,6 +37,26 @@ import { ulid } from "./lib/ulid.js";
 import { isAdminAccount } from "./lib/permissions.js";
 
 const NCR_REGION = "130000000";
+
+/** Check signup availability before navigating; ignore duplicate clicks and stale replies. */
+export function createSignupEntry({ load, getHash, navigate, notify, noticeOpen = () => false }) {
+  let pending = false;
+  return async () => {
+    if (pending || noticeOpen()) return;
+    pending = true;
+    const from = getHash();
+    try {
+      const open = await load();
+      if (getHash() !== from) return;
+      if (open === true) navigate("#/signup");
+      else notify(true);
+    } catch {
+      if (getHash() === from) notify(false);
+    } finally {
+      pending = false;
+    }
+  };
+}
 
 /** Where a signed-in user belongs: the gate page, or the profile page when it is the next step, or home. */
 export function nextHash(state) {
@@ -1592,12 +1613,86 @@ export function createAccountPages(
     };
   }
 
-  function signUpPage() {
+  let signupNotice = null;
+
+  function showRegistrationNotice(closed) {
+    if (signupNotice?.isConnected) return;
+    const title = closed ? "Registration Is Closed" : "Unable to Check Registration";
+    const signInLink = h("a", {
+      href: "#/signin",
+      class: "btn btn-outline",
+      onClick: () => signupNotice?.close(),
+    }, icon("logIn"), "Sign In");
+    signupNotice = openModal({
+      title,
+      eyebrow: "Join Capitol Pickleball Club",
+      icon: closed ? "calendar" : "info",
+      tone: closed ? "warning" : "neutral",
+      size: "sm",
+      body: h("div", { class: "signup-notice-content" },
+        h("div", { class: "signup-notice-status" },
+          icon(closed ? "clock" : "info"),
+          closed ? "Applications paused" : "Please try again"),
+        h("p", { class: "signup-notice-lead" },
+          closed ? "We look forward to seeing you on court." : "Let?s get you back on track."),
+        h("p", { class: "muted" }, closed
+          ? "New membership applications are currently closed. Check back for the next registration window."
+          : "We couldn?t check membership availability right now. Please try again in a moment."),
+        h("div", { class: "modal-callout is-info" },
+          h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon(closed ? "calendar" : "refreshCw")),
+          h("div", { class: "modal-callout-text" },
+            h("strong", {}, closed ? "When can I join?" : "Your application hasn?t started"),
+            h("p", { class: "sub" }, closed
+              ? "The club will announce when applications reopen."
+              : "You can retry without submitting any personal details."))),
+        h("div", { class: "signup-notice-member" },
+          h("span", { class: "sub" }, "Already a member?"), signInLink)),
+      confirmLabel: closed ? "Got It" : "Try Again",
+      cancelLabel: null,
+      onConfirm: closed ? undefined : () => {
+        const previous = signupNotice;
+        signupNotice = null;
+        previous?.close();
+        void requestSignup();
+      },
+    });
+  }
+
+  const requestSignup = createSignupEntry({
+    load: () => api.rpc("membership_applications_open"),
+    getHash: () => location.hash,
+    navigate: go,
+    notify: showRegistrationNotice,
+    noticeOpen: () => Boolean(signupNotice?.isConnected),
+  });
+
+  function registrationNotice(closed) {
+    // Direct signup URLs use the normal sign-in screen behind the modal.
+    const page = signInPage();
+    setTimeout(() => {
+      if (!page.isConnected) return;
+      history.replaceState(null, "", "#/signin");
+      document.title = "Sign In ? Capitol Pickleball Club";
+      showRegistrationNotice(closed);
+    }, 0);
+    return page;
+  }
+
+  async function signUpPage() {
     const state = session.getState();
     if (state.status === "signed_in") {
       queueMicrotask(() => go(nextHash(state)));
       return h("div", { class: "page" });
     }
+    // All Join Club / Sign Up links share this route, including direct URLs.
+    // Check before building the form or loading CAPTCHA; the server checks again on submit.
+    let applicationsOpen;
+    try {
+      applicationsOpen = await api.rpc("membership_applications_open");
+    } catch {
+      return registrationNotice(false);
+    }
+    if (applicationsOpen !== true) return registrationNotice(true);
     let token = null;
     let widget = null;
     const turnstileBox = h("div", { class: "turnstile-box" });
@@ -1935,5 +2030,5 @@ export function createAccountPages(
     );
   }
 
-  return { signInPage, signUpPage, passwordPage, profilePage, pendingPage };
+  return { signInPage, signUpPage, requestSignup, passwordPage, profilePage, pendingPage };
 }
