@@ -108,10 +108,13 @@ function statCard({
 
   const formattedValue = (typeof value === "number" ||
       (!isNaN(numValue) && typeof value === "string" && value.trim() !== ""))
-    ? new Intl.NumberFormat("en-PH", fractionDigits == null ? {} : {
-      minimumFractionDigits: fractionDigits,
-      maximumFractionDigits: fractionDigits,
-    }).format(numValue)
+    ? new Intl.NumberFormat(
+      "en-PH",
+      fractionDigits == null ? {} : {
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+      },
+    ).format(numValue)
     : (value ?? "0");
 
   const body = [
@@ -146,7 +149,11 @@ function statCard({
                   ? h(
                     "div",
                     { class: "home-card-mobile-meta" },
-                    h("span", { class: "home-card-mobile-subvalue sub" }, mobileSubvalue),
+                    h(
+                      "span",
+                      { class: "home-card-mobile-subvalue sub" },
+                      mobileSubvalue,
+                    ),
                     mobileInlineLabel
                       ? h(
                         "span",
@@ -372,7 +379,7 @@ function quickTools(mode = "admin") {
     (mode === "admin" || !memberMenuHidden(s.href))
   );
   if (!tools.length) return null;
-  return section(
+  const block = section(
     mode === "admin" ? "Management & Controls" : "Quick Links",
     mode === "admin"
       ? "Direct access to administrative management modules."
@@ -405,6 +412,9 @@ function quickTools(mode = "admin") {
       `${tools.length} ${mode === "admin" ? "Modules" : "Pages"}`,
     ),
   );
+  // On a phone the admin pages are in the floating menu, so this list is left out.
+  if (mode === "admin") block.classList.add("admin-quick-tools");
+  return block;
 }
 
 /** mode "member": the member's own figures. mode "admin": what the club is waiting on. */
@@ -714,7 +724,9 @@ export function createHomePages({ session, api, client }) {
         .filter((badge) => badge && typeof badge === "object")
         .slice(0, 15)
         .map((badge) => ({
-          initials: Array.from(String(badge.initials ?? "").replace(/[^\p{L}\p{N}]/gu, ""))
+          initials: Array.from(
+            String(badge.initials ?? "").replace(/[^\p{L}\p{N}]/gu, ""),
+          )
             .slice(0, 2).join("").toUpperCase() || "C",
           photoPath: typeof badge?.avatar_path === "string"
             ? badge.avatar_path
@@ -1267,7 +1279,9 @@ export function createHomePages({ session, api, client }) {
                       ? h(
                         "p",
                         {},
-                        `${time(c.hours.opens)} – ${time(c.hours.closes, true)}`,
+                        `${time(c.hours.opens)} – ${
+                          time(c.hours.closes, true)
+                        }`,
                         c.hours.days >= 7
                           ? ", every day"
                           : `, ${c.hours.days} days a week`,

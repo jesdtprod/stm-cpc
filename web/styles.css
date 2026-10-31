@@ -5216,3 +5216,8 @@ dialog.modal:has(.court-pass-ticket) .modal-foot .btn { width: 100%; }
   .checkin-scan-frame { width: min(100%, 220px); }
   .checkin-entry > .checkin-manual { padding-block: var(--s2); }
 }
+
+/* Admin home: the Management & Controls list is replaced by the floating menu on a phone */
+@media (max-width: 900px) {
+  .admin-quick-tools { display: none; }
+}
