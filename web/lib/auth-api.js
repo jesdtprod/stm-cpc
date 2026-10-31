@@ -1,6 +1,6 @@
 // Calls to the member-login and member-password Edge Functions. `fetchFn` is injectable for tests.
 // Nothing here stores or logs a password; errors carry a code and a message that is safe to show.
-import { SUPABASE_URL } from "../supabase-config.js";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../supabase-config.js";
 
 const FUNCTIONS = `${SUPABASE_URL}/functions/v1`;
 // Run the functions in the same region as the database (this project: Sydney). Otherwise every database call inside
@@ -122,4 +122,26 @@ export async function memberSignup(fields, captchaToken, fetchFn = fetch) {
     fetchFn,
   );
   return { member_no: json.member_no ?? null, queued: Boolean(json.queued) };
+}
+
+/** Public availability must not depend on a saved or expired member session. */
+export async function membershipApplicationsOpen(fetchFn = fetch) {
+  try {
+    const response = await fetchFn(`${SUPABASE_URL}/rest/v1/rpc/membership_applications_open`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "content-type": "application/json",
+      },
+      body: "{}",
+    });
+    if (!response.ok) throw new Error("unavailable");
+    const open = await response.json();
+    if (typeof open !== "boolean") throw new Error("invalid availability");
+    return open;
+  } catch {
+    throw new AuthFlowError("unavailable", "We couldn?t check membership availability. Please try again.");
+  }
 }

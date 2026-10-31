@@ -193,7 +193,7 @@ const accountPages = createAccountPages({
   session,
   api,
   client,
-  authApi: { changePassword, memberSignup },
+  authApi: { changePassword, memberSignup, membershipApplicationsOpen },
   renderTurnstile,
   getAccessToken: async () =>
     (await client.auth.getSession()).data.session?.access_token,

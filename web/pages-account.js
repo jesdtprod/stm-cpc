@@ -1634,14 +1634,14 @@ export function createAccountPages(
           icon(closed ? "clock" : "info"),
           closed ? "Applications paused" : "Please try again"),
         h("p", { class: "signup-notice-lead" },
-          closed ? "We look forward to seeing you on court." : "Let?s get you back on track."),
+          closed ? "We look forward to seeing you on court." : "Let's get you back on track."),
         h("p", { class: "muted" }, closed
           ? "New membership applications are currently closed. Check back for the next registration window."
-          : "We couldn?t check membership availability right now. Please try again in a moment."),
+          : "We couldn't check membership availability right now. Please try again in a moment."),
         h("div", { class: "modal-callout is-info" },
           h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon(closed ? "calendar" : "refreshCw")),
           h("div", { class: "modal-callout-text" },
-            h("strong", {}, closed ? "When can I join?" : "Your application hasn?t started"),
+            h("strong", {}, closed ? "When can I join?" : "Your application hasn't started"),
             h("p", { class: "sub" }, closed
               ? "The club will announce when applications reopen."
               : "You can retry without submitting any personal details."))),
@@ -1659,7 +1659,7 @@ export function createAccountPages(
   }
 
   const requestSignup = createSignupEntry({
-    load: () => api.rpc("membership_applications_open"),
+    load: () => authApi.membershipApplicationsOpen(),
     getHash: () => location.hash,
     navigate: go,
     notify: showRegistrationNotice,
@@ -1672,7 +1672,7 @@ export function createAccountPages(
     setTimeout(() => {
       if (!page.isConnected) return;
       history.replaceState(null, "", "#/signin");
-      document.title = "Sign In ? Capitol Pickleball Club";
+      document.title = "Sign In | Capitol Pickleball Club";
       showRegistrationNotice(closed);
     }, 0);
     return page;
@@ -1688,7 +1688,7 @@ export function createAccountPages(
     // Check before building the form or loading CAPTCHA; the server checks again on submit.
     let applicationsOpen;
     try {
-      applicationsOpen = await api.rpc("membership_applications_open");
+      applicationsOpen = await authApi.membershipApplicationsOpen();
     } catch {
       return registrationNotice(false);
     }
