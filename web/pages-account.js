@@ -381,41 +381,60 @@ export function createAccountPages(
       h(
         "div",
         { class: "pw-strength-top" },
-        h("span", { class: "pw-strength-caption" }, "Password strength"),
+        h("span", { class: "pw-strength-caption" }, "Strength"),
         strengthPill,
       ),
       strengthMeter,
       criteriaList,
     );
 
-    const pwError = passwordField.querySelector(".field-error");
-    if (pwError) {
-      passwordField.insertBefore(strengthBox, pwError);
-    } else {
-      passwordField.appendChild(strengthBox);
-    }
-
     // Confirm Match Status
-    const matchIcon = h("span", { class: "pw-match-icon", "aria-hidden": "true" });
-    const matchText = h("span", { class: "pw-match-text" }, "Repeat password.");
-    const matchStatus = h(
-      "div",
+    const matchPill = h(
+      "span",
       {
-        class: "pw-match-status",
+        class: "pw-strength-pill",
+        "data-tone": "none",
         "aria-live": "polite",
       },
+      "Required",
+    );
+
+    const matchIcon = h("span", {
+      class: "pw-criteria-icon",
+      "aria-hidden": "true",
+    });
+    const matchText = h(
+      "span",
+      { class: "pw-criteria-text" },
+      "Both passwords must match",
+    );
+    const matchItem = h(
+      "li",
+      { class: "pw-criteria-item" },
       matchIcon,
       matchText,
     );
 
-    const matchBox = h("div", { class: "pw-match-box" }, matchStatus);
+    const matchCriteriaList = h(
+      "ul",
+      {
+        class: "pw-criteria-list",
+        "aria-label": "Password confirmation",
+      },
+      matchItem,
+    );
 
-    const confirmError = confirmField.querySelector(".field-error");
-    if (confirmError) {
-      confirmField.insertBefore(matchBox, confirmError);
-    } else {
-      confirmField.appendChild(matchBox);
-    }
+    const matchBox = h(
+      "div",
+      { class: "pw-strength-box pw-match-box" },
+      h(
+        "div",
+        { class: "pw-strength-top" },
+        h("span", { class: "pw-strength-caption" }, "Confirmation"),
+        matchPill,
+      ),
+      matchCriteriaList,
+    );
 
     function update() {
       const pw = pwInput.value;
@@ -450,17 +469,25 @@ export function createAccountPages(
 
       const confirmWrap = confirmField.querySelector(".input-wrap");
       if (!confirm) {
-        matchStatus.className = "pw-match-status";
+        matchPill.setAttribute("data-tone", "none");
+        matchPill.textContent = "Required";
+        matchItem.classList.remove("is-met", "is-mismatched");
         matchIcon.replaceChildren();
-        matchText.textContent = "Repeat password.";
+        matchText.textContent = "Both passwords must match";
         confirmWrap?.classList.remove("is-pw-match");
       } else if (confirm === pw && pw.length > 0) {
-        matchStatus.className = "pw-match-status is-matched";
+        matchPill.setAttribute("data-tone", "success");
+        matchPill.textContent = "Matched";
+        matchItem.classList.add("is-met");
+        matchItem.classList.remove("is-mismatched");
         matchIcon.replaceChildren(icon("check"));
         matchText.textContent = "Passwords match";
         confirmWrap?.classList.add("is-pw-match");
       } else {
-        matchStatus.className = "pw-match-status is-mismatched";
+        matchPill.setAttribute("data-tone", "warning");
+        matchPill.textContent = "Mismatch";
+        matchItem.classList.remove("is-met");
+        matchItem.classList.add("is-mismatched");
         matchIcon.replaceChildren(icon("alertCircle"));
         matchText.textContent = "Passwords do not match yet";
         confirmWrap?.classList.remove("is-pw-match");
@@ -470,6 +497,17 @@ export function createAccountPages(
     pwInput.addEventListener("input", update);
     confirmInput.addEventListener("input", update);
     update();
+    const guidanceId = `${pwInput.id}-guidance`;
+    for (const input of [pwInput, confirmInput]) {
+      const describedBy = input.getAttribute("aria-describedby");
+      input.setAttribute("aria-describedby", [describedBy, guidanceId].filter(Boolean).join(" "));
+    }
+    return h("div", {
+      id: guidanceId,
+      class: "pw-feedback",
+      role: "group",
+      "aria-label": "Password guidance",
+    }, strengthBox, matchBox);
   }
 
   // ---------------------------------------------------------------- password
@@ -491,7 +529,7 @@ export function createAccountPages(
     });
     next.querySelector("input").setAttribute("autocomplete", "new-password");
     again.querySelector("input").setAttribute("autocomplete", "new-password");
-    attachPasswordValidation(next, again);
+    const passwordFeedback = attachPasswordValidation(next, again);
     const error = errorBox();
     const submit = button({
       label: "Save Password",
@@ -504,6 +542,7 @@ export function createAccountPages(
       { class: "stack", novalidate: true, onSubmit: (e) => e.preventDefault() },
       next,
       again,
+      passwordFeedback,
       error,
       h("div", { class: "actions" }, submit),
     );
@@ -1642,7 +1681,7 @@ export function createAccountPages(
       "new-password",
     );
     confirm.querySelector("input").setAttribute("autocomplete", "new-password");
-    attachPasswordValidation(password, confirm);
+    const passwordFeedback = attachPasswordValidation(password, confirm);
     for (const f of [firstName, lastName, middleName]) {
       f.querySelector("input").setAttribute("maxlength", "60");
     }
@@ -1692,6 +1731,7 @@ export function createAccountPages(
       h("div", { class: "form-row" }, mobile, email),
       h("h3", { class: "form-section" }, "Password"),
       h("div", { class: "form-row" }, password, confirm),
+      passwordFeedback,
       h("h3", { class: "form-section" }, "Agreements"),
       waiver.node,
       privacy.node,

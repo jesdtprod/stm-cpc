@@ -5599,46 +5599,65 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
 /* =====================================================================================
    Password Strength Meter & Live Validation (Signup & Password Reset)
    ===================================================================================== */
+.pw-feedback {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
 .pw-strength-box {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 10px;
-  width: 100%;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 12px 14px;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.pw-feedback > .pw-match-box {
+  border-left: 1px solid var(--border);
+}
+
+@media (max-width: 600px) {
+  .pw-feedback {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pw-feedback > .pw-match-box {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
 }
 
 .pw-strength-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
-  min-height: 20px;
+  min-height: 22px;
 }
 
 .pw-strength-caption {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-2);
+  color: var(--text);
 }
 
 .pw-strength-pill {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 10px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 999px;
   line-height: 1.3;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-2);
   color: var(--text-2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.2s ease;
+  border: 1px solid var(--border);
+  transition: color 0.2s ease, background-color 0.2s ease;
 }
 
 .pw-strength-pill[data-tone="danger"] {
@@ -5710,9 +5729,9 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-2);
-  line-height: 1.3;
+  line-height: 1.5;
   transition: color 0.2s ease;
 }
 
@@ -5762,66 +5781,15 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
   stroke-width: 3;
 }
 
-/* Match status container for confirm password field */
-.pw-match-box {
-  margin-top: 8px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.18);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 12px;
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-}
-
-.pw-match-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  line-height: 1.3;
-  color: var(--text-2);
-  transition: all 0.2s ease;
-}
-
-.pw-match-status .pw-match-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.pw-match-status .pw-match-icon svg {
-  width: 10px;
-  height: 10px;
-}
-
-.pw-match-status.is-matched {
-  color: var(--success);
-  font-weight: 500;
-}
-
-.pw-match-status.is-matched .pw-match-icon {
-  background: var(--success);
-  color: #07130E;
-}
-
-.pw-match-status.is-matched .pw-match-icon svg {
-  stroke-width: 3;
-}
-
-.pw-match-status.is-mismatched {
+.pw-criteria-item.is-mismatched {
   color: var(--warning);
-  font-weight: 500;
 }
-
-.pw-match-status.is-mismatched .pw-match-icon {
-  background: rgba(234, 179, 8, 0.16);
+.pw-criteria-item.is-mismatched .pw-criteria-icon {
+  border-color: var(--warning);
   color: var(--warning);
-  border: 1px solid rgba(234, 179, 8, 0.35);
+}
+.pw-criteria-item.is-mismatched .pw-criteria-icon::after {
+  display: none;
 }
 
 /* Subtle glow / border hint on confirm wrap */
@@ -6372,7 +6340,12 @@ body[data-admin-view="true"] .side-nav {
 }
 
 body[data-admin-view="true"] .side-nav > .nav-heading:first-child {
-  margin-top: 8px;
+  margin-top: 14px;
+}
+
+body[data-admin-view="true"] .side-nav > .nav-link:last-of-type,
+.side-nav > .nav-link:last-of-type {
+  margin-bottom: 16px;
 }
 
 body[data-admin-view="true"] .nav-heading {
