@@ -2,7 +2,8 @@
   "version": "5",
   "specifiers": {
     "npm:jpeg-js@*": "0.4.4",
-    "npm:pngjs@*": "7.0.0"
+    "npm:pngjs@*": "7.0.0",
+    "npm:pngjs@7.0.0": "7.0.0"
   },
   "npm": {
     "jpeg-js@0.4.4": {

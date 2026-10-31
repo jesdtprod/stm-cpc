@@ -24,7 +24,15 @@ async function rpc<T>(
   args: Record<string, unknown> = {},
 ): Promise<T> {
   const { data, error } = await service.rpc(name, args);
-  if (error) throw new Error(`${name}: ${error.code ?? "error"}`);
+  if (error) {
+    if (
+      error.code === "23505" &&
+      ["mobile_taken", "imported_member"].includes(error.message)
+    ) {
+      throw new Error(error.message);
+    }
+    throw new Error(`${name}: ${error.code ?? "error"}`);
+  }
   return data as T;
 }
 
@@ -66,6 +74,13 @@ const deps: Deps = {
     return "unavailable";
   },
   emailTaken: (email) => rpc<boolean>("signup_email_taken", { p_email: email }),
+  identityConflict: (d) =>
+    rpc<"mobile_taken" | "imported_member" | null>("signup_identity_conflict", {
+      p_mobile: d.mobile,
+      p_first_name: d.first_name,
+      p_last_name: d.last_name,
+      p_display_name: d.display_name,
+    }),
   allocateMemberNo: () => rpc<string>("signup_allocate_member_no"),
   createAuthUser: async (email, password) => {
     const { data, error } = await service.auth.admin.createUser({

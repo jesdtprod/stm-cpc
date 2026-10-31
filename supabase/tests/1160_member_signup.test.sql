@@ -13,6 +13,10 @@ create temp table fx as select (select id from public.orgs where code = 'cpc') a
 grant select on fx to public;
 insert into auth.users (id, email) select u, 'signup-' || u || '@members.example.test' from (select u1 u from fx union all select u2 from fx union all select u3 from fx union all select u4 from fx union all select u_staff from fx) x;
 
+-- Isolate this suite from the club's live registration switch (rolled back).
+update public.settings set value = 'true'::jsonb
+where key = 'members.signup_enabled' and unit_id is null and deleted_at is null;
+
 -- ---- access
 select is((select count(*)::int from unnest(array['public.signup_enabled()', 'public.signup_allocate_member_no()',
   'public.signup_create(text,text,text,text,text,text,text,date,text,text,uuid)']) f
@@ -57,15 +61,11 @@ select ok(exists(select 1 from core.audit_log where action = 'signup.created' an
 select is((select count(*)::int from core.audit_log where table_name = 'public.persons' and new_values ->> 'date_of_birth' is not null and new_values ->> 'date_of_birth' <> '***'), 0, 'birth dates are masked in the audit log');
 select throws_ok(format($f$select core.signup_create(%L, 'X', null, 'Y', null, 'X Y', null, '1990-01-01', '09170000009', null, gen_random_uuid())$f$, (select no from n1)), '23505', null, 'the same member number cannot be used twice');
 
--- ---- duplicate flags
-create temp table s2 as select core.signup_create(core.signup_allocate_member_no(), 'Fake', null, 'Old Member', null, 'Fake Old Member', null, '1980-01-02', '09179998888', null, (select u2 from fx)) as r;
-grant select on s2 to public;
-select is((select r -> 'flags' ->> 0 from s2), 'possible_duplicate_name_dob', 'the same name and birth date as a member is flagged');
-select is((select count(*)::int from public.member_review_flags where member_id = (select (r ->> 'member_id') from s2) and related_member_id = (select mem_old from fx) and kind = 'possible_duplicate_name_dob'), 1, 'pointing at the existing member');
-select is((select status from public.members where id = (select (r ->> 'member_id') from s2)), 'pending_approval', 'but the sign-up is still accepted for review');
-create temp table s3 as select core.signup_create(core.signup_allocate_member_no(), 'Other', null, 'Person', null, 'Other Person', null, '1999-09-09', '09170000001', null, (select u3 from fx)) as r;
-grant select on s3 to public;
-select is((select r -> 'flags' ->> 0 from s3), 'possible_duplicate_mobile', 'the same mobile number as a member is flagged');
+-- ---- duplicates are refused (2130); minors still receive review flags.
+select throws_ok($$select core.signup_create(core.signup_allocate_member_no(), 'Fake', null, 'Old Member', null, 'Fake Old Member', null, '1980-01-02', '09179998888', null, (select u2 from fx))$$,
+  '23505', 'imported_member', 'an imported name cannot register a second account');
+select throws_ok($$select core.signup_create(core.signup_allocate_member_no(), 'Other', null, 'Person', null, 'Other Person', null, '1999-09-09', '09170000001', null, (select u3 from fx))$$,
+  '23505', 'mobile_taken', 'an existing mobile cannot register a second account');
 create temp table s4 as select core.signup_create(core.signup_allocate_member_no(), 'Young', null, 'Player', null, 'Young Player', null, ((now() at time zone 'Asia/Manila')::date - interval '12 years')::date, '09170000777', null, (select u4 from fx)) as r;
 grant select on s4 to public;
 select is((select count(*)::int from public.member_review_flags where member_id = (select (r ->> 'member_id') from s4) and kind = 'minor'), 1, 'a minor is flagged');

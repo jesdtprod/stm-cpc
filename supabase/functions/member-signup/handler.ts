@@ -1,7 +1,7 @@
 // member-signup: public sign-up for NEW members only (PLAN 3.3; docs/FEATURES.md 4.4, docs/SECURITY.md section 2).
 // An applicant gives their details and chooses a password; the function assigns the next member ID, creates the
 // account and the member (status pending_approval, no permissions), records the waiver and privacy consents, and
-// flags possible duplicates and minors for the admin. It never accepts a member ID from the caller: a request
+// rejects duplicate mobile/imported identities and flags remaining similarities and minors for the admin. It never accepts a member ID from the caller: a request
 // that names one is refused, so nobody can claim an existing member.
 //
 // Protections: allowed origins only; Cloudflare Turnstile verified through Supabase Auth; a hidden honeypot field;
@@ -28,6 +28,9 @@ export interface Deps {
   checkCaptcha: (token: string) => Promise<"ok" | "failed" | "unavailable">;
   /** True when a live member already uses this email address. */
   emailTaken: (email: string) => Promise<boolean>;
+  identityConflict: (
+    data: SignupData,
+  ) => Promise<"mobile_taken" | "imported_member" | null>;
   allocateMemberNo: () => Promise<string>;
   createAuthUser: (
     email: string,
@@ -209,6 +212,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   // One email, one member. Asked only after the security check, so a bot cannot probe which addresses exist.
   try {
+    const conflict = await deps.identityConflict(data);
+    if (conflict) return identityReply(conflict, origin, deps);
     if (await deps.emailTaken(data.email ?? "")) {
       deps.log("signup.email_taken");
       return reply(
@@ -248,8 +253,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!created.ok) throw new Error("auth");
     userId = created.id;
     await deps.createMember(memberNo, data, userId);
-  } catch {
+  } catch (error) {
     if (userId) await deps.deleteAuthUser(userId).catch(() => {});
+    if (
+      error instanceof Error &&
+      (error.message === "mobile_taken" || error.message === "imported_member")
+    ) {
+      return identityReply(error.message, origin, deps);
+    }
     deps.log("signup.failed");
     return reply(
       503,
@@ -265,4 +276,24 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   deps.log("signup.created");
   // The new ID is shown once on the page: the applicant needs it to sign in.
   return reply(200, { ok: true, member_no: memberNo }, origin, deps);
+}
+
+function identityReply(
+  code: "mobile_taken" | "imported_member",
+  origin: string,
+  deps: Deps,
+): Response {
+  deps.log(`signup.${code}`);
+  return reply(
+    409,
+    {
+      ok: false,
+      code,
+      message: code === "mobile_taken"
+        ? "That mobile number is already used by a member. Please sign in or contact the club."
+        : "A member with that name already exists in the imported records. Please sign in with your member ID or contact the club.",
+    },
+    origin,
+    deps,
+  );
 }

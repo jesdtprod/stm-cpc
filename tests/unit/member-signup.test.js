@@ -197,7 +197,14 @@ function world(over = {}) {
       return Promise.resolve();
     },
     emailTaken: () => Promise.resolve(Boolean(over.emailTaken)),
+    identityConflict: () =>
+      over.identityFails
+        ? Promise.reject(new Error("unavailable"))
+        : Promise.resolve(over.conflict ?? null),
     createMember: (no, data, uid) => {
+      if (over.createConflict) {
+        return Promise.reject(new Error(over.createConflict));
+      }
       if (over.dbFails) return Promise.reject(new Error("db"));
       s.members.push({ no, data, uid });
       return Promise.resolve();
@@ -375,5 +382,37 @@ Deno.test("signup: logs and responses carry no names, numbers, dates or password
     ]
   ) {
     assert.equal(everything.includes(secret), false, secret);
+  }
+});
+
+Deno.test("signup: duplicate mobile and imported names are rejected before allocating an account", async () => {
+  for (const conflict of ["mobile_taken", "imported_member"]) {
+    const { deps, s } = world({ conflict });
+    const r = await run(deps, GOOD);
+    assert.equal(r.status, 409);
+    assert.equal(r.body.code, conflict);
+    assert.equal(s.users.length + s.members.length + s.numbers, 0);
+  }
+});
+
+Deno.test("signup: identity lookup fails closed and only runs after CAPTCHA", async () => {
+  const { deps, s } = world({ identityFails: true });
+  assert.equal((await run(deps, GOOD)).status, 503);
+  assert.equal(s.users.length + s.numbers, 0);
+  const blocked = world({ captcha: "failed", conflict: "mobile_taken" });
+  blocked.deps.identityConflict = () => {
+    throw new Error("must not run");
+  };
+  assert.equal((await run(blocked.deps, GOOD)).body.code, "captcha_failed");
+});
+
+Deno.test("signup: a concurrent duplicate is rejected and its Auth account is cleaned up", async () => {
+  for (const createConflict of ["mobile_taken", "imported_member"]) {
+    const { deps, s } = world({ createConflict });
+    const r = await run(deps, GOOD);
+    assert.equal(r.status, 409);
+    assert.equal(r.body.code, createConflict);
+    assert.deepEqual(s.deleted, ["uid-1"]);
+    assert.equal(s.members.length, 0);
   }
 });

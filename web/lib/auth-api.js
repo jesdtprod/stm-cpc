@@ -30,6 +30,10 @@ const MESSAGES = {
   closed: "New sign-ups are closed right now. Please ask the club.",
   email_taken:
     "That email is already used by another member. Sign in with it, or use a different email.",
+  mobile_taken:
+    "That mobile number is already used by a member. Please sign in or contact the club.",
+  imported_member:
+    "A member with that name already exists in the imported records. Please sign in with your member ID or contact the club.",
   existing_member_claim:
     "Sign-up is for new members only. If you are already a member, sign in with your member ID.",
 };
