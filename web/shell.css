@@ -1592,12 +1592,26 @@ a.btn:hover {
   min-width: 0;
   align-content: start;
   background: var(--member-panel-background);
+  padding: 24px;
+  gap: 20px;
+  box-shadow: none;
 }
+.role-card-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.role-card-identity { display: flex; align-items: flex-start; gap: 12px; min-width: 0; flex: 1 1 240px; }
+.role-card-copy { display: grid; gap: 4px; min-width: 0; }
+.role-card-title { margin: 0; font-size: 18px; line-height: 1.3; letter-spacing: -.02em; text-transform: capitalize; }
+.role-card-copy .sub { margin: 0; color: var(--text-2); font-size: 12px; line-height: 1.5; }
+.role-card-head > .badge { flex-shrink: 0; }
+.role-permission-icon { display: inline-flex; color: var(--success); flex-shrink: 0; margin-top: 2px; }
+.role-permission-icon .icon { width: 15px; height: 15px; }
+.role-card-empty { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px; color: var(--text-2); background: var(--surface-2); border-radius: var(--r-control); font-size: 12px; line-height: 1.5; }
+.role-card-empty .icon { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; }
 @media (max-width: 720px) {
   .staff-role-catalog {
     grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
+  .staff-role-catalog .role-card { padding: 16px; gap: 16px; }
 }
 .staff-search {
   display: flex;
@@ -1801,11 +1815,13 @@ a.btn:hover {
 }
 .role-perms {
   display: grid;
-  gap: var(--s1);
+  gap: var(--s2);
   margin: 0;
-  padding-left: var(--s5);
+  padding: 0;
+  list-style: none;
   font-size: 13px;
 }
+.role-perms li { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: var(--r-control); background: var(--surface-2); line-height: 1.5; overflow-wrap: anywhere; }
 
 /* ---- booking */
 .book-body,
@@ -7188,13 +7204,13 @@ body[data-admin-view="false"] .dashboard-pattern {
     z-index: 45;
   }
   body[data-admin-view="true"] main {
-    padding: 76px 18px 32px;
+    padding: var(--s5);
   }
 }
 
 @media (max-width: 600px) {
   body[data-admin-view="true"] main {
-    padding: 72px 14px 28px;
+    padding: var(--s4);
   }
   .admin-dashboard {
     gap: 28px;
@@ -9923,34 +9939,34 @@ dialog.modal:has(.member-decision) {
   flex: 0 0 128px;
   object-fit: contain;
 }
-body[data-member-view="true"] .member-header-logo {
+body[data-signed-in="true"] .member-header-logo {
   width: 72px;
   height: 72px;
   flex-basis: 72px;
 }
 @media (max-width: 860px) {
-  body[data-member-view="true"] .member-header-logo {
+  body[data-signed-in="true"] .member-header-logo {
     width: 60px;
     height: 60px;
     flex-basis: 60px;
   }
 }
 @media (min-width: 601px) and (max-width: 860px) {
-  body[data-member-view="true"] .member-header-logo {
+  body[data-signed-in="true"] .member-header-logo {
     width: 54px;
     height: 54px;
     flex-basis: 54px;
   }
 }
 @media (min-width: 721px) {
-  body[data-member-view="true"] .member-header-logo {
+  body[data-signed-in="true"] .member-header-logo {
     width: 128px;
     height: 128px;
     flex-basis: 128px;
   }
 }
 @media (max-width: 600px) {
-  body[data-member-view="true"] .member-header-logo {
+  body[data-signed-in="true"] .member-header-logo {
     width: 96px;
     height: 96px;
     flex-basis: 96px;
@@ -9963,10 +9979,10 @@ body[data-member-view="true"] .member-header-logo {
     flex-basis: 144px;
     margin-top: 24px;
   }
-  body[data-member-view="true"] .mobile-format-header:has(.member-header-logo) {
+  body[data-signed-in="true"] .mobile-format-header:has(.member-header-logo) {
     row-gap: 16px;
   }
-  body[data-member-view="true"] .member-header-logo {
+  body[data-signed-in="true"] .member-header-logo {
     margin-top: 4px;
     margin-bottom: -8px;
   }
@@ -10976,6 +10992,26 @@ body[data-member-view="true"] .member-header-logo {
 @media (max-width: 720px) {
   body:not([data-auth-page="true"]) .app-shell > main {
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  body[data-admin-view="true"] .app-shell > main {
+    padding-top: var(--s4);
+    padding-inline: var(--s4);
+  }
+  body .admin-reference-page,
+  body .admin-reference-page :is(.home-body, .home-section, .stack) {
+    gap: 16px;
+  }
+  body .admin-reference-page .mobile-format-header h1 {
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  body .admin-reference-page .mobile-format-header .dash-hero-sub {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  body .admin-reference-page > :is(.home-grid, .kpis) {
+    gap: 12px;
   }
   body .member-ranking-page {
     padding-bottom: 0 !important;

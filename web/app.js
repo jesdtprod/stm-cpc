@@ -51,8 +51,8 @@ import {
   adminResetPassword,
   changePassword,
   memberLogin,
-  memberSignup,
   membershipApplicationsOpen,
+  memberSignup,
 } from "./lib/auth-api.js";
 import { renderTurnstile } from "./lib/turnstile.js";
 
@@ -307,7 +307,7 @@ route("/admin/import", () => importPages.importPage(), "Member Import", {
   any: ["members.import", "members.review_import"],
 });
 
-const staffPages = createStaffPages({ api });
+const staffPages = createStaffPages({ api, client });
 route("/admin/staff", () => staffPages.staffPage(), "Staff and Roles", {
   permission: "roles.manage",
 });

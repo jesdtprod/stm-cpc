@@ -113,6 +113,14 @@ export async function adminResetPassword(
   }, fetchFn);
 }
 
+/** An administrator adds a staff account for someone who is not a member. Resolves to { member_no }. */
+export async function createStaffAccount(fields, accessToken, fetchFn = fetch) {
+  const json = await post("staff-create", fields, {
+    authorization: `Bearer ${accessToken}`,
+  }, fetchFn);
+  return { member_no: json.member_no };
+}
+
 /** Public sign-up for new members. Resolves to { member_no }. Rejects with AuthFlowError (.errors, .problems). */
 export async function memberSignup(fields, captchaToken, fetchFn = fetch) {
   const json = await post(
@@ -127,21 +135,27 @@ export async function memberSignup(fields, captchaToken, fetchFn = fetch) {
 /** Public availability must not depend on a saved or expired member session. */
 export async function membershipApplicationsOpen(fetchFn = fetch) {
   try {
-    const response = await fetchFn(`${SUPABASE_URL}/rest/v1/rpc/membership_applications_open`, {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        "content-type": "application/json",
+    const response = await fetchFn(
+      `${SUPABASE_URL}/rest/v1/rpc/membership_applications_open`,
+      {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          "content-type": "application/json",
+        },
+        body: "{}",
       },
-      body: "{}",
-    });
+    );
     if (!response.ok) throw new Error("unavailable");
     const open = await response.json();
     if (typeof open !== "boolean") throw new Error("invalid availability");
     return open;
   } catch {
-    throw new AuthFlowError("unavailable", "We couldn?t check membership availability. Please try again.");
+    throw new AuthFlowError(
+      "unavailable",
+      "We couldn?t check membership availability. Please try again.",
+    );
   }
 }

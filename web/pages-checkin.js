@@ -28,12 +28,21 @@ export function createCheckinPages({ api }) {
       muted: "",
       hidden: true,
     });
-    // The dashed square at the top: shows the scan icon, and the live camera while scanning.
+    const cameraState = h("span", { class: "checkin-camera-state" }, "Standby");
+    // Camera overlays are visual guides; the original video remains the decoder's source.
     const frame = h(
       "div",
       { class: "checkin-scan-frame", "aria-hidden": "true" },
       icon("qrScan"),
       video,
+      h(
+        "div",
+        { class: "checkin-camera-hud" },
+        h("span", {}, "QR Scanner"),
+        cameraState,
+      ),
+      h("span", { class: "checkin-scan-line" }),
+      h("span", { class: "checkin-camera-guide" }, "Position QR inside frame"),
     );
     let stream = null;
     let busy = false;
@@ -67,6 +76,7 @@ export function createCheckinPages({ api }) {
       stream = null;
       video.hidden = true;
       frame.classList.remove("is-live");
+      cameraState.textContent = "Standby";
     }
 
     async function checkIn(raw) {
@@ -99,6 +109,7 @@ export function createCheckinPages({ api }) {
     }
 
     async function startCamera() {
+      if (stream) return; // already on
       if (!navigator.mediaDevices?.getUserMedia) {
         return show("neutral", "Camera scanning is not available here", [
           "Use HTTPS, scan with the phone camera app, or paste the code below.",
@@ -119,8 +130,9 @@ export function createCheckinPages({ api }) {
         video.muted = true;
         video.srcObject = stream;
         video.hidden = false;
-        frame.classList.add("is-live");
         await video.play();
+        frame.classList.add("is-live");
+        cameraState.textContent = "Live";
         // The browser's detector where it exists; otherwise the bundled jsQR reads each video frame.
         const detector = "BarcodeDetector" in globalThis
           ? new globalThis.BarcodeDetector({ formats: ["qr_code"] })
@@ -136,13 +148,21 @@ export function createCheckinPages({ api }) {
           const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
           return globalThis.jsQR(img.data, img.width, img.height)?.data;
         };
+        // The camera stays on after a scan, ready for the next member. The same code is not checked twice in a row
+        // for a few seconds, so holding a QR in view does not repeat the request.
+        let lastValue = null;
+        let lastAt = 0;
         const tick = async () => {
           if (!stream) return;
           try {
             const value = await read();
-            if (value) {
-              stopCamera();
-              return checkIn(value);
+            if (
+              value && !busy &&
+              (value !== lastValue || Date.now() - lastAt > 5000)
+            ) {
+              lastValue = value;
+              lastAt = Date.now();
+              checkIn(value);
             }
           } catch { /* keep scanning */ }
           setTimeout(() => requestAnimationFrame(tick), 120);
@@ -211,6 +231,8 @@ export function createCheckinPages({ api }) {
     }
 
     addEventListener("hashchange", stopCamera, { once: true });
+    // The camera opens by itself when the page does.
+    queueMicrotask(startCamera);
     const root = h(
       "div",
       { class: "page admin-dashboard checkin-page" },

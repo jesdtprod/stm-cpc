@@ -20,12 +20,15 @@ import {
   toast,
 } from "./ui.js";
 import { avatarImage } from "./lib/avatar.js";
+import { createStaffAccount } from "./lib/auth-api.js";
 
+const NEW_STAFF_ROLES = ["scanner", "referee", "front_desk", "manager"];
 const ASSIGNABLE = ["member", "referee", "front_desk", "manager", "admin"];
 const TONE = {
   admin: "danger",
   manager: "warning",
   front_desk: "info",
+  scanner: "info",
   referee: "info",
   member: "neutral",
 };
@@ -36,7 +39,7 @@ const messageOf = (e, fallback) =>
     e.cause?.message) ||
   e?.message || fallback;
 
-export function createStaffPages({ api }) {
+export function createStaffPages({ api, client }) {
   function staffPage() {
     const page = h("div", {
       class: "page admin-dashboard admin-members-page admin-staff-page",
@@ -55,6 +58,14 @@ export function createStaffPages({ api }) {
       variant: "primary",
       disabled: true,
       onClick: () => addModal(),
+    });
+
+    const newStaffBtn = button({
+      label: "Add Staff Account",
+      icon: "user",
+      variant: "secondary",
+      disabled: true,
+      onClick: () => newStaffModal(),
     });
 
     async function refresh() {
@@ -237,6 +248,106 @@ export function createStaffPages({ api }) {
             return showError(
               error,
               messageOf(e, "That did not work. Please try again."),
+            );
+          }
+        },
+      });
+    }
+
+    // A staff account for someone who is not a member. The administrator types the first password and hands it over;
+    // the person must change it at the first sign-in.
+    function newStaffModal() {
+      const error = errorLine();
+      const roles = NEW_STAFF_ROLES.filter((c) =>
+        state.roles.some((r) => r.code === c)
+      );
+      return openModal({
+        title: "Add Staff Account",
+        eyebrow: "Staff and Roles",
+        description:
+          "For someone who is not a member, such as a court scanner. They sign in with the staff ID shown after saving.",
+        icon: "user",
+        tone: "primary",
+        confirmLabel: "Create Account",
+        body: h(
+          "div",
+          { class: "modal-fields" },
+          h(
+            "div",
+            { class: "field" },
+            h("label", { for: "ns-name" }, "Full name"),
+            h("input", {
+              class: "input",
+              id: "ns-name",
+              name: "name",
+              required: true,
+              minlength: 2,
+              maxlength: 120,
+              autocomplete: "off",
+            }),
+          ),
+          h(
+            "div",
+            { class: "field" },
+            h("label", { for: "ns-role" }, "Role"),
+            selectControl(
+              { class: "input select-input", id: "ns-role", name: "role" },
+              ...roles.map((c) =>
+                h(
+                  "option",
+                  { value: c },
+                  state.roles.find((r) => r.code === c)?.name ?? c,
+                )
+              ),
+            ),
+          ),
+          h(
+            "div",
+            { class: "field" },
+            h("label", { for: "ns-password" }, "First password"),
+            h("input", {
+              class: "input",
+              id: "ns-password",
+              name: "password",
+              type: "password",
+              required: true,
+              minlength: 12,
+              maxlength: 128,
+              autocomplete: "new-password",
+            }),
+            h(
+              "p",
+              { class: "muted" },
+              "At least 12 characters. Give it to the person in private; they must change it when they first sign in.",
+            ),
+          ),
+          error,
+        ),
+        onConfirm: async (form) => {
+          error.hidden = true;
+          const name = String(form.get("name") ?? "").trim();
+          const password = String(form.get("password") ?? "");
+          if (name.length < 2) return showError(error, "Enter the full name.");
+          if (password.length < 12) {
+            return showError(error, "Use at least 12 characters.");
+          }
+          try {
+            const { data } = await client.auth.getSession();
+            const token = data?.session?.access_token;
+            if (!token) return showError(error, "Please sign in again.");
+            const made = await createStaffAccount({
+              display_name: name,
+              role_code: String(form.get("role")),
+              password,
+            }, token);
+            toast(`Staff account ${made.member_no} created.`, {
+              tone: "success",
+            });
+            await refresh();
+          } catch (e) {
+            return showError(
+              error,
+              e?.message ?? "The staff account could not be added.",
             );
           }
         },
@@ -543,23 +654,37 @@ export function createStaffPages({ api }) {
         "div",
         { class: "staff-role-catalog" },
         tabsHost,
-        h(
-          "p",
-          { class: "muted" },
-          "What each role may do. This list is for reference: the database checks these permissions on every action.",
-        ),
         ...state.roles.map((r) =>
           h(
             "div",
             { class: "member-panel role-card" },
             h(
               "div",
-              { class: "ladder-head" },
+              { class: "role-card-head" },
               h(
                 "div",
-                {},
-                h("h2", { class: "settings-title" }, r.name),
-                h("span", { class: "muted" }, r.description ?? ""),
+                { class: "role-card-identity" },
+                h(
+                  "span",
+                  { class: "badge-icon", "aria-hidden": "true" },
+                  icon(
+                    ({
+                      admin: "lock",
+                      manager: "settings",
+                      front_desk: "qrScan",
+                      referee: "trophy",
+                      member: "user",
+                    })[r.code] ?? "user",
+                  ),
+                ),
+                h(
+                  "div",
+                  { class: "role-card-copy" },
+                  h("h2", { class: "role-card-title" }, r.name),
+                  r.description
+                    ? h("p", { class: "sub" }, r.description)
+                    : null,
+                ),
               ),
               badge(
                 `${r.permissions.length} permission${
@@ -573,12 +698,21 @@ export function createStaffPages({ api }) {
                 "ul",
                 { class: "role-perms" },
                 ...r.permissions.map((p) =>
-                  h("li", {}, p.description ?? p.code)
+                  h(
+                    "li",
+                    {},
+                    h("span", {
+                      class: "role-permission-icon",
+                      "aria-hidden": "true",
+                    }, icon("checkCircle")),
+                    h("span", {}, p.description ?? p.code),
+                  )
                 ),
               )
               : h(
                 "p",
-                { class: "muted" },
+                { class: "role-card-empty sub" },
+                icon("lock"),
                 "No permissions: sign-in and the account pages only.",
               ),
           )
@@ -634,6 +768,7 @@ export function createStaffPages({ api }) {
         },
       }));
       addBtn.disabled = state.status !== "ready";
+      newStaffBtn.disabled = state.status !== "ready";
       if (state.status === "error") {
         body.replaceChildren(
           tabsHost,
@@ -670,6 +805,7 @@ export function createStaffPages({ api }) {
             variant: "secondary",
             onClick: refresh,
           }),
+          newStaffBtn,
           addBtn,
         ],
       }),

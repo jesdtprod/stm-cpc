@@ -1,0 +1,10 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+grant execute on all functions in schema extensions to public;
+select no_plan();
+select is(has_function_privilege('anon', 'public.staff_account_prepare(text, text)', 'execute'), false, 'visitors cannot prepare staff accounts');
+select is(has_function_privilege('authenticated', 'public.create_staff_member(text, text, text, uuid, text)', 'execute'), false, 'signed-in users cannot create staff records directly');
+select is(has_function_privilege('service_role', 'public.create_staff_member(text, text, text, uuid, text)', 'execute'), true, 'the Edge Function can');
+select throws_ok($$select core.staff_account_prepare('scanner', 'Court Scanner')$$, '42501', 'you do not have permission to add staff', 'a caller with no session is refused');
+select * from finish();
+rollback;

@@ -436,7 +436,7 @@ export function createShell(
       page.classList.toggle("admin-reference-page", isAdminPath);
       page.classList.toggle(
         "member-mobile-lists",
-        signedIn && isMemberView && !page.classList.contains("dash-page"),
+        signedIn && !page.classList.contains("dash-page"),
       );
     }
     // the side-panel layout: the admin side always, the member side on a computer

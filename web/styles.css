@@ -5179,14 +5179,26 @@ dialog.modal:has(.court-pass-ticket) .modal-foot .btn { width: 100%; }
 .checkin-scanner { display: flex; flex-direction: column; align-items: stretch; gap: var(--s4); padding: var(--s6); background: var(--surface-2); border-right: 1px solid var(--border); min-width: 0; }
 .checkin-scanner h2, .checkin-entry h2 { font-size: 20px; line-height: 1.3; margin: 0; }
 .checkin-scanner > .sub { margin: 0; }
-.checkin-scan-frame { display: grid; place-items: center; width: min(100%, 240px); aspect-ratio: 1; align-self: center; border: 1px solid var(--border); border-radius: var(--r-card); color: var(--accent); background: var(--surface); }
+.checkin-scan-frame { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; align-self: center; border: 1px solid var(--border); border-radius: var(--r-card); color: var(--accent); background: var(--surface); }
 .checkin-scan-frame .icon { width: 56px; height: 56px; }
-.checkin-scan-frame { position: relative; overflow: hidden; }
+.checkin-scan-frame { position: relative; overflow: hidden; isolation: isolate; background: radial-gradient(ellipse at center, #143729 0%, #07140e 75%); box-shadow: inset 0 0 0 4px rgba(255,255,255,.025), 0 8px 24px rgba(0,0,0,.16); }
+.checkin-scan-frame::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background-image: linear-gradient(rgba(74,222,128,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(74,222,128,.06) 1px, transparent 1px); background-size: 24px 24px; }
 .checkin-scan-frame.is-live { background: #000; }
 .checkin-scan-frame.is-live > .icon { display: none; }
 .checkin-scan-frame .checkin-video { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; border-radius: 0; }
-.checkin-scan-frame::after { content: ""; position: absolute; inset: 18%; border: 2px solid var(--accent); border-radius: 12px; pointer-events: none; }
-.checkin-scan-frame.is-live::after { box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); }
+.checkin-scan-frame::after { content: ""; position: absolute; inset: 18% 12%; z-index: 2; border-radius: 4px; pointer-events: none; background: linear-gradient(var(--accent),var(--accent)) left top / 22px 2px, linear-gradient(var(--accent),var(--accent)) left top / 2px 22px, linear-gradient(var(--accent),var(--accent)) right top / 22px 2px, linear-gradient(var(--accent),var(--accent)) right top / 2px 22px, linear-gradient(var(--accent),var(--accent)) left bottom / 22px 2px, linear-gradient(var(--accent),var(--accent)) left bottom / 2px 22px, linear-gradient(var(--accent),var(--accent)) right bottom / 22px 2px, linear-gradient(var(--accent),var(--accent)) right bottom / 2px 22px; background-repeat: no-repeat; }
+.checkin-scan-frame.is-live::after { box-shadow: 0 0 0 999px rgba(0, 0, 0, .2); }
+.checkin-camera-hud { position: absolute; inset: 12px 12px auto; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #c0d5c8; font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; pointer-events: none; }
+.checkin-camera-state { display: inline-flex; align-items: center; gap: 5px; padding: 4px 6px; border: 1px solid rgba(255,255,255,.15); border-radius: 5px; background: rgba(5,18,12,.8); }
+.checkin-camera-hud > span:first-child { padding: 4px 6px; border: 1px solid rgba(255,255,255,.1); border-radius: 5px; background: rgba(5,18,12,.85); }
+.checkin-camera-state::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #92aa9b; }
+.is-live .checkin-camera-state { color: #86efac; border-color: rgba(74,222,128,.35); }
+.is-live .checkin-camera-state::before { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,.6); }
+.checkin-camera-guide { position: absolute; bottom: 15px; left: 8px; right: 8px; z-index: 3; color: #d0ded5; font-size: 10px; letter-spacing: .02em; text-align: center; pointer-events: none; text-shadow: 0 1px 4px #000; }
+.checkin-scan-line { display: none; position: absolute; left: 13%; right: 13%; top: 20%; z-index: 2; height: 2px; background: #6ee7b7; box-shadow: 0 0 12px rgba(110,231,183,.65), 0 -8px 20px rgba(110,231,183,.15); pointer-events: none; }
+.is-live .checkin-scan-line { display: block; animation: checkin-scan 2.8s ease-in-out infinite alternate; }
+@keyframes checkin-scan { to { top: 80%; } }
+@media (prefers-reduced-motion: reduce) { .is-live .checkin-scan-line { animation: none; top: 50%; } }
 .checkin-entry { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; padding: var(--s6); }
 .checkin-entry > .checkin-manual { margin-block: auto; padding-block: var(--s5); }
 .checkin-scanner > .btn { width: 100%; }
@@ -5209,11 +5221,13 @@ dialog.modal:has(.court-pass-ticket) .modal-foot .btn { width: 100%; }
 .checkin-manual { display: flex; flex-direction: column; gap: var(--s4); }
 .checkin-manual .field { flex: 1; min-width: 0; }
 .checkin-manual > .btn { width: 100%; }
+@media (min-width: 901px) {
+  .checkin-scan-frame { aspect-ratio: 1; }
+}
 @media (max-width: 760px) {
   .checkin-layout { grid-template-columns: minmax(0, 1fr); }
   .checkin-scanner { border-right: 0; border-bottom: 1px solid var(--border); padding: var(--s5); }
   .checkin-entry { padding: var(--s5); }
-  .checkin-scan-frame { width: min(100%, 220px); }
   .checkin-entry > .checkin-manual { padding-block: var(--s2); }
 }
 

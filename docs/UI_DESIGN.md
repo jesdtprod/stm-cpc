@@ -432,6 +432,7 @@ General principles that apply to every screen. When a rule here conflicts with a
 
 ### 12.8 Responsive design
 - Mobile pages (up to 720px) use 20px bottom spacing plus the device safe-area inset, matching sign-in. Avoid adding a second bottom spacer inside a page. Desktop and tablet spacing stays unchanged.
+- Admin and member mobile pages share 16px outer gutters and section gaps, centered page headers and logo sizing, full-width header actions, and the same tab and labelled list-card layout. Do not reserve top-header space when the header is hidden.
 - Design mobile-first, then enhance. Content decides breakpoints, not device names.
 - Use fluid layouts and relative units; avoid fixed pixel widths for containers.
 - On mobile, put primary actions within thumb reach, collapse secondary navigation, and keep forms single-column.
