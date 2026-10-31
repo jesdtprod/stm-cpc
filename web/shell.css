@@ -726,7 +726,6 @@ a.btn:hover {
 /* ---- settings */
 .admin-dashboard.admin-settings-page {
   width: 100%;
-  max-width: none;
   min-width: 0;
 }
 .admin-settings-page .settings-body > .tabs-nav {
