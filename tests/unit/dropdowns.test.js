@@ -2101,6 +2101,7 @@ Deno.test("member details modal: consolidates status and audit into 1 unified se
     };
     const mockQuery = {
       in: () => mockQuery,
+      eq: () => mockQuery,
       order: () => mockQuery,
       range: () => mockQuery,
       is: () => mockQuery,

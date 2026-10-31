@@ -21,7 +21,12 @@ import { can } from "./lib/permissions.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatDate, formatDateTime } from "./lib/dates.js";
 import { formatMemberName } from "./lib/names.js";
-import { assessPointsModal, loadMemberRatings, pointsHistoryModal, ratingLabel } from "./cpc-points.js";
+import {
+  assessPointsModal,
+  loadMemberRatings,
+  pointsHistoryModal,
+  ratingLabel,
+} from "./cpc-points.js";
 
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
@@ -105,7 +110,9 @@ const openFlags = (row) => (row.flags ?? []).filter((f) => !f.resolved_at);
 const sentence = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const cleanTerm = (t) => t.replace(/[%_,()*]/g, " ").trim().slice(0, 60);
 const splitRankLabel = (rank) => {
-  const match = String(rank ?? "").match(/^(.*?)\s*\((\d\.\d{3}\s*[–-]\s*\d\.\d{3})\)$/);
+  const match = String(rank ?? "").match(
+    /^(.*?)\s*\((\d\.\d{3}\s*[–-]\s*\d\.\d{3})\)$/,
+  );
   return match
     ? { name: match[1].trim(), band: match[2].replace(/\s+/g, "") }
     : { name: rank, band: null };
@@ -116,7 +123,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     let q = client.from("members").select("id", {
       count: "exact",
       head: true,
-    }).in("status", statuses);
+    }).in("status", statuses).eq("is_staff_account", false);
     q = deleted ? q.not("deleted_at", "is", null) : q.is("deleted_at", null);
     const { count, error } = await q;
     if (error) throw error;
@@ -127,7 +134,10 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     let q = client.from("members").select(SELECT, { count: "exact" }).in(
       "status",
       statuses,
-    ).order("persons(last_name)", { ascending: true, nullsFirst: false })
+    ).eq("is_staff_account", false).order("persons(last_name)", {
+      ascending: true,
+      nullsFirst: false,
+    })
       .order("persons(first_name)", { ascending: true, nullsFirst: false })
       .order("persons(display_name)", { ascending: true })
       .order("id", { ascending: true })
@@ -140,9 +150,14 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       } else {
         const words = t.replace(/["\\]/g, " ").split(/\s+/).filter(Boolean);
         if (words.length) {
-          q = q.or(`and(${words.map((word) =>
-            `or(display_name.ilike.%${word}%,first_name.ilike.%${word}%,last_name.ilike.%${word}%)`
-          ).join(",")})`, { referencedTable: "persons" });
+          q = q.or(
+            `and(${
+              words.map((word) =>
+                `or(display_name.ilike.%${word}%,first_name.ilike.%${word}%,last_name.ilike.%${word}%)`
+              ).join(",")
+            })`,
+            { referencedTable: "persons" },
+          );
         }
       }
     }
@@ -248,7 +263,11 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             h(
               "div",
               { class: "member-decision-name" },
-              h("strong", { class: "member-name" }, formatMemberName(row.persons)),
+              h(
+                "strong",
+                { class: "member-name" },
+                formatMemberName(row.persons),
+              ),
               badge(
                 STATUS_LABEL[row.status] ?? row.status,
                 STATUS_TONE[row.status] ?? "neutral",
@@ -286,9 +305,12 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             p_key: key,
             ...extra(form),
           }));
-          toast(`${formatMemberName(row.persons)}: ${verb.toLowerCase()} done.`, {
-            tone: "success",
-          });
+          toast(
+            `${formatMemberName(row.persons)}: ${verb.toLowerCase()} done.`,
+            {
+              tone: "success",
+            },
+          );
           await onDone();
         } catch (e) {
           // The decision function's own messages (open review flags, wrong state, no permission) are written for
@@ -691,9 +713,21 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       { class: "timeline-empty muted" },
       "Loading history…",
     );
-    const rankEl = h("div", { class: "member-audit-rank" }, badge("Loading…", "neutral"));
-    const singlesEl = h("div", { class: "member-audit-rank" }, badge("Loading…", "neutral"));
-    const doublesEl = h("div", { class: "member-audit-rank" }, badge("Loading…", "neutral"));
+    const rankEl = h(
+      "div",
+      { class: "member-audit-rank" },
+      badge("Loading…", "neutral"),
+    );
+    const singlesEl = h(
+      "div",
+      { class: "member-audit-rank" },
+      badge("Loading…", "neutral"),
+    );
+    const doublesEl = h(
+      "div",
+      { class: "member-audit-rank" },
+      badge("Loading…", "neutral"),
+    );
 
     const statusBadge = badge(
       STATUS_LABEL[row.status] ?? row.status,
@@ -786,7 +820,9 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             ),
             kv(
               "DUPR ID",
-              p.dupr_id ? badge(p.dupr_id, "neutral") : h("span", { class: "muted" }, "None"),
+              p.dupr_id
+                ? badge(p.dupr_id, "neutral")
+                : h("span", { class: "muted" }, "None"),
             ),
             row.deleted_at
               ? kv(
@@ -856,7 +892,10 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             h(
               "div",
               { class: "member-details-grid" },
-              kv("Date of Birth", p.date_of_birth ? formatDate(p.date_of_birth) : "—"),
+              kv(
+                "Date of Birth",
+                p.date_of_birth ? formatDate(p.date_of_birth) : "—",
+              ),
               kv(
                 "Gender",
                 p.gender
@@ -940,36 +979,57 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               badge(label.value, label.tone),
               h("span", { class: "sub member-audit-rank-band" }, label.sub),
             ),
-            h("span", { class: "member-rating-actions" },
+            h(
+              "span",
+              { class: "member-rating-actions" },
               iconButton({
-                label: `${discipline === "singles" ? "Singles" : "Doubles"} Rating History`,
+                label: `${
+                  discipline === "singles" ? "Singles" : "Doubles"
+                } Rating History`,
                 icon: "trophy",
                 size: "sm",
                 variant: "info",
-                onClick: () => pointsHistoryModal(api, row.id, entry.display_name, row, discipline),
+                onClick: () =>
+                  pointsHistoryModal(
+                    api,
+                    row.id,
+                    entry.display_name,
+                    row,
+                    discipline,
+                  ),
               }),
-            can("ranks.override") && !row.deleted_at
-              ? iconButton({
-                label: ratings[discipline].points == null
-                  ? `Assess ${discipline} rating`
-                  : `Reassess ${discipline} rating`,
-                icon: "sliders",
-                size: "sm",
-                variant: "edit",
-                onClick: () => assessPointsModal({
-                  api, row: entry, discipline,
-                  onDone: () => { drawPoints(); drawRank(); },
-                }),
-              })
-              : null,
+              can("ranks.override") && !row.deleted_at
+                ? iconButton({
+                  label: ratings[discipline].points == null
+                    ? `Assess ${discipline} rating`
+                    : `Reassess ${discipline} rating`,
+                  icon: "sliders",
+                  size: "sm",
+                  variant: "edit",
+                  onClick: () =>
+                    assessPointsModal({
+                      api,
+                      row: entry,
+                      discipline,
+                      onDone: () => {
+                        drawPoints();
+                        drawRank();
+                      },
+                    }),
+                })
+                : null,
             ),
           );
         };
         singlesEl.replaceChildren(line("singles"));
         doublesEl.replaceChildren(line("doubles"));
       }).catch(() => {
-        singlesEl.replaceChildren(h("span", { class: "badge badge-neutral" }, "—"));
-        doublesEl.replaceChildren(h("span", { class: "badge badge-neutral" }, "—"));
+        singlesEl.replaceChildren(
+          h("span", { class: "badge badge-neutral" }, "—"),
+        );
+        doublesEl.replaceChildren(
+          h("span", { class: "badge badge-neutral" }, "—"),
+        );
       });
     drawPoints();
 
@@ -1300,7 +1360,10 @@ export function createAdminPages({ client, api, adminResetPassword }) {
               "div",
               { class: "member-table-stack" },
               r.persons.mobile ?? "—",
-              h("span", { class: "sub member-contact-email", title: r.persons.email ?? "No Email" }, r.persons.email ?? "No Email"),
+              h("span", {
+                class: "sub member-contact-email",
+                title: r.persons.email ?? "No Email",
+              }, r.persons.email ?? "No Email"),
             ),
         },
         {
@@ -1376,7 +1439,10 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             return h(
               "div",
               { class: "member-table-stack" },
-              badge(rank ? label.name : "Unranked", rank ? "success" : "neutral"),
+              badge(
+                rank ? label.name : "Unranked",
+                rank ? "success" : "neutral",
+              ),
               label.band
                 ? h("span", { class: "sub member-rank-band" }, label.band)
                 : null,
