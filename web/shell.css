@@ -6265,7 +6265,7 @@ body[data-admin-view="true"] .admin-brand {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 24px;
+  padding: 16px 24px;
   margin: 0 -16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
