@@ -4,7 +4,7 @@
 import { attachPagePattern, h, icon } from "./ui.js";
 import { MEMBER_SHORTCUTS } from "./lib/member-shortcuts.js";
 import { memberMenuHidden } from "./lib/member-menu.js";
-import { isAdminAccount } from "./lib/permissions.js";
+import { isAdminAccount, isScannerAccount } from "./lib/permissions.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 
 // Each entry uses the access rule of its own route, so a user sees exactly the pages they can open.
@@ -304,7 +304,8 @@ export function createShell(
   const wide = globalThis.matchMedia?.("(min-width: 901px)");
   wide?.addEventListener?.("change", () => draw(lastPath));
   const viewOf = (path) =>
-    isAdminAccount() || path === "/admin" || path.startsWith("/admin/") ||
+    isAdminAccount() || isScannerAccount() || path === "/admin" ||
+      path.startsWith("/admin/") ||
       (["/profile", "/password", "/pending"].includes(path) &&
         lastView === "admin")
       ? "admin"
@@ -327,6 +328,7 @@ export function createShell(
           ) {
             return false;
           }
+          if (isScannerAccount() && n.path !== "/checkin") return false;
           if (n.onlyGate && n.onlyGate !== gate) return false;
           if (gate && !n.gated) return false;
           if (view === "member" && memberMenuHidden(n.path)) return false;
@@ -446,7 +448,10 @@ export function createShell(
     document.body.dataset.adminView = String(sidePanel);
     const brand = document.querySelector(".admin-brand");
     if (brand) {
-      brand.setAttribute("href", isAdminPath ? "#/admin" : "#/");
+      brand.setAttribute(
+        "href",
+        isScannerAccount() ? "#/checkin" : isAdminPath ? "#/admin" : "#/",
+      );
       const small = brand.querySelector("small");
       if (small) {
         small.textContent = isAdminPath ? "Administration" : "Member Area";
@@ -608,7 +613,7 @@ export function createShell(
           })
           : null;
         const switchTab = signedIn && !state.gate && canOpenAdmin() &&
-            !isAdminAccount()
+            !isAdminAccount() && !isScannerAccount()
           ? tab({
             label: viewOf(path) === "admin" ? "Member View" : "Admin Console",
             detail: viewOf(path) === "admin"
@@ -862,7 +867,8 @@ export function createShell(
     const view = viewOf(path);
     const groups = visibleGroups(state, view, sidePanel);
     // Staff can move between their own member home and the admin console.
-    const viewSwitch = !state.gate && canOpenAdmin() && !isAdminAccount()
+    const viewSwitch = !state.gate && canOpenAdmin() && !isAdminAccount() &&
+        !isScannerAccount()
       ? h(
         "div",
         { class: "view-switch", role: "group", "aria-label": "Switch View" },

@@ -17,6 +17,7 @@ import {
   canAny,
   checkAccess,
   clearAuth,
+  isScannerAccount,
   setAuth,
 } from "../../web/lib/permissions.js";
 import { createSession } from "../../web/lib/session.js";
@@ -494,4 +495,30 @@ Deno.test("session: the club's idle setting replaces the default, and a bad valu
     "signed_in",
     "no setting: the 30 minute default",
   );
+});
+
+Deno.test("permissions: a scanner account holds bookings.checkin and nothing else", () => {
+  setAuth({
+    signedIn: true,
+    grants: [{ code: "bookings.checkin", unit_id: null }],
+  });
+  assert.equal(isScannerAccount(), true);
+  setAuth({
+    signedIn: true,
+    grants: [
+      { code: "bookings.checkin", unit_id: null },
+      { code: "bookings.read_all", unit_id: null },
+    ],
+  });
+  assert.equal(isScannerAccount(), false, "front desk is not a scanner");
+  setAuth({
+    signedIn: true,
+    grants: [{ code: "bookings.checkin" }],
+    gate: "password_change",
+  });
+  assert.equal(isScannerAccount(), false, "held at a gate");
+  setAuth({ signedIn: true, grants: [] });
+  assert.equal(isScannerAccount(), false);
+  clearAuth();
+  assert.equal(isScannerAccount(), false);
 });

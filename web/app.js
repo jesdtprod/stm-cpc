@@ -14,6 +14,7 @@ import {
   checkAccess,
   clearAuth,
   isAdminAccount,
+  isScannerAccount,
   onAuthChange,
   setAuth,
 } from "./lib/permissions.js";
@@ -96,6 +97,8 @@ const memberMenuLive = createMemberMenuLive({
 });
 // A signed-in member on a page the admin hid from the member menu goes home. Admin accounts keep every page.
 // Convenience only: the page's data stays guarded by the database.
+// A check-in scanner sees the Check-in page, and its own account pages, only.
+const SCANNER_PAGES = ["/checkin", "/profile", "/password"];
 const menuHiddenHere = (path) =>
   session.getState().status === "signed_in" && !isAdminAccount() &&
   memberMenuHidden(path);
@@ -369,7 +372,9 @@ const router = start(main, {
   notFound: notFoundPage,
   forbidden: forbiddenPage,
   check: (access) =>
-    menuHiddenHere(currentPath())
+    isScannerAccount() && !SCANNER_PAGES.includes(currentPath())
+      ? { redirect: "#/checkin" }
+      : menuHiddenHere(currentPath())
       ? { redirect: "#/" }
       : checkAccess(access, GATE_PAGES),
 });

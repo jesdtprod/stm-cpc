@@ -372,6 +372,7 @@ const ADMIN_SHORTCUTS = [
 ];
 
 function quickTools(mode = "admin") {
+  if (mode === "admin") return null;
   const tools = (mode === "admin" ? ADMIN_SHORTCUTS : MEMBER_SHORTCUTS).filter((
     s,
   ) =>

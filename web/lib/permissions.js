@@ -36,6 +36,11 @@ export function can(code, { unitId = null } = {}) {
 /** The club administrator account: it works in the admin console only (roles.manage is held by the admin role alone). */
 export const isAdminAccount = () => can("roles.manage");
 
+/** A check-in scanner account: its only permission is bookings.checkin, so it sees the Check-in page and nothing else. */
+export const isScannerAccount = () =>
+  signedIn && !gate && grants.length > 0 &&
+  grants.every((g) => g.code === "bookings.checkin");
+
 export const canAny = (codes, options) => codes.some((c) => can(c, options));
 
 /**
