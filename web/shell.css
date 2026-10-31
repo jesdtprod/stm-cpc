@@ -4299,7 +4299,8 @@ body:not([data-landing="true"]) .app-shell > main:has(.auth-page) {
   pointer-events: none;
 }
 @media (max-width: 900px) {
-  body[data-member-view="true"] .mobile-bottom-nav {
+  body[data-member-view="true"] .mobile-bottom-nav,
+  body[data-admin-view="true"] .mobile-bottom-nav {
     display: block;
     position: fixed;
     inset: auto max(16px, env(safe-area-inset-right, 0px))
@@ -4313,7 +4314,8 @@ body:not([data-landing="true"]) .app-shell > main:has(.auth-page) {
     box-shadow: none;
     z-index: 1100;
   }
-  body[data-member-view="true"] main {
+  body[data-member-view="true"] main,
+  body[data-admin-view="true"] main {
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
   }
   .assistive-nav-toggle {
@@ -6221,9 +6223,13 @@ body[data-auth-page="true"] main::-webkit-scrollbar {
   display: none;
 }
 
-body[data-admin-view="true"] .app-header,
-body[data-admin-view="true"] .mobile-bottom-nav {
+body[data-admin-view="true"] .app-header {
   display: none;
+}
+@media (min-width: 901px) {
+  body[data-admin-view="true"] .mobile-bottom-nav {
+    display: none;
+  }
 }
 
 body[data-admin-view="true"] .app-shell {

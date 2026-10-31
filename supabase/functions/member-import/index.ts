@@ -185,6 +185,12 @@ const deps: Deps = {
       p_display_name: displayName,
       p_auth_user_id: authUserId,
     }),
+  createScanner: (memberNo, displayName, authUserId) =>
+    rpc<string>("create_scanner_member", {
+      p_member_no: memberNo,
+      p_display_name: displayName,
+      p_auth_user_id: authUserId,
+    }),
   adminResetTarget: async (memberNo) =>
     (await rpc<string | null>("admin_reset_target", {
       p_member_no: memberNo,

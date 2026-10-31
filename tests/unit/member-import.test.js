@@ -247,6 +247,7 @@ function world(over = {}) {
     begun: [],
     finished: [],
     admins: [],
+    scanners: [],
     passwordSets: [],
     resets: [],
     logs: [],
@@ -336,6 +337,11 @@ function world(over = {}) {
     createAdmin: (no, name, uid) => {
       if (over.adminExists) return Promise.reject(new Error("dup"));
       s.admins.push({ no, name, uid });
+      return Promise.resolve("MEMID");
+    },
+    createScanner: (no, name, uid) => {
+      if (over.adminExists) return Promise.reject(new Error("dup"));
+      s.scanners.push({ no, name, uid });
       return Promise.resolve("MEMID");
     },
     adminResetTarget: (no) =>
@@ -645,6 +651,38 @@ Deno.test("import: the first admin is created once, and the password is returned
   });
   assert.equal(again.status, 409, "the Auth user already exists");
   assert.equal(JSON.stringify(again.body).includes("Adm1n"), false);
+});
+
+Deno.test("import: a scanner account is created once, with the password returned once", async () => {
+  const { deps, s } = world();
+  const r = await run(deps, {
+    action: "create_scanner",
+    member_no: "CPC-2026-90001",
+    display_name: "Court Scanner",
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.ok, true);
+  assert.equal(r.body.member_no, "CPC-2026-90001");
+  assert.deepEqual(s.scanners[0], {
+    no: "CPC-2026-90001",
+    name: "Court Scanner",
+    uid: "uid-1",
+  });
+  assert.equal(s.admins.length, 0, "a scanner is never an admin");
+  assert.equal(
+    (await run(world().deps, {
+      action: "create_scanner",
+      member_no: "bad",
+      display_name: "x",
+    })).status,
+    400,
+  );
+  const dup = await run(world({ adminExists: true }).deps, {
+    action: "create_scanner",
+    member_no: "CPC-2026-90001",
+    display_name: "Court Scanner",
+  });
+  assert.equal(dup.status, 409);
 });
 
 Deno.test("import: if the admin rows fail, the Auth user is removed", async () => {

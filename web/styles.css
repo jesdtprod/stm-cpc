@@ -5175,18 +5175,21 @@ dialog.modal:has(.court-pass-ticket) .modal-foot .btn { width: 100%; }
 .qr-svg { width: min(260px, 70vw); height: auto; border-radius: 10px; border: 1px solid var(--border, #d0d5dd); }
 .checkin-page .dash-hero-sub, .checkin-page .card-subtitle { white-space: normal; }
 .checkin-workspace { padding: 0; overflow: hidden; }
-.checkin-layout { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.4fr); }
-.checkin-scanner { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s4); padding: var(--s6); text-align: center; background: var(--surface-2); border-right: 1px solid var(--border); }
+.checkin-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.checkin-scanner { display: flex; flex-direction: column; align-items: stretch; gap: var(--s4); padding: var(--s6); background: var(--surface-2); border-right: 1px solid var(--border); min-width: 0; }
 .checkin-scanner h2, .checkin-entry h2 { font-size: 20px; line-height: 1.3; margin: 0; }
-.checkin-scanner > .sub { max-width: 300px; margin: 0; }
-.checkin-scan-frame { display: grid; place-items: center; width: 112px; height: 112px; border: 1px dashed var(--accent); border-radius: var(--r-card); color: var(--accent); background: var(--surface); }
+.checkin-scanner > .sub { margin: 0; }
+.checkin-scan-frame { display: grid; place-items: center; width: min(100%, 240px); aspect-ratio: 1; align-self: center; border: 1px solid var(--border); border-radius: var(--r-card); color: var(--accent); background: var(--surface); }
 .checkin-scan-frame .icon { width: 56px; height: 56px; }
-.checkin-scan-frame { position: relative; overflow: hidden; transition: width .2s ease, height .2s ease; }
-.checkin-scan-frame.is-live { width: min(100%, 320px); height: min(100vw - 96px, 320px); aspect-ratio: 1; background: #000; }
+.checkin-scan-frame { position: relative; overflow: hidden; }
+.checkin-scan-frame.is-live { background: #000; }
 .checkin-scan-frame.is-live > .icon { display: none; }
 .checkin-scan-frame .checkin-video { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; border-radius: 0; }
-.checkin-scan-frame.is-live::after { content: ""; position: absolute; inset: 18%; border: 2px solid var(--accent); border-radius: 12px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); pointer-events: none; }
-.checkin-entry { display: flex; flex-direction: column; justify-content: center; gap: var(--s4); min-width: 0; padding: var(--s6); }
+.checkin-scan-frame::after { content: ""; position: absolute; inset: 18%; border: 2px solid var(--accent); border-radius: 12px; pointer-events: none; }
+.checkin-scan-frame.is-live::after { box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); }
+.checkin-entry { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; padding: var(--s6); }
+.checkin-entry > .checkin-manual { margin-block: auto; padding-block: var(--s5); }
+.checkin-scanner > .btn { width: 100%; }
 .checkin-entry-head { display: flex; align-items: center; gap: var(--s3); }
 .checkin-entry > .sub { margin: 0; }
 .checkin-layout .sub { color: var(--muted); font-size: 12px; line-height: 1.5; }
@@ -5206,14 +5209,10 @@ dialog.modal:has(.court-pass-ticket) .modal-foot .btn { width: 100%; }
 .checkin-manual { display: flex; flex-direction: column; gap: var(--s4); }
 .checkin-manual .field { flex: 1; min-width: 0; }
 .checkin-manual > .btn { width: 100%; }
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .checkin-layout { grid-template-columns: minmax(0, 1fr); }
-  .checkin-scanner { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--s3); text-align: left; border-right: 0; border-bottom: 1px solid var(--border); padding: var(--s5); }
-  .checkin-scanner > h2 { font-size: 18px; }
-  .checkin-scanner > .sub { grid-column: 2; }
-  .checkin-scanner > .btn, .checkin-scanner > video { grid-column: 1 / -1; width: 100%; }
+  .checkin-scanner { border-right: 0; border-bottom: 1px solid var(--border); padding: var(--s5); }
   .checkin-entry { padding: var(--s5); }
-  .checkin-scan-frame { width: 48px; height: 48px; grid-row: span 2; align-self: start; }
-  .checkin-scan-frame.is-live { grid-column: 1 / -1; grid-row: auto; width: 100%; height: auto; justify-self: center; max-width: 320px; }
-  .checkin-scan-frame .icon { width: 28px; height: 28px; }
+  .checkin-scan-frame { width: min(100%, 220px); }
+  .checkin-entry > .checkin-manual { padding-block: var(--s2); }
 }

@@ -228,13 +228,27 @@ export function createCheckinPages({ api }) {
           h(
             "section",
             { class: "checkin-scanner", "aria-label": "Scan a booking QR" },
-            frame,
-            h("h2", {}, "Scan. Confirm. Play."),
+            h(
+              "div",
+              { class: "checkin-entry-head" },
+              h(
+                "span",
+                { class: "badge-icon", "aria-hidden": "true" },
+                icon("qrScan"),
+              ),
+              h(
+                "div",
+                {},
+                h("div", { class: "eyebrow" }, "Camera check-in"),
+                h("h2", {}, "Scan booking QR"),
+              ),
+            ),
             h(
               "p",
               { class: "sub" },
               "Point your camera at the member's booking QR to check them in.",
             ),
+            frame,
             button({
               label: "Scan with camera",
               icon: "qrScan",
@@ -258,8 +272,8 @@ export function createCheckinPages({ api }) {
               h(
                 "div",
                 {},
-                h("div", { class: "eyebrow" }, "Court access"),
-                h("h2", { id: "checkin-entry-title" }, "Booking Check-in"),
+                h("div", { class: "eyebrow" }, "Manual check-in"),
+                h("h2", { id: "checkin-entry-title" }, "Enter booking code"),
               ),
             ),
             h(

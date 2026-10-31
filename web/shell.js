@@ -476,7 +476,8 @@ export function createShell(
 
     // Render mobile floating bottom navbar
     if (mobileNav) {
-      if (isMemberView) {
+      // The floating menu shows on the member side and, on a phone, on the admin side too (the side panel hides it on a computer).
+      if (isMemberView || isAdminPath) {
         mobileNav.hidden = false;
         const isHome = path === "/" || path === "";
         const isBooking = path === "/booking";

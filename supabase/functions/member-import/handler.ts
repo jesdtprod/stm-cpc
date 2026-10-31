@@ -97,6 +97,11 @@ export interface Deps {
     displayName: string,
     authUserId: string,
   ) => Promise<string>;
+  createScanner: (
+    memberNo: string,
+    displayName: string,
+    authUserId: string,
+  ) => Promise<string>;
   /** The Auth user of an active admin with this member number; null for anyone else. */
   adminResetTarget: (memberNo: string) => Promise<string | null>;
   setAuthPassword: (authUserId: string, password: string) => Promise<boolean>;
@@ -475,6 +480,37 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
       deps.log("admin.created");
       // The one place a password leaves this function: once, to the script that files it away.
+      return json(200, { ok: true, member_no: memberNo, password });
+    }
+
+    case "create_scanner": {
+      // A staff account that can only check members in (role "scanner"). Same handling as create_admin.
+      const memberNo = body.member_no;
+      const name = body.display_name;
+      if (
+        typeof memberNo !== "string" || !ID_PATTERN.test(memberNo) ||
+        typeof name !== "string" || name.trim().length < 2 || name.length > 120
+      ) {
+        return json(400, { ok: false, code: "bad_request" });
+      }
+      const password = deps.randomPassword();
+      const created = await deps.createAuthUser(
+        internalEmail(memberNo),
+        password,
+      );
+      if (!created.ok) {
+        return json(409, {
+          ok: false,
+          code: created.reason === "exists" ? "already_exists" : "auth_failed",
+        });
+      }
+      try {
+        await deps.createScanner(memberNo, name.trim(), created.id);
+      } catch {
+        await deps.deleteAuthUser(created.id).catch(() => {});
+        return json(409, { ok: false, code: "already_exists" });
+      }
+      deps.log("scanner.created");
       return json(200, { ok: true, member_no: memberNo, password });
     }
 
