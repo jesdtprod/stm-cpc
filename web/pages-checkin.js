@@ -1,7 +1,15 @@
 // Court check-in by QR (staff with bookings.checkin). A scanned QR opens "#/checkin?b=<booking id>", which checks the
 // booking in at once; scan_check_in refuses it outside the booking's own time range. The page can also scan with the
 // camera (where the browser supports it) or take a pasted code.
-import { adminHero, attachPagePattern, button, card, h, toast } from "./ui.js";
+import {
+  adminHero,
+  attachPagePattern,
+  button,
+  card,
+  h,
+  icon,
+  toast,
+} from "./ui.js";
 import { formatDateTime } from "./lib/dates.js";
 import { bookingIdFromScan } from "./lib/qr.js";
 import { bookingMessage } from "./pages-booking.js";
@@ -20,6 +28,13 @@ export function createCheckinPages({ api }) {
       muted: "",
       hidden: true,
     });
+    // The dashed square at the top: shows the scan icon, and the live camera while scanning.
+    const frame = h(
+      "div",
+      { class: "checkin-scan-frame", "aria-hidden": "true" },
+      icon("qrScan"),
+      video,
+    );
     let stream = null;
     let busy = false;
 
@@ -27,8 +42,23 @@ export function createCheckinPages({ api }) {
       result.hidden = false;
       result.className = `checkin-result is-${tone}`;
       result.replaceChildren(
-        h("strong", {}, title),
-        ...lines.map((l) => h("p", { class: "sub" }, l)),
+        h(
+          "span",
+          { class: "checkin-result-icon", "aria-hidden": "true" },
+          icon(
+            tone === "success"
+              ? "checkCircle"
+              : tone === "danger"
+              ? "alertCircle"
+              : "info",
+          ),
+        ),
+        h(
+          "div",
+          { class: "checkin-result-copy" },
+          h("strong", {}, title),
+          ...lines.map((l) => h("p", { class: "sub" }, l)),
+        ),
       );
     }
 
@@ -36,13 +66,14 @@ export function createCheckinPages({ api }) {
       stream?.getTracks().forEach((t) => t.stop());
       stream = null;
       video.hidden = true;
+      frame.classList.remove("is-live");
     }
 
     async function checkIn(raw) {
       const id = bookingIdFromScan(raw);
       if (!id) {
-        return show("danger", "Not a booking QR code", [
-          "Scan the QR shown on the member's booking.",
+        return show("danger", "Not a booking code", [
+          "Scan the member's QR or type the booking code, like BK-2026-00001.",
         ]);
       }
       if (busy) return;
@@ -74,11 +105,21 @@ export function createCheckinPages({ api }) {
         ]);
       }
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+        } catch (e) {
+          // No rear camera (a laptop, say): take whichever camera there is.
+          if (!["OverconstrainedError", "NotFoundError"].includes(e?.name)) {
+            throw e;
+          }
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+        video.muted = true;
         video.srcObject = stream;
         video.hidden = false;
+        frame.classList.add("is-live");
         await video.play();
         // The browser's detector where it exists; otherwise the bundled jsQR reads each video frame.
         const detector = "BarcodeDetector" in globalThis
@@ -107,10 +148,20 @@ export function createCheckinPages({ api }) {
           setTimeout(() => requestAnimationFrame(tick), 120);
         };
         tick();
-      } catch {
+      } catch (e) {
         stopCamera();
+        const why = {
+          NotAllowedError:
+            "Camera access is blocked. Click the camera icon in the address bar, allow it, then try again.",
+          SecurityError:
+            "Camera access is blocked. Click the camera icon in the address bar, allow it, then try again.",
+          NotFoundError: "No camera was found on this device.",
+          NotReadableError:
+            "The camera is being used by another app. Close it and try again.",
+        }[e?.name] ?? `The camera failed (${e?.name ?? "unknown"}).`;
         show("danger", "The camera could not be opened", [
-          "Allow camera access, or paste the code below.",
+          why,
+          "You can still type the booking code.",
         ]);
       }
     }
@@ -119,7 +170,7 @@ export function createCheckinPages({ api }) {
       class: "input",
       id: "checkin-code",
       type: "text",
-      placeholder: "Paste the scanned code",
+      placeholder: "Booking code, e.g. BK-2026-00001",
       "aria-label": "Scanned code",
       autocomplete: "off",
     });
@@ -136,7 +187,7 @@ export function createCheckinPages({ api }) {
       h(
         "div",
         { class: "field" },
-        h("label", { for: "checkin-code" }, "Booking QR code"),
+        h("label", { for: "checkin-code" }, "Booking code or QR link"),
         input,
         h(
           "p",
@@ -144,7 +195,12 @@ export function createCheckinPages({ api }) {
           "Paste the booking link or code from the member's QR.",
         ),
       ),
-      button({ label: "Check In", icon: "qrScan", type: "submit" }),
+      button({
+        label: "Check In",
+        icon: "checkCircle",
+        variant: "primary",
+        type: "submit",
+      }),
     );
 
     const hash = location.hash.split("?")[1] ?? "";
@@ -163,18 +219,64 @@ export function createCheckinPages({ api }) {
         title: "Check-in",
         description:
           "Scan a booking QR. It works only between the start and end of the booking.",
-        actions: [
-          button({
-            label: "Scan with camera",
-            icon: "qrScan",
-            onClick: startCamera,
-          }),
-        ],
       }),
       card({
-        title: "Booking Check-in",
-        subtitle: "Scan with your camera or enter a booking code below.",
-        content: h("div", { class: "checkin-content" }, video, form, result),
+        className: "checkin-workspace",
+        content: h(
+          "div",
+          { class: "checkin-layout" },
+          h(
+            "section",
+            { class: "checkin-scanner", "aria-label": "Scan a booking QR" },
+            frame,
+            h("h2", {}, "Scan. Confirm. Play."),
+            h(
+              "p",
+              { class: "sub" },
+              "Point your camera at the member's booking QR to check them in.",
+            ),
+            button({
+              label: "Scan with camera",
+              icon: "qrScan",
+              onClick: startCamera,
+            }),
+          ),
+          h(
+            "section",
+            {
+              class: "checkin-entry",
+              "aria-labelledby": "checkin-entry-title",
+            },
+            h(
+              "div",
+              { class: "checkin-entry-head" },
+              h(
+                "span",
+                { class: "badge-icon", "aria-hidden": "true" },
+                icon("qrScan"),
+              ),
+              h(
+                "div",
+                {},
+                h("div", { class: "eyebrow" }, "Court access"),
+                h("h2", { id: "checkin-entry-title" }, "Booking Check-in"),
+              ),
+            ),
+            h(
+              "p",
+              { class: "sub" },
+              "Have a booking code? Enter it below to confirm arrival.",
+            ),
+            form,
+            result,
+            h(
+              "p",
+              { class: "checkin-note sub" },
+              icon("info"),
+              "Check-in is available only during the booked time slot.",
+            ),
+          ),
+        ),
       }),
     );
     attachPagePattern(root);

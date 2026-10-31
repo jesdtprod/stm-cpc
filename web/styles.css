@@ -4839,7 +4839,7 @@ p.member-id,
 
 /* QR court pass and staff check-in */
 dialog.modal:has(.court-pass-ticket) {
-  width: min(420px, calc(100vw - 24px));
+  width: min(460px, calc(100vw - 24px));
 }
 dialog.modal:has(.court-pass-ticket) .modal-head {
   padding: 16px 20px;
@@ -4855,10 +4855,10 @@ dialog.modal:has(.court-pass-ticket) .modal-foot {
   display: flex;
   flex-direction: column;
   background: linear-gradient(165deg, rgba(16, 42, 30, 0.9) 0%, rgba(9, 23, 17, 0.96) 100%);
-  border: 1px solid rgba(223, 183, 86, 0.28);
+  border: 1px solid rgba(223, 183, 86, 0.34);
   border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   position: relative;
 }
 
@@ -4887,7 +4887,7 @@ dialog.modal:has(.court-pass-ticket) .modal-foot {
 }
 
 .court-pass-brand {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -4917,7 +4917,7 @@ dialog.modal:has(.court-pass-ticket) .modal-foot {
   border-radius: 50%;
   background: #22c55e;
   box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-  animation: courtPassPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: none;
 }
 
 @keyframes courtPassPulse {
@@ -4934,7 +4934,7 @@ dialog.modal:has(.court-pass-ticket) .modal-foot {
 }
 
 .court-pass-court-name {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: -0.015em;
@@ -4954,7 +4954,7 @@ dialog.modal:has(.court-pass-ticket) .modal-foot {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: var(--accent, #dfb756);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -5040,7 +5040,7 @@ dialog.modal:has(.court-pass-ticket) .modal-foot {
   height: 18px;
   background: var(--surface, #0d1e15);
   transform: translateY(-50%);
-  border: 1px solid rgba(223, 183, 86, 0.28);
+  border: 1px solid rgba(223, 183, 86, 0.34);
   z-index: 1;
 }
 
@@ -5165,21 +5165,55 @@ dialog.modal:has(.court-pass-ticket) .modal-foot {
   flex-shrink: 0;
 }
 
+dialog.modal:has(.court-pass-ticket) .modal-foot .btn { width: 100%; }
+@media (max-width: 480px) {
+  .court-pass-meta-row, .court-pass-title-row { flex-wrap: wrap; }
+  .court-pass-court-name, .court-pass-tile-val { white-space: normal; }
+}
+
 .qr-ticket { display: grid; justify-items: center; gap: 8px; text-align: center; }
 .qr-svg { width: min(260px, 70vw); height: auto; border-radius: 10px; border: 1px solid var(--border, #d0d5dd); }
-.checkin-content { display: grid; gap: var(--s4); }
 .checkin-page .dash-hero-sub, .checkin-page .card-subtitle { white-space: normal; }
+.checkin-workspace { padding: 0; overflow: hidden; }
+.checkin-layout { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.4fr); }
+.checkin-scanner { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s4); padding: var(--s6); text-align: center; background: var(--surface-2); border-right: 1px solid var(--border); }
+.checkin-scanner h2, .checkin-entry h2 { font-size: 20px; line-height: 1.3; margin: 0; }
+.checkin-scanner > .sub { max-width: 300px; margin: 0; }
+.checkin-scan-frame { display: grid; place-items: center; width: 112px; height: 112px; border: 1px dashed var(--accent); border-radius: var(--r-card); color: var(--accent); background: var(--surface); }
+.checkin-scan-frame .icon { width: 56px; height: 56px; }
+.checkin-scan-frame { position: relative; overflow: hidden; transition: width .2s ease, height .2s ease; }
+.checkin-scan-frame.is-live { width: min(100%, 320px); height: min(100vw - 96px, 320px); aspect-ratio: 1; background: #000; }
+.checkin-scan-frame.is-live > .icon { display: none; }
+.checkin-scan-frame .checkin-video { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; border-radius: 0; }
+.checkin-scan-frame.is-live::after { content: ""; position: absolute; inset: 18%; border: 2px solid var(--accent); border-radius: 12px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); pointer-events: none; }
+.checkin-entry { display: flex; flex-direction: column; justify-content: center; gap: var(--s4); min-width: 0; padding: var(--s6); }
+.checkin-entry-head { display: flex; align-items: center; gap: var(--s3); }
+.checkin-entry > .sub { margin: 0; }
+.checkin-layout .sub { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.checkin-entry-head .eyebrow { margin-bottom: var(--s1); }
+.checkin-note { display: flex; align-items: flex-start; gap: var(--s2); border-top: 1px solid var(--border); padding-top: var(--s4); }
+.checkin-note .icon { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
 .checkin-video { width: 100%; max-width: 640px; border-radius: var(--r-control); justify-self: center; }
-.checkin-result { display: grid; gap: var(--s1); padding: var(--s4); border-radius: var(--r-control); border: 1px solid var(--border); background: var(--surface-2); }
+.checkin-result { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s4); border-radius: var(--r-control); border: 1px solid var(--border); background: var(--surface-2); }
+.checkin-result-icon { display: flex; color: var(--muted); padding-top: 2px; }
+.checkin-result-copy { display: grid; gap: var(--s1); min-width: 0; overflow-wrap: anywhere; }
+.checkin-result.is-success .checkin-result-icon { color: var(--success); }
+.checkin-result.is-danger .checkin-result-icon { color: var(--danger); }
 .checkin-result[hidden], .checkin-video[hidden] { display: none; }
 .checkin-result p { margin: 0; }
 .checkin-result.is-success { border-color: var(--success); }
 .checkin-result.is-danger { border-color: var(--danger); }
-.checkin-manual { display: flex; align-items: flex-start; gap: var(--s3); }
+.checkin-manual { display: flex; flex-direction: column; gap: var(--s4); }
 .checkin-manual .field { flex: 1; min-width: 0; }
-.checkin-manual > .btn { margin-top: 24px; flex-shrink: 0; }
+.checkin-manual > .btn { width: 100%; }
 @media (max-width: 640px) {
-  .checkin-manual { flex-direction: column; }
-  .checkin-manual .field, .checkin-manual > .btn { width: 100%; }
-  .checkin-manual > .btn { margin-top: 0; }
+  .checkin-layout { grid-template-columns: minmax(0, 1fr); }
+  .checkin-scanner { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--s3); text-align: left; border-right: 0; border-bottom: 1px solid var(--border); padding: var(--s5); }
+  .checkin-scanner > h2 { font-size: 18px; }
+  .checkin-scanner > .sub { grid-column: 2; }
+  .checkin-scanner > .btn, .checkin-scanner > video { grid-column: 1 / -1; width: 100%; }
+  .checkin-entry { padding: var(--s5); }
+  .checkin-scan-frame { width: 48px; height: 48px; grid-row: span 2; align-self: start; }
+  .checkin-scan-frame.is-live { grid-column: 1 / -1; grid-row: auto; width: 100%; height: auto; justify-self: center; max-width: 320px; }
+  .checkin-scan-frame .icon { width: 28px; height: 28px; }
 }

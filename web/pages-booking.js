@@ -30,7 +30,7 @@ import {
   timeLabel,
 } from "./lib/slot-grid.js";
 import { ulid } from "./lib/ulid.js";
-import { checkinLink, qrSvg } from "./lib/qr.js";
+import { checkinLink, downloadBlob, qrSvg, ticketJpgBlob } from "./lib/qr.js";
 
 const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 const PROOF_TYPES = [
@@ -1396,9 +1396,25 @@ export function createBookingPages({ api, client, session }) {
         tone: "success",
         size: "sm",
         description: "Show this to the person in charge of the court.",
-        confirmLabel: null,
+        confirmLabel: "Save as Image",
         cancelLabel: "Close",
         body: ticket,
+        onConfirm: async () => {
+          try {
+            const blob = await ticketJpgBlob({
+              court: r.court_name_snapshot,
+              ref: r.doc_no,
+              date: dateText,
+              time: timeText,
+              link: checkinLink(r.id),
+            });
+            downloadBlob(blob, `court-pass-${r.doc_no}.jpg`);
+            toast("Court pass saved as an image.", { tone: "success" });
+          } catch {
+            toast("The image could not be saved.", { tone: "danger" });
+          }
+          return false;
+        },
       });
     }
 
