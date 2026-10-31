@@ -4836,3 +4836,350 @@ p.member-id,
   border-radius: 10px;
   background: rgba(16, 185, 129, 0.08);
 }
+
+/* QR court pass and staff check-in */
+dialog.modal:has(.court-pass-ticket) {
+  width: min(420px, calc(100vw - 24px));
+}
+dialog.modal:has(.court-pass-ticket) .modal-head {
+  padding: 16px 20px;
+}
+dialog.modal:has(.court-pass-ticket) .modal-body {
+  padding: 14px 18px 16px;
+}
+dialog.modal:has(.court-pass-ticket) .modal-foot {
+  padding: 12px 18px;
+}
+
+.court-pass-ticket {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(165deg, rgba(16, 42, 30, 0.9) 0%, rgba(9, 23, 17, 0.96) 100%);
+  border: 1px solid rgba(223, 183, 86, 0.28);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.court-pass-ticket::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #10b981 0%, #dfb756 50%, #10b981 100%);
+}
+
+.court-pass-card-head {
+  padding: 16px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.court-pass-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.court-pass-brand {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent, #dfb756);
+  opacity: 0.95;
+}
+
+.court-pass-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.court-pass-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: courtPassPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes courtPassPulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+.court-pass-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.court-pass-court-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.015em;
+  margin: 0;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.court-pass-ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--accent, #dfb756);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.court-pass-ref-chip:hover {
+  background: rgba(223, 183, 86, 0.15);
+  border-color: rgba(223, 183, 86, 0.35);
+  color: #ffffff;
+}
+
+.court-pass-ref-chip .icon {
+  width: 12px;
+  height: 12px;
+  opacity: 0.75;
+}
+
+.court-pass-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.court-pass-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  min-width: 0;
+}
+
+.court-pass-tile-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2, rgba(255, 255, 255, 0.65));
+}
+
+.court-pass-tile-label .icon {
+  width: 11px;
+  height: 11px;
+  color: var(--accent, #dfb756);
+  flex-shrink: 0;
+}
+
+.court-pass-tile-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.court-pass-tear {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 18px;
+  margin: 0 -1px;
+}
+
+.court-pass-tear-line {
+  width: 100%;
+  height: 1px;
+  border-top: 1.5px dashed rgba(223, 183, 86, 0.22);
+}
+
+.court-pass-notch {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 18px;
+  background: var(--surface, #0d1e15);
+  transform: translateY(-50%);
+  border: 1px solid rgba(223, 183, 86, 0.28);
+  z-index: 1;
+}
+
+.court-pass-notch.is-left {
+  left: -7px;
+  border-radius: 0 9px 9px 0;
+  border-left: none;
+}
+
+.court-pass-notch.is-right {
+  right: -7px;
+  border-radius: 9px 0 0 9px;
+  border-right: none;
+}
+
+.court-pass-qr-bay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 16px 16px;
+  gap: 10px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.court-pass-qr-frame {
+  position: relative;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.court-pass-qr-frame .qr-svg {
+  width: min(180px, 46vw);
+  height: auto;
+  border: none;
+  border-radius: 4px;
+  display: block;
+}
+
+.court-pass-qr-target {
+  position: absolute;
+  inset: -5px;
+  pointer-events: none;
+}
+
+.court-pass-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--accent, #dfb756);
+  border-style: solid;
+}
+
+.court-pass-corner.tl {
+  top: 0;
+  left: 0;
+  border-width: 2.5px 0 0 2.5px;
+  border-top-left-radius: 5px;
+}
+
+.court-pass-corner.tr {
+  top: 0;
+  right: 0;
+  border-width: 2.5px 2.5px 0 0;
+  border-top-right-radius: 5px;
+}
+
+.court-pass-corner.bl {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 2.5px 2.5px;
+  border-bottom-left-radius: 5px;
+}
+
+.court-pass-corner.br {
+  bottom: 0;
+  right: 0;
+  border-width: 0 2.5px 2.5px 0;
+  border-bottom-right-radius: 5px;
+}
+
+.court-pass-scan-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, #dfb756);
+  letter-spacing: 0.02em;
+}
+
+.court-pass-scan-hint .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.court-pass-validity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--text-2, rgba(255, 255, 255, 0.7));
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  width: 100%;
+}
+
+.court-pass-validity .icon {
+  width: 13px;
+  height: 13px;
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+.qr-ticket { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.qr-svg { width: min(260px, 70vw); height: auto; border-radius: 10px; border: 1px solid var(--border, #d0d5dd); }
+.checkin-content { display: grid; gap: var(--s4); }
+.checkin-page .dash-hero-sub, .checkin-page .card-subtitle { white-space: normal; }
+.checkin-video { width: 100%; max-width: 640px; border-radius: var(--r-control); justify-self: center; }
+.checkin-result { display: grid; gap: var(--s1); padding: var(--s4); border-radius: var(--r-control); border: 1px solid var(--border); background: var(--surface-2); }
+.checkin-result[hidden], .checkin-video[hidden] { display: none; }
+.checkin-result p { margin: 0; }
+.checkin-result.is-success { border-color: var(--success); }
+.checkin-result.is-danger { border-color: var(--danger); }
+.checkin-manual { display: flex; align-items: flex-start; gap: var(--s3); }
+.checkin-manual .field { flex: 1; min-width: 0; }
+.checkin-manual > .btn { margin-top: 24px; flex-shrink: 0; }
+@media (max-width: 640px) {
+  .checkin-manual { flex-direction: column; }
+  .checkin-manual .field, .checkin-manual > .btn { width: 100%; }
+  .checkin-manual > .btn { margin-top: 0; }
+}

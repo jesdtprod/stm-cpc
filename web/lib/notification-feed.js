@@ -48,7 +48,7 @@ export function createNotificationFeed({ client, api, toast, onOpen }) {
             title: n.title,
             actionLabel: n.url ? "Open" : undefined,
             onAction: n.url ? () => onOpen?.(n) : undefined,
-            timeout: 8000,
+            timeout: 30_000,
           });
         },
       )

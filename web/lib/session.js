@@ -177,7 +177,17 @@ export function createSession({
     });
     const { data } = await auth.getSession();
     if (data?.session) {
-      const { grants, profile, access = null } = await loadAccess();
+      let loaded;
+      try {
+        loaded = await loadAccess();
+      } catch (e) {
+        // A saved session the server no longer accepts must not trap the app on the startup error.
+        if (e?.kind !== "session_expired") throw e;
+        await auth.signOut({ scope: "local" }).catch(() => {});
+        await localSignOut("expired");
+        return state;
+      }
+      const { grants, profile, access = null } = loaded;
       lastAuthAt = -Infinity; // a restored session is not "fresh": sensitive actions ask for the password again
       lastActivity = now();
       emit({

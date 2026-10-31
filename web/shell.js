@@ -47,6 +47,7 @@ const GROUPS = [
     items: [
       { path: "/admin/courts", label: "Courts", icon: "grid" },
       { path: "/admin/bookings", label: "Bookings", icon: "calendar" },
+      { path: "/checkin", label: "Check-in", icon: "qrScan" },
       { path: "/admin/payments", label: "Payments", icon: "currency" },
     ],
   },
@@ -148,7 +149,6 @@ export function createShell(
     }
   }
   globalThis.addEventListener("scroll", updateHeaderScroll, { passive: true });
-
 
   // ---- mobile drawer
   function setDrawer(open) {

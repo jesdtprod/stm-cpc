@@ -31,6 +31,7 @@ import { createAdminPages } from "./pages-admin.js";
 import { ADMIN_CODES, createHomePages } from "./pages-home.js";
 import { createBookingPages } from "./pages-booking.js";
 import { createBookingAdminPages } from "./pages-bookings-admin.js";
+import { createCheckinPages } from "./pages-checkin.js";
 import { createCategoriesPages } from "./pages-categories.js";
 import { createCourtsPages } from "./pages-courts.js";
 import { createEventsPages } from "./pages-events.js";
@@ -51,6 +52,7 @@ import {
   changePassword,
   memberLogin,
   memberSignup,
+  membershipApplicationsOpen,
 } from "./lib/auth-api.js";
 import { renderTurnstile } from "./lib/turnstile.js";
 
@@ -201,8 +203,10 @@ const accountPages = createAccountPages({
 // Check membership availability before leaving the page for any signup link.
 document.addEventListener("click", (event) => {
   const link = event.target.closest?.('a[href="#/signup"]');
-  if (!link || event.defaultPrevented || event.button !== 0 ||
-    event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  if (
+    !link || event.defaultPrevented || event.button !== 0 ||
+    event.ctrlKey || event.metaKey || event.shiftKey || event.altKey
+  ) return;
   event.preventDefault();
   void accountPages.requestSignup();
 });
@@ -318,6 +322,10 @@ route("/bookings", () => bookingPages.myBookingsPage(), "My Bookings", {
 const bookingAdminPages = createBookingAdminPages({ api, client });
 route("/admin/bookings", () => bookingAdminPages.bookingsPage(), "Bookings", {
   any: ["bookings.approve", "bookings.read_all", "bookings.checkin"],
+});
+const checkinPages = createCheckinPages({ api });
+route("/checkin", () => checkinPages.checkinPage(), "Check-in", {
+  permission: "bookings.checkin",
 });
 route("/admin/payments", () => bookingAdminPages.paymentsPage(), "Payments", {
   any: ["payments.verify", "payments.void"],

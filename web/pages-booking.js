@@ -19,8 +19,7 @@ import {
   selectControl,
   tableFilter,
   toast,
-} from "./ui.js";
-import { businessDate, formatDateTime } from "./lib/dates.js";
+import { businessDate, formatDate, formatDateTime } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 import {
   buildSlots,
@@ -30,6 +29,7 @@ import {
   timeLabel,
 } from "./lib/slot-grid.js";
 import { ulid } from "./lib/ulid.js";
+import { checkinLink, qrSvg } from "./lib/qr.js";
 
 const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 const PROOF_TYPES = [
@@ -1271,8 +1271,148 @@ export function createBookingPages({ api, client, session }) {
       });
     }
 
+    function qrModal(r) {
+      const x = range(r);
+      const dateText = x ? formatDate(x.start) : "—";
+      const timeText = x ? `${timeLabel(x.start)} – ${timeLabel(x.end)}` : "—";
+
+      const copyRef = async () => {
+        try {
+          await navigator.clipboard.writeText(r.doc_no);
+          toast("Booking reference copied", { tone: "success" });
+        } catch {
+          toast(r.doc_no, { tone: "info" });
+        }
+      };
+
+      const ticket = h(
+        "div",
+        { class: "court-pass-ticket" },
+        h(
+          "div",
+          { class: "court-pass-card-head" },
+          h(
+            "div",
+            { class: "court-pass-meta-row" },
+            h("span", { class: "court-pass-brand" }, "Capitol Pickleball Club"),
+            h(
+              "span",
+              { class: "court-pass-status-pill" },
+              h("span", { class: "court-pass-pulse", "aria-hidden": "true" }),
+              "Confirmed Pass",
+            ),
+          ),
+          h(
+            "div",
+            { class: "court-pass-title-row" },
+            h(
+              "h3",
+              { class: "court-pass-court-name" },
+              r.court_name_snapshot,
+            ),
+            h(
+              "button",
+              {
+                class: "court-pass-ref-chip",
+                type: "button",
+                title: "Copy booking reference",
+                "aria-label": `Copy booking reference ${r.doc_no}`,
+                onClick: copyRef,
+              },
+              h("span", { class: "court-pass-ref-text" }, r.doc_no),
+              icon("copy"),
+            ),
+          ),
+          h(
+            "div",
+            { class: "court-pass-grid" },
+            h(
+              "div",
+              { class: "court-pass-tile" },
+              h(
+                "span",
+                { class: "court-pass-tile-label" },
+                icon("calendar"),
+                "Date",
+              ),
+              h("span", { class: "court-pass-tile-val" }, dateText),
+            ),
+            h(
+              "div",
+              { class: "court-pass-tile" },
+              h(
+                "span",
+                { class: "court-pass-tile-label" },
+                icon("clock"),
+                "Time Slot",
+              ),
+              h("span", { class: "court-pass-tile-val" }, timeText),
+            ),
+          ),
+        ),
+        h(
+          "div",
+          { class: "court-pass-tear", "aria-hidden": "true" },
+          h("span", { class: "court-pass-notch is-left" }),
+          h("div", { class: "court-pass-tear-line" }),
+          h("span", { class: "court-pass-notch is-right" }),
+        ),
+        h(
+          "div",
+          { class: "court-pass-qr-bay" },
+          h(
+            "div",
+            { class: "court-pass-qr-frame" },
+            h(
+              "div",
+              { class: "court-pass-qr-target", "aria-hidden": "true" },
+              h("span", { class: "court-pass-corner tl" }),
+              h("span", { class: "court-pass-corner tr" }),
+              h("span", { class: "court-pass-corner bl" }),
+              h("span", { class: "court-pass-corner br" }),
+            ),
+            qrSvg(checkinLink(r.id), { label: `Check-in QR for ${r.doc_no}` }),
+          ),
+          h(
+            "div",
+            { class: "court-pass-scan-hint" },
+            icon("qrScan"),
+            h("span", {}, "Point at scanner or show to attendant"),
+          ),
+          h(
+            "div",
+            { class: "court-pass-validity" },
+            icon("checkCircle"),
+            h("span", {}, "Valid only during your booked time slot"),
+          ),
+        ),
+      );
+
+      openModal({
+        title: "Court Pass",
+        eyebrow: r.doc_no,
+        icon: "qrCode",
+        tone: "success",
+        size: "sm",
+        description: "Show this to the person in charge of the court.",
+        confirmLabel: null,
+        cancelLabel: "Close",
+        body: ticket,
+      });
+    }
+
     function actionsFor(r) {
       const buttons = [];
+      const span = range(r);
+      if (r.status === "confirmed" && span && span.end.getTime() > Date.now()) {
+        buttons.push(
+          iconButton({
+            label: `Show check-in QR for ${r.doc_no}`,
+            icon: "qrCode",
+            onClick: () => qrModal(r),
+          }),
+        );
+      }
       const open = ["pending_approval", "confirmed"].includes(r.status);
       if (open && Number(r.price_snapshot) > 0 && remaining(r) > 0) {
         buttons.push(

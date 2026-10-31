@@ -98,7 +98,8 @@ export function button(
     class: extraClass,
   },
 ) {
-  const cls = [buttonClasses({ variant, size }), extraClass].filter(Boolean).join(" ");
+  const cls = [buttonClasses({ variant, size }), extraClass].filter(Boolean)
+    .join(" ");
 
   const iconEl = iconName ? icon(iconName) : null;
   const children = iconPosition === "right" ? [label, iconEl] : [iconEl, label];
@@ -1936,11 +1937,17 @@ export function calendarDropdown(
 
         if (amBtn) {
           amBtn.classList.toggle("is-selected", selectedPeriod === "AM");
-          amBtn.setAttribute("aria-checked", selectedPeriod === "AM" ? "true" : "false");
+          amBtn.setAttribute(
+            "aria-checked",
+            selectedPeriod === "AM" ? "true" : "false",
+          );
         }
         if (pmBtn) {
           pmBtn.classList.toggle("is-selected", selectedPeriod === "PM");
-          pmBtn.setAttribute("aria-checked", selectedPeriod === "PM" ? "true" : "false");
+          pmBtn.setAttribute(
+            "aria-checked",
+            selectedPeriod === "PM" ? "true" : "false",
+          );
         }
 
         if (hoursCol) {
@@ -2725,7 +2732,9 @@ const ADMIN_HERO_DATE = new Intl.DateTimeFormat("en-PH", {
  * the page title (the focus target for route changes), a short description and the page's primary actions.
  * `chip` is the status chip text, for example "Courts Management".
  */
-export function adminHero({ title, description, chip, actions = [], roleLabel = "Admin Console" }) {
+export function adminHero(
+  { title, description, chip, actions = [], roleLabel = "Admin Console" },
+) {
   return h(
     "section",
     { class: "dash-hero is-admin", "aria-label": title },
@@ -2989,12 +2998,18 @@ export function dataTable(
   },
 ) {
   const cols = schema.columns.map(tableColumn);
-  const primaryColumn = cols.find((column) =>
-    /^(name|member|player|team|event|division|when|change)$/.test(column.key)
-  ) ?? cols.find((column) => !column.actions);
-  const mobileKind = (column) => column.actions ? "actions"
-    : column === primaryColumn ? "primary"
-    : /^(status|state)$/.test(column.key) ? "status" : "detail";
+  const primaryColumn =
+    cols.find((column) =>
+      /^(name|member|player|team|event|division|when|change)$/.test(column.key)
+    ) ?? cols.find((column) => !column.actions);
+  const mobileKind = (column) =>
+    column.actions
+      ? "actions"
+      : column === primaryColumn
+      ? "primary"
+      : /^(status|state)$/.test(column.key)
+      ? "status"
+      : "detail";
   const actions = schema.actions ?? [];
   const cls = `tbl cols-${cols.length}${
     actions.length ? ` act-${actions.length}` : ""
@@ -3163,11 +3178,22 @@ export function dataTable(
         if (c.render) content = c.render(r);
         else if (c.kind === "money") content = PHP.format(r[c.key]);
         else content = r[c.key];
-        if (c === primaryColumn && !content?.querySelector?.(".member-avatar, .avatar-lg")) {
-          const symbol = /rank|leaderboard/i.test(ariaLabel ?? "") ? "medal"
-            : /event|division|match|bracket/i.test(ariaLabel ?? "") ? "trophy" : "clock";
-          content = h("div", { class: "mobile-record-identity" },
-            h("span", { class: "member-avatar is-icon mobile-record-icon", "aria-hidden": "true" }, icon(symbol)),
+        if (
+          c === primaryColumn &&
+          !content?.querySelector?.(".member-avatar, .avatar-lg")
+        ) {
+          const symbol = /rank|leaderboard/i.test(ariaLabel ?? "")
+            ? "medal"
+            : /event|division|match|bracket/i.test(ariaLabel ?? "")
+            ? "trophy"
+            : "clock";
+          content = h(
+            "div",
+            { class: "mobile-record-identity" },
+            h("span", {
+              class: "member-avatar is-icon mobile-record-icon",
+              "aria-hidden": "true",
+            }, icon(symbol)),
             h("div", { class: "mobile-record-summary" }, content),
           );
         }
@@ -3225,7 +3251,9 @@ export function dataTable(
     "aria-label": ariaLabel ?? "Data Table",
     tabindex: "0",
   }, table);
-  if (!searchable && pageSize <= 0) return h("div", { class: "data-grid" }, scroll);
+  if (!searchable && pageSize <= 0) {
+    return h("div", { class: "data-grid" }, scroll);
+  }
 
   let saved = searchState ? tableSearches.get(searchState) : null;
   if (searchState && !saved) {
@@ -3270,7 +3298,8 @@ export function dataTable(
   );
   body.append(empty);
   function applySearch() {
-    const mobile = globalThis.matchMedia?.("(max-width: 720px)").matches ?? false;
+    const mobile = globalThis.matchMedia?.("(max-width: 720px)").matches ??
+      false;
     const visiblePageSize = mobile ? 0 : pageSize;
     const terms = normalize(search.value).trim().split(/\s+/).filter(Boolean);
     const matches = records.filter((record) =>
@@ -3350,7 +3379,13 @@ export function dataTable(
 
 /** Footer with the visible range and total; never shows "1–0". */
 export function pagination(
-  { page = 1, pageSize = DEFAULT_PAGE_SIZE, total, onPage, compactMobile = false },
+  {
+    page = 1,
+    pageSize = DEFAULT_PAGE_SIZE,
+    total,
+    onPage,
+    compactMobile = false,
+  },
 ) {
   if (total <= 0) return h("div", { class: "pager", hidden: true });
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -3524,7 +3559,8 @@ export function openModal(
     try {
       let formData;
       try {
-        formData = typeof HTMLFormElement !== "undefined" && form instanceof HTMLFormElement
+        formData = typeof HTMLFormElement !== "undefined" &&
+            form instanceof HTMLFormElement
           ? new FormData(form)
           : new FormData();
       } catch {
@@ -3780,13 +3816,17 @@ export function toast(
     title,
     actionLabel,
     onAction,
-    timeout = 5000,
+    timeout,
   } = {},
 ) {
   const toastContainer = document.getElementById("toasts");
-  const sentenceCase = (text) => typeof text === "string"
-    ? text.replace(/^(\s*)([a-z])/, (_, space, first) => space + first.toUpperCase())
-    : text;
+  const sentenceCase = (text) =>
+    typeof text === "string"
+      ? text.replace(
+        /^(\s*)([a-z])/,
+        (_, space, first) => space + first.toUpperCase(),
+      )
+      : text;
   const iconName = tone === "success"
     ? "checkCircle"
     : tone === "error"
@@ -3854,10 +3894,12 @@ export function toast(
     document.body.append(el);
   }
 
-  if (timeout > 0 && !actionLabel) {
+  // A toast with an action stays until used or closed, unless the caller sets a timeout.
+  const hideAfter = timeout ?? (actionLabel ? 0 : 5000);
+  if (hideAfter > 0) {
     setTimeout(() => {
       if (el.parentNode) dismiss();
-    }, timeout);
+    }, hideAfter);
   }
   return el;
 }
@@ -4563,7 +4605,9 @@ export function attachPagePattern(page) {
 export function setupConvexPatternCanvas(canvas, containerEl, watermarkEl) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return () => {};
-  const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
+  const reducedMotion = globalThis.matchMedia?.(
+    "(prefers-reduced-motion: reduce)",
+  );
 
   const STEP = 60;
   const RADIUS = 180;
