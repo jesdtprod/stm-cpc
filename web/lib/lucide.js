@@ -1,6 +1,16 @@
 // Lucide icons (https://lucide.dev, ISC licence, lucide-static 0.468.0), self-hosted.
 // Each entry is a list of [tag, attributes] drawn on a 24x24 grid with stroke="currentColor".
 export const LUCIDE = {
+  userCircle: [
+    ["circle", { "cx": "12", "cy": "12", "r": "10" }],
+    ["circle", { "cx": "12", "cy": "8", "r": "3" }],
+    ["path", { "d": "M6 20v-1a6 6 0 0 1 12 0v1" }],
+  ],
+  pause: [
+    ["rect", { "x": "6", "y": "4", "width": "4", "height": "16", "rx": "1" }],
+    ["rect", { "x": "14", "y": "4", "width": "4", "height": "16", "rx": "1" }],
+  ],
+  play: [["polygon", { "points": "6 3 20 12 6 21 6 3" }]],
   home: [["path", { "d": "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" }], [
     "path",
     {

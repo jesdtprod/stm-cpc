@@ -14412,3 +14412,230 @@ body .public-page-hero .public-header-logo {
   padding-top: 16px;
   border-top: 1px solid var(--border);
 }
+
+/* Dedicated court desk: no sidebar offset in layout or the shared pattern. */
+body:has(.checkin-page) .dashboard-pattern { inset: 0; width: 100%; height: 100dvh; }
+body .checkin-page { max-width: none; width: 100%; margin: 0; padding: 24px; min-height: 100dvh; }
+body:has(.checkin-page) .app-shell { grid-template-columns: minmax(0, 1fr); }
+body .checkin-page .checkin-workspace { padding: 0; margin: 0; width: 100%; max-width: none; }
+.checkin-page .checkin-grid { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); }
+.checkin-page .checkin-scan-frame { width: 100%; aspect-ratio: 1; max-height: none; align-self: center; container-type: size; }
+.checkin-court-board { display: grid; gap: 16px; min-width: 0; }
+.checkin-court-board > .sub { margin: 0; }
+.checkin-court-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.checkin-court-card { display: flex; flex-direction: column; gap: 16px; padding: 20px; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); }
+.checkin-court-card.is-occupied { border-color: var(--success); }
+.checkin-court-heading { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.checkin-court-card h3 { margin: 0; font-size: 17px; }
+.checkin-court-card p { margin: 0; overflow-wrap: anywhere; }
+.checkin-court-booking { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.checkin-court-booking strong { font-size: 14px; }
+.checkin-court-label { text-transform: uppercase; font-size: 10px; font-weight: 600; letter-spacing: .06em; }
+.checkin-court-next { margin-top: auto; }
+.checkin-board-error { grid-column: 1 / -1; display: grid; justify-items: start; gap: 12px; padding: 24px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
+@media (max-width: 1000px) { .checkin-court-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 840px) {
+  body .checkin-page { padding: 16px; }
+  .checkin-page .checkin-grid { grid-template-columns: minmax(0, 1fr); }
+  .checkin-court-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .checkin-court-card { padding: 16px; }
+}
+@media (max-width: 540px) { .checkin-court-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Compact court queue: one checked-in booking and two incoming reservations. */
+.checkin-court-card { padding: 16px; gap: 14px; }
+.checkin-court-heading { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.checkin-court-identity { display: flex; align-items: center; gap: 10px; }
+.checkin-court-card h3 { font-size: 15px; line-height: 1.4; }
+.checkin-court-number { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--accent); font-size: 12px; font-weight: 700; }
+.checkin-court-queue { display: grid; gap: 8px; }
+.checkin-queue-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.checkin-queue-row.is-ongoing:not(.is-empty) { border-color: var(--success); }
+.checkin-queue-number { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); color: var(--text-2); font-size: 10px; font-weight: 600; }
+.checkin-queue-row.is-ongoing:not(.is-empty) .checkin-queue-number { color: var(--success); border-color: var(--success); }
+.checkin-queue-content { display: grid; gap: 4px; min-width: 0; }
+.checkin-queue-content strong { font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.checkin-queue-content > .sub:last-child { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+.checkin-queue-content .icon { width: 13px; height: 13px; flex: none; }
+.checkin-queue-row.is-empty { background: transparent; }
+.checkin-queue-row.is-empty strong { color: var(--text-2); font-weight: 400; font-size: 12px; }
+
+.checkin-scanner-panel > .checkin-manual-panel { padding: 16px; box-shadow: none; background: var(--surface-2); }
+.checkin-manual-panel h2 { margin: 0; font-size: 18px; }
+.checkin-manual-panel > .sub { margin: 0; font-size: 12px; line-height: 1.6; }
+.checkin-manual-form { align-items: flex-end; gap: var(--s3); }
+.checkin-manual-form > .field { flex: 1; min-width: 0; margin: 0; }
+.checkin-manual-form > .btn { flex: none; }
+.checkin-result-slot[hidden] { display: none; }
+@media (max-width: 840px) {
+  .checkin-scanner-panel > .checkin-manual-panel { padding: 16px; }
+  .checkin-manual-form { align-items: stretch; }
+}
+
+/* Shared member/admin notification anatomy. Keep message content out of the header row. */
+.notifications-page .notice-list { gap: 12px; min-width: 0; }
+.notifications-page .notice-list > li { min-width: 0; }
+.notifications-page .notice-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 18px;
+  grid-template-areas: "icon heading action" ". message message";
+  align-items: start;
+  gap: 10px 14px;
+  width: 100%;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  box-shadow: none;
+  transform: none;
+  transition: background-color .18s ease, border-color .18s ease;
+}
+.notifications-page .notice-card.is-unread { background: var(--surface-2); border-color: var(--accent); }
+.notifications-page .notice-card:hover { background: var(--surface-2); border-color: var(--accent); box-shadow: none; transform: none; }
+.notifications-page .notice-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.notifications-page .notice-avatar { grid-area: icon; }
+.notifications-page .notice-content { grid-area: heading; display: block; min-width: 0; width: 100%; text-align: left; }
+.notifications-page .notice-header { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
+.notifications-page .notice-title { display: block; width: 100%; min-width: 0; color: var(--text); font-size: 14px; font-weight: 700; line-height: 1.5; text-align: left; white-space: normal; overflow-wrap: break-word; word-break: normal; }
+.notifications-page .notice-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 10px; margin: 0; }
+.notifications-page .notice-time { font-size: 11px; font-weight: 400; line-height: 1.5; color: var(--text-2); text-align: left; white-space: normal; }
+.notifications-page .notice-state { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); font-size: 11px; font-weight: 600; }
+.notifications-page .notice-state::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.notifications-page .notice-unread-dot { display: none; }
+.notifications-page .notice-arrow { grid-area: action; align-self: center; margin: 0; }
+.notifications-page .notice-body { grid-area: message; margin: 0; min-width: 0; font-size: 13px; line-height: 1.6; text-align: left; color: var(--text-2); overflow-wrap: anywhere; }
+.notifications-page .notice-details-grid { grid-area: message; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 18px; min-width: 0; margin: 2px 0 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; text-align: left; }
+.notifications-page .notice-detail-col { align-items: flex-start; gap: 5px; }
+.notifications-page .notice-detail-label { color: var(--text-2); font-size: 10px; font-weight: 600; }
+.notifications-page .notice-detail-val { color: var(--text); font-size: 13px; font-weight: 500; line-height: 1.5; }
+.notifications-page .notice-detail-col.is-reference { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.notifications-page .reference-code { max-width: 100%; font-size: 11px; font-weight: 400; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 820px) {
+  .notifications-page .notice-details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .notifications-page .notice-detail-col.is-event, .notifications-page .notice-detail-col.is-division-wide { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) {
+  .notifications-page .notice-card { grid-template-columns: 36px minmax(0, 1fr); grid-template-areas: "icon heading" "message message"; padding: 14px; gap: 12px 10px; }
+  .notifications-page .notice-title { font-size: 13px; }
+  .notifications-page .notice-body { font-size: 12px; }
+  .notifications-page .notice-details-grid { gap: 12px; }
+  .notifications-page .notice-detail-val { font-size: 12px; }
+  .notifications-page .notice-arrow { display: none; }
+}
+
+/* Desktop: scanner and court overview share the same top edge. */
+@media (min-width: 1024px) {
+  body .app-shell .page.checkin-page {
+    display: grid;
+    grid-template-columns: minmax(360px, min(34%, 480px)) minmax(0, 1fr);
+    grid-template-rows: auto;
+    align-items: start;
+    align-content: start;
+    gap: var(--s4);
+  }
+  body .checkin-page .checkin-workspace,
+  body .checkin-page .checkin-grid { display: contents; }
+  .checkin-page .checkin-scanner-panel { grid-column: 1; grid-row: 1; min-width: 0; }
+  .checkin-page .checkin-console-panel { grid-column: 2; grid-row: 1; min-width: 0; }
+}
+
+.checkin-scanner-panel > .checkin-card-head { align-items: center; flex-wrap: wrap; gap: 12px; }
+.checkin-scanner-panel .checkin-head-lead { min-width: 0; }
+.checkin-scanner-panel .checkin-head-lead h1 { margin: 0; font-size: 18px; line-height: 1.4; }
+.checkin-scanner-actions { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+
+/* Desktop kiosk: size both columns to the viewport, including check-in results. */
+@media (min-width: 1024px) {
+  html:has(.checkin-page), body:has(.checkin-page) { height: 100dvh; overflow: hidden; }
+  body .app-shell .page.checkin-page { height: 100dvh; min-height: 0; padding: 16px; grid-template-rows: minmax(0, 1fr); align-items: stretch; align-content: stretch; }
+  .checkin-page .checkin-scanner-panel { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; height: 100%; min-height: 0; padding: 16px; gap: 12px; }
+  .checkin-page .checkin-scanner-panel:has(> .checkin-result-slot:not([hidden])) { grid-template-rows: auto auto minmax(0, 1fr) auto auto; }
+  .checkin-scanner-panel > .sub { margin: 0; font-size: 12px; line-height: 1.5; }
+  .checkin-page .checkin-scan-frame { width: 100%; height: 100%; max-width: 100%; min-height: 0; aspect-ratio: auto; justify-self: stretch; align-self: stretch; }
+  .checkin-scanner-panel > .checkin-manual-panel { padding: 16px; gap: 12px; }
+  .checkin-manual-panel > .sub { font-size: 11px; }
+  .checkin-manual-panel .badge-icon { width: 32px; height: 32px; }
+  .checkin-manual-panel h2 { font-size: 16px; }
+  .checkin-page .checkin-console-panel { height: 100%; min-height: 0; }
+  .checkin-court-board { height: 100%; min-height: 0; grid-template-rows: auto auto minmax(0, 1fr); gap: 12px; }
+  .checkin-court-grid { min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .checkin-court-card { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; padding: 12px; gap: 10px; }
+  .checkin-court-card:has(> p) { grid-template-rows: auto auto minmax(0, 1fr); }
+  .checkin-court-heading { gap: 6px; }
+  .checkin-court-card h3 { font-size: 14px; }
+  .checkin-court-number { width: 28px; height: 28px; }
+  .checkin-court-queue { min-height: 0; grid-template-rows: minmax(64px, 1.35fr) repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .checkin-queue-row { min-height: 0; padding: 8px; gap: 8px; align-items: center; }
+  .checkin-queue-content { width: 100%; gap: 3px; }
+  .checkin-queue-content strong { max-width: 100%; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .checkin-queue-content > .sub:last-child { font-size: 10px; }
+  .checkin-status-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); padding: 12px; gap: 8px 12px; box-shadow: none; }
+  .checkin-status-top { grid-column: 1 / -1; }
+  .checkin-member-hero { gap: 8px; }
+  .checkin-member-avatar { width: 28px; height: 28px; }
+  .checkin-member-name { margin: 0; font-size: 14px; }
+  .checkin-data-grid { gap: 6px; }
+  .checkin-data-tile { padding: 6px; }
+  .checkin-tile-value, .checkin-tile-time { font-size: 11px; }
+  .checkin-error-info, .checkin-error-footer, .checkin-sk-head, .checkin-sk-grid { grid-column: 1 / -1; }
+  .checkin-status-card.is-danger { gap: 6px; }
+  .checkin-error-info h3 { font-size: 14px; margin-bottom: 4px; }
+  .checkin-error-info .sub, .checkin-error-footer { font-size: 11px; }
+}
+
+/* Ongoing is the focal row; incoming reservations stay visually secondary. */
+.checkin-court-queue .checkin-queue-row:not(.is-ongoing) { background: transparent; }
+.checkin-court-queue .checkin-queue-row.is-ongoing { padding: 6px 10px; background: var(--surface-2); border-color: var(--accent); border-inline-start-width: 3px; }
+.checkin-court-queue .checkin-queue-row.is-ongoing:not(.is-empty) { background: color-mix(in srgb, var(--success) 14%, var(--surface)); }
+.checkin-queue-row.is-ongoing .checkin-court-label { color: var(--accent); font-size: 13px; font-weight: 700; }
+.checkin-queue-row.is-ongoing .checkin-queue-content strong { font-size: 14px; line-height: 1.4; }
+.checkin-court-queue .checkin-queue-row.is-ongoing .checkin-queue-number { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 700; }
+.checkin-queue-row.is-ongoing:not(.is-empty) .checkin-queue-content strong { color: var(--text); font-weight: 700; }
+
+/* Match the verification panel width while keeping a square decoding guide. */
+.checkin-page .checkin-reticle-box { inset: auto; left: 50%; top: 50%; width: min(76cqw, 76cqh); height: auto; aspect-ratio: 1; transform: translate(-50%, -50%); }
+
+.checkin-court-queue .checkin-queue-row:not(.is-ongoing) { padding: 8px 10px; }
+@media (min-width: 1024px) {
+  .checkin-court-queue .checkin-queue-row:not(.is-ongoing) { padding: 6px 8px; }
+  .checkin-queue-row:not(.is-ongoing) .checkin-queue-content { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; }
+  .checkin-queue-row:not(.is-ongoing) .checkin-court-label { grid-column: 1 / -1; }
+  .checkin-queue-row:not(.is-ongoing) .checkin-queue-content > .sub:last-child { grid-column: 2; grid-row: 2; white-space: nowrap; }
+}
+
+/* Check-in placeholders reuse the populated card/row layout and shared shimmer. */
+.checkin-sk-name { width: 140px; max-width: 100%; height: 14px; }
+.checkin-sk-time { width: 88px; max-width: 100%; height: 10px; }
+.checkin-sk-status { width: 88px; height: 20px; border-radius: var(--r-full); flex: none; }
+.checkin-sk-label { width: 56px; max-width: 100%; height: 9px; }
+.checkin-sk-value { width: 120px; max-width: 100%; height: 14px; }
+.checkin-sk-confirmation { width: 150px; max-width: 60%; height: 20px; border-radius: var(--r-full); }
+.checkin-court-card.is-skeleton .checkin-queue-content strong { min-height: 1.4em; }
+.checkin-court-card.is-skeleton .checkin-sk-name { width: 70%; }
+.checkin-court-card.is-skeleton .checkin-sk-status { width: 88px; }
+.checkin-status-card.is-loading .checkin-member-meta { min-width: 0; display: grid; gap: 6px; }
+.checkin-status-card.is-loading .checkin-member-avatar { background: var(--surface-3); border-color: transparent; }
+
+.checkin-camera-loading { position: absolute; inset: 0; z-index: 1; }
+.checkin-camera-loading > .sk { width: 100%; height: 100%; border-radius: inherit; }
+.checkin-camera-loading[hidden] { display: none; }
+
+/* Mobile scanner controls follow the preview in three equal columns. */
+@media (max-width: 840px) {
+  body .checkin-page { padding: 12px; gap: 12px; }
+  .checkin-page .checkin-scanner-panel { display: grid; padding: 12px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "heading" "description" "camera" "controls" "manual"; }
+  .checkin-scanner-panel > .checkin-card-head { display: contents; }
+  .checkin-scanner-panel > .checkin-card-head > .checkin-head-lead { grid-area: heading; }
+  .checkin-scanner-panel > .sub { grid-area: description; margin: 0; }
+  .checkin-scanner-panel > .checkin-scan-frame { grid-area: camera; width: 100%; height: auto; aspect-ratio: 10 / 11; max-height: none; }
+  .checkin-scanner-panel .checkin-scanner-actions { grid-area: controls; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; margin: 0; }
+  .checkin-scanner-panel .checkin-scanner-actions > .btn { width: 100%; min-width: 0; height: 44px; min-height: 44px; }
+  .checkin-scanner-panel > .checkin-manual-panel { grid-area: manual; padding: 12px; }
+  .checkin-page :is(.checkin-grid, .checkin-console-panel, .checkin-court-board, .checkin-court-grid) { gap: 12px; }
+  .checkin-page .checkin-court-card { padding: 12px; gap: 12px; }
+  .checkin-scanner-panel > .checkin-result-slot { grid-column: 1; grid-row: 6; }
+}

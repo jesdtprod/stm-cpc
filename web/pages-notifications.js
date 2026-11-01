@@ -16,19 +16,33 @@ function notificationMeta(n) {
   if (text.includes("rank")) {
     return { iconName: "medal", tone: "accent" };
   }
-  if (text.includes("confirmed") || text.includes("approved") || text.includes("approval")) {
+  if (
+    text.includes("confirmed") || text.includes("approved") ||
+    text.includes("approval")
+  ) {
     return { iconName: "calendarCheck", tone: "success" };
   }
-  if (text.includes("declined") || text.includes("cancelled") || text.includes("rejected")) {
+  if (
+    text.includes("declined") || text.includes("cancelled") ||
+    text.includes("rejected")
+  ) {
     return { iconName: "alertCircle", tone: "danger" };
   }
-  if (text.includes("payment") || text.includes("fee") || text.includes("paid")) {
+  if (
+    text.includes("payment") || text.includes("fee") || text.includes("paid")
+  ) {
     return { iconName: "currency", tone: "info" };
   }
-  if (text.includes("draw") || text.includes("tournament") || text.includes("match") || text.includes("bracket")) {
+  if (
+    text.includes("draw") || text.includes("tournament") ||
+    text.includes("match") || text.includes("bracket")
+  ) {
     return { iconName: "trophy", tone: "accent" };
   }
-  if (text.includes("registration") || text.includes("event") || text.includes("roster")) {
+  if (
+    text.includes("registration") || text.includes("event") ||
+    text.includes("roster")
+  ) {
     return { iconName: "ticket", tone: "info" };
   }
   return { iconName: "inbox", tone: "neutral" };
@@ -60,7 +74,14 @@ function renderNoticeBody(body) {
   if (!details) {
     return h("p", { class: "notice-body sub" }, body);
   }
-  const ORDER = ["player", "partner", "division", "status", "event", "reference"];
+  const ORDER = [
+    "player",
+    "partner",
+    "division",
+    "status",
+    "event",
+    "reference",
+  ];
   const sorted = [...details].sort((a, b) => {
     const idxA = ORDER.indexOf(a.key.toLowerCase());
     const idxB = ORDER.indexOf(b.key.toLowerCase());
@@ -98,7 +119,8 @@ function renderNoticeBody(body) {
       }
 
       let colClass = "notice-detail-col";
-      if (isEvent) colClass += " is-event";
+      if (isRef) colClass += " is-reference";
+      else if (isEvent) colClass += " is-event";
       else if (isDivision && !hasPartner) colClass += " is-division-wide";
 
       return h(
@@ -178,13 +200,17 @@ export function createNotificationPages({ api, feed }) {
         descText = "Checking alert capability on this device...";
       } else if (!d.supported) {
         statusBadge = badge("Unavailable", "neutral");
-        descText = `${PUSH_MESSAGES[d.reason ?? "unsupported"]} Messages still appear in this app while open.`;
+        descText = `${
+          PUSH_MESSAGES[d.reason ?? "unsupported"]
+        } Messages still appear in this app while open.`;
       } else if (d.permission === "denied") {
         statusBadge = badge("Blocked", "warning");
-        descText = "Alerts are blocked in site settings. Enable notification permissions in your browser to get updates.";
+        descText =
+          "Alerts are blocked in site settings. Enable notification permissions in your browser to get updates.";
       } else if (d.registered) {
         statusBadge = badge("Active", "success");
-        descText = "This device receives instant push alerts for court bookings, rank changes, and tournament draws.";
+        descText =
+          "This device receives instant push alerts for court bookings, rank changes, and tournament draws.";
         actionBtn = button({
           label: "Turn Off Alerts",
           icon: "x",
@@ -202,7 +228,8 @@ export function createNotificationPages({ api, feed }) {
         });
       } else {
         statusBadge = badge("Disabled", "neutral");
-        descText = "Get instant push alerts for court bookings, approvals, payments, rank changes, and tournament match draws.";
+        descText =
+          "Get instant push alerts for court bookings, approvals, payments, rank changes, and tournament match draws.";
         actionBtn = button({
           label: "Enable Device Alerts",
           icon: "check",
@@ -241,7 +268,11 @@ export function createNotificationPages({ api, feed }) {
               h(
                 "div",
                 { class: "notice-device-head" },
-                h("h3", { class: "notice-device-title" }, "Alerts on This Device"),
+                h(
+                  "h3",
+                  { class: "notice-device-title" },
+                  "Alerts on This Device",
+                ),
                 statusBadge,
               ),
               h("p", { class: "notice-device-desc muted" }, descText),
@@ -295,7 +326,11 @@ export function createNotificationPages({ api, feed }) {
         { class: "notice-toolbar" },
         h(
           "div",
-          { class: "notice-tabs", role: "tablist", "aria-label": "Filter notifications" },
+          {
+            class: "notice-tabs",
+            role: "tablist",
+            "aria-label": "Filter notifications",
+          },
           h(
             "button",
             {
@@ -315,7 +350,9 @@ export function createNotificationPages({ api, feed }) {
             "button",
             {
               type: "button",
-              class: `notice-tab-btn${state.tab === "unread" ? " is-active" : ""}`,
+              class: `notice-tab-btn${
+                state.tab === "unread" ? " is-active" : ""
+              }`,
               role: "tab",
               "aria-selected": state.tab === "unread" ? "true" : "false",
               onClick: () => {
@@ -324,7 +361,13 @@ export function createNotificationPages({ api, feed }) {
               },
             },
             "Unread",
-            unread > 0 ? h("span", { class: "notice-tab-count is-unread" }, String(unread)) : null,
+            unread > 0
+              ? h(
+                "span",
+                { class: "notice-tab-count is-unread" },
+                String(unread),
+              )
+              : null,
           ),
         ),
         unread > 0
@@ -363,7 +406,10 @@ export function createNotificationPages({ api, feed }) {
                 },
                 h(
                   "div",
-                  { class: `notice-avatar is-${meta.tone}`, "aria-hidden": "true" },
+                  {
+                    class: `notice-avatar is-${meta.tone}`,
+                    "aria-hidden": "true",
+                  },
                   icon(meta.iconName),
                   !n.is_read ? h("span", { class: "notice-unread-dot" }) : null,
                 ),
@@ -374,9 +420,18 @@ export function createNotificationPages({ api, feed }) {
                     "div",
                     { class: "notice-header" },
                     h("strong", { class: "notice-title" }, n.title),
-                    h("span", { class: "notice-time" }, formatDateTime(n.created_at)),
+                    h(
+                      "div",
+                      { class: "notice-meta sub" },
+                      !n.is_read
+                        ? h("span", { class: "notice-state" }, "Unread")
+                        : null,
+                      h("time", {
+                        class: "notice-time",
+                        datetime: n.created_at,
+                      }, formatDateTime(n.created_at)),
+                    ),
                   ),
-                  renderNoticeBody(n.body),
                 ),
                 n.url
                   ? h(
@@ -385,6 +440,7 @@ export function createNotificationPages({ api, feed }) {
                     icon("chevronRight"),
                   )
                   : null,
+                renderNoticeBody(n.body),
               ),
             );
           }),

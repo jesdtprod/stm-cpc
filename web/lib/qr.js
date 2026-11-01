@@ -30,6 +30,22 @@ export function qrSvg(text, { label = "QR code", quiet = 2 } = {}) {
   return svg;
 }
 
+/** Process a visible QR once; re-arm it after a continuous absence. */
+export function createScanGate(absenceMs = 1000) {
+  let lastValue = null;
+  let lastSeenAt = 0;
+  return (value, now = Date.now()) => {
+    if (!value) {
+      if (now - lastSeenAt >= absenceMs) lastValue = null;
+      return false;
+    }
+    lastSeenAt = now;
+    if (value === lastValue) return false;
+    lastValue = value;
+    return true;
+  };
+}
+
 /** The booking id or code out of a scanned or typed value: the QR link "...#/checkin?b=<id>", a bare id, or "BK-YYYY-NNNNN". */
 export function bookingIdFromScan(value) {
   const text = String(value ?? "").trim();

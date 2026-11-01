@@ -32,6 +32,8 @@ import { createPublicPages } from "../../web/pages-public.js";
 import { selfAssessmentCard } from "../../web/member-self-assessment.js";
 import { createGuestEventActions } from "../../web/event-guests.js";
 import { bookingPage } from "../../web/pages.js";
+import { createCheckinPages } from "../../web/pages-checkin.js";
+import { createCheckinCourtBoard } from "../../web/lib/checkin-court-board.js";
 import { clearAuth, setAuth } from "../../web/lib/permissions.js";
 
 // Small DOM fixture for component events; rendered browser checks remain separate.
@@ -2986,4 +2988,94 @@ Deno.test("ranking modals: rank history, rating history and assess rating follow
 
     clearAuth();
     page.remove();
+  }));
+
+Deno.test("check-in skeleton: court layout stays stable through loading and populated states", () =>
+  withDom(async () => {
+    let resolve;
+    const pending = new Promise((done) => resolve = done);
+    const board = createCheckinCourtBoard({ api: { rpc: () => pending } });
+    const region = board.element.querySelector(".checkin-court-grid");
+    const cards = board.element.querySelectorAll(".checkin-court-card");
+    assert(cards.length === 4, "loading reserves all four court cards");
+    for (const card of cards) {
+      assert(
+        card.querySelectorAll(".checkin-queue-row").length === 4,
+        "every skeleton reserves ongoing and three incoming rows",
+      );
+      assert(
+        card.getAttribute("aria-busy") === "true",
+        "loading is announced as busy",
+      );
+      assert(
+        !card.textContent.includes("Not configured") &&
+          !card.textContent.includes("No reservation"),
+        "loading never claims an empty state",
+      );
+    }
+    assert(
+      board.element.querySelectorAll(".sk").every((node) =>
+        !node.getAttribute("style")
+      ),
+      "placeholder sizing works under the inline-style CSP",
+    );
+    const request = board.refresh();
+    assert(region.getAttribute("aria-busy") === "true");
+    resolve({
+      as_of: "2030-02-04T04:00:00Z",
+      courts: [1, 2, 3, 4].map((n) => ({
+        name: `Tennis Court ${n}`,
+        court_status: "available",
+        current_booking: null,
+        incoming_bookings: [],
+      })),
+    });
+    await request;
+    assert(
+      region.getAttribute("aria-busy") === "false",
+      "busy state clears after the response",
+    );
+    assert(board.element.querySelectorAll(".checkin-court-card").length === 4);
+    assert(
+      board.element.querySelectorAll(".checkin-queue-row").length === 16,
+      "loaded structure matches the skeleton",
+    );
+    assert(
+      board.element.querySelectorAll(".sk").length === 0,
+      "real data replaces the placeholders",
+    );
+  }));
+
+Deno.test("check-in skeleton: refused verification clears loading and restores manual check-in", () =>
+  withDom(async (document) => {
+    const keys = ["location", "queueMicrotask", "setTimeout", "addEventListener"];
+    const previous = Object.fromEntries(keys.map((key) => [key, globalThis[key]]));
+    try {
+      globalThis.location = { hash: "#/checkin" };
+      globalThis.queueMicrotask = () => {};
+      globalThis.setTimeout = () => 0;
+      globalThis.addEventListener = () => {};
+      document.getElementById = () => null;
+      let reject;
+      const pending = new Promise((_, fail) => reject = fail);
+      const page = createCheckinPages({ api: { rpc: () => pending, newKey: () => "FAKE-KEY" } }).checkinPage();
+      const input = page.querySelector("input");
+      input.value = "BK-2030-00001";
+      const form = page.querySelector("form");
+      const submit = [...form.listeners.get("submit")][0];
+      const request = submit(new Event("submit", { cancelable: true }));
+      const result = page.querySelector(".checkin-result-slot");
+      assert(!result.hidden && result.querySelector(".is-loading"), "verification starts with a skeleton");
+      reject(new Error("Too early: check-in opens at the start of the booking"));
+      await request;
+      assert(result.hidden && result.children.length === 0, "refusal leaves no skeleton or empty result panel");
+      assert(!form.querySelector("button").disabled, "manual retry remains available");
+      assert(input.value === "BK-2030-00001", "refused code is retained for correction");
+      assert(document.body.querySelector(".toast-error").textContent.includes("Too early"), "only the toast explains the refusal");
+    } finally {
+      for (const key of keys) {
+        if (previous[key] === undefined) delete globalThis[key];
+        else globalThis[key] = previous[key];
+      }
+    }
   }));

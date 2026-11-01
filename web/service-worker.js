@@ -1,7 +1,7 @@
 // App shell cache only. Bump CACHE on every release so activate removes the old one.
 // Only same-origin shell files are cached. Supabase and every other request
 // goes straight to the network, so no authenticated data ever reaches the cache.
-const CACHE = "cpc-shell-v407";
+const CACHE = "cpc-shell-v436";
 const LOCAL_DEV = ["localhost", "127.0.0.1"].includes(self.location.hostname);
 const SHELL = [
   "./",
@@ -72,6 +72,7 @@ const SHELL = [
   "vendor/jsqr-1.4.0.js",
   "lib/qr.js",
   "pages-checkin.js",
+  "lib/checkin-court-board.js",
   "config.js",
   "supabase-config.js",
   "manifest.webmanifest",

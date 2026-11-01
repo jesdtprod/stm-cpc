@@ -311,7 +311,7 @@ route("/admin/import", () => importPages.importPage(), "Member Import", {
 });
 
 const staffPages = createStaffPages({ api, client });
-route("/admin/staff", () => staffPages.staffPage(), "Staff and Roles", {
+route("/admin/staff", () => staffPages.staffPage(), "User Accounts", {
   permission: "roles.manage",
 });
 

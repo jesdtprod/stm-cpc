@@ -65,7 +65,7 @@ const GROUPS = [
     label: "Administration",
     view: "admin",
     items: [
-      { path: "/admin/staff", label: "Staff and Roles", icon: "user" },
+      { path: "/admin/staff", label: "User Accounts", icon: "user" },
       { path: "/admin/settings", label: "Settings", icon: "filter" },
     ],
   },

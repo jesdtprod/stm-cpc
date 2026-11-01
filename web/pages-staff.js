@@ -9,6 +9,7 @@ import {
   badge,
   button,
   dataTable,
+  field,
   h,
   icon,
   iconButton,
@@ -23,13 +24,24 @@ import { avatarImage } from "./lib/avatar.js";
 import { createStaffAccount } from "./lib/auth-api.js";
 
 const NEW_STAFF_ROLES = ["scanner", "referee", "front_desk", "manager"];
-const ASSIGNABLE = ["member", "referee", "front_desk", "manager", "admin"];
+const ASSIGNABLE = ["member", "editor", "referee", "front_desk", "manager", "admin"];
+const ROLE_LABELS = {
+  scanner: "Check-in Scanner",
+  referee: "Referee / Scorekeeper",
+  front_desk: "Front Desk",
+  manager: "Manager",
+  admin: "Admin",
+  editor: "Editor",
+  member: "Member",
+};
+const roleLabel = (code, fallback) => ROLE_LABELS[code] ?? fallback;
 const TONE = {
   admin: "danger",
   manager: "warning",
   front_desk: "info",
   scanner: "info",
   referee: "info",
+  editor: "info",
   member: "neutral",
 };
 
@@ -77,7 +89,10 @@ export function createStaffPages({ api, client }) {
           api.rpc("role_catalog"),
         ]);
         state.staff = staff ?? [];
-        state.roles = roles ?? [];
+        state.roles = (roles ?? []).map((r) => ({
+          ...r,
+          name: roleLabel(r.code, r.name),
+        }));
         state.status = "ready";
       } catch (e) {
         state.status = "error";
@@ -98,6 +113,15 @@ export function createStaffPages({ api, client }) {
     const roleSelect = (id, value) =>
       selectControl(
         { class: "input select-input", id, name: "role" },
+        ...(value === "scanner"
+          ? [
+            h(
+              "option",
+              { value: "scanner", selected: true, disabled: true },
+              ROLE_LABELS.scanner,
+            ),
+          ]
+          : []),
         ...roleOptions().map((r) =>
           h("option", { value: r.code, selected: r.code === value }, r.name)
         ),
@@ -188,7 +212,10 @@ export function createStaffPages({ api, client }) {
                 "div",
                 { class: "member-decision-name" },
                 h("strong", { class: "member-name" }, row.display_name),
-                badge(row.role_name, TONE[row.role_code] ?? "neutral"),
+                badge(
+                  roleLabel(row.role_code, row.role_name),
+                  TONE[row.role_code] ?? "neutral",
+                ),
               ),
               h(
                 "span",
@@ -234,6 +261,12 @@ export function createStaffPages({ api, client }) {
           error,
         ),
         onConfirm: async (form) => {
+          if (String(form.get("role")) === row.role_code) {
+            return showError(
+              error,
+              "Choose a different role to make a change.",
+            );
+          }
           if (String(form.get("reason") ?? "").trim().length < 3) {
             return showError(
               error,
@@ -261,67 +294,135 @@ export function createStaffPages({ api, client }) {
       const roles = NEW_STAFF_ROLES.filter((c) =>
         state.roles.some((r) => r.code === c)
       );
+      const passwordField = field({
+        id: "ns-password",
+        label: "First password",
+        type: "password",
+        required: true,
+        iconLeading: "keyRound",
+        placeholder: "At least 12 characters",
+        hint: "Share privately. They must change it at first sign-in.",
+      });
+      const passwordInput = passwordField.querySelector("input");
+      passwordInput.name = "password";
+      passwordInput.minLength = 12;
+      passwordInput.maxLength = 128;
+      passwordInput.autocomplete = "new-password";
       return openModal({
         title: "Add Staff Account",
-        eyebrow: "Staff and Roles",
+        eyebrow: "User Accounts",
         description:
-          "For someone who is not a member, such as a court scanner. They sign in with the staff ID shown after saving.",
+          "Create a staff sign-in and choose the tools they can access.",
         icon: "user",
         tone: "primary",
         confirmLabel: "Create Account",
         body: h(
           "div",
-          { class: "modal-fields" },
+          { class: "form-grid" },
           h(
-            "div",
-            { class: "field" },
-            h("label", { for: "ns-name" }, "Full name"),
-            h("input", {
-              class: "input",
-              id: "ns-name",
-              name: "name",
-              required: true,
-              minlength: 2,
-              maxlength: 120,
-              autocomplete: "off",
-            }),
-          ),
-          h(
-            "div",
-            { class: "field" },
-            h("label", { for: "ns-role" }, "Role"),
-            selectControl(
-              { class: "input select-input", id: "ns-role", name: "role" },
-              ...roles.map((c) =>
+            "section",
+            {
+              class: "form-section form-grid-wide",
+              "aria-label": "Staff details",
+            },
+            h(
+              "div",
+              { class: "form-section-head" },
+              h(
+                "span",
+                { class: "form-section-icon", "aria-hidden": "true" },
+                icon("user"),
+              ),
+              h(
+                "div",
+                {},
+                h("h3", { class: "form-section-title" }, "Staff details"),
                 h(
-                  "option",
-                  { value: c },
-                  state.roles.find((r) => r.code === c)?.name ?? c,
-                )
+                  "p",
+                  { class: "form-section-description" },
+                  "For staff who are not club members.",
+                ),
+              ),
+            ),
+            h(
+              "div",
+              { class: "form-grid" },
+              h(
+                "div",
+                { class: "field form-grid-wide" },
+                h("label", { for: "ns-name" }, "Full name *"),
+                inputWithIcon(
+                  h("input", {
+                    class: "input",
+                    id: "ns-name",
+                    name: "name",
+                    required: true,
+                    minlength: 2,
+                    maxlength: 120,
+                    autocomplete: "off",
+                    placeholder: "Enter full name",
+                  }),
+                  "user",
+                ),
+              ),
+              h(
+                "div",
+                { class: "field form-grid-wide" },
+                h("label", { for: "ns-role" }, "Role *"),
+                inputWithIcon(
+                  selectControl(
+                    {
+                      class: "input select-input",
+                      id: "ns-role",
+                      name: "role",
+                      required: true,
+                    },
+                    ...roles.map((c) =>
+                      h(
+                        "option",
+                        { value: c },
+                        state.roles.find((r) => r.code === c)?.name ?? c,
+                      )
+                    ),
+                  ),
+                  "keyRound",
+                ),
+                h(
+                  "span",
+                  { class: "field-hint" },
+                  "Determines which staff tools are available.",
+                ),
               ),
             ),
           ),
           h(
-            "div",
-            { class: "field" },
-            h("label", { for: "ns-password" }, "First password"),
-            h("input", {
-              class: "input",
-              id: "ns-password",
-              name: "password",
-              type: "password",
-              required: true,
-              minlength: 12,
-              maxlength: 128,
-              autocomplete: "new-password",
-            }),
+            "section",
+            {
+              class: "form-section form-grid-wide",
+              "aria-label": "Sign-in access",
+            },
             h(
-              "p",
-              { class: "muted" },
-              "At least 12 characters. Give it to the person in private; they must change it when they first sign in.",
+              "div",
+              { class: "form-section-head" },
+              h(
+                "span",
+                { class: "form-section-icon", "aria-hidden": "true" },
+                icon("keyRound"),
+              ),
+              h(
+                "div",
+                {},
+                h("h3", { class: "form-section-title" }, "Sign-in access"),
+                h(
+                  "p",
+                  { class: "form-section-description" },
+                  "A staff ID will be shown after saving.",
+                ),
+              ),
             ),
+            passwordField,
           ),
-          error,
+          h("div", { class: "form-grid-wide" }, error),
         ),
         onConfirm: async (form) => {
           error.hidden = true;
@@ -413,7 +514,10 @@ export function createStaffPages({ api, client }) {
                   "div",
                   { class: "staff-selected-header-row" },
                   h("strong", { class: "member-name" }, member.display_name),
-                  badge(member.role_name, TONE[member.role_code] ?? "neutral"),
+                  badge(
+                    roleLabel(member.role_code, member.role_name),
+                    TONE[member.role_code] ?? "neutral",
+                  ),
                 ),
                 h(
                   "span",
@@ -483,7 +587,10 @@ export function createStaffPages({ api, client }) {
                     `${r.member_no}${r.is_self ? " (you)" : ""}`,
                   ),
                 ),
-                badge(r.role_name, TONE[r.role_code] ?? "neutral"),
+                badge(
+                  roleLabel(r.role_code, r.role_name),
+                  TONE[r.role_code] ?? "neutral",
+                ),
               )
             ),
           );
@@ -609,7 +716,11 @@ export function createStaffPages({ api, client }) {
             {
               key: "role",
               label: "Role",
-              render: (r) => badge(r.role_name, TONE[r.role_code] ?? "neutral"),
+              render: (r) =>
+                badge(
+                  roleLabel(r.role_code, r.role_name),
+                  TONE[r.role_code] ?? "neutral",
+                ),
             },
             {
               key: "status",
@@ -645,7 +756,8 @@ export function createStaffPages({ api, client }) {
         ariaLabel: "Staff",
         onRetry: refresh,
         emptyTitle: "No staff yet",
-        emptyText: "Give an active member a role to add them here.",
+        emptyText:
+          "Add a staff account or give an active member a staff role to show them here.",
       });
     }
 
@@ -673,6 +785,7 @@ export function createStaffPages({ api, client }) {
                       manager: "settings",
                       front_desk: "qrScan",
                       referee: "trophy",
+                      editor: "edit",
                       member: "user",
                     })[r.code] ?? "user",
                   ),
@@ -757,7 +870,11 @@ export function createStaffPages({ api, client }) {
       tabsHost.replaceChildren(tableFilter({
         label: "Staff and role views",
         activeId: state.tab,
-        tabs: [{ id: "staff", label: "Staff", badge: state.staff.length }, {
+        tabs: [{
+          id: "staff",
+          label: "Staff",
+          badge: state.staff.length,
+        }, {
           id: "roles",
           label: "Roles",
           badge: state.roles.length,
@@ -794,7 +911,7 @@ export function createStaffPages({ api, client }) {
 
     page.append(
       adminHero({
-        title: "Staff and Roles",
+        title: "User Accounts",
         chip: "Staff Management",
         description:
           "Who works for the club and what each role may do. Only an admin can change roles, and nobody can change their own.",
