@@ -154,7 +154,26 @@ function parseInput(value: unknown): Input | null {
   return { identifier: id, password: pw, captchaToken: token };
 }
 
+/** Any unexpected failure still answers with the CORS headers, so the browser can read it instead of reporting "could not reach the server". */
 export async function handle(req: Request, deps: Deps): Promise<Response> {
+  try {
+    return await handleRequest(req, deps);
+  } catch {
+    deps.log("login.unexpected_error", {});
+    return json(
+      503,
+      {
+        ok: false,
+        code: "unavailable",
+        message: "Sign-in is unavailable right now. Please try again shortly.",
+      },
+      req.headers.get("origin"),
+      deps,
+    );
+  }
+}
+
+async function handleRequest(req: Request, deps: Deps): Promise<Response> {
   const origin = req.headers.get("origin");
   if (origin && !deps.allowedOrigins.includes(origin)) {
     return new Response(null, {
