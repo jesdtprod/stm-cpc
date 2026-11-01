@@ -1459,6 +1459,18 @@ export function createAccountPages(
       ),
     );
 
+    // Staff accounts (scanner, referee, front desk, manager, admin) are not players: no rank assessment is asked of them.
+    const assessmentSlot = h("div", { hidden: true });
+    api.read((c) =>
+      c.from("members").select("is_staff_account").eq("id", me.member_id)
+        .maybeSingle()
+    ).then((row) => {
+      if (row && row.is_staff_account === false) {
+        assessmentSlot.append(selfAssessmentCard({ api }));
+        assessmentSlot.hidden = false;
+      }
+    }).catch(() => {});
+
     const form = h(
       "form",
       {
@@ -1490,7 +1502,7 @@ export function createAccountPages(
           "div",
           { class: "profile-form-column" },
           personalCard,
-          selfAssessmentCard({ api }),
+          assessmentSlot,
           contactCard,
           addressCard,
           actionsBar,
