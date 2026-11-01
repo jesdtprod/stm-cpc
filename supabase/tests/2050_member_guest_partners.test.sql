@@ -53,8 +53,13 @@ insert into public.member_cpc_ratings(org_id,member_id,discipline)
   select m.org_id,m.id,d.discipline from public.members m cross join (values('singles'),('doubles')) d(discipline)
   where m.deleted_at is null and m.status='active' and not exists(select 1 from public.member_cpc_ratings r
     where r.member_id=m.id and r.discipline=d.discipline and r.deleted_at is null);
+-- unrated members cannot join any division, so the registering member is rated first
 update public.settings set value='true' where key='ranks.cpc_points_enabled' and unit_id is null and deleted_at is null;
 update public.settings set value='false' where key='events.registration_approval_required' and unit_id is null and deleted_at is null;
+select pg_temp.as_user((select u from us where role='admin')); set local role authenticated;
+select public.set_member_cpc_rating((select mid from us where role='me'),'doubles',2.100,(select version from public.member_cpc_ratings where member_id=(select mid from us where role='me') and discipline='doubles' and deleted_at is null),core.ulid(),'Fake assessment');
+select public.set_member_cpc_rating((select mid from us where role='admin'),'doubles',2.100,(select version from public.member_cpc_ratings where member_id=(select mid from us where role='admin') and discipline='doubles' and deleted_at is null),core.ulid(),'Fake assessment');
+reset role;
 select pg_temp.as_user((select u from us where role='me')); set local role authenticated;
 select is((select count(*)::int from public.eligible_division_partners((select dv from fx),'Search') where guest_participant_id=(select guest from fx)),1,
   'NR guest with a Singles rating can be found for Beginner Low Doubles');

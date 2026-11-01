@@ -54,18 +54,18 @@ where m.deleted_at is null and m.status = 'active'
 update public.settings set value = 'true'::jsonb where key = 'ranks.cpc_points_enabled' and unit_id is null and deleted_at is null;
 
 -- an NR member (no rating) registering
-select is(core.registration_problem((select mid from us where role = 'nr'), (select dv_b from fx), true), null::text,
-  'an NR player can join a Beginner division open from Beginner Low');
-select ok(core.registration_problem((select mid from us where role = 'nr'), (select dv_bh from fx), true) like 'You have no singles rating yet. Unrated players can join Beginner divisions that start at Beginner Low%',
+select ok(core.registration_problem((select mid from us where role = 'nr'), (select dv_b from fx), true) like 'You have no singles rating yet, so you cannot join a division.%',
+  'an unrated player cannot join even a Beginner division open from Beginner Low (anti-sandbagging)');
+select ok(core.registration_problem((select mid from us where role = 'nr'), (select dv_bh from fx), true) like 'You have no singles rating yet, so you cannot join a division.%',
   'but not a Beginner division whose minimum is Beginner High');
-select ok(core.registration_problem((select mid from us where role = 'nr'), (select dv_nl from fx), true) like 'You have no singles rating yet. Unrated%',
+select ok(core.registration_problem((select mid from us where role = 'nr'), (select dv_nl from fx), true) like 'You have no singles rating yet, so you cannot join a division.%',
   'nor a Novice division, even one limited to Novice Low');
-select ok(core.registration_problem((select mid from us where role = 'nr'), (select dv_n from fx), true) like 'You have no singles rating yet. Unrated%',
+select ok(core.registration_problem((select mid from us where role = 'nr'), (select dv_n from fx), true) like 'You have no singles rating yet, so you cannot join a division.%',
   'nor an unrestricted Novice division');
 select ok(core.registration_problem((select mid from us where role = 'nr'), (select dv_i from fx), true) like 'You have no singles rating yet%',
   'nor an Intermediate division');
-select is(core.registration_problem((select mid from us where role = 'nr'), (select dv_bm from fx), true), 'Add your gender to your profile to join this division.',
-  'the other rules still apply: a men''s division still needs their gender');
+select ok(core.registration_problem((select mid from us where role = 'nr'), (select dv_bm from fx), true) like 'You have no singles rating yet%',
+  'the rating is checked before gender, so an unrated player gets the rating message');
 -- a rated member is checked as before
 select is(core.registration_problem((select mid from us where role = 'me'), (select dv_bd from fx), true), null::text,
   'a Beginner-rated member (Doubles 2.300) still joins a Beginner doubles division');
@@ -74,8 +74,8 @@ select ok(core.registration_problem((select mid from us where role = 'me'), (sel
 
 -- the doubles partner search offers the NR member for a Beginner doubles division, and not for a Novice one
 select pg_temp.as_user((select u from us where role = 'me')); set local role authenticated;
-select is((select count(*)::int from public.eligible_partners((select dv_bd from fx), 'zyx') where member_id = (select mid from us where role = 'nr')), 1,
-  'an NR player is offered as a partner in a Beginner doubles division');
+select is((select count(*)::int from public.eligible_partners((select dv_bd from fx), 'zyx') where member_id = (select mid from us where role = 'nr')), 0,
+  'an unrated player is not offered as a partner in any doubles division');
 reset role;
 
 select * from finish();
