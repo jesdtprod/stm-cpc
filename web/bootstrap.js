@@ -46,6 +46,20 @@ try {
   retry.type = "button";
   retry.className = "btn btn-primary";
   retry.textContent = "Try Again";
-  retry.addEventListener("click", () => location.reload());
+  // A half-updated app shell (old cached files next to new ones) is the usual cause, so retrying starts from a clean cache.
+  retry.addEventListener("click", async () => {
+    retry.disabled = true;
+    try {
+      const registrations = await navigator.serviceWorker?.getRegistrations() ??
+        [];
+      await Promise.all(registrations.map((r) => r.unregister()));
+      for (const name of await globalThis.caches?.keys() ?? []) {
+        if (name.startsWith("cpc-shell")) await caches.delete(name);
+      }
+    } catch {
+      // reloading still works without the cleanup
+    }
+    location.reload();
+  });
   startup.querySelector(".startup-card").append(retry);
 }
