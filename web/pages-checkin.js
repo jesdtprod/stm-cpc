@@ -35,48 +35,6 @@ export function createCheckinPages({ api }) {
       resultPanel.replaceChildren(content);
     }
 
-    function renderLoading() {
-      const tile = (wide = false) =>
-        h(
-          "div",
-          { class: `checkin-data-tile${wide ? " is-wide" : ""}` },
-          h("span", { class: "sk checkin-sk-label" }),
-          h("span", { class: "sk checkin-sk-value" }),
-        );
-      return h(
-        "div",
-        {
-          class: "checkin-status-card is-loading",
-          "aria-busy": "true",
-          "aria-label": "Verifying booking",
-        },
-        h(
-          "div",
-          { class: "checkin-status-top", "aria-hidden": "true" },
-          h("span", { class: "sk checkin-sk-confirmation" }),
-          h("span", { class: "sk checkin-sk-time" }),
-        ),
-        h(
-          "div",
-          { class: "checkin-member-hero", "aria-hidden": "true" },
-          h("span", { class: "sk checkin-member-avatar" }),
-          h(
-            "div",
-            { class: "checkin-member-meta" },
-            h("span", { class: "sk checkin-sk-name" }),
-            h("span", { class: "sk checkin-sk-status" }),
-          ),
-        ),
-        h(
-          "div",
-          { class: "checkin-data-grid", "aria-hidden": "true" },
-          tile(),
-          tile(),
-          tile(true),
-        ),
-      );
-    }
-
     function renderSuccess(r) {
       return h(
         "div",
@@ -285,7 +243,9 @@ export function createCheckinPages({ api }) {
       if (busy) return;
       busy = true;
       manualSubmitBtn.disabled = true;
-      showResult(renderLoading());
+      manualSubmitBtn.setAttribute("data-pending", "true");
+      manualSubmitBtn.setAttribute("aria-busy", "true");
+      clearResult();
 
       try {
         const r = await api.rpc("scan_check_in", {
@@ -306,9 +266,10 @@ export function createCheckinPages({ api }) {
       } catch (e) {
         showCheckinError("Cannot check in", [bookingMessage(e)]);
       } finally {
-        if (resultPanel.querySelector(".is-loading")) clearResult();
         busy = false;
         manualSubmitBtn.disabled = false;
+        manualSubmitBtn.removeAttribute("data-pending");
+        manualSubmitBtn.removeAttribute("aria-busy");
       }
     }
 
@@ -447,7 +408,7 @@ export function createCheckinPages({ api }) {
         h(
           "div",
           { class: "field" },
-          h("label", { for: "checkin-manual-code" }, "Booking code"),
+          h("label", { for: "checkin-manual-code" }, "Booking Code"),
           inputWithIcon(manualInput, "qrScan"),
         ),
         manualSubmitBtn,
@@ -476,7 +437,7 @@ export function createCheckinPages({ api }) {
       href: "#/profile",
       "aria-label": "My Account",
       title: "My Account",
-    }, icon("userCircle"));
+    }, icon("settings"));
     const scannerActions = h(
       "div",
       {
@@ -540,5 +501,230 @@ export function createCheckinPages({ api }) {
     attachPagePattern(root);
     return root;
   }
-  return { checkinPage };
+  return { checkinPage, checkinSkeleton };
+}
+
+
+export function checkinSkeleton() {
+  const sk = (shape = "") =>
+    h("span", { class: `sk ${shape}`.trim(), "aria-hidden": "true" });
+
+  const scannerActions = h(
+    "div",
+    {
+      class: "checkin-scanner-actions",
+      role: "group",
+      "aria-label": "Scanner controls",
+      "aria-hidden": "true",
+    },
+    sk("sk-action"),
+    sk("sk-action"),
+    sk("sk-action"),
+  );
+
+  const scanFrame = h(
+    "div",
+    { class: "checkin-scan-frame is-skeleton", "aria-hidden": "true" },
+    h(
+      "div",
+      { class: "checkin-camera-hud" },
+      sk("checkin-sk-hud"),
+      sk("checkin-sk-hud"),
+    ),
+    h(
+      "div",
+      { class: "checkin-reticle-box" },
+      h("span", { class: "checkin-corner top-left" }),
+      h("span", { class: "checkin-corner top-right" }),
+      h("span", { class: "checkin-corner bottom-left" }),
+      h("span", { class: "checkin-corner bottom-right" }),
+      h("span", { class: "checkin-scan-line" }),
+    ),
+    h(
+      "div",
+      { class: "checkin-camera-guide" },
+      sk("checkin-sk-guide"),
+    ),
+  );
+
+  const scannerPanel = h(
+    "section",
+    {
+      class: "checkin-scanner-panel is-skeleton",
+      "aria-label": "QR Scanner Viewport",
+    },
+    h(
+      "div",
+      { class: "checkin-card-head" },
+      h(
+        "div",
+        { class: "checkin-head-lead" },
+        sk("badge-icon checkin-sk-icon"),
+        h(
+          "div",
+          {},
+          sk("checkin-sk-eyebrow"),
+          sk("checkin-sk-head-title"),
+        ),
+      ),
+      scannerActions,
+    ),
+    sk("checkin-sk-desc"),
+    scanFrame,
+  );
+
+  const manualPanel = h(
+    "section",
+    {
+      class: "checkin-manual-panel is-skeleton",
+      "aria-labelledby": "checkin-manual-title",
+    },
+    h(
+      "div",
+      { class: "checkin-head-lead" },
+      sk("badge-icon checkin-sk-icon"),
+      h(
+        "div",
+        {},
+        sk("checkin-sk-eyebrow"),
+        sk("checkin-sk-head-title"),
+      ),
+    ),
+    sk("checkin-sk-desc"),
+    h(
+      "div",
+      { class: "checkin-manual-form" },
+      h(
+        "div",
+        { class: "field" },
+        sk("checkin-sk-label"),
+        sk("checkin-sk-input"),
+      ),
+      sk("checkin-sk-btn"),
+    ),
+  );
+  scannerPanel.append(manualPanel);
+
+  const courtCards = [1, 2, 3, 4].map((num) =>
+    h(
+      "article",
+      {
+        class: "checkin-court-card is-skeleton",
+        "aria-busy": "true",
+        "aria-label": `Loading Court ${num}`,
+      },
+      h(
+        "div",
+        { class: "checkin-court-heading" },
+        h(
+          "div",
+          { class: "checkin-court-identity" },
+          h(
+            "span",
+            { class: "checkin-court-number", "aria-hidden": "true" },
+            String(num).padStart(2, "0"),
+          ),
+          h("h3", {}, sk("checkin-sk-court-title")),
+        ),
+        sk("checkin-sk-status"),
+      ),
+      h(
+        "div",
+        { class: "checkin-court-queue" },
+        h(
+          "div",
+          {
+            class: "checkin-queue-row is-ongoing is-empty is-skeleton",
+            "aria-hidden": "true",
+          },
+          h(
+            "span",
+            { class: "checkin-queue-number", "aria-hidden": "true" },
+            "01",
+          ),
+          h(
+            "div",
+            { class: "checkin-queue-content" },
+            h("span", { class: "checkin-court-label sub" }, "Ongoing"),
+            h("strong", {}, sk("checkin-sk-name")),
+            h("span", { class: "sub" }, sk("checkin-sk-time")),
+          ),
+        ),
+        ...[2, 3, 4].map((r) =>
+          h(
+            "div",
+            {
+              class: "checkin-queue-row is-empty is-skeleton",
+              "aria-hidden": "true",
+            },
+            h(
+              "span",
+              { class: "checkin-queue-number", "aria-hidden": "true" },
+              String(r).padStart(2, "0"),
+            ),
+            h(
+              "div",
+              { class: "checkin-queue-content" },
+              h("span", { class: "checkin-court-label sub" }, "Incoming"),
+              h("strong", {}, sk("checkin-sk-name")),
+              h("span", { class: "sub" }, sk("checkin-sk-time")),
+            ),
+          )
+        ),
+      ),
+    )
+  );
+
+  const consolePanel = h(
+    "section",
+    { class: "checkin-console-panel", "aria-label": "Court status" },
+    h(
+      "section",
+      {
+        class: "checkin-court-board is-skeleton",
+        "aria-label": "Live court overview",
+      },
+      h(
+        "div",
+        { class: "checkin-card-head" },
+        h(
+          "div",
+          { class: "checkin-head-lead" },
+          sk("badge-icon checkin-sk-icon"),
+          h(
+            "div",
+            {},
+            sk("checkin-sk-eyebrow"),
+            sk("checkin-sk-head-title"),
+          ),
+        ),
+        sk("checkin-sk-refresh"),
+      ),
+      sk("checkin-sk-desc"),
+      h(
+        "div",
+        { class: "checkin-court-grid", "aria-busy": "true" },
+        ...courtCards,
+      ),
+    ),
+  );
+
+  const workspaceGrid = h(
+    "div",
+    { class: "checkin-grid" },
+    scannerPanel,
+    consolePanel,
+  );
+  const root = h(
+    "div",
+    {
+      class: "page admin-dashboard checkin-page is-skeleton",
+      role: "status",
+      "aria-busy": "true",
+      "aria-label": "Loading check-in console",
+    },
+    h("div", { class: "checkin-workspace" }, workspaceGrid),
+  );
+  attachPagePattern(root);
+  return root;
 }

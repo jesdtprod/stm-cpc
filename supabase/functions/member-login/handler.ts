@@ -16,7 +16,7 @@
 //    password expired). No session is returned in those cases, and the Auth session is revoked.
 
 export const GENERIC_MESSAGE =
-  "Incorrect member ID, email, or password. Please try again.";
+  "Incorrect username or password. Please try again.";
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const ID_PATTERN = /^CPC-\d{4}-\d{5}$/;
 export const EMAIL_DOMAIN = "members.cpc.app";
@@ -165,7 +165,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       {
         ok: false,
         code: "unavailable",
-        message: "Sign-in is unavailable right now. Please try again shortly.",
+        message: "Check your username and password, then try again.",
       },
       req.headers.get("origin"),
       deps,
@@ -279,7 +279,7 @@ async function handleRequest(req: Request, deps: Deps): Promise<Response> {
           ok: false,
           code: "unavailable",
           message:
-            "Sign-in is unavailable right now. Please try again shortly.",
+            "Check your username and password, then try again.",
         },
         origin,
         deps,

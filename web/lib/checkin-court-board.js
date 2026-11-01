@@ -20,6 +20,14 @@ export function createCheckinCourtBoard({ api }) {
     size: "sm",
     onClick: () => refresh(),
   });
+  refreshButton.disabled = true;
+  refreshButton.setAttribute("data-pending", "true");
+  refreshButton.setAttribute("aria-busy", "true");
+  const description = h(
+    "p",
+    { class: "sub" },
+    "One ongoing booking and the next three arrivals per court.",
+  );
   const root = h(
     "section",
     { class: "checkin-court-board", "aria-label": "Live court overview" },
@@ -39,11 +47,7 @@ export function createCheckinCourtBoard({ api }) {
       ),
       refreshButton,
     ),
-    h(
-      "p",
-      { class: "sub" },
-      "One ongoing booking and the next three arrivals per court.",
-    ),
+    description,
     cards,
   );
 
@@ -89,6 +93,7 @@ export function createCheckinCourtBoard({ api }) {
   }
   function courtCard(c, number, loading = false) {
     const current = c?.current_booking;
+    const courtNumber = c?.name?.match(/(\d+)$/)?.[1] ?? number;
     const ongoing = current?.status === "checked_in" ? current : null;
     // Older servers still get a bounded queue while the queue migration rolls out.
     const incoming = Array.isArray(c?.incoming_bookings)
@@ -112,7 +117,7 @@ export function createCheckinCourtBoard({ api }) {
           loading ? " is-skeleton" : ""
         }`,
         "aria-busy": loading ? "true" : null,
-        "aria-label": loading ? `Loading Tennis Court ${number}` : null,
+        "aria-label": loading ? `Loading court ${number}` : null,
       },
       h(
         "div",
@@ -123,9 +128,18 @@ export function createCheckinCourtBoard({ api }) {
           h(
             "span",
             { class: "checkin-court-number", "aria-hidden": "true" },
-            String(number).padStart(2, "0"),
+            String(courtNumber).padStart(2, "0"),
           ),
-          h("h3", {}, `Tennis Court ${number}`),
+          h(
+            "h3",
+            {},
+            loading
+              ? h("span", {
+                class: "sk checkin-sk-court-title",
+                "aria-hidden": "true",
+              })
+              : c?.name ?? `Court ${number}`,
+          ),
         ),
         loading
           ? h("span", { class: "sk checkin-sk-status", "aria-hidden": "true" })
@@ -172,20 +186,35 @@ export function createCheckinCourtBoard({ api }) {
     busy = true;
     cards.setAttribute("aria-busy", "true");
     refreshButton.disabled = true;
+    refreshButton.setAttribute("data-pending", "true");
+    refreshButton.setAttribute("aria-busy", "true");
     try {
       const data = await api.rpc("checkin_court_board");
       if (disposed) return;
       if (!data || !Array.isArray(data.courts) || !data.as_of) {
         throw new Error("Invalid court board response");
       }
-      cards.replaceChildren(...[1, 2, 3, 4].map((number) =>
-        courtCard(
-          data.courts.find((c) =>
-            c.name?.toLowerCase() === `tennis court ${number}`
+      cards.setAttribute("data-court-count", String(data.courts.length));
+      cards.className = `checkin-court-grid${
+        data.courts.length > 4 ? " has-many" : ""
+      }`;
+      description.textContent = `${
+        data.court_area === "backgate"
+          ? "Back Gate courts"
+          : "Tennis Courts 1-4"
+      } | One ongoing booking and the next three arrivals per court.`;
+      cards.replaceChildren(
+        ...data.courts.map((court, index) => courtCard(court, index + 1)),
+      );
+      if (!data.courts.length) {
+        cards.append(
+          h(
+            "p",
+            { class: "sub checkin-board-empty" },
+            "No courts are assigned to this scanner.",
           ),
-          number,
-        )
-      ));
+        );
+      }
     } catch {
       if (disposed) return;
       // Never leave stale occupancy looking current after a failed refresh.
@@ -206,6 +235,8 @@ export function createCheckinCourtBoard({ api }) {
       busy = false;
       if (!disposed) cards.setAttribute("aria-busy", "false");
       refreshButton.disabled = false;
+      refreshButton.removeAttribute("data-pending");
+      refreshButton.removeAttribute("aria-busy");
       if (refreshQueued && !disposed) {
         refreshQueued = false;
         refresh();

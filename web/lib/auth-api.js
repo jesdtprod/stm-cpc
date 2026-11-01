@@ -17,13 +17,13 @@ export class AuthFlowError extends Error {
 }
 
 const MESSAGES = {
-  invalid_credentials:
-    "Incorrect member ID, email, or password. Please try again.",
+  invalid_credentials: "Incorrect username or password. Please try again.",
   captcha_failed: "Please complete the security check and try again.",
   account_disabled: "This account cannot sign in. Please contact the club.",
   password_expired:
     "Your first password has expired. Please ask the club to reset it.",
-  unavailable: "Sign-in is unavailable right now. Please try again shortly.",
+  unavailable:
+    "Check your username and password, then try again.",
   sign_in_again:
     "For your security, please sign in again, then change your password.",
   too_many_attempts: "Too many attempts. Please try again in a few minutes.",
@@ -62,7 +62,12 @@ async function post(path, body, headers, fetchFn) {
   const code = json.code ?? "unavailable";
   throw new AuthFlowError(
     code,
-    json.message ?? MESSAGES[code] ??
+    (code === "invalid_credentials"
+      ? MESSAGES.invalid_credentials
+      : name === "member-login" && code === "unavailable"
+      ? MESSAGES.unavailable
+      : json.message) ??
+      MESSAGES[code] ??
       "Something went wrong. Please try again.",
     {
       status: res.status,

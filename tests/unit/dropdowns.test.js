@@ -32,7 +32,7 @@ import { createPublicPages } from "../../web/pages-public.js";
 import { selfAssessmentCard } from "../../web/member-self-assessment.js";
 import { createGuestEventActions } from "../../web/event-guests.js";
 import { bookingPage } from "../../web/pages.js";
-import { createCheckinPages } from "../../web/pages-checkin.js";
+import { checkinSkeleton, createCheckinPages } from "../../web/pages-checkin.js";
 import { createCheckinCourtBoard } from "../../web/lib/checkin-court-board.js";
 import { clearAuth, setAuth } from "../../web/lib/permissions.js";
 
@@ -3046,7 +3046,7 @@ Deno.test("check-in skeleton: court layout stays stable through loading and popu
     );
   }));
 
-Deno.test("check-in skeleton: refused verification clears loading and restores manual check-in", () =>
+Deno.test("check-in verification: request stays inline and refusal restores manual check-in", () =>
   withDom(async (document) => {
     const keys = ["location", "queueMicrotask", "setTimeout", "addEventListener"];
     const previous = Object.fromEntries(keys.map((key) => [key, globalThis[key]]));
@@ -3065,7 +3065,8 @@ Deno.test("check-in skeleton: refused verification clears loading and restores m
       const submit = [...form.listeners.get("submit")][0];
       const request = submit(new Event("submit", { cancelable: true }));
       const result = page.querySelector(".checkin-result-slot");
-      assert(!result.hidden && result.querySelector(".is-loading"), "verification starts with a skeleton");
+      assert(result.hidden && result.children.length === 0, "verification never opens a skeleton panel");
+      assert(form.querySelector("button").getAttribute("aria-busy") === "true", "the button indicates verification is pending");
       reject(new Error("Too early: check-in opens at the start of the booking"));
       await request;
       assert(result.hidden && result.children.length === 0, "refusal leaves no skeleton or empty result panel");
@@ -3078,4 +3079,63 @@ Deno.test("check-in skeleton: refused verification clears loading and restores m
         else globalThis[key] = previous[key];
       }
     }
+  }));
+
+Deno.test("check-in skeleton: structure-matched skeleton mirrors visual scanner, manual check-in, and court operations controls under CSP", () =>
+  withDom(() => {
+    const page = checkinSkeleton();
+    assert(page.className.includes("is-skeleton") && page.getAttribute("aria-busy") === "true");
+
+    // 1. Scanner controls skeleton
+    const scanner = page.querySelector(".checkin-scanner-panel");
+    assert(scanner && scanner.className.includes("is-skeleton"));
+    const actions = scanner.querySelector(".checkin-scanner-actions");
+    assert(actions && actions.querySelectorAll(".sk-action").length === 3, "reserves 3 action buttons");
+    const frame = scanner.querySelector(".checkin-scan-frame");
+    assert(frame && frame.className.includes("is-skeleton"), "reserves viewfinder");
+    assert(scanner.querySelectorAll(".checkin-sk-hud").length === 2, "reserves HUD pills");
+
+    // 2. Manual check-in controls skeleton
+    const manual = page.querySelector(".checkin-manual-panel");
+    assert(manual && manual.className.includes("is-skeleton"));
+    assert(manual.querySelector(".checkin-sk-input"), "reserves booking code input field");
+    assert(manual.querySelector(".checkin-sk-btn"), "reserves check-in button");
+
+    // 3. Court operations controls skeleton
+    const board = page.querySelector(".checkin-court-board");
+    assert(board && board.className.includes("is-skeleton"));
+    assert(board.querySelector(".checkin-sk-refresh"), "reserves refresh button control");
+    const cards = board.querySelectorAll(".checkin-court-card");
+    assert(cards.length === 4, "reserves 4 court cards");
+    for (const card of cards) {
+      assert(card.querySelector(".checkin-sk-court-title"), "reserves court title");
+      assert(card.querySelector(".checkin-sk-status"), "reserves status badge");
+      const rows = card.querySelectorAll(".checkin-queue-row");
+      assert(rows.length === 4, "reserves 4 queue rows");
+      assert(rows[0].className.includes("is-ongoing"), "row 1 is ongoing");
+    }
+
+    // 4. CSP validation
+    assert(
+      page.querySelectorAll(".sk").every((node) => !node.getAttribute("style")),
+      "all placeholder sizing works under CSP without inline styles",
+    );
+  }));
+
+Deno.test("check-in court board: Back Gate scanner sees every server-assigned court with its real number", () =>
+  withDom(async () => {
+    const board = createCheckinCourtBoard({ api: { rpc: async () => ({
+      as_of: "2030-02-04T04:00:00Z", court_area: "backgate",
+      courts: [4, 5, 6, 7, 8].map((n) => ({ name: `Back Gate Court ${n}`, court_status: "available", current_booking: null, incoming_bookings: [] })),
+    }) } });
+    await board.refresh();
+    const cards = board.element.querySelectorAll(".checkin-court-card");
+    assert(cards.length === 5, "all assigned Back Gate courts are rendered");
+    for (const [index, card] of cards.entries()) {
+      assert(card.querySelector("h3").textContent === `Back Gate Court ${index + 4}`);
+      assert(card.querySelector(".checkin-court-number").textContent === String(index + 4).padStart(2, "0"));
+      assert(card.querySelectorAll(".checkin-queue-row").length === 4);
+    }
+    assert(!board.element.textContent.includes("Tennis Court"), "court names are never hardcoded to Tennis");
+    assert(board.element.querySelector(".checkin-court-grid").className.includes("has-many"), "five courts use the denser desktop layout");
   }));

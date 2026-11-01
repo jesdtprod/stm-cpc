@@ -5,6 +5,7 @@
 // deno-lint-ignore no-import-prefix
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.118.0";
 import { type Deps, handle, type MemberState } from "./handler.ts";
+import { loginFailureReason } from "./auth-error.ts";
 
 const DEFAULT_ORIGINS = [
   "https://jesdtprod.github.io",
@@ -61,12 +62,7 @@ const deps: Deps = {
     if (!error && data.session && data.user) {
       return { ok: true, session: data.session, userId: data.user.id };
     }
-    const code = error?.code ?? "";
-    if (code.startsWith("captcha")) return { ok: false, reason: "captcha" };
-    if (code === "invalid_credentials" || error?.status === 400) {
-      return { ok: false, reason: "invalid" };
-    }
-    return { ok: false, reason: "unavailable" };
+    return { ok: false, reason: loginFailureReason(error) };
   },
   revoke: async (accessToken) => {
     await service.auth.admin.signOut(accessToken, "global").catch(() => {});

@@ -218,6 +218,7 @@ create policy <t>_insert on public.<t> for insert to authenticated
 - Wrap `auth.uid()` as `(select auth.uid())` inside helpers for performance.
 - `security definer` functions: `set search_path = ''`, fully qualified names, validate the caller inside, and revoke `EXECUTE` from `public` and `anon` unless intended.
 - Views use `security_invoker = true`.
+- `profiles.checkin_court_scope` is a protected optional scanner area (`tennis` or `backgate`); clients cannot edit it. `core.can_checkin_court()` combines active permission checks, tenant isolation and the assigned area. Enforce it in both QR/manual check-in and direct booking check-in/no-show/complete decisions. Null preserves existing permission-based access. Court boards read the assigned area on every request; default unscoped boards remain Tennis Courts 1-4.
 - Users cannot change their own role, unit, org, or active status. Inactive or removed users lose access immediately (`is_active` and `deleted_at` are checked by `has_permission`).
 - Writes to money-like, stateful, or multi-table data go **only through RPCs**; direct `INSERT/UPDATE/DELETE` is revoked from `anon` and `authenticated`.
 - Public-facing read access (for example availability) is provided by narrow views that expose only the minimum columns.

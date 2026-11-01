@@ -7,6 +7,7 @@ import {
 } from "./event-summary.js";
 
 export { componentsPage } from "./pages-components.js";
+export { checkinSkeleton } from "./pages-checkin.js";
 
 export function homePage() {
   return h(

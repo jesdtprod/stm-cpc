@@ -1629,15 +1629,10 @@ export function createAccountPages(
 
   function showRegistrationNotice(closed) {
     if (signupNotice?.isConnected) return;
-    const title = closed ? "Registration Is Closed" : "Unable to Check Registration";
-    const signInLink = h("a", {
-      href: "#/signin",
-      class: "btn btn-outline",
-      onClick: () => signupNotice?.close(),
-    }, icon("logIn"), "Sign In");
+    const title = closed ? "Registration Closed" : "Unable to Check Registration";
     signupNotice = openModal({
       title,
-      eyebrow: "Join Capitol Pickleball Club",
+      eyebrow: "Club Membership",
       icon: closed ? "calendar" : "info",
       tone: closed ? "warning" : "neutral",
       size: "sm",
@@ -1645,20 +1640,16 @@ export function createAccountPages(
         h("div", { class: "signup-notice-status" },
           icon(closed ? "clock" : "info"),
           closed ? "Applications paused" : "Please try again"),
-        h("p", { class: "signup-notice-lead" },
-          closed ? "We look forward to seeing you on court." : "Let's get you back on track."),
         h("p", { class: "muted" }, closed
-          ? "New membership applications are currently closed. Check back for the next registration window."
+          ? "Membership applications are temporarily closed. Please check back for the next registration window."
           : "We couldn't check membership availability right now. Please try again in a moment."),
         h("div", { class: "modal-callout is-info" },
           h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon(closed ? "calendar" : "refreshCw")),
           h("div", { class: "modal-callout-text" },
-            h("strong", {}, closed ? "When can I join?" : "Your application hasn't started"),
+            h("strong", {}, closed ? "Next registration window" : "Your application hasn't started"),
             h("p", { class: "sub" }, closed
               ? "The club will announce when applications reopen."
-              : "You can retry without submitting any personal details."))),
-        h("div", { class: "signup-notice-member" },
-          h("span", { class: "sub" }, "Already a member?"), signInLink)),
+              : "You can retry without submitting any personal details.")))),
       confirmLabel: closed ? "Got It" : "Try Again",
       cancelLabel: null,
       onConfirm: closed ? undefined : () => {

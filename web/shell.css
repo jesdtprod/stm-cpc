@@ -14403,15 +14403,7 @@ body .public-page-hero .public-header-logo {
   font-weight: 650;
   color: var(--text);
 }
-.signup-notice-member {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
+
 
 /* Dedicated court desk: no sidebar offset in layout or the shared pattern. */
 body:has(.checkin-page) .dashboard-pattern { inset: 0; width: 100%; height: 100dvh; }
@@ -14639,3 +14631,44 @@ body .checkin-page .checkin-workspace { padding: 0; margin: 0; width: 100%; max-
   .checkin-page .checkin-court-card { padding: 12px; gap: 12px; }
   .checkin-scanner-panel > .checkin-result-slot { grid-column: 1; grid-row: 6; }
 }
+
+.checkin-sk-court-title { width: 120px; height: 15px; }
+.checkin-sk-icon { width: 40px; height: 40px; border-radius: var(--r-control); flex: none; }
+.checkin-sk-eyebrow { width: 110px; height: 9px; margin-bottom: 4px; border-radius: 4px; }
+.checkin-sk-head-title { width: 170px; height: 20px; border-radius: 6px; }
+.checkin-sk-desc { width: 80%; height: 12px; margin: 0 0 12px 0; border-radius: 4px; }
+.checkin-sk-hud { width: 78px; height: 24px; border-radius: var(--r-full); }
+.checkin-sk-guide { width: 170px; height: 20px; border-radius: var(--r-full); }
+.checkin-sk-input { width: 100%; height: 44px; border-radius: 10px; }
+.checkin-sk-btn { width: 120px; height: 44px; border-radius: 10px; }
+.checkin-sk-refresh { width: 84px; height: 32px; border-radius: 8px; flex: none; }
+.checkin-scan-frame.is-skeleton { border: 1px dashed var(--border); background: var(--surface-2); }
+.checkin-page.is-skeleton { pointer-events: none; }
+.checkin-board-empty { grid-column: 1 / -1; }
+@media (min-width: 1024px) {
+  .checkin-court-board .checkin-court-grid.has-many { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .checkin-court-board .checkin-court-grid[data-court-count="5"] { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .checkin-court-grid[data-court-count="5"] > .checkin-court-card { grid-column: span 2; }
+  .checkin-court-grid[data-court-count="5"] > .checkin-court-card:nth-child(n + 4) { grid-column: span 3; }
+}
+
+/* Compact membership availability notice, using the shared modal shell. */
+.modal:has(.signup-notice-content) { width: min(420px, calc(100vw - 24px)); }
+.modal:has(.signup-notice-content) .modal-head { padding: 18px 20px; }
+.modal:has(.signup-notice-content) .modal-body { padding: 20px; }
+.modal:has(.signup-notice-content) .modal-foot { padding: 14px 20px; }
+.signup-notice-content { gap: 14px; }
+.signup-notice-content > .muted { font-size: 13px; line-height: 1.6; }
+.signup-notice-content .modal-callout { padding: 12px; gap: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.signup-notice-content .modal-callout strong { font-size: 13px; }
+.signup-notice-content .modal-callout .sub { margin-top: 4px; font-size: 12px; font-weight: 400; }
+@media (max-width: 480px) {
+  .modal:has(.signup-notice-content) .modal-head,
+  .modal:has(.signup-notice-content) .modal-body { padding: 16px; }
+  .modal:has(.signup-notice-content) .modal-foot { padding: 12px 16px; }
+}
+
+.modal:has(.signup-notice-content) .modal-foot { border-top: 0; padding-top: 0; }
+.modal:has(.signup-notice-content) .modal-foot .btn { width: 100%; }
+.signup-notice-content .modal-callout-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--surface); color: var(--accent); flex: none; }
+.signup-notice-content .modal-callout { align-items: flex-start; }
