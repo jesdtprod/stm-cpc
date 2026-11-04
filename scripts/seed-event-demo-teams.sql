@@ -1,13 +1,16 @@
 -- Explicit demo-data operation for EV-2026-00002, not an automatic migration.
--- One clearly labeled guest team per division; no sign-in accounts or passwords.
+-- Fill the two inspected doubles divisions to 16 with labeled fake guest teams.
+-- Safe to rerun: stops at capacity and reuses existing numbered fake teams.
 -- Uses the existing permission-checked RPCs and leaves approvals/payment rules intact.
 -- Run: npx supabase@2.118.0 db query --linked -f scripts/seed-event-demo-teams.sql -o json
 begin;
+set local lock_timeout = '10s';
+set local statement_timeout = '60s';
 create temp table demo_results(division_name text,player_name text,partner_name text,rating numeric,status text);
 do $$
 declare ev public.events; dv public.divisions; actor uuid; pts numeric; ids text[];
   participant text; person_id text; registration text; existing public.registrations;
-  names text[]; i integer; result jsonb; classification text; born date;
+  names text[]; i integer; team_no integer; result jsonb; classification text; born date;
 begin
   select * into ev from public.events where id='01M61GRT7AQ9JB7V34G2NZW0HB' and doc_no='EV-2026-00002' for update;
   if not found or ev.name <> 'STM Halloween Pickleball Tournament 2026'
@@ -24,8 +27,10 @@ begin
     order by p.id limit 1;
   if actor is null then raise exception 'No authorized roster administrator is available'; end if;
   perform set_config('request.jwt.claims',json_build_object('sub',actor,'role','authenticated')::text,true);
-  for dv in select * from public.divisions where event_id=ev.id and status<>'cancelled' order by id for update loop
-    if dv.status<>'open' or dv.format<>'doubles' or dv.age_group is not null then
+  for dv in select * from public.divisions where event_id=ev.id
+    and id in ('01M61J28YBTJ8B5X292GTADNY3','01M61J4WVH4V1ZAWC032YA22ZC') order by id for update loop
+    if dv.status<>'open' or dv.format<>'doubles' or dv.age_group is not null
+      or dv.gender<>'male' or dv.max_entries is distinct from 16 then
       raise exception 'This seed supports only the inspected open doubles divisions without age restrictions';
     end if;
     perform pg_advisory_xact_lock(hashtextextended('demo-team:' || dv.id,0));
@@ -37,8 +42,11 @@ begin
         and (dv.max_rank_id is null or r.sort_order <= (select sort_order from public.ranks where id=dv.max_rank_id))
       order by r.sort_order limit 1;
     if pts is null then raise exception 'Division has no eligible numerical rating band'; end if;
-    names := array['TEST ONLY - ' || classification || ' ' || right(dv.id,6) || ' Player A',
-                   'TEST ONLY - ' || classification || ' ' || right(dv.id,6) || ' Player B'];
+    for team_no in 1..16 loop
+    exit when (select count(*) from public.registrations r
+      where r.division_id=dv.id and r.status in ('requested','confirmed')) >= 16;
+    names := array['TEST ONLY - ' || classification || ' ' || right(dv.id,6) || ' Team ' || team_no || ' Player A',
+                   'TEST ONLY - ' || classification || ' ' || right(dv.id,6) || ' Team ' || team_no || ' Player B'];
     ids := array[]::text[];
     for i in 1..2 loop
       select ep.id into participant from public.event_participants ep join public.persons pe on pe.id=ep.person_id
@@ -66,7 +74,14 @@ begin
       result := public.register_guest_for_event(registration,dv.id,ids[1],null,ids[2],null);
     end if;
     insert into demo_results values(dv.name,names[1],names[2],pts,result->>'status');
+    end loop;
   end loop;
+  if (select count(*) from public.divisions d where d.event_id=ev.id
+    and d.id in ('01M61J28YBTJ8B5X292GTADNY3','01M61J4WVH4V1ZAWC032YA22ZC')
+    and (select count(*) from public.registrations r where r.division_id=d.id
+      and r.status in ('requested','confirmed'))=16) <> 2 then
+    raise exception 'Both inspected divisions must have exactly 16 active entries';
+  end if;
 end $$;
 commit;
 select division_name,player_name,partner_name,rating,status from demo_results order by division_name;

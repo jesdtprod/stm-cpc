@@ -1,5 +1,5 @@
 // Keep shared dropdowns inside the viewport and any scrolling modal body.
-export function dropdownPosition(trigger, popup, { center = false } = {}) {
+export function dropdownPosition(trigger, popup, { center = false, containX = false } = {}) {
   const doc = trigger.ownerDocument ?? globalThis.document;
   const view = doc?.defaultView ?? globalThis;
   let active = false;
@@ -26,7 +26,7 @@ export function dropdownPosition(trigger, popup, { center = false } = {}) {
       const style = view.getComputedStyle(parent);
       if (!/(auto|scroll|hidden|clip)/.test(`${style.overflowY} ${style.overflowX}`)) continue;
       const rect = parent.getBoundingClientRect();
-      if (center && Number.isFinite(rect.left) && parent.clientWidth) {
+      if ((center || containX) && Number.isFinite(rect.left) && parent.clientWidth) {
         left = Math.max(left, rect.left + (parent.clientLeft ?? 0) + 8);
         right = Math.min(right, rect.left + (parent.clientLeft ?? 0) + parent.clientWidth - 8);
       }
@@ -36,12 +36,16 @@ export function dropdownPosition(trigger, popup, { center = false } = {}) {
       bottom = Math.min(bottom, innerTop + parent.clientHeight - 8);
     }
     const rect = trigger.getBoundingClientRect();
-    if (center) {
+    if ((center || containX) && Number.isFinite(rect.left)) {
       const availableWidth = Math.max(0, right - left);
       popup.style.setProperty("--dropdown-max-width", `${availableWidth}px`);
       const width = Math.min(popup.offsetWidth, availableWidth);
-      const origin = popup.offsetParent?.getBoundingClientRect().left ?? rect.left;
-      popup.style.setProperty("--dropdown-left", `${left + (availableWidth - width) / 2 - origin}px`);
+      const parent = popup.offsetParent;
+      const origin = (parent?.getBoundingClientRect().left ?? rect.left) +
+        (parent?.clientLeft ?? 0) - (parent?.scrollLeft ?? 0);
+      const x = center ? left + (availableWidth - width) / 2
+        : Math.max(left, Math.min(rect.left, right - width));
+      popup.style.setProperty("--dropdown-left", `${x - origin}px`);
     }
     naturalHeight = Math.max(
       naturalHeight,

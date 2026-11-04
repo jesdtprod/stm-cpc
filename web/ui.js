@@ -13,6 +13,7 @@ const controlNodes = new WeakMap();
 const tableSearches = new WeakMap();
 const tablePages = new WeakMap();
 const selectSequence = { next: 0 };
+const openActionMenus = new WeakMap();
 
 /** Create an element. Event handlers must be functions; string `on*` attributes are ignored. */
 export function h(tag, props = {}, ...children) {
@@ -3723,12 +3724,19 @@ export function popover({ trigger, content, placement = "bottom" }) {
 }
 
 export function dropdownMenu({ trigger, items = [] }) {
+  const doc = trigger.ownerDocument ?? document;
   const menuEl = h("div", {
     class: "dropdown-menu-list",
     role: "menu",
     hidden: true,
   });
-  const position = dropdownPosition(trigger, menuEl);
+  const position = dropdownPosition(trigger, menuEl, { containX: true });
+  const close = () => {
+    menuEl.setAttribute("hidden", "");
+    position.stop();
+    trigger.setAttribute("aria-expanded", "false");
+    if (openActionMenus.get(doc) === close) openActionMenus.delete(doc);
+  };
   for (const item of items) {
     if (item.divider) {
       menuEl.append(h("div", { class: "dropdown-divider", role: "separator" }));
@@ -3743,9 +3751,7 @@ export function dropdownMenu({ trigger, items = [] }) {
         disabled: item.disabled,
         onClick: (e) => {
           e.stopPropagation();
-          menuEl.setAttribute("hidden", "");
-          position.stop();
-          trigger.setAttribute("aria-expanded", "false");
+          close();
           item.onClick?.(e);
         },
       },
@@ -3759,27 +3765,23 @@ export function dropdownMenu({ trigger, items = [] }) {
     e.stopPropagation();
     const isHidden = menuEl.hasAttribute("hidden");
     if (isHidden) {
+      openActionMenus.get(doc)?.();
+      openActionMenus.set(doc, close);
       menuEl.removeAttribute("hidden");
       position.start();
       trigger.setAttribute("aria-expanded", "true");
     } else {
-      menuEl.setAttribute("hidden", "");
-      position.stop();
-      trigger.setAttribute("aria-expanded", "false");
+      close();
     }
   });
-  document.addEventListener("click", (e) => {
+  doc.addEventListener("click", (e) => {
     if (!wrapper.contains(e.target) && !menuEl.hasAttribute("hidden")) {
-      menuEl.setAttribute("hidden", "");
-      position.stop();
-      trigger.setAttribute("aria-expanded", "false");
+      close();
     }
   });
-  document.addEventListener("keydown", (e) => {
+  doc.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !menuEl.hasAttribute("hidden")) {
-      menuEl.setAttribute("hidden", "");
-      position.stop();
-      trigger.setAttribute("aria-expanded", "false");
+      close();
       trigger.focus();
     }
   });

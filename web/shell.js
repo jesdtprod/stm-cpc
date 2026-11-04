@@ -960,7 +960,8 @@ export function createShell(
         ),
       ),
     ].filter(Boolean);
-    nav.replaceChildren(...navItems);
+    const footer = navItems.pop();
+    nav.replaceChildren(h("div", { class: "side-menu" }, ...navItems), footer);
     if (sidePanel) nav.querySelector(".side-foot").replaceChildren(account);
   }
 

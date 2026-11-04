@@ -301,6 +301,12 @@ export const LUCIDE = {
     ["circle", { "cx": "9", "cy": "7", "r": "4" }],
     ["polyline", { "points": "16 11 18 13 22 9" }],
   ],
+  users: [
+    ["path", { "d": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }],
+    ["circle", { "cx": "9", "cy": "7", "r": "4" }],
+    ["path", { "d": "M22 21v-2a4 4 0 0 0-3-3.87" }],
+    ["path", { "d": "M16 3.13a4 4 0 0 1 0 7.75" }],
+  ],
   logOut: [["path", { "d": "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }], [
     "polyline",
     { "points": "16 17 21 12 16 7" },
@@ -319,6 +325,18 @@ export const LUCIDE_SOLID = {
       },
     ],
     ["circle", { "cx": "12", "cy": "7", "r": "4", "fill": "currentColor" }],
+  ],
+  users: [
+    [
+      "path",
+      {
+        "d": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2Z",
+        "fill": "currentColor",
+      },
+    ],
+    ["circle", { "cx": "9", "cy": "7", "r": "4", "fill": "currentColor" }],
+    ["path", { "d": "M22 21v-2a4 4 0 0 0-3-3.87", "fill": "none", "stroke-width": "2.2" }],
+    ["path", { "d": "M16 3.13a4 4 0 0 1 0 7.75", "fill": "none", "stroke-width": "2.2" }],
   ],
   info: [
     ["circle", { "cx": "12", "cy": "12", "r": "10", "fill": "currentColor" }],

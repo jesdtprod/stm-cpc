@@ -35,6 +35,7 @@ import { bookingPage } from "../../web/pages.js";
 import { checkinSkeleton, createCheckinPages } from "../../web/pages-checkin.js";
 import { createCheckinCourtBoard } from "../../web/lib/checkin-court-board.js";
 import { clearAuth, setAuth } from "../../web/lib/permissions.js";
+import { openRosterEditor } from "../../web/lib/roster-editor.js";
 
 // Small DOM fixture for component events; rendered browser checks remain separate.
 function withDom(run) {
@@ -2044,6 +2045,55 @@ Deno.test("shared controls: lists, dates, date-times and action menus flip upwar
   });
 });
 
+Deno.test("action menu: opening another menu closes the previous one", () => withDom((document) => {
+  const first = h("button", {}, "First player");
+  const second = h("button", {}, "Second player");
+  const one = dropdownMenu({ trigger: first, items: [{ label: "Swap Player" }] });
+  const two = dropdownMenu({ trigger: second, items: [{ label: "Replace Player" }] });
+  document.body.append(one, two);
+  const firstMenu = one.querySelector(".dropdown-menu-list");
+  const secondMenu = two.querySelector(".dropdown-menu-list");
+  first.click();
+  assert(!firstMenu.hidden, "First menu opens");
+  second.click();
+  assert(firstMenu.hidden && !secondMenu.hidden, "Only the second menu remains open");
+  assert(first.getAttribute("aria-expanded") === "false", "Previous trigger reflects the closed state");
+  first.click();
+  assert(!firstMenu.hidden && secondMenu.hidden, "Opening the first menu closes the second");
+  one.querySelectorAll("button").find((b) => b.textContent === "Swap Player").click();
+  assert(firstMenu.hidden, "Choosing an action closes its menu");
+  second.click();
+  second.click();
+  assert(secondMenu.hidden, "Current menu still toggles closed");
+}));
+
+Deno.test("action menu: shifts inward at the modal edge and follows resize", () => withDom((document) => {
+  const view = document.defaultView = Object.assign(new EventTarget(), {
+    innerHeight: 800, innerWidth: 1000,
+    getComputedStyle: (el) => ({ overflowY: el === modal ? "auto" : "visible", overflowX: "visible" }),
+  });
+  const modal = h("div", {});
+  modal.clientWidth = 500; modal.clientHeight = 400; modal.clientTop = modal.clientLeft = 0;
+  modal.getBoundingClientRect = () => ({ left: 100, top: 100 });
+  const trigger = h("button", {}, "Actions");
+  const control = dropdownMenu({ trigger, items: [{ label: "Swap Player" }, { label: "Replace Player" }] });
+  modal.append(control); document.body.append(modal);
+  trigger.parentElement = control; control.parentElement = modal;
+  control.getBoundingClientRect = () => ({ left: 550, top: 200 });
+  trigger.getBoundingClientRect = () => ({ left: 550, right: 586, top: 200, bottom: 236 });
+  const popup = control.querySelector(".dropdown-menu-list");
+  popup.offsetParent = control; popup.offsetWidth = 200; popup.offsetHeight = popup.scrollHeight = 80;
+  trigger.click();
+  assert(popup.attributes["--dropdown-left"] === "-158px", "Menu shifts left inside the scrolling modal");
+  assert(popup.attributes["--dropdown-max-width"] === "484px", "Modal bounds constrain popup width");
+  modal.clientWidth = 140;
+  view.dispatchEvent(new Event("resize"));
+  assert(popup.attributes["--dropdown-max-width"] === "124px", "Narrow modal shrinks the shared menu");
+  assert(popup.attributes["--dropdown-left"] === "-442px", "Menu stays inside the resized boundary");
+  trigger.click();
+  assert(popup.hidden, "Menu still toggles closed");
+}));
+
 Deno.test("memberHero: renders dash-hero with chips, title, subtitle and respects actions", () => {
   withDom(() => {
     const hero = memberHero({
@@ -2751,6 +2801,113 @@ Deno.test("court cards skeleton: loading state renders structured court cards wi
 
     page.remove();
   }));
+
+Deno.test("division roster: player cards, odd slot and separate waitlist", () =>
+  withDom(async () => {
+    setAuth({ signedIn: true, grants: [{ code: "events.manage", unit_id: null }] });
+    const division = { id: "preview-division", name: "Preview Doubles", status: "open", max_entries: 16 };
+    const event = { id: "preview-event", name: "Preview Event", status: "registration_open", fee: 0, starts_on: "2030-11-01", ends_on: "2030-11-02", divisions: [division] };
+    const registrations = ["confirmed", "requested", "confirmed", "waitlisted", "rejected"].map((status, index) => ({
+      id: `fake-registration-${index}`, division_id: division.id, status,
+      guest_participant_id: `fake-player-${index}`,
+      guest_partner_participant_id: `fake-partner-${index}`,
+      guest_name_snapshot: `Fake Player ${index + 1} A`,
+      guest_partner_name_snapshot: `Fake Player ${index + 1} B`,
+    }));
+    let writes = 0;
+    const api = {
+      rpc: () => { writes++; return Promise.resolve([]); },
+      read: (build) => {
+        const q = {
+          select: () => q, order: () => q, is: () => q, eq: () => q, in: () => q,
+          then: (resolve) => resolve(q.table === "events" ? [event]
+            : q.table === "divisions" ? [division]
+            : q.table === "registrations" ? registrations : []),
+        };
+        return build({ from: (table) => { q.table = table; return q; } });
+      },
+    };
+    const page = createEventsPages({ api }).eventsPage();
+    document.body.append(page);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    page.querySelectorAll("button").find((b) => b.getAttribute("aria-label") === "Divisions of Preview Event").click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const before = writes;
+    page.querySelectorAll("button").find((b) => b.getAttribute("aria-label") === "View entries for Preview Doubles").click();
+    const modal = document.body.querySelector("dialog");
+    const games = modal.querySelectorAll(".entry-matchup");
+    assert(games.length === 2, "Three active entries form two preview games");
+    assert(games[0].textContent.includes("Fake Player 1 A") && games[0].textContent.includes("Fake Player 2 A"), "Adjacent registrations are paired");
+    assert(games[0].querySelectorAll(".entry-player-card").length === 4, "Each doubles player has a separate card");
+    assert(games[0].textContent.includes("Roster"), "Entry order is distinct from the official draw");
+    assert(games[1].textContent.includes("Open entry slot"), "An odd entry has an open slot");
+    assert(modal.querySelector(".entry-waitlist").textContent.includes("Fake Player 4 A"), "Waitlist stays separate");
+    assert(!modal.textContent.includes("Fake Player 5 A"), "Rejected entries stay excluded");
+    assert(writes === before, "Opening the preview never changes the official draw");
+    page.remove();
+    clearAuth();
+  }));
+
+for (const action of ["team_swap", "player_swap", "replace"]) {
+  Deno.test(`roster editor: ${action} reviews and saves versioned changes`, () => withDom(async () => {
+    const calls = [];
+    let saves = 0;
+    const registrations = [1, 2].map((n) => ({ id: `team-${n}`, status: "confirmed", version: 7,
+      guest_participant_id: `guest-${n}a`, guest_partner_participant_id: `guest-${n}b`,
+      guest_name_snapshot: `Fake ${n} A`, guest_partner_name_snapshot: `Fake ${n} B` }));
+    const roster = openRosterEditor({
+      api: { newKey: () => "fake-intent", rpc: (name, args) => {
+        calls.push([name, args]);
+        return Promise.resolve(name === "roster_replacement_choices" ? [{ id: "replacement", display_name: "Fake Replacement", rank_name: "Beginner Low" }] : {});
+      } },
+      event: { id: "fake-event", name: "Fake Event" }, division: { id: "fake-division", name: "Fake Doubles" },
+      registrations, editable: true, onSaved: () => { saves++; },
+    });
+    assert(roster.querySelector(".entry-team-card").getAttribute("draggable") === "true", "Team drag uses the HTML draggable value");
+    assert(roster.querySelector(".entry-player-card").getAttribute("draggable") === "true", "Player cards can drag independently");
+    if (action === "team_swap") {
+      roster.querySelectorAll("button").find((b) => b.getAttribute("aria-label") === "Move Entry 1").click();
+    } else if (action === "player_swap") {
+      const cards = roster.querySelectorAll(".entry-player-card");
+      const drag = new Event("dragstart");
+      Object.defineProperty(drag, "currentTarget", { value: cards[0] });
+      cards[0].dispatchEvent(drag);
+      const drop = new Event("drop", { cancelable: true });
+      Object.defineProperty(drop, "currentTarget", { value: cards[3] });
+      cards[3].dispatchEvent(drop);
+    } else {
+      roster.querySelectorAll("button").find((b) => b.textContent.includes("Replace Player")).click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    const review = document.body.querySelectorAll("dialog").at(-1);
+    assert(review !== roster, "Every change is reviewed before it commits");
+    const select = review.querySelector("select");
+    select.value = action === "team_swap" ? "team-2" : action === "player_swap" ? "team-2:2" : "g:replacement";
+    select.dispatchEvent(new Event("change"));
+    assert(review.querySelector(".roster-target-preview").textContent.includes(action === "replace" ? "Fake Replacement" : "Fake 2"), "Selection updates the target player preview");
+    if (action === "team_swap") assert(review.querySelectorAll(".roster-team-player").length === 4, "Both team previews show individual player cards");
+    const reason = review.querySelector("textarea");
+    if (reason) {
+      reason.value = "Fake player change reason";
+      reason.dispatchEvent(new Event("input"));
+      assert(review.querySelector(".roster-reason-hint").textContent.includes(`${reason.value.length} / 500`), "Reason counter follows typing");
+    }
+    assert(!calls.some(([name]) => name === "edit_division_roster"), "Nothing changes before Save");
+    review.querySelector("form").dispatchEvent(new Event("submit"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const request = calls.find(([name]) => name === "edit_division_roster")?.[1];
+    assert(request?.p_action === action, "Correct server operation selected");
+    assert(request.p_versions["team-1"] === 7, "Optimistic version sent");
+    assert(request.p_key === "fake-intent", "Stable idempotency key sent");
+    assert(saves === 1, "Roster reloads only after a successful save");
+    if (action === "player_swap") assert(request.p_source_player === 1 && request.p_target_player === 2, "Individual player positions are preserved");
+    if (action === "replace") assert(request.p_replacement === "g:replacement", "Replacement is a distinct participant");
+    if (action === "replace") {
+      const lookup = calls.find(([name]) => name === "roster_replacement_choices")?.[1];
+      assert(lookup?.p_registration_id === "team-1" && lookup.p_player === 1, "Replacement lookup asks the server for eligibility in the source division");
+    }
+  }));
+}
 
 Deno.test("tournament draw modal: renders structured seeding list with seed badges and audit callout", () =>
   withDom(async () => {

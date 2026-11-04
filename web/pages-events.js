@@ -6,6 +6,7 @@
 //   * Creates are idempotent (the new row's ID is made when the form opens). Everything is written by database
 //     functions that check the caller; this page shows their answers in plain words. Times are Asia/Manila.
 import { watchRegistrationChanges } from "./lib/registration-live.js";
+import { openRosterEditor } from "./lib/roster-editor.js";
 import {
   adminHero,
   attachPagePattern,
@@ -71,7 +72,7 @@ const REG_STATUS = {
   rejected: ["Rejected", "danger"],
 };
 const REG_SELECT =
-  "id,division_id,member_id,status,status_reason,fee_snapshot,meta,guest_participant_id,guest_partner_participant_id,guest_name_snapshot,guest_partner_name_snapshot,guest_rank_id,guest_partner_rank_id,division:divisions(name,status),member:members(member_no,person:persons(display_name))";
+  "id,version,division_id,member_id,status,status_reason,fee_snapshot,meta,guest_participant_id,guest_partner_participant_id,guest_name_snapshot,guest_partner_name_snapshot,guest_rank_id,guest_partner_rank_id,division:divisions(name,status),member:members(member_no,person:persons(display_name))";
 const GENDER_LABEL = { male: "Men", female: "Women", mixed: "Mixed" };
 const MANILA_OFFSET_MS = 8 * 3600 * 1000;
 const EVENT_SELECT =
@@ -200,10 +201,10 @@ export function createEventsPages({ api, client }) {
           c.from("registrations").select(REG_SELECT).eq(
             "event_id",
             state.open.id,
-          ).order("created_at")
+          ).order("created_at").order("id")
         ), () => api.read((c) => c.from("registrations")
           .select(REG_SELECT.replace("guest_participant_id,guest_partner_participant_id,guest_name_snapshot,guest_partner_name_snapshot,guest_rank_id,guest_partner_rank_id,", ""))
-          .eq("event_id", state.open.id).order("created_at"))) ?? [];
+          .eq("event_id", state.open.id).order("created_at").order("id"))) ?? [];
         const ids = regs.map((r) =>
           r.id
         );
@@ -232,8 +233,8 @@ export function createEventsPages({ api, client }) {
             ? readGuestCompatible(() => api.read((c) => c.from("event_participants")
               .select("id,dupr_id_snapshot").eq("event_id", state.open.id).is("deleted_at", null)), () => [])
             : [],
-          can("events.admin_roster") && regs.some((r) => r.guest_participant_id)
-            ? api.rpc("guest_registration_payment_summary", { p_registration_ids: regs.filter((r) => r.guest_participant_id).map((r) => r.id) })
+          can("events.admin_roster") && regs.length
+            ? api.rpc("guest_registration_payment_summary", { p_registration_ids: regs.map((r) => r.id) })
             : [],
         ]);
         state.regs = regs;
@@ -1247,6 +1248,18 @@ export function createEventsPages({ api, client }) {
       }
     }
 
+    function entriesModal(d) {
+      return openRosterEditor({
+        api, event: state.open, division: d,
+        registrations: state.regs.filter((r) => r.division_id === d.id),
+        partners: state.partners,
+        editable: can("events.admin_roster") && d.status === "open" &&
+          ["registration_open", "registration_closed"].includes(state.open.status) &&
+          !(d.stages ?? []).some((s) => s.status !== "pending"),
+        onSaved: refresh,
+      });
+    }
+
     /** Shows the drawn order. A redo needs a reason and is kept in the history. */
     async function drawModal(d) {
       let entries = [];
@@ -1617,7 +1630,13 @@ export function createEventsPages({ api, client }) {
               key: "limit",
               label: "Most Entries",
               align: "right",
-              render: (r) => r.max_entries ? String(r.max_entries) : "No Limit",
+              render: (r) => {
+                const registered = state.regs.filter((registration) =>
+                  registration.division_id === r.id &&
+                  ["requested", "confirmed"].includes(registration.status)
+                ).length;
+                return `${registered}/${r.max_entries || "No Limit"}`;
+              },
             },
             {
               key: "status",
@@ -1629,11 +1648,18 @@ export function createEventsPages({ api, client }) {
               key: "actions",
               label: "Action",
               align: "center",
-              actionCount: 4,
+              actionCount: 5,
               render: (r) =>
                 h(
                   "span",
                   { class: "row-actions" },
+                  iconButton({
+                    label: `View entries for ${r.name}`,
+                    icon: "users",
+                    size: "sm",
+                    variant: "info",
+                    onClick: () => entriesModal(r),
+                  }),
                   r.status === "open" &&
                     state.open.status === "registration_closed"
                     ? iconButton({
