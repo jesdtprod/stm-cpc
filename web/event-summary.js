@@ -2,6 +2,7 @@
 import { badge, formatTemplateLabel, h, icon } from "./ui.js";
 import { formatDate, formatDateTime } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
+import { avatarImage } from "./lib/avatar.js";
 
 const STATUS = {
   registration_open: ["Registration Open", "success"],
@@ -104,7 +105,109 @@ export function eventSummary(event) {
 const GENDER_LABEL = { male: "Men", female: "Women", mixed: "Mixed" };
 
 // Public division cards: type, who may enter, and entries taken against the limit (counts only).
-export function eventDivisions(divisions = []) {
+// "View Bracketing": a link once the division is drawn, otherwise the same card shown disabled.
+function bracketLink(info) {
+  const open = Boolean(info.drawn || info.finished);
+  const body = [
+    h("span", { class: "public-roster-avatar public-roster-bracket-icon", "aria-hidden": "true" }, icon("trophy")),
+    h(
+      "span",
+      { class: "public-roster-text" },
+      h("strong", { class: "public-roster-team-name" }, info.finished ? "View Final Results" : "View Bracketing"),
+      h(
+        "span",
+        { class: "sub public-roster-players" },
+        info.finished ? "Final Standings & Champion" : open ? "Official Draw & Match Schedule" : "Available once the draw is made",
+      ),
+    ),
+    h("span", { class: "public-roster-index public-roster-bracket-arrow", "aria-hidden": "true" }, icon("chevr")),
+  ];
+  return open
+    ? h("a", { class: "btn btn-secondary public-roster-bracket", href: `#/bracketing?division=${encodeURIComponent(info.divisionId)}&tab=matches` }, ...body)
+    : h("span", { class: "btn btn-secondary public-roster-bracket is-disabled", role: "link", "aria-disabled": "true" }, ...body);
+}
+
+// rosterFor(division) -> { teams: [{ team, players: [{ name, photo }] }], divisionId, drawn } (optional): shown under each
+// card as the official roster, photo first, then the team name with the players' names as the subtext. Once the division
+// is drawn, a button below the roster opens its bracket.
+function officialRoster(info) {
+  if (info?.finished && info.divisionId) {
+    return h("div", { class: "public-division-roster is-finished" }, bracketLink(info));
+  }
+  const teams = info?.teams;
+  if (!teams?.length) return null;
+  const isDoubles = teams.some((t) => t.team || (t.players?.length ?? 0) > 1);
+  const unit = isDoubles
+    ? (teams.length === 1 ? "Team" : "Teams")
+    : (teams.length === 1 ? "Player" : "Players");
+  const matchRows = new Map();
+  const highlightPair = (matchNo, highlighted) => {
+    for (const row of matchRows.get(matchNo) ?? []) {
+      row.classList.toggle("is-match-highlighted", highlighted);
+    }
+  };
+  return h(
+    "div",
+    { class: "public-division-roster" },
+    h(
+      "div",
+      { class: "public-division-roster-head" },
+      h(
+        "span",
+        { class: "public-division-roster-title" },
+        h("span", { class: "public-division-roster-icon", "aria-hidden": "true" }, icon("users")),
+        "Official Roster",
+      ),
+      h("span", { class: "public-division-roster-count" }, `${teams.length} ${unit}`),
+    ),
+    h(
+      "ul",
+      { class: "public-roster-list", "aria-label": "Official roster" },
+      ...teams.map((t, idx) => {
+        const row = h(
+          "li",
+          {
+            class: `public-roster-team${t.matchNo ? ` match-tone-${((t.matchNo - 1) % 8) + 1}` : ""}`,
+            tabindex: t.matchNo ? 0 : null,
+            onPointerEnter: () => highlightPair(t.matchNo, true),
+            onPointerLeave: () => highlightPair(t.matchNo, false),
+            onFocus: () => highlightPair(t.matchNo, true),
+            onBlur: () => highlightPair(t.matchNo, false),
+          },
+          h(
+            "span",
+            { class: "public-roster-index", "aria-hidden": "true" },
+            h("span", { class: "public-roster-glyph" }, String(idx + 1).padStart(2, "0")),
+          ),
+          h(
+            "span",
+            { class: "public-roster-photos", "aria-hidden": "true" },
+            ...t.players.map((p) => h("span", { class: "member-avatar public-roster-avatar" },
+              h("span", { class: "public-roster-glyph" }, avatarImage(p.photo, p.name)))),
+          ),
+          h(
+            "span",
+            { class: "public-roster-text" },
+            h("span", { class: "public-roster-name-row" },
+              t.matchNo ? h("span", { class: "public-roster-match", title: `Match ${t.matchNo}` },
+                h("span", { class: "public-roster-glyph" }, String(t.matchNo).padStart(2, "0"))) : null,
+              h("strong", { class: "public-roster-team-name" }, t.team ?? t.players[0]?.name ?? "—"),
+            ),
+            t.team ? h("span", { class: "sub public-roster-players" }, t.players.map((p) => p.name).join(" · ")) : null,
+          ),
+        );
+        if (t.matchNo) {
+          if (!matchRows.has(t.matchNo)) matchRows.set(t.matchNo, []);
+          matchRows.get(t.matchNo).push(row);
+        }
+        return row;
+      }),
+    ),
+    info.divisionId ? bracketLink(info) : null,
+  );
+}
+
+export function eventDivisions(divisions = [], rosterFor = null) {
   if (!divisions.length) return null;
   return h(
     "section",
@@ -136,52 +239,57 @@ export function eventDivisions(divisions = []) {
           { class: "public-division-card" },
           h(
             "div",
-            { class: "public-division-head" },
+            { class: "public-division-header" },
             h(
               "div",
-              { class: "public-division-copy" },
-              h("strong", { class: "public-division-name" }, d.name),
+              { class: "public-division-head" },
+              h(
+                "div",
+                { class: "public-division-copy" },
+                h("strong", { class: "public-division-name" }, d.name),
+                h(
+                  "span",
+                  { class: "sub" },
+                  [
+                    d.format === "doubles" ? "Doubles" : "Singles",
+                    GENDER_LABEL[d.gender],
+                  ].filter(Boolean).join(" · "),
+                ),
+              ),
+              full ? badge("Full", "warning") : badge("Open", "success"),
+            ),
+            h(
+              "div",
+              { class: "public-division-who" },
+              icon("user"),
               h(
                 "span",
-                { class: "sub" },
-                [
-                  d.format === "doubles" ? "Doubles" : "Singles",
-                  GENDER_LABEL[d.gender],
-                ].filter(Boolean).join(" · "),
+                {},
+                [d.category, ranks, d.age_group].filter(Boolean).join(" · ") ||
+                  "All Members",
               ),
             ),
-            full ? badge("Full", "warning") : badge("Open", "success"),
-          ),
-          h(
-            "div",
-            { class: "public-division-who" },
-            icon("user"),
             h(
-              "span",
-              {},
-              [d.category, ranks, d.age_group].filter(Boolean).join(" · ") ||
-                "All Members",
+              "div",
+              { class: "public-division-entries" },
+              h("span", { class: "sub" }, "Registered"),
+              h(
+                "strong",
+                {},
+                max > 0 ? `${taken} / ${max}` : `${taken} · No Limit`,
+              ),
             ),
+            max > 0
+              ? h("progress", {
+                class: "member-event-capacity public-division-capacity",
+                value: Math.min(taken, max),
+                max,
+                "aria-label":
+                  `${taken} of ${max} entries registered for ${d.name}`,
+              })
+              : null,
           ),
-          h(
-            "div",
-            { class: "public-division-entries" },
-            h("span", { class: "sub" }, "Registered"),
-            h(
-              "strong",
-              {},
-              max > 0 ? `${taken} / ${max}` : `${taken} · No Limit`,
-            ),
-          ),
-          max > 0
-            ? h("progress", {
-              class: "member-event-capacity public-division-capacity",
-              value: Math.min(taken, max),
-              max,
-              "aria-label":
-                `${taken} of ${max} entries registered for ${d.name}`,
-            })
-            : null,
+          officialRoster(rosterFor?.(d)),
         );
       }),
     ),

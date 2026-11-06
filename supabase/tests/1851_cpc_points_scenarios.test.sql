@@ -159,13 +159,13 @@ select is(pg_temp.pts('s3'),
     pg_temp.fin(2.900, 2 * pg_temp.d(2.9, 2.9, 4, 11)) - 2.900),
   's3 (loses to the members, beats the 3.500 guest) keeps both divisions');
 select is(pg_temp.cnt('s1'), 5, 'three matches in the first division and two in the second: five, each counted once');
-select is((select count(*)::int from public.member_cpc_rating_history h where h.member_id = (select mid from us where role = 's1') and h.entry_type = 'division_finalization'), 2, 'one history row for each division');
-select is((select count(*)::int from public.member_cpc_rating_history h where h.member_id = (select mid from us where role = 's1') and h.entry_type = 'division_finalization' and h.points_before is not null), 2, 'with before and after values');
+select is((select count(*)::int from public.member_cpc_rating_history h where h.member_id = (select mid from us where role = 's1') and h.entry_type = 'division_finalization' and not exists (select 1 from public.member_cpc_rating_history y where y.reverses_id = h.id)), 2, 'one live history row for each division');
+select is((select count(*)::int from public.member_cpc_rating_history h where h.member_id = (select mid from us where role = 's1') and h.entry_type = 'division_finalization' and not exists (select 1 from public.member_cpc_rating_history y where y.reverses_id = h.id) and h.points_before is not null), 2, 'with before and after values');
 
 -- ---- a guest: used as an opponent strength, never rated or ranked
 select is((select points from public.event_participant_cpc_ratings where discipline = 'singles' and participant_id = (select g_part from fx)), 3.500::numeric, 'the guest keeps the assessed 3.500');
 select is((select version from public.event_participant_cpc_ratings where discipline = 'singles' and participant_id = (select g_part from fx)), 1, 'and it was never rewritten');
-select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select x1 from fx)), 3, 'only the three members have points history in that division');
+select is((select count(*)::int from public.member_cpc_rating_history h where h.division_id = (select x1 from fx) and h.entry_type = 'division_finalization' and not exists (select 1 from public.member_cpc_rating_history y where y.reverses_id = h.id)), 3, 'only the three members have points history in that division');
 
 -- ---- 8.000 and 2.000 limits
 select is(pg_temp.pts('u1'), 8.000::numeric, 'a 7.990 player who beats an equal player is capped at 8.000');
@@ -192,7 +192,7 @@ select is(pg_temp.rank_code('d2'), 'advanced-low', 'the club rank follows the hi
 select is((select r.points from public.member_cpc_ratings r where r.member_id = (select mid from us where role = 'd2') and r.discipline = 'singles' and r.deleted_at is null), 4.200::numeric, 'a doubles division never changes the singles rating');
 select is(pg_temp.rank_code('d1'), 'novice-high', 'a doubles-only player is ranked by the doubles rating (2.765 is Novice High)');
 select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select x6 from fx) and discipline = 'doubles'), 4, 'the doubles division wrote four doubles history rows');
-select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select x1 from fx) and discipline = 'singles'), 3, 'and a singles division wrote singles rows');
+select is((select count(*)::int from public.member_cpc_rating_history h where h.division_id = (select x1 from fx) and h.discipline = 'singles' and h.entry_type = 'division_finalization' and not exists (select 1 from public.member_cpc_rating_history y where y.reverses_id = h.id)), 3, 'and a singles division wrote singles rows');
 
 select * from finish();
 rollback;

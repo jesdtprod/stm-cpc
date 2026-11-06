@@ -388,12 +388,12 @@ export function createCourtsPages({ api, getOrgId }) {
               p_reason: reason,
               p_key: key,
             });
-            toast("Deleted.", { tone: "success" });
+            toast("Court configuration record archived.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -442,12 +442,12 @@ export function createCourtsPages({ api, getOrgId }) {
                 "Someone else changed this. Close this window and open it again.",
               );
             }
-            toast("Saved.", { tone: "success" });
+            toast("Court configuration end date updated.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -623,14 +623,14 @@ export function createCourtsPages({ api, getOrgId }) {
                 ...fields,
               });
             }
-            toast(editing ? "Court saved." : "Court added.", {
+            toast(editing ? "Court details updated." : "Court added.", {
               tone: "success",
             });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -861,7 +861,7 @@ export function createCourtsPages({ api, getOrgId }) {
                   "Someone else changed these hours. Close this window and open it again.",
                 );
               }
-              toast("Hours saved.", { tone: "success" });
+              toast("Court operating hours updated.", { tone: "success" });
               await refresh();
               return;
             }
@@ -888,7 +888,7 @@ export function createCourtsPages({ api, getOrgId }) {
             if (done.length) await refresh();
             return showError(
               error,
-              `${messageOf(e, "That did not work.")}${
+              `${messageOf(e, "Unable to complete this action. Please try again.")}${
                 done.length ? ` Already added: ${done.join(", ")}.` : ""
               }`,
             );
@@ -1114,12 +1114,12 @@ export function createCourtsPages({ api, getOrgId }) {
               valid_from: from,
               valid_to: to,
             });
-            toast("Rate added.", { tone: "success" });
+            toast("Court rate created.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -1316,12 +1316,12 @@ export function createCourtsPages({ api, getOrgId }) {
               during: `[${start},${end})`,
               reason,
             });
-            toast("Blackout added.", { tone: "success" });
+            toast("Court closure period added.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },

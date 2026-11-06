@@ -535,12 +535,12 @@ export function createRanksPages({ api, getOrgId }) {
                 });
               }
             }
-            toast(editing ? "Rank saved." : "Rank added.", { tone: "success" });
+            toast(editing ? "Rank details updated." : "Rank created.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -674,12 +674,12 @@ export function createRanksPages({ api, getOrgId }) {
               p_reason: reason,
               p_key: key,
             });
-            toast("Deleted.", { tone: "success" });
+            toast("Rank archived.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -692,7 +692,7 @@ export function createRanksPages({ api, getOrgId }) {
         if (okMessage) toast(okMessage, { tone: "success" });
         await refresh();
       } catch (e) {
-        toast(messageOf(e, "That did not work."), { tone: "error" });
+        toast(messageOf(e, "Unable to complete this action. Please try again."), { tone: "error" });
       }
     }
 
@@ -718,7 +718,7 @@ export function createRanksPages({ api, getOrgId }) {
         if (!done?.length) {
           throw new Error("Someone else changed this ladder. Reload the page.");
         }
-      }, "Saved.");
+      }, "Rank ladder overflow settings updated.");
 
     function move(ladder, ranks, index, delta) {
       const ids = ranks.map((r) => r.id);
@@ -1261,12 +1261,12 @@ export function createRanksPages({ api, getOrgId }) {
               search.value = "";
               state.page = 1;
             }
-            toast(editing ? "Rule saved." : "Rule added.", { tone: "success" });
+            toast(editing ? "Rank movement rule updated." : "Rank movement rule created.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },

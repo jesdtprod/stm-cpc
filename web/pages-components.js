@@ -174,7 +174,7 @@ export function componentsPage() {
         document.createTextNode(label),
       );
       toggleThemeBtn.title = label;
-      toast(`Switched to ${activeTheme} theme`, { tone: "info" });
+      toast(`${activeTheme} theme applied.`, { tone: "info" });
     },
   });
 
@@ -343,11 +343,11 @@ export function componentsPage() {
               if (navigator.clipboard) {
                 navigator.clipboard.writeText(`var(${sw.token})`).then(
                   () =>
-                    toast(`Copied var(${sw.token}) to clipboard`, {
+                    toast(`Color variable var(${sw.token}) copied to clipboard.`, {
                       tone: "success",
                     }),
                   () =>
-                    toast("Could not copy the color variable. Try again.", {
+                    toast("Unable to copy the color variable. Please try again.", {
                       tone: "error",
                     }),
                 );
@@ -550,9 +550,9 @@ export function componentsPage() {
             onClick: () => {
               if (navigator.clipboard) {
                 navigator.clipboard.writeText(`icon("${name}")`).then(
-                  () => toast(`Copied icon("${name}")`, { tone: "success" }),
+                  () => toast(`Icon snippet for ${name} copied to clipboard.`, { tone: "success" }),
                   () =>
-                    toast("Could not copy the icon. Try again.", {
+                    toast("Unable to copy the icon snippet. Please try again.", {
                       tone: "error",
                     }),
                 );
@@ -703,17 +703,17 @@ export function componentsPage() {
         button({
           label: "Primary",
           variant: "primary",
-          onClick: () => toast("Primary button clicked", { tone: "info" }),
+          onClick: () => toast("Primary button example selected.", { tone: "info" }),
         }),
         button({
           label: "Secondary",
           variant: "secondary",
-          onClick: () => toast("Secondary button clicked", { tone: "info" }),
+          onClick: () => toast("Secondary button example selected.", { tone: "info" }),
         }),
         button({
           label: "Outline",
           variant: "outline",
-          onClick: () => toast("Outline button clicked", { tone: "info" }),
+          onClick: () => toast("Outline button example selected.", { tone: "info" }),
         }),
       ),
       h(
@@ -724,17 +724,17 @@ export function componentsPage() {
         button({
           label: "Ghost",
           variant: "ghost",
-          onClick: () => toast("Ghost button clicked", { tone: "info" }),
+          onClick: () => toast("Ghost button example selected.", { tone: "info" }),
         }),
         button({
           label: "Link",
           variant: "link",
-          onClick: () => toast("Link button clicked", { tone: "info" }),
+          onClick: () => toast("Link button example selected.", { tone: "info" }),
         }),
         button({
           label: "Destructive",
           variant: "danger",
-          onClick: () => toast("Destructive button clicked", { tone: "error" }),
+          onClick: () => toast("Destructive button example selected.", { tone: "error" }),
         }),
       ),
     );
@@ -812,13 +812,13 @@ export function componentsPage() {
         iconButton({
           label: "Edit Record",
           icon: "edit",
-          onClick: () => toast("Edit record action", { tone: "info" }),
+          onClick: () => toast("Edit record example selected.", { tone: "info" }),
         }),
         iconButton({
           label: "Delete Record",
           icon: "trash",
           variant: "danger",
-          onClick: () => toast("Delete Action", { tone: "error" }),
+          onClick: () => toast("Delete action example selected.", { tone: "error" }),
         }),
       ),
     );
@@ -833,7 +833,7 @@ export function componentsPage() {
         await new Promise((r) => setTimeout(r, 1500));
         delete testLoadingBtn.dataset.pending;
         testLoadingBtn.disabled = false;
-        toast("Async action finished!", { tone: "success" });
+        toast("Example action completed.", { tone: "success" });
       },
     });
 
@@ -880,19 +880,19 @@ export function componentsPage() {
         {
           label: "Export to CSV",
           icon: "download",
-          onClick: () => toast("Exporting CSV…", { tone: "info" }),
+          onClick: () => toast("CSV export example selected.", { tone: "info" }),
         },
         {
           label: "Print Bracket",
           icon: "file",
-          onClick: () => toast("Sending to printer…", { tone: "info" }),
+          onClick: () => toast("Print example selected.", { tone: "info" }),
         },
         { divider: true },
         {
           label: "Cancel Event",
           icon: "trash",
           danger: true,
-          onClick: () => toast("Event Cancelled", { tone: "error" }),
+          onClick: () => toast("Example event cancelled.", { tone: "error" }),
         },
       ],
     });
@@ -1150,12 +1150,12 @@ export function componentsPage() {
           const mobileOk = validateMobile(mobileFieldEl.inputEl.value);
           const amountOk = validateAmount(currencyField.inputEl.value);
           if (emailOk && mobileOk && amountOk) {
-            toast("All 3 input fields passed validation successfully!", {
+            toast("All three example fields passed validation.", {
               tone: "success",
               title: "Validation Passed",
             });
           } else {
-            toast("Please fix the highlighted field errors.", {
+            toast("Review the highlighted fields before continuing.", {
               tone: "error",
               title: "Validation Failed",
             });
@@ -1174,7 +1174,7 @@ export function componentsPage() {
           validateEmail("invalid-email-format");
           validateMobile("0812345");
           validateAmount("45.00");
-          toast("Simulated invalid inputs to showcase error messages.", {
+          toast("Validation examples loaded. Review the highlighted fields.", {
             tone: "warning",
             title: "Simulated Input Errors",
           });
@@ -1192,7 +1192,7 @@ export function componentsPage() {
           validateEmail("player@cpc.ph");
           validateMobile("09171234567");
           validateAmount("1250.00");
-          toast("Fields restored to valid sample data.", {
+          toast("Example fields restored to valid values.", {
             tone: "info",
             title: "Defaults Restored",
           });
@@ -1277,7 +1277,7 @@ export function componentsPage() {
       ],
       value: "Capitol Court 1 - Indoor Wood",
       hint: "Search and select preferred court facility.",
-      onSelect: (val) => toast(`Selected: ${val}`, { tone: "info" }),
+      onSelect: (val) => toast(`Selected option: ${val}.`, { tone: "info" }),
     });
 
     const multi = multiSelect({
@@ -1293,7 +1293,7 @@ export function componentsPage() {
       values: ["Mixed Doubles 3.5", "Men's Doubles Open"],
       hint: "Choose one or more tournament divisions.",
       onChange: (vals) =>
-        toast(`Divisions: ${vals.join(", ")}`, { tone: "info" }),
+        toast(`Selected divisions: ${vals.join(", ") || "None"}.`, { tone: "info" }),
     });
 
     const autocomplete = autocompleteField({
@@ -1309,7 +1309,7 @@ export function componentsPage() {
       placeholder: "Type partner's name or Member ID…",
       hint: "Instant lookup of verified club members.",
       onSelect: (item) =>
-        toast(`Partner selected: ${item}`, { tone: "success" }),
+        toast(`Doubles partner selected: ${item}.`, { tone: "success" }),
     });
 
     const check = checkbox({
@@ -1335,7 +1335,7 @@ export function componentsPage() {
       ],
       value: "pool_play",
       hint: "Bracket pipeline format.",
-      onChange: (val) => toast(`Format set to: ${val}`, { tone: "info" }),
+      onChange: (val) => toast(`Event format selected: ${val}.`, { tone: "info" }),
     });
 
     const sw = switchToggle({
@@ -1344,7 +1344,7 @@ export function componentsPage() {
       checked: true,
       hint: "Receive instant court-call SMS 15 minutes before your match.",
       onChange: (checked) =>
-        toast(`SMS alerts ${checked ? "enabled" : "disabled"}`, {
+        toast(`SMS notifications ${checked ? "enabled" : "disabled"}.`, {
           tone: "info",
         }),
     });
@@ -1354,7 +1354,7 @@ export function componentsPage() {
       label: "Surface Preference",
       options: ["Indoor Wood", "Outdoor Acrylic", "Covered Cushion"],
       value: "Indoor Wood",
-      onChange: (val) => toast(`Preference: ${val}`, { tone: "info" }),
+      onChange: (val) => toast(`Preference updated: ${val}.`, { tone: "info" }),
     });
 
     const slider = sliderField({
@@ -1366,7 +1366,7 @@ export function componentsPage() {
       value: 15,
       unit: " mins",
       hint: "Designated pre-game warm-up time.",
-      onChange: (val) => toast(`Warm-up: ${val} mins`, { tone: "info" }),
+      onChange: (val) => toast(`Warm-up duration set to ${val} minutes.`, { tone: "info" }),
     });
 
     const smoothCalendar = calendarDropdown({
@@ -1378,7 +1378,7 @@ export function componentsPage() {
       hint:
         "Custom animated popover calendar with month pager, range connector highlight, and quick presets.",
       onChange: ({ start, end }) => {
-        toast(`Selected Dates: ${start} → ${end}`, {
+        toast(`Date range selected: ${start} to ${end}.`, {
           tone: "info",
           title: "Calendar Selection",
         });
@@ -1399,7 +1399,7 @@ export function componentsPage() {
       endValue: businessDate(),
       hint: "Inclusive dates with quick preset chips.",
       onChange: ({ start, end }) =>
-        toast(`Range: ${start} to ${end}`, { tone: "info" }),
+        toast(`Date range selected: ${start} to ${end}.`, { tone: "info" }),
     });
 
     const time = timeField({
@@ -1424,7 +1424,7 @@ export function componentsPage() {
       hint: "Upload bank transfer or GCash screenshot for admin approval.",
       onFiles: (files) => {
         if (files.length) {
-          toast(`Attached: ${files[0].name}`, { tone: "success" });
+          toast(`File attached: ${files[0].name}.`, { tone: "success" });
         }
       },
     });
@@ -1642,7 +1642,7 @@ export function componentsPage() {
         variant: "secondary",
         icon: "checkCircle",
         onClick: () =>
-          toast("Court booking confirmed for 6:00 PM!", {
+          toast("Example booking confirmed for 6:00 PM.", {
             tone: "success",
             title: "Reservation Approved",
           }),
@@ -1717,7 +1717,7 @@ export function componentsPage() {
         tone: "info",
         message: "Early bird registration for the CPC Summer Open is now open!",
         actionLabel: "Register Now",
-        onAction: () => toast("Opening registration…", { tone: "info" }),
+        onAction: () => toast("Registration example selected.", { tone: "info" }),
       }),
       banner({
         tone: "warning",
@@ -1881,7 +1881,7 @@ export function componentsPage() {
       description: "No reservations match your selected date or court filters.",
       resetLabel: "Reset Filters & Date Range",
       onReset: () =>
-        toast("Filters reset to default window.", { tone: "info" }),
+        toast("Date filters reset to their defaults.", { tone: "info" }),
     });
 
     const errorStateDemo = emptyState({
@@ -1890,7 +1890,7 @@ export function componentsPage() {
       description:
         "Network timeout while reaching the server. Your cached data is safe.",
       resetLabel: "Retry Connection",
-      onReset: () => toast("Retrying sync…", { tone: "info" }),
+      onReset: () => toast("Synchronization retry example selected.", { tone: "info" }),
     });
 
     const section = h(
@@ -2046,7 +2046,7 @@ export function componentsPage() {
           confirmLabel: "Submit Booking",
           onConfirm: async () => {
             await new Promise((r) => setTimeout(r, 1200));
-            toast("Reservation submitted for admin review!", {
+            toast("Example reservation submitted for administrator review.", {
               tone: "success",
             });
             return true;
@@ -2116,7 +2116,7 @@ export function componentsPage() {
           button({
             label: "View Full Profile",
             variant: "primary",
-            onClick: () => toast("Opening full profile…"),
+            onClick: () => toast("Full profile example selected."),
           }),
         );
         openDrawer({
@@ -2161,19 +2161,19 @@ export function componentsPage() {
         {
           label: "View Profile",
           icon: "user",
-          onClick: () => toast("Profile clicked"),
+          onClick: () => toast("Profile navigation example selected."),
         },
         {
           label: "Account Settings",
           icon: "sliders",
-          onClick: () => toast("Settings clicked"),
+          onClick: () => toast("Settings navigation example selected."),
         },
         { divider: true },
         {
           label: "Sign Out",
           icon: "x",
           danger: true,
-          onClick: () => toast("Sign out requested", { tone: "warning" }),
+          onClick: () => toast("Sign-out example selected.", { tone: "warning" }),
         },
       ],
     });
@@ -2380,7 +2380,7 @@ export function componentsPage() {
           onStepClick: (idx) => {
             activeStepIdx = idx;
             renderStepper();
-            toast(`Step changed to ${idx + 1}`, { tone: "info" });
+            toast(`Step ${idx + 1} selected.`, { tone: "info" });
           },
         }),
       );
@@ -2409,7 +2409,7 @@ export function componentsPage() {
         },
       ],
       activePath: "#/tournaments",
-      onNavigate: (path) => toast(`Navigate: ${path}`, { tone: "info" }),
+      onNavigate: (path) => toast(`Navigation example selected: ${path}.`, { tone: "info" }),
     });
 
     // Pagination Demo
@@ -2424,7 +2424,7 @@ export function componentsPage() {
           onPage: (p) => {
             curPage = p;
             renderPager();
-            toast(`Page ${p} loaded`, { tone: "info" });
+            toast(`Page ${p} displayed.`, { tone: "info" });
           },
         }),
       );
@@ -2462,7 +2462,7 @@ export function componentsPage() {
                 onClick: () => {
                   activeBottomTab = item.label;
                   renderBottomNavDemo();
-                  toast("QR Scan opened (Member QR & check-in)", {
+                  toast("Member QR and check-in example selected.", {
                     tone: "warning",
                   });
                 },
@@ -2482,7 +2482,7 @@ export function componentsPage() {
               onClick: () => {
                 activeBottomTab = item.label;
                 renderBottomNavDemo();
-                toast(`Active tab: ${item.label}`, { tone: "info" });
+                toast(`${item.label} tab selected.`, { tone: "info" });
               },
             },
             icon(item.iconName),
@@ -2709,12 +2709,12 @@ export function componentsPage() {
         {
           label: "Edit Member",
           icon: "edit",
-          onClick: (r) => toast(`Editing ${r.name}`, { tone: "info" }),
+          onClick: (r) => toast(`Edit member example selected for ${r.name}.`, { tone: "info" }),
         },
         {
           label: "Delete Member",
           icon: "trash",
-          onClick: (r) => toast(`Delete ${r.name}`, { tone: "error" }),
+          onClick: (r) => toast(`Delete member example selected for ${r.name}.`, { tone: "error" }),
         },
       ],
     };
@@ -3105,7 +3105,7 @@ export function componentsPage() {
             },
           });
         } else {
-          toast("Form is already clean.", { tone: "info" });
+          toast("There are no unsaved changes to discard.", { tone: "info" });
         }
       },
     });
@@ -3182,7 +3182,7 @@ export function componentsPage() {
           }),
         );
         summaryContainer.scrollIntoView({ behavior: "smooth" });
-        toast("Please fix form validation errors.", { tone: "error" });
+        toast("Review the highlighted fields before submitting.", { tone: "error" });
         return;
       }
 
@@ -3193,7 +3193,7 @@ export function componentsPage() {
       try {
         await new Promise((r) => setTimeout(r, 1400));
         toast(
-          "Member application submitted successfully! Pending admin approval.",
+          "Example membership application submitted for administrator approval.",
           {
             tone: "success",
             title: "Registration Received",

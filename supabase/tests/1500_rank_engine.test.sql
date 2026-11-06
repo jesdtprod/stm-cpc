@@ -112,7 +112,7 @@ end $$;
 grant execute on function pg_temp.play_stage(text) to public;
 
 -- ---- split single elimination: round 1 for everyone, then H and L
-select is((select count(*)::int from public.matches where division_stage_id = (select s from stg)), 8, 'sixteen entries: 8 first-round matches');
+select is((select count(*)::int from public.matches where division_stage_id = (select s from stg) and group_label is null), 8, 'sixteen entries: 8 first-round matches');
 select pg_temp.play_stage((select s from stg));
 select is((select count(*)::int from public.matches where division_stage_id = (select s from stg) and group_label = 'H'), 7, 'the winners get a 7-match H bracket');
 select is((select count(*)::int from public.matches where division_stage_id = (select s from stg) and group_label = 'L'), 7, 'the losers a 7-match L bracket');

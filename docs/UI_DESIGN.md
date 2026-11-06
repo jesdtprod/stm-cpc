@@ -187,6 +187,8 @@ Use comfortable spacing, not excessive empty areas or compressed controls. Allow
 
 ## 4. Page composition
 
+Standings and Matches is a full-width exception: its main container fills the available content area so the Round 1 column and bracket trees have more space. Preserve the shared page gutters and responsive stacking; wide bracket diagrams scroll inside their own panels.
+
 - Admin pages use a plain sidebar and content layout, without the public top header or Home/Courts/Events links. The sidebar has no internal scroll area; long navigation uses document scrolling. My profile, Change password, and Sign out live in the sidebar account menu. On mobile, the Menu button opens the same sidebar. The dashboard separates approval requests from club activity; existing control styles and colors are retained.
 
 Use this order when the section is applicable:
@@ -306,6 +308,8 @@ Server-paged directories retain their navigation so further records stay accessi
 
 ## 8. Empty, error, and refreshing states
 
+Toast messages state the affected item and the completed action in sentence case. Distinguish submitted, pending, confirmed, withdrawn and archived states accurately. Errors explain what failed and provide an actionable next step; avoid vague messages such as "Done", "Deleted" or "That did not work". Keep messages concise and do not expose internal errors or sensitive data.
+
 ### Empty table
 
 Keep the table header visible. Center the following inside the table body:
@@ -348,6 +352,7 @@ Every modal must use the same header and footer design, including nested and dyn
 - The member registration standing modal ("Your Registration") displays tournament eyebrow tracking, a division overview subject card (`.registration-decision-subject`), a 4-tile structured grid (`.registration-info-grid`) for Standing & Role, Entry Payment, Division Field, and Reference ID, an informative `.modal-callout` status banner, and context-aware action buttons (Pay Entry Fee, View Bracket, Withdraw Registration).
 - Member and admin notification feeds share one responsive card layout with explicit icon/header/action/message grid areas. The message never shares the title row; mobile gives messages and structured details the full card width. Notification cards use flat shared surfaces, a leading category icon, left-aligned title and Manila timestamp, a visible Unread label, and a keyboard focus outline. Structured details (`.notice-details-grid`) span the full card width on phones, with two columns for participants and status, full-width event names, and a muted reference row; desktop uses four columns. Keep smaller muted labels, wrapping values, status badges, complete reference IDs, and the existing open/mark-read behavior.
 - Provide an accessible dialog name, initial focus, focus containment, and focus restoration after closing.
+- Scoring by Round uses a Round 1 rule summary with an Editable/Locked badge, matching H/L bracket panels, and six shared searchable scoring-rule selectors. Panels stack on mobile; saved selections and the server-enforced lock after bracket play begins remain intact.
 - Support Escape and backdrop closing when safe. Protect unsaved changes where the workflow requires it.
 - Destructive confirmations must clearly describe the target and consequences and default to a safe choice.
 

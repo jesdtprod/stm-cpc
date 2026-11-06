@@ -234,7 +234,17 @@ export function createBookingAdminPages({ api, client }) {
         }
         try {
           await run(reason || null, key);
-          toast(`${verb} done.`, { tone: "success" });
+          const message = {
+            Approve: "Booking approved.",
+            Reject: /payment/i.test(title) ? "Payment rejected." : "Booking request rejected.",
+            "Check In": "Booking check-in recorded.",
+            "Mark No-show": "Booking marked as a no-show.",
+            Complete: "Booking marked as completed.",
+            "Cancel Booking": "Booking cancelled.",
+            Verify: "Payment verified.",
+            "Void Payment": "Payment voided. The payment credit has been reversed.",
+          }[verb] ?? "Booking action completed.";
+          toast(message, { tone: "success" });
           await done();
         } catch (e) {
           return showError(error, bookingMessage(e));
@@ -1658,7 +1668,7 @@ export function createBookingAdminPages({ api, client }) {
         a.click();
         a.remove();
       } catch {
-        toast("The proof could not be opened.", { tone: "error" });
+        toast("Unable to open the payment proof. Please try again.", { tone: "error" });
       }
     }
 

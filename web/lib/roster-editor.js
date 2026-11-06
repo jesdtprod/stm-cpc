@@ -66,7 +66,7 @@ export function openRosterEditor(
       feedback.textContent = "Roster saved.";
       await onSaved();
       dialog.close();
-      toast("Roster saved. The official draw is unchanged.", {
+      toast("Event roster updated. The official draw has been preserved.", {
         tone: "success",
       });
     } catch (error) {

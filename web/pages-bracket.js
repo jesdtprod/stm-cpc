@@ -18,6 +18,8 @@ import {
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
+import { createBracketViews, MATCH_STATUS, roundName } from "./lib/bracket-views.js";
+import { finishedGamesError } from "./lib/score-validation.js";
 
 const STAGE_LABEL = {
   round_robin: "Round Robin",
@@ -25,13 +27,6 @@ const STAGE_LABEL = {
   pool_play: "Pool Play",
   best_of_n_playoff: "Best-of Playoff",
   split_single_elimination: "Split Single Elimination",
-};
-const MATCH_STATUS = {
-  scheduled: ["Scheduled", "neutral"],
-  in_progress: ["In Progress", "info"],
-  completed: ["Final", "success"],
-  forfeited: ["Forfeit", "warning"],
-  cancelled: ["Cancelled", "neutral"],
 };
 const STAGE_STATUS = {
   pending: "Not Started",
@@ -42,13 +37,6 @@ const STAGE_STATUS = {
 };
 
 /** Knockout rounds are named from the end: the Final, the Semifinals, the Quarterfinals, then Round of 16 ... */
-function roundName(round, total) {
-  const fromEnd = total - round;
-  if (fromEnd === 0) return "Final";
-  if (fromEnd === 1) return "Semifinals";
-  if (fromEnd === 2) return "Quarterfinals";
-  return `Round of ${2 ** (fromEnd + 1)}`;
-}
 
 function messageOf(e, fallback) {
   const own = ["22023", "42501", "23505", "CP422"].includes(e?.code) &&
@@ -60,7 +48,7 @@ export function createBracketPages({ api }) {
   function bracketPage() {
     const divisionId = new URLSearchParams(location.hash.split("?")[1] ?? "")
       .get("division");
-    const page = h("div", { class: "page" });
+    const page = h("div", { class: "page bracket-page" });
     const body = h("div", { class: "bracket-body" });
     const state = {
       status: "loading",
@@ -69,6 +57,7 @@ export function createBracketPages({ api }) {
       standings: [],
       matches: [],
       results: [],
+      playersByTeam: new Map(),
       detail: "loading",
       scoringRules: null,
     };
@@ -118,12 +107,23 @@ export function createBracketPages({ api }) {
       state.detail = state.matches.length ? "refreshing" : "loading";
       draw();
       try {
-        const [standings, matches] = await Promise.all([
+        const [standings, matches, rosters] = await Promise.all([
           api.rpc("stage_standings", { p_stage_id: state.stageId }),
           api.rpc("stage_matches", { p_stage_id: state.stageId }),
+          Promise.resolve(api.rpc("public_event_rosters")).catch(() => []),
         ]);
         state.standings = standings ?? [];
         state.matches = matches ?? [];
+        const playersByTeam = new Map();
+        for (const r of rosters ?? []) {
+          if (r.division_id && state.division?.id && r.division_id !== state.division.id) continue;
+          const teamKey = String(r.team_name ?? "").trim().toUpperCase();
+          const players = [r.p1_name, r.p2_name].filter(Boolean).join(" & ");
+          if (teamKey && players && players.toUpperCase() !== teamKey) {
+            playersByTeam.set(teamKey, players);
+          }
+        }
+        state.playersByTeam = playersByTeam;
         state.detail = "ready";
       } catch {
         state.detail = "error";
@@ -149,6 +149,15 @@ export function createBracketPages({ api }) {
         max: 99,
         step: 1,
         inputmode: "numeric",
+        onKeyDown: (event) => {
+          if (!event.ctrlKey && !event.metaKey && ["-", "+", ".", ",", "e", "E"].includes(event.key)) event.preventDefault();
+        },
+        onBeforeInput: (event) => {
+          if (event.data && /[^0-9]/.test(event.data)) event.preventDefault();
+        },
+        onPaste: (event) => {
+          if (!/^[0-9]+$/.test(event.clipboardData?.getData("text") ?? "")) event.preventDefault();
+        },
         value: value ?? "",
         "aria-label": id,
       });
@@ -159,15 +168,19 @@ export function createBracketPages({ api }) {
         return h(
           "div",
           { class: "score-row" },
-          h("span", { class: "score-label" }, `Game ${i + 1}`),
           num(`g${i}-a`, `a${i}`, g?.a),
-          h("span", { "aria-hidden": "true" }, "–"),
+          h(
+            "span",
+            { class: "score-label" },
+            h("span", { class: "score-label-tag" }, "GAME"),
+            String(i + 1).padStart(2, "0"),
+          ),
           num(`g${i}-b`, `b${i}`, g?.b),
         );
       });
     }
     /** Reads the filled-in rows; a half-filled row is an error, empty rows at the end are ignored. */
-    function readGames(form, maxGames) {
+    function readGames(form, maxGames, match) {
       const games = [];
       for (let i = 0; i < maxGames; i++) {
         const a = String(form.get(`a${i}`) ?? "").trim();
@@ -179,9 +192,12 @@ export function createBracketPages({ api }) {
         if (games.length !== i) {
           return { error: "Fill the games in order, without gaps." };
         }
+        if (!/^[0-9]+$/.test(a) || !/^[0-9]+$/.test(b)) {
+          return { error: `Game ${i + 1}: enter whole-number scores from 0 to 99.` };
+        }
         games.push({ a: Number(a), b: Number(b) });
       }
-      return { games };
+      return { games, error: finishedGamesError(games, rule(match)) };
     }
     // Split Single Elimination: a bracket round (counted back from the final) can have its own rule; the database decides
     // the same way (core.match_scoring_rule). Round 1 and anything not set use the stage rule.
@@ -203,45 +219,126 @@ export function createBracketPages({ api }) {
         rule(m).games_to_win > 1 ? "s" : ""
       } wins.`;
 
+    function scoreBoardCard(m, max) {
+      const playersOf = (teamName, direct) =>
+        direct ?? (teamName ? state.playersByTeam.get(String(teamName).trim().toUpperCase()) ?? null : null);
+      const playersA = playersOf(m.a_name, m.a_players);
+      const playersB = playersOf(m.b_name, m.b_players);
+      return h(
+        "div",
+        { class: "score-board-card" },
+        h(
+          "div",
+          { class: "score-head" },
+          h(
+            "div",
+            { class: "score-team-pod" },
+            h("span", { class: "score-team-side" }, "Side A"),
+            h("strong", {}, m.a_name ?? "To be decided"),
+            playersA ? h("span", { class: "sub score-team-players" }, playersA) : null,
+          ),
+          h("span", { class: "bt-vs score-head-vs", "aria-hidden": "true" }, "VS"),
+          h(
+            "div",
+            { class: "score-team-pod" },
+            h("span", { class: "score-team-side" }, "Side B"),
+            h("strong", {}, m.b_name ?? "To be decided"),
+            playersB ? h("span", { class: "sub score-team-players" }, playersB) : null,
+          ),
+        ),
+        h("div", { class: "score-games-list" }, ...gameRows(m, max)),
+      );
+    }
+
     function scoreModal(m) {
       const error = errorLine();
       const max = maxGamesOf(m);
       const canFinal = can("scores.finalize");
-      return openModal({
+      const r = rule(m);
+      let dialog = null;
+      // Ending the match without a score: Forfeit, Disqualify or Default, one click away inside this form.
+      const alternatives = canFinal && m.entry_a_id && m.entry_b_id
+        ? h(
+          "div",
+          { class: "score-alt-actions" },
+          h(
+            "div",
+            { class: "score-alt-head" },
+            h("span", { class: "score-alt-title" }, "Or end the match without a score"),
+            h("span", { class: "score-alt-badge" }, "Admin Outcome"),
+          ),
+          h(
+            "div",
+            { class: "score-alt-buttons" },
+            ...[
+              ["Forfeit", "Forfeit", "x", "is-forfeit"],
+              ["Disqualify", "Disqualification", "alert", "is-disqualify"],
+              ["Default", "Default", "clock", "is-default"],
+            ].map(([label, kind, ic, cls]) =>
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: `btn btn-secondary btn-sm score-alt-btn ${cls}`,
+                  onClick: () => {
+                    dialog?.close();
+                    forfeitModal(m, kind);
+                  },
+                },
+                icon(ic),
+                h("span", {}, label),
+              )
+            ),
+          ),
+        )
+        : null;
+      dialog = openModal({
         title: "Enter the score",
         eyebrow: `${m.a_name} v ${m.b_name}`,
         icon: "edit",
         confirmLabel: "Save Score",
         body: h(
           "div",
-          { class: "stack" },
-          h("p", { class: "muted" }, ruleText(m)),
+          { class: "stack score-modal-stack" },
           h(
             "div",
-            { class: "score-head" },
-            h("span", {}, ""),
-            h("strong", {}, m.a_name),
-            h("span", {}, ""),
-            h("strong", {}, m.b_name),
+            { class: "score-rule-banner" },
+            h("span", { class: "score-rule-icon", "aria-hidden": "true" }, icon("trophy")),
+            h(
+              "div",
+              { class: "score-rule-copy" },
+              h("span", { class: "score-rule-title" }, r.name ?? "Match Scoring Rule"),
+              h("p", { class: "muted" }, ruleText(m)),
+            ),
+            r.points_per_game
+              ? h("span", { class: "score-rule-pill" }, `To ${r.points_per_game} · Win by ${r.win_by ?? 2}`)
+              : null,
           ),
-          ...gameRows(m, max),
+          scoreBoardCard(m, max),
           canFinal
             ? h(
-              "div",
-              { class: "check" },
+              "label",
+              { class: "check score-finalize-card", for: "sc-final" },
               h("input", {
                 type: "checkbox",
                 id: "sc-final",
                 name: "finalize",
                 checked: true,
               }),
-              h("label", { for: "sc-final" }, "Finalize the result now"),
+              h(
+                "span",
+                { class: "score-finalize-copy" },
+                h("strong", {}, "Finalize the result now"),
+                h("span", { class: "sub" }, "Lock the official match winner and advance teams in the bracket."),
+              ),
+              h("span", { class: "score-finalize-pill" }, "Recommended"),
             )
             : null,
+          alternatives,
           error,
         ),
         onConfirm: async (form) => {
-          const r = readGames(form, max);
+          const r = readGames(form, max, m);
           if (r.error) return showError(error, r.error);
           if (!r.games.length) {
             return showError(error, "Enter at least one game.");
@@ -253,38 +350,47 @@ export function createBracketPages({ api }) {
             });
             if (canFinal && form.get("finalize") === "on") {
               await api.rpc("finalize_match", { p_match_id: m.match_id });
-              toast("Result is final.", { tone: "success" });
-            } else toast("Score saved.", { tone: "success" });
+              toast("Match result finalized.", { tone: "success" });
+            } else toast("Match score saved.", { tone: "success" });
             await loadStage();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
       });
+      return dialog;
     }
 
     async function finalize(m) {
       try {
         await api.rpc("finalize_match", { p_match_id: m.match_id });
-        toast("Result is final.", { tone: "success" });
+        toast("Match result finalized.", { tone: "success" });
         await loadStage();
       } catch (e) {
-        toast(messageOf(e, "That did not work. Try again."), {
+        toast(messageOf(e, "Unable to complete this action. Please try again."), {
           tone: "danger",
         });
       }
     }
 
-    function forfeitModal(m) {
+    // Forfeit, Disqualification and Default all end the match the same way (the other side wins with the forfeit score); the
+    // kind is kept at the start of the reason so the match list and the history show which one it was.
+    const FORFEIT_KINDS = {
+      Forfeit: { title: "Record a Forfeit", ask: "Who forfeits?", confirm: "Record Forfeit", done: "Match forfeit recorded." },
+      Disqualification: { title: "Disqualify a Side", ask: "Who is disqualified?", confirm: "Disqualify", done: "Disqualification recorded." },
+      Default: { title: "Record a Default", ask: "Which side defaults?", confirm: "Record Default", done: "Default recorded." },
+    };
+    function forfeitModal(m, kind = "Forfeit") {
       const error = errorLine();
+      const text = FORFEIT_KINDS[kind] ?? FORFEIT_KINDS.Forfeit;
       return openModal({
-        title: "Record a Forfeit",
+        title: text.title,
         eyebrow: `${m.a_name} v ${m.b_name}`,
         icon: "alert",
-        confirmLabel: "Record Forfeit",
+        confirmLabel: text.confirm,
         destructive: true,
         body: h(
           "div",
@@ -297,7 +403,7 @@ export function createBracketPages({ api }) {
           h(
             "div",
             { class: "field" },
-            h("label", { for: "ff-side" }, "Who forfeits? *"),
+            h("label", { for: "ff-side" }, `${text.ask} *`),
             selectControl(
               { class: "input select-input", id: "ff-side", name: "side" },
               h("option", { value: m.entry_a_id }, m.a_name),
@@ -328,14 +434,14 @@ export function createBracketPages({ api }) {
             await api.rpc("forfeit_match", {
               p_match_id: m.match_id,
               p_forfeiting_entry_id: String(form.get("side")),
-              p_reason: reason,
+              p_reason: kind === "Forfeit" ? reason : `${kind}: ${reason}`,
             });
-            toast("Forfeit recorded.", { tone: "success" });
+            toast(text.done, { tone: "success" });
             await loadStage();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -345,6 +451,7 @@ export function createBracketPages({ api }) {
     function correctModal(m) {
       const error = errorLine();
       const max = maxGamesOf(m);
+      const r = rule(m);
       return openModal({
         title: "Correct the Result",
         eyebrow: `${m.a_name} v ${m.b_name}`,
@@ -353,13 +460,26 @@ export function createBracketPages({ api }) {
         destructive: true,
         body: h(
           "div",
-          { class: "stack" },
+          { class: "stack score-modal-stack" },
           h(
-            "p",
-            { class: "muted" },
-            `${ruleText(m)} The old result is voided and kept in the history.`,
+            "div",
+            { class: "score-rule-banner" },
+            h("span", { class: "score-rule-icon", "aria-hidden": "true" }, icon("refresh")),
+            h(
+              "div",
+              { class: "score-rule-copy" },
+              h("span", { class: "score-rule-title" }, r.name ?? "Match Scoring Rule"),
+              h(
+                "p",
+                { class: "muted" },
+                `${ruleText(m)} The old result is voided and kept in the history.`,
+              ),
+            ),
+            r.points_per_game
+              ? h("span", { class: "score-rule-pill" }, `To ${r.points_per_game} · Win by ${r.win_by ?? 2}`)
+              : null,
           ),
-          ...gameRows(m, max),
+          scoreBoardCard(m, max),
           h(
             "div",
             { class: "field" },
@@ -376,7 +496,7 @@ export function createBracketPages({ api }) {
           error,
         ),
         onConfirm: async (form) => {
-          const r = readGames(form, max);
+          const r = readGames(form, max, m);
           if (r.error) return showError(error, r.error);
           if (!r.games.length) {
             return showError(error, "Enter the corrected games.");
@@ -391,14 +511,14 @@ export function createBracketPages({ api }) {
               p_reason: reason,
               p_games: r.games,
             });
-            toast("Result corrected.", { tone: "success" });
+            toast("Match result corrected.", { tone: "success" });
             // a finalized division is re-evaluated: show its new placements
             if (state.division?.status === "finalized") await load();
             else await loadStage();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -537,208 +657,86 @@ export function createBracketPages({ api }) {
     }
 
     // ------------------------------------------------------------ bracket tree (initial round + H / L brackets)
-    const SVG_NS = "http://www.w3.org/2000/svg";
-    const done = (m) => ["completed", "forfeited"].includes(m.status) && m.winner_entry_id;
+    // The drawings live in lib/bracket-views.js (shared with the public bracketing page); this page adds what a click does.
+    const { bracketTree, splitView } = createBracketViews({
+      getMatches: () => state.matches,
+      getDivisionName: () => state.division?.name,
+      getPlayers: (name) => state.playersByTeam.get(String(name).trim().toUpperCase()) ?? null,
+      clickable: (card, m) => clickable(card, m),
+    });
 
-    function slot(m, side) {
-      const id = side === "a" ? m.entry_a_id : m.entry_b_id;
-      const name = side === "a" ? m.a_name : m.b_name;
-      const label = side === "a" ? m.a_label : m.b_label;
-      const win = done(m) && id && m.winner_entry_id === id;
-      const loss = done(m) && id && !win;
-      return h(
-        "div",
-        { class: `bt-slot${name ? "" : " is-empty"}${win ? " is-winner" : ""}${loss ? " is-loser" : ""}` },
-        h("span", { class: "bt-slot-name", title: name ?? label ?? "" }, name ?? label ?? "To be decided"),
-        win ? h("span", { class: "bt-result bt-result-w", "aria-label": "Winner" }, "W") : null,
-        loss ? h("span", { class: "bt-result bt-result-l", "aria-label": "Eliminated" }, "L") : null,
-      );
+    // What can be done to a match from its card: the same actions as the old icon buttons, chosen in one place.
+    function matchActions(m) {
+      const live = ["scheduled", "in_progress"].includes(m.status) && m.entry_a_id && m.entry_b_id;
+      const list = [];
+      if (live && can("scores.enter")) {
+        list.push({ label: "Add Score", icon: "edit", hint: "Enter the games played", run: () => scoreModal(m) });
+      }
+      if (m.status === "in_progress" && can("scores.finalize")) {
+        list.push({ label: "Finalize Result", icon: "check", hint: "Make the entered score final", run: () => finalize(m) });
+      }
+      if (live && can("scores.finalize")) {
+        list.push({ label: "Forfeit", icon: "x", hint: "One side gives up the match", run: () => forfeitModal(m, "Forfeit") });
+        list.push({ label: "Disqualify", icon: "alert", hint: "One side is disqualified", run: () => forfeitModal(m, "Disqualification") });
+        list.push({ label: "Default", icon: "clock", hint: "One side did not play (no show)", run: () => forfeitModal(m, "Default") });
+      }
+      if (["completed", "forfeited"].includes(m.status) && can("scores.correct")) {
+        list.push({ label: "Correct Result", icon: "refresh", hint: "Change a finished result", run: () => correctModal(m) });
+      }
+      return list;
     }
 
-    const matchFoot = (m) =>
-      h(
-        "div",
-        { class: "bt-match-foot" },
-        scoreText(m) !== "—" ? h("span", { class: "sub bt-score" }, scoreText(m)) : null,
-        actionsFor(m),
-      );
-
-    /** Round 1 of a split bracket: a pair card with the two sides facing each other. */
-    function pairCard(m) {
-      return h(
-        "article",
-        { class: "bt-pair" },
-        h("div", { class: "bt-index", "aria-label": `Match ${m.round_no}.${m.match_no}` }, h("span", {}, "M"), String(m.match_no).padStart(2, "0")),
-        slot(m, "a"),
-        h("span", { class: "bt-vs", "aria-hidden": "true" }, "VS"),
-        slot(m, "b"),
-        matchFoot(m),
-      );
-    }
-
-    function treeMatch(m) {
-      return h(
-        "article",
-        { class: "bt-node" },
-        h(
+    /** Click on a match: a short list of what can be done to it. */
+    function matchActionModal(m) {
+      const list = matchActions(m);
+      if (!list.length) return null;
+      // Score entry opens straight away; Forfeit, Disqualify and Default are buttons inside that form.
+      if (list[0].label === "Add Score") return scoreModal(m);
+      let dialog = null;
+      dialog = openModal({
+        title: `Match ${m.round_no}.${m.match_no}`,
+        eyebrow: `${m.a_name ?? "To be decided"} v ${m.b_name ?? "To be decided"}`,
+        icon: "trophy",
+        confirmLabel: null,
+        cancelLabel: "Close",
+        body: h(
           "div",
-          { class: "bt-node-head" },
-          h("span", { class: "bt-code" }, `Match ${m.match_no}`),
-          badge(...(MATCH_STATUS[m.status] ?? [m.status, "neutral"])),
+          { class: "match-action-list", role: "group", "aria-label": "Match actions" },
+          ...list.map((a) =>
+            h(
+              "button",
+              {
+                type: "button",
+                class: "match-action-option",
+                onClick: () => {
+                  dialog?.close();
+                  a.run();
+                },
+              },
+              h("span", { class: "match-action-icon", "aria-hidden": "true" }, icon(a.icon)),
+              h("span", { class: "match-action-text" }, h("strong", {}, a.label), h("span", { class: "sub" }, a.hint)),
+            )
+          ),
         ),
-        slot(m, "a"),
-        slot(m, "b"),
-        matchFoot(m),
-      );
-    }
-
-    function connectorSvg(single) {
-      const svg = document.createElementNS(SVG_NS, "svg");
-      svg.setAttribute("viewBox", "0 0 36 100");
-      svg.setAttribute("preserveAspectRatio", "none");
-      svg.setAttribute("class", "bt-svg");
-      const path = document.createElementNS(SVG_NS, "path");
-      path.setAttribute("d", single ? "M 0 50 H 36" : "M 0 25 H 18 V 75 H 0 M 18 50 H 36");
-      path.setAttribute("fill", "none");
-      path.setAttribute("stroke-linecap", "round");
-      path.setAttribute("stroke-linejoin", "round");
-      svg.append(path);
-      return svg;
-    }
-
-    const connectorCol = (cells, single) =>
-      h(
-        "div",
-        { class: "bt-connector", "aria-hidden": "true" },
-        h("div", { class: "bt-spacer" }),
-        h("div", { class: "bt-connector-body" }, ...Array.from({ length: cells }, () => h("div", { class: "bt-connector-cell" }, connectorSvg(single)))),
-      );
-
-    /** Connected knockout tree: a column per round, connectors between rounds, the champion at the end. */
-    function bracketTree(rows, title, tone, teamCount) {
-      const rs = [...new Set(rows.map((m) => m.round_no))].sort((a, b) => a - b);
-      const columns = rs.map((r) => rows.filter((m) => m.round_no === r).sort((a, b) => a.match_no - b.match_no));
-      const last = columns.at(-1)?.[0];
-      const champion = last && done(last) ? (last.winner_entry_id === last.entry_a_id ? last.a_name : last.b_name) : null;
-      const parts = [];
-      columns.forEach((col, i) => {
-        parts.push(h(
-          "div",
-          { class: "bt-round" },
-          h("div", { class: "bt-round-head" }, h("span", { class: "bt-pill" }, roundName(i + 1, rs.length))),
-          h("div", { class: "bt-round-matches" }, ...col.map(treeMatch)),
-        ));
-        const next = columns[i + 1];
-        if (next) parts.push(connectorCol(next.length, false));
       });
-      parts.push(connectorCol(1, true));
-      parts.push(h(
-        "div",
-        { class: "bt-round" },
-        h("div", { class: "bt-round-head" }, h("span", { class: "bt-pill" }, "Champion")),
-        h(
-          "div",
-          { class: "bt-round-matches" },
-          h(
-            "div",
-            { class: "bt-champion" },
-            icon("trophy"),
-            h("strong", {}, `${title} Champion`),
-            h("span", { class: "sub" }, champion ?? "To be decided"),
-          ),
-        ),
-      ));
-      return h(
-        "section",
-        { class: `bt-panel bt-${tone}`, "aria-label": title },
-        h(
-          "div",
-          { class: "bt-panel-head" },
-          h("h3", {}, title),
-          h(
-            "div",
-            { class: "bt-tags" },
-            teamCount ? h("span", { class: "bt-tag" }, `${teamCount} Teams`) : null,
-            h("span", { class: "bt-tag" }, "Single Elimination"),
-          ),
-        ),
-        h("div", { class: "bt-scroller" }, h("div", { class: "bt-tree" }, ...parts)),
-      );
+      return dialog;
     }
 
-    function splitView() {
-      const part = (label) => state.matches.filter((m) => m.group_label === label);
-      const first = state.matches.filter((m) => !m.group_label).sort((a, b) => a.match_no - b.match_no);
-      const teams = (rows) => {
-        const r1 = Math.min(...rows.map((m) => m.round_no));
-        return rows.filter((m) => m.round_no === r1).length * 2;
-      };
-      // The database builds the H and L matches only when every Round 1 match is finished; until then the trees are
-      // shown empty, with the slots named after the Round 1 match they will be filled from.
-      const planned = (prefix) => {
-        const rows = [];
-        let count = Math.floor(first.length / 2);
-        let round = 1;
-        while (count >= 1) {
-          for (let i = 1; i <= count; i++) {
-            const from = (side) =>
-              round === 1
-                ? `${prefix === "H" ? "Winner" : "Loser"} of Match ${(i - 1) * 2 + side}`
-                : `Winner of ${roundName(round - 1, Math.log2(first.length))} ${(i - 1) * 2 + side}`;
-            rows.push({
-              match_id: `plan-${prefix}-${round}-${i}`,
-              round_no: round,
-              match_no: i,
-              group_label: prefix,
-              status: "scheduled",
-              a_name: null,
-              b_name: null,
-              a_label: from(1),
-              b_label: from(2),
-              games: [],
-            });
-          }
-          count = Math.floor(count / 2);
-          round += 1;
+    /** Makes a match card a button (hand cursor, Enter/Space) when there is something to do. */
+    function clickable(card, m) {
+      if (!matchActions(m).length) return card;
+      card.classList.add("is-clickable");
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      card.setAttribute("aria-label", `Match ${m.round_no}.${m.match_no}: ${m.a_name ?? "To be decided"} v ${m.b_name ?? "To be decided"}. Choose an action`);
+      card.addEventListener("click", () => matchActionModal(m));
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          matchActionModal(m);
         }
-        return rows;
-      };
-      const waiting = !part("H").length && !part("L").length && first.length >= 2;
-      const hRows = waiting ? planned("H") : part("H");
-      const lRows = waiting ? planned("L") : part("L");
-      return h(
-        "div",
-        { class: "bt-layout" },
-        first.length
-          ? h(
-            "aside",
-            { class: "bt-initial", "aria-label": "Round 1" },
-            h(
-              "div",
-              { class: "bt-initial-head" },
-              h("span", { class: "bt-stage-tag" }, "Round 1"),
-              h("h3", {}, `${first.length * 2} Teams Initial Round`),
-              h("span", { class: "sub" }, `${first.length} Classification Matches`),
-            ),
-            h("div", { class: "bt-pairs" }, ...first.map(pairCard)),
-            h(
-              "div",
-              { class: "bt-advance" },
-              h("div", { class: "bt-advance-box is-h" }, h("span", {}, "H Pathway"), h("strong", {}, `${first.length} Winners Advance`)),
-              h("div", { class: "bt-advance-box is-l" }, h("span", {}, "L Pathway"), h("strong", {}, `${first.length} Losers Advance`)),
-            ),
-          )
-          : null,
-        h(
-          "div",
-          { class: "bt-brackets" },
-          waiting
-            ? h("p", { class: "sub bt-waiting" }, "The H and L brackets are built automatically once every Round 1 match is final.")
-            : null,
-          hRows.length ? bracketTree(hRows, "H Bracket", "high", teams(hRows)) : null,
-          lRows.length ? bracketTree(lRows, "L Bracket", "low", teams(lRows)) : null,
-        ),
-      );
+      });
+      return card;
     }
 
     function matchesView() {
@@ -882,19 +880,76 @@ export function createBracketPages({ api }) {
 
     function finalizeDivisionModal() {
       const error = errorLine();
+      const d = state.division;
+      const totalMatches = state.matches.filter((m) => m.status === "completed" || m.status === "forfeited").length;
       return openModal({
         title: "Finalize This Division",
-        eyebrow: state.division.name,
+        eyebrow: d?.name ?? "Division",
         icon: "medal",
         confirmLabel: "Finalize Division",
         destructive: true,
         body: h(
           "div",
-          { class: "stack" },
+          { class: "stack finalize-modal-stack" },
           h(
-            "p",
-            {},
-            "The final placements are recorded and the club's rank rules move each player once. Results can still be corrected afterwards, with a reason.",
+            "div",
+            { class: "finalize-overview-card" },
+            h(
+              "div",
+              { class: "finalize-overview-top" },
+              h("span", { class: "finalize-overview-icon", "aria-hidden": "true" }, icon("trophy")),
+              h(
+                "div",
+                { class: "finalize-overview-titles" },
+                h("span", { class: "finalize-overview-event" }, state.event?.name ?? "Tournament"),
+                h("h4", { class: "finalize-overview-division" }, d?.name ?? "Division"),
+              ),
+              h("span", { class: "finalize-status-pill" }, "All Matches Final"),
+            ),
+            h(
+              "div",
+              { class: "finalize-overview-chips" },
+              h("span", { class: "finalize-chip" }, d?.format === "doubles" ? "Doubles" : "Singles"),
+              d?.category?.name ? h("span", { class: "finalize-chip" }, d.category.name) : null,
+              totalMatches ? h("span", { class: "finalize-chip is-accent" }, `${totalMatches} Matches Completed`) : null,
+            ),
+          ),
+          h(
+            "div",
+            { class: "finalize-impact-grid" },
+            h(
+              "div",
+              { class: "finalize-impact-card" },
+              h("span", { class: "finalize-impact-icon", "aria-hidden": "true" }, icon("medal")),
+              h(
+                "div",
+                { class: "finalize-impact-text" },
+                h("strong", {}, "Record Placements"),
+                h("p", { class: "sub" }, "Locks official division standings, podium finishes, and champions into club history."),
+              ),
+            ),
+            h(
+              "div",
+              { class: "finalize-impact-card" },
+              h("span", { class: "finalize-impact-icon", "aria-hidden": "true" }, icon("layers")),
+              h(
+                "div",
+                { class: "finalize-impact-text" },
+                h("strong", {}, "Update Club Ranks"),
+                h("p", { class: "sub" }, "Applies the club's ranking ladder rules, moving eligible participants according to their final finish."),
+              ),
+            ),
+          ),
+          h(
+            "div",
+            { class: "modal-callout is-warning finalize-callout" },
+            h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon("info")),
+            h(
+              "div",
+              { class: "modal-callout-text" },
+              h("strong", {}, "Audit Trail Preservation"),
+              h("p", { class: "sub" }, "Results can still be corrected afterwards if a scoring dispute arises, but every correction requires a documented reason and recalculates affected standings."),
+            ),
           ),
           error,
         ),
@@ -909,66 +964,11 @@ export function createBracketPages({ api }) {
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
       });
-    }
-
-    function resultsView() {
-      if (!state.results.length) return null;
-      const staff = state.results.some((r) => r.rank_from);
-      const columns = [
-        {
-          key: "place",
-          label: "Place",
-          align: "right",
-          render: (r) => String(r.placement),
-        },
-        {
-          key: "name",
-          label: "Player or Team",
-          render: (r) => r.entry_name ?? "—",
-        },
-        {
-          key: "bracket",
-          label: "Bracket",
-          render: (r) =>
-            r.bracket_tier
-              ? `${r.bracket_tier} bracket${
-                r.bracket_result === "won" ? " champion" : ""
-              }`
-              : "—",
-        },
-      ];
-      if (staff) {
-        columns.push({
-          key: "rank",
-          label: "Rank",
-          render: (r) =>
-            h(
-              "span",
-              {},
-              r.rank_from === r.rank_to
-                ? `${r.rank_to} (no change)`
-                : `${r.rank_from} → ${r.rank_to}`,
-              r.rule_name ? h("span", { class: "sub" }, r.rule_name) : null,
-            ),
-        });
-      }
-      return h(
-        "div",
-        { class: "stack" },
-        h("h2", {}, "Final Placements"),
-        dataTable({
-          searchState: state,
-          schema: { columns },
-          rows: state.results,
-          state: "ready",
-          ariaLabel: "Final Placements",
-        }),
-      );
     }
 
     /** The winner of the last round once the final is over. */
@@ -989,6 +989,49 @@ export function createBracketPages({ api }) {
       );
     }
 
+    // Undraw: takes the draw back so the division is open for registration and roster changes again. Only while the draw has
+    // been made but no match has started (the database refuses it otherwise); a reason is required and kept with the history.
+    const firstStage = () => state.division?.stages?.find((x) => x.stage_no === 1);
+    const showUndraw = () => can("draws.redo") && state.division?.status === "drawn" && firstStage()?.status === "drawn";
+
+    function undrawModal() {
+      const first = firstStage();
+      if (!showUndraw() || !first) return null;
+      const key = api.newKey();
+      const error = errorLine();
+      const reason = h("textarea", {
+        id: "rb-reason", name: "rb-reason", class: "input textarea", rows: 3, minlength: 3, maxlength: 500, required: true,
+        placeholder: "Why is the draw being taken back?",
+      });
+      return openModal({
+        title: "Undraw",
+        eyebrow: state.division?.name,
+        icon: "alert",
+        tone: "warning",
+        confirmLabel: "Undraw",
+        body: h(
+          "div",
+          { class: "stack" },
+          h("p", { class: "sub" }, "The draw is taken back and the division opens for registration and roster changes again. Its scheduled matches are cancelled, and the old draw is kept in the history. Make a new draw when the roster is final."),
+          h("div", { class: "field" }, h("label", { for: "rb-reason" }, "Reason *"), reason),
+          error,
+        ),
+        onConfirm: async () => {
+          error.hidden = true;
+          const text = reason.value.trim();
+          if (text.length < 3) return showError(error, "Enter a reason of 3 to 500 characters.");
+          try {
+            await api.rpc("undraw_division", { p_division_id: state.division.id, p_reason: text, p_key: key });
+            toast("Division draw withdrawn. The division is open for roster changes.", { tone: "success" });
+            // Back to the event's divisions (the events page reopens the event that was being viewed).
+            location.hash = "#/admin/events";
+          } catch (e) {
+            return showError(error, messageOf(e, "The draw could not be taken back. Try again."));
+          }
+        },
+      });
+    }
+
     // Scoring by Round (Split Single Elimination, events.manage): a rule for the H and the L bracket quarterfinals,
     // semifinals and finals. Set after Round 1 and before the quarterfinals start; the database locks it after that.
     const showRoundScoring = () => stage()?.stage_type === "split_single_elimination" && can("events.manage");
@@ -1003,21 +1046,24 @@ export function createBracketPages({ api }) {
       const selects = {};
       const field = (group, round, label) => {
         const id = `rs-${group}-${round}`;
-        const select = h(
-          "select",
+        const savedRule = idByName.get(s.round_scoring?.[group]?.[round]?.name) ?? "";
+        const select = selectControl(
           { class: "input select-input", id, name: id, disabled: locked },
-          h("option", { value: "" }, `Division rule (${base})`),
-          ...rules.map((r) => h("option", { value: r.id }, r.name)),
+          h("option", { value: "", selected: savedRule === "" }, `Division rule (${base})`),
+          ...rules.map((r) => h("option", { value: r.id, selected: r.id === savedRule }, r.name)),
         );
-        select.value = idByName.get(s.round_scoring?.[group]?.[round]?.name) ?? "";
         selects[`${group}.${round}`] = select;
         return h("div", { class: "field" }, h("label", { for: id }, label), select);
       };
       const bracket = (group, title) =>
         h(
           "div",
-          { class: "round-scoring-bracket" },
-          h("h4", {}, title),
+          { class: "form-section round-scoring-bracket" },
+          h("div", { class: "round-scoring-bracket-head" },
+            h("span", { class: "section-icon is-sm", "aria-hidden": "true" }, icon("layers")),
+            h("h3", {}, title),
+          ),
+          h("p", { class: "sub" }, "Set the scoring rule for each round."),
           field(group, "quarterfinal", "Quarterfinals"),
           field(group, "semifinal", "Semifinals"),
           field(group, "final", "Finals"),
@@ -1028,17 +1074,24 @@ export function createBracketPages({ api }) {
         eyebrow: STAGE_LABEL[s.stage_type],
         icon: "settings",
         size: "lg",
+        description: state.division?.name,
         confirmLabel: locked ? null : "Save Round Scoring",
         cancelLabel: locked ? "Close" : "Cancel",
         body: h(
           "div",
-          { class: "stack" },
+          { class: "stack round-scoring-form" },
           h(
-            "p",
-            { class: "sub" },
-            locked
-              ? "Locked: the bracket rounds have started. Round 1 and any round left on the division rule use " + base + "."
-              : `Round 1 uses ${base}. Choose a rule for each round of the H and L brackets; set this before the quarterfinals start.`,
+            "div",
+            { class: "round-scoring-summary" },
+            h("div", { class: "round-scoring-summary-heading" },
+              h("strong", {}, "Round 1 scoring"),
+              badge(locked ? "Locked" : "Editable", locked ? "warning" : "info"),
+            ),
+            h("strong", { class: "round-scoring-base-rule" }, base),
+            h("p", { class: "sub" }, locked
+              ? "Bracket play has started. Scoring rules can no longer be changed."
+              : "Choose scoring rules before the bracket quarterfinals begin."),
+            h("p", { class: "sub" }, "Rounds set to Division rule use the Round 1 scoring rule."),
           ),
           h("div", { class: "round-scoring-grid" }, bracket("H", "H Bracket"), bracket("L", "L Bracket")),
           error,
@@ -1052,7 +1105,7 @@ export function createBracketPages({ api }) {
           }
           try {
             await api.rpc("set_stage_round_scoring", { p_stage_id: s.id, p_rules: rulesOut, p_key: api.newKey() });
-            toast("Round scoring saved.", { tone: "success" });
+            toast("Round scoring settings updated.", { tone: "success" });
             await load();
           } catch (e) {
             return showError(
@@ -1119,58 +1172,78 @@ export function createBracketPages({ api }) {
           { class: "stack" },
           h(
             "div",
-            { class: "actions" },
-            button({
-              label: "Back",
-              icon: "chevl",
-              onClick: () => history.back(),
-            }),
-            showRoundScoring()
-              ? iconButton({
-                label: "Scoring by Round",
-                icon: "settings",
-                variant: "secondary",
-                onClick: roundScoringModal,
-              })
-              : null,
-          ),
-          h(
-            "p",
-            { class: "muted" },
-            [
-              d.event?.name,
-              d.category?.name,
-              d.format === "doubles" ? "Doubles" : "Singles",
-              s ? STAGE_LABEL[s.stage_type] : null,
-              s ? STAGE_STATUS[s.status] : null,
-            ].filter(Boolean).join(" · "),
-          ),
-          readyToFinalize()
-            ? h(
+            { class: "bt-toolbar-card" },
+            h(
               "div",
-              { class: "actions" },
-              button({
-                label: "Finalize Division",
-                icon: "medal",
-                variant: "primary",
-                onClick: finalizeDivisionModal,
-              }),
-            )
-            : null,
-          resultsView(),
+              { class: "bt-toolbar-top" },
+              h(
+                "div",
+                { class: "actions bt-toolbar-actions" },
+                button({
+                  label: "Back",
+                  icon: "chevl",
+                  onClick: () => history.back(),
+                }),
+                showUndraw()
+                  ? button({
+                    label: "Undraw",
+                    icon: "refresh",
+                    variant: "secondary",
+                    onClick: undrawModal,
+                  })
+                  : null,
+                showRoundScoring()
+                  ? iconButton({
+                    label: "Scoring by Round",
+                    icon: "settings",
+                    variant: "secondary",
+                    onClick: roundScoringModal,
+                  })
+                  : null,
+                readyToFinalize()
+                  ? button({
+                    label: "Finalize Division",
+                    icon: "medal",
+                    variant: "primary",
+                    onClick: finalizeDivisionModal,
+                  })
+                  : null,
+              ),
+              h(
+                "div",
+                { class: "bt-toolbar-pills" },
+                d.category?.name ? badge(d.category.name, "info") : null,
+                badge(d.format === "doubles" ? "Doubles" : "Singles", "neutral"),
+                s ? badge(STAGE_LABEL[s.stage_type] ?? s.stage_type, "warning") : null,
+                s ? badge(STAGE_STATUS[s.status] ?? s.status, s.status === "completed" ? "success" : "info") : null,
+              ),
+            ),
+            h(
+              "p",
+              { class: "muted bt-toolbar-meta" },
+              [
+                d.event?.name,
+                d.category?.name,
+                d.format === "doubles" ? "Doubles" : "Singles",
+                s ? STAGE_LABEL[s.stage_type] : null,
+                s ? STAGE_STATUS[s.status] : null,
+              ].filter(Boolean).join(" · "),
+            ),
+          ),
           stageTabs,
           s?.stage_type === "single_elimination" ? championLine() : null,
           s?.stage_type === "single_elimination" ||
             s?.stage_type === "split_single_elimination"
             ? null
-            : h("h2", {}, "Standings"),
+            : h("h2", { class: "bt-section-heading" }, icon("trophy"), "Standings"),
           s?.stage_type === "single_elimination" ||
             s?.stage_type === "split_single_elimination"
             ? null
             : standingsView(),
           h(
             "h2",
-            {},
+            { class: "bt-section-heading" },
+            icon("layers"),
             s?.stage_type === "single_elimination" ? "Bracket" : "Matches",
           ),
           matchesView(),

@@ -25,14 +25,16 @@ Deno.test("photos: 3 MB is accepted and larger files are rejected before resizin
 Deno.test("photos: broken signed images fall back to initials", () => {
   const previous = globalThis.document;
   let fail;
-  let replacement;
+  let removed = false;
   globalThis.document = {
     createTextNode: (textContent) => ({ textContent }),
     createElement: () => ({
+      children: [],
+      append(...nodes) { this.children.push(...nodes); },
       addEventListener: (type, handler) => {
         if (type === "error") fail = handler;
       },
-      replaceWith: (node) => replacement = node,
+      remove() { removed = true; },
     }),
   };
   try {
@@ -40,9 +42,12 @@ Deno.test("photos: broken signed images fall back to initials", () => {
       "https://example.invalid/signed-photo",
       "Sample Member",
     );
-    assert.equal(image.alt, "");
+    // The initials are always there; the photo is laid over them.
+    assert.equal(image.children[0].textContent, "SM");
+    assert.equal(image.children[1].alt, "");
     fail();
-    assert.equal(replacement.textContent, "SM");
+    assert.equal(removed, true);
+    assert.equal(image.children[0].textContent, "SM");
     assert.equal(avatarImage(null, "Sample Member").textContent, "SM");
   } finally {
     if (previous === undefined) delete globalThis.document;

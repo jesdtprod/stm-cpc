@@ -305,7 +305,7 @@ export function createGuestEventActions(
             p_singles_rating: singles.value,
             p_doubles_rating: doubles.value,
           });
-          toast("Guest added. Use Register Guest to select a division.", {
+          toast("Guest profile created. Select Register Guest to enter a division.", {
             tone: "success",
           });
           await refresh();
@@ -324,13 +324,13 @@ export function createGuestEventActions(
     let players;
     try {
       players = await api.rpc("event_participant_choices", { p_event_id: event.id });
-    } catch (e) {
-      toast(e?.cause?.message || e.message, { tone: "error" });
+    } catch {
+      toast("Unable to load guest profiles. Please try again.", { tone: "error" });
       return;
     }
     const guests = (players ?? []).filter((p) => !p.member_id);
     if (!guests.length) {
-      toast("There are no guests to edit yet.", { tone: "warning" });
+      toast("No guest profiles are available. Add a guest before editing.", { tone: "warning" });
       return;
     }
     const discipline = getDivisions()[0]?.format ?? "doubles";
@@ -379,8 +379,8 @@ export function createGuestEventActions(
     const doublesInput = ratingInput("edit-doubles");
     const singlesBadgeHost = h("span", { class: "guest-rating-badge-host" });
     const doublesBadgeHost = h("span", { class: "guest-rating-badge-host" });
-    const singlesNote = h("p", { class: "sub guest-rating-note" });
-    const doublesNote = h("p", { class: "sub guest-rating-note" });
+    const singlesNote = h("p", { class: "sub field-hint guest-rating-note" });
+    const doublesNote = h("p", { class: "sub field-hint guest-rating-note" });
     // The guest's photo anchors the identity; staff can add, replace or remove it. Guests have no login, so staff
     // upload it for them (private storage, signed links to read).
     const photoUrls = new Map();
@@ -394,15 +394,18 @@ export function createGuestEventActions(
       // the form works without photos
     }
     const photoFace = h("span", { class: "guest-photo-face", "aria-hidden": "true" });
+    const photoStatus = h("span", { class: "sub guest-photo-status" }, "No photo yet");
     const photoNote = h("span", { class: "sub guest-photo-note", role: "status", "aria-live": "polite" });
     const photoInput = h("input", { type: "file", accept: AVATAR_TYPES.join(","), id: "edit-photo", class: "guest-photo-input", hidden: true });
-    const photoChange = iconButton({ label: "Change guest photo", icon: "upload", variant: "secondary", onClick: () => photoInput.click() });
-    const photoRemove = iconButton({ label: "Remove guest photo", icon: "trash", variant: "secondary", onClick: () => savePhoto(null) });
+    const photoChange = iconButton({ label: "Change guest photo", icon: "upload", size: "sm", variant: "secondary", onClick: () => photoInput.click() });
+    const photoRemove = iconButton({ label: "Remove guest photo", icon: "trash", size: "sm", variant: "danger", onClick: () => savePhoto(null) });
     function showPhoto() {
       const id = guestSelect.value;
       const name = nameInput.value.trim() || loaded?.display_name || "Guest";
+      const hasPhoto = Boolean(photoUrls.get(id));
       photoFace.replaceChildren(avatarImage(photoUrls.get(id) ?? null, name));
-      photoRemove.hidden = !photoUrls.get(id);
+      photoRemove.hidden = !hasPhoto;
+      photoStatus.textContent = hasPhoto ? "Photo on file" : "No photo yet";
     }
     async function savePhoto(file) {
       const id = guestSelect.value;
@@ -533,7 +536,10 @@ export function createGuestEventActions(
 
       const sChip = sideSummaryBadge("Singles", loaded?.singles, sParsed);
       const dChip = sideSummaryBadge("Doubles", loaded?.doubles, dParsed);
-      subjectBadges.replaceChildren(badge("Guest Player", "info"), sChip, dChip);
+      const eqRankChip = bestPoints != null && equivalentRank(bands, bestPoints)
+        ? badge(equivalentRank(bands, bestPoints), "info")
+        : null;
+      subjectBadges.replaceChildren(sChip, dChip, eqRankChip);
 
       const needsReason = sChanged || dChanged;
       reasonBadgeHost.replaceChildren(
@@ -620,14 +626,31 @@ export function createGuestEventActions(
               "div",
               { class: "guest-edit-subject-identity" },
               photoFace,
-              h("div", { class: "guest-edit-subject-copy" }, subjectName, subjectSub, subjectBadges),
+              h(
+                "div",
+                { class: "guest-edit-subject-copy" },
+                h(
+                  "div",
+                  { class: "guest-edit-name-row" },
+                  subjectName,
+                  badge("Guest Player", "info"),
+                ),
+                subjectSub,
+                subjectBadges,
+              ),
             ),
             h(
               "div",
               { class: "guest-photo-block" },
+              h(
+                "div",
+                { class: "guest-photo-meta" },
+                h("span", { class: "guest-photo-label" }, "Guest Photo"),
+                photoStatus,
+                photoNote,
+              ),
               h("div", { class: "guest-photo-actions" }, photoChange, photoRemove),
               photoInput,
-              photoNote,
             ),
           ),
           h("div", { class: "guest-edit-selector-divider", "aria-hidden": "true" }),
@@ -760,7 +783,7 @@ export function createGuestEventActions(
         if (intent?.fingerprint !== fingerprint) intent = { fingerprint, key: api.newKey() };
         try {
           await api.rpc("update_event_guest", { ...payload, p_key: intent.key });
-          toast("Guest updated.", { tone: "success" });
+          toast("Guest profile and assessment changes saved.", { tone: "success" });
           await refresh();
         } catch (e) {
           return fail(error, e);
@@ -1006,13 +1029,13 @@ export function createGuestEventActions(
       players = await api.rpc("event_participant_choices", {
         p_event_id: event.id,
       });
-    } catch (e) {
-      toast(e?.cause?.message || e.message, { tone: "error" });
+    } catch {
+      toast("Unable to load players for registration. Please try again.", { tone: "error" });
       return;
     }
     const guests = (players ?? []).filter((p) => !p.member_id);
     if (!guests.length) {
-      toast("Add a guest or an existing guest player first.", {
+      toast("Add a guest profile before registering a player.", {
         tone: "warning",
       });
       return;
@@ -1057,7 +1080,7 @@ export function createGuestEventActions(
         : d.id === source.division_id))
     );
     if (!divisions.length) {
-      toast("No eligible undrawn destination division is available.", {
+      toast("No eligible division is available for a roster change before the draw.", {
         tone: "warning",
       });
       return;
@@ -1480,8 +1503,8 @@ export function createGuestEventActions(
           );
           toast(
             change
-              ? "Guest roster change saved with its history."
-              : "Guest registration saved. Approval and payment rules apply.",
+              ? "Guest roster updated. The change has been recorded in the event history."
+              : "Guest registration submitted. Review its approval and payment status in Registrations.",
             {
               tone: "success",
             },
@@ -1517,8 +1540,8 @@ export function createGuestEventActions(
       if (!profile) {
         throw new Error("Sign in again before submitting a payment.");
       }
-    } catch (e) {
-      toast(e?.cause?.message || e.message, { tone: "error" });
+    } catch {
+      toast("Unable to prepare the guest payment form. Check your session and try again.", { tone: "error" });
       return;
     }
     const methods = settings["payments.methods"] ?? ["cash"];
@@ -1645,7 +1668,7 @@ export function createGuestEventActions(
             p_amount: Number(form.get("guest-cash-amount")),
             p_proof_path: file ? uploaded.path : null,
           });
-          toast("Receipt submitted. Verify it in Payments.", {
+          toast("Payment receipt submitted. Open Payments to verify the submission.", {
             tone: "success",
           });
           await refresh();

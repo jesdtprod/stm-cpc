@@ -306,12 +306,12 @@ export function createImportPages({ api }) {
               p_note: String(form.get("note") ?? "").trim() || null,
               p_key: key,
             });
-            toast("Marked as reviewed.", { tone: "success" });
+            toast("Import record marked as reviewed.", { tone: "success" });
             await load();
             await loadSummary();
           } catch (e) {
             error.textContent = e.cause?.message || e.message ||
-              "That did not work. Please try again.";
+              "Unable to complete this action. Please try again.";
             error.hidden = false;
             return false;
           }

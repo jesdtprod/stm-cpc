@@ -24,9 +24,9 @@ grant select on us to public;
 insert into us values ('manager', pg_temp.mk((select org from fx), 'manager'));
 insert into us values ('member', pg_temp.mk((select org from fx), 'member'));
 
--- ---- seed: four switches, all on
+-- ---- seed: five switches, all on
 select is((select count(*)::int from public.settings s where s.org_id = (select org from fx) and s.unit_id is null
-  and s.deleted_at is null and s.key like 'member_menu.%' and s.value = 'true'::jsonb), 4, 'four member menu switches start on');
+  and s.deleted_at is null and s.key like 'member_menu.%' and s.value = 'true'::jsonb), 5, 'five member menu switches start on');
 
 -- ---- rules
 select is(core.setting_valid('member_menu.book', 'false'), true, 'a member menu switch takes false');
@@ -38,7 +38,7 @@ select is(core.setting_valid('booking.slot_minutes', '600'), false, 'earlier ran
 -- ---- access
 select pg_temp.as_user((select u from us where role = 'member'));
 set local role authenticated;
-select is((select count(*)::int from public.settings where key like 'member_menu.%'), 4, 'a member can read the switches');
+select is((select count(*)::int from public.settings where key like 'member_menu.%'), 5, 'a member can read the switches');
 select throws_ok(format($f$select public.update_setting('member_menu.book', 'false', null, %L)$f$, (select k1 from fx)),
   '42501', null, 'a member cannot change them');
 reset role;

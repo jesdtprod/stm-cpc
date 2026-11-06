@@ -60,7 +60,7 @@ const STATUS = {
 /** The database's own messages are written for people; anything else gets a plain fallback. */
 export function bookingMessage(
   e,
-  fallback = "That did not work. Please try again.",
+  fallback = "Unable to complete this action. Please try again.",
 ) {
   if (e?.code === "23P01") {
     return "That time was just taken. Pick another slot.";
@@ -614,8 +614,8 @@ export function createBookingPages({ api, client, session }) {
             });
             toast(
               r.status === "confirmed"
-                ? `Booked: ${r.doc_no}.`
-                : `Request sent: ${r.doc_no}. You will see the decision in My Bookings.`,
+                ? `Booking ${r.doc_no} confirmed.`
+                : `Booking request ${r.doc_no} submitted. Check My Bookings for its status.`,
               { tone: "success" },
             );
             await load();
@@ -1265,7 +1265,7 @@ export function createBookingPages({ api, client, session }) {
               p_amount: amount,
               p_proof_path: path,
             });
-            toast("Payment sent. An admin will check it.", { tone: "success" });
+            toast("Payment submitted for administrator verification.", { tone: "success" });
             await load();
           } catch (e) {
             return fail(bookingMessage(e));
@@ -1282,9 +1282,9 @@ export function createBookingPages({ api, client, session }) {
       const copyRef = async () => {
         try {
           await navigator.clipboard.writeText(r.doc_no);
-          toast("Booking reference copied", { tone: "success" });
+          toast("Booking reference copied to clipboard.", { tone: "success" });
         } catch {
-          toast(r.doc_no, { tone: "info" });
+          toast(`Unable to copy the booking reference. Your reference is ${r.doc_no}.`, { tone: "info" });
         }
       };
 
@@ -1413,7 +1413,7 @@ export function createBookingPages({ api, client, session }) {
             downloadBlob(blob, `court-pass-${r.doc_no}.jpg`);
             toast("Court pass saved as an image.", { tone: "success" });
           } catch {
-            toast("The image could not be saved.", { tone: "danger" });
+            toast("Unable to download the court pass. Please try again.", { tone: "danger" });
           }
           return false;
         },

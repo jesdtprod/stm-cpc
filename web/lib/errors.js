@@ -83,7 +83,7 @@ export function installGlobalHandlers(target, { reporter, notify }) {
   const handle = (error) => {
     reporter.report(error);
     notify(
-      "Something went wrong. We've logged it. If it keeps happening, reload the page.",
+      "An unexpected error occurred. Reload the page and try again. If the problem continues, contact the club administrator.",
     );
   };
   target.addEventListener(

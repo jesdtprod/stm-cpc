@@ -277,12 +277,12 @@ export function createStaffPages({ api, client }) {
           }
           try {
             await assign(row.member_id, form, key);
-            toast(`${row.display_name}: role changed.`, { tone: "success" });
+            toast(`Staff role updated for ${row.display_name}.`, { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -669,14 +669,14 @@ export function createStaffPages({ api, client }) {
           }
           try {
             await assign(chosen.member_id, form, key);
-            toast(`${chosen.display_name}: role assigned.`, {
+            toast(`Staff role assigned to ${chosen.display_name}.`, {
               tone: "success",
             });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },

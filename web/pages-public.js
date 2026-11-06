@@ -15,6 +15,7 @@ import {
   tabs,
 } from "./ui.js";
 import { rememberView } from "./lib/view-memory.js";
+import { enableTilt } from "./lib/tilt.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatMemberName } from "./lib/names.js";
 import { formatPoints } from "./cpc-points.js";
@@ -250,7 +251,7 @@ export function createPublicPages({ api, client }) {
       photos: new Map(),
       search: "",
       page: 1,
-      pageSize: 12,
+      pageSize: 15,
     };
 
     const searchInput = searchControl({
@@ -428,6 +429,7 @@ export function createPublicPages({ api, client }) {
         role: "region",
         "aria-label": "Club Members Cards",
       });
+      enableTilt(grid, ".public-member-card", { max: 12 });
 
       for (const m of visible) {
         const active = m.is_active === true;

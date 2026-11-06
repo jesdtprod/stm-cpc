@@ -306,8 +306,17 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             p_key: key,
             ...extra(form),
           }));
+          const result = {
+            Approve: "Membership approved",
+            Reject: "Membership application rejected",
+            Reconsider: "Membership application reopened for review",
+            Suspend: "Membership suspended",
+            Restore: "Membership restored",
+            Archive: "Member record archived",
+            Delete: "Member record moved to Deleted",
+          }[verb] ?? "Member record updated";
           toast(
-            `${formatMemberName(row.persons)}: ${verb.toLowerCase()} done.`,
+            `${result} for ${formatMemberName(row.persons)}.`,
             {
               tone: "success",
             },
@@ -320,7 +329,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
             ["22023", "42501", "23503", "CP422", "CP409"].includes(e.code) &&
             e.cause?.message;
           error.textContent = own || e.message ||
-            "That did not work. Please try again.";
+            "Unable to complete this action. Please try again.";
           error.hidden = false;
           return false;
         }
@@ -687,7 +696,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           const token = (await client.auth.getSession()).data.session
             ?.access_token;
           await adminResetPassword(row.id, token);
-          toast(`${name}: password reset.`, { tone: "success" });
+          toast(`Password reset completed for ${name}.`, { tone: "success" });
         } catch (e) {
           error.textContent = e?.message ||
             "The password could not be reset. Please try again.";
@@ -1213,12 +1222,12 @@ export function createAdminPages({ client, api, adminResetPassword }) {
                   p_id: row.id,
                   p_key: api.newKey(),
                 });
-                toast(`${formatMemberName(row.persons)}: record restored.`, {
+                toast(`Member record restored for ${formatMemberName(row.persons)}.`, {
                   tone: "success",
                 });
                 await refresh();
               } catch (e) {
-                toast(e.cause?.message || e.message || "That did not work.", {
+                toast(e.cause?.message || e.message || "Unable to complete this action. Please try again.", {
                   tone: "error",
                 });
               }

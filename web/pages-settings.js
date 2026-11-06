@@ -232,6 +232,15 @@ const GROUPS = [
         hint: "Allow players to join a standby queue when division slots are filled.",
       },
       {
+        key: "events.allow_multiple_divisions",
+        type: "switch",
+        label: "Allow a player to join more than one division in an event",
+        title: "Multiple Divisions",
+        icon: "layers",
+        hint:
+          "On: a member or guest may register in several divisions of the same event, but never twice in the same division. Off: one division per event, as a player or as a partner.",
+      },
+      {
         key: "events.default_scoring_rule",
         type: "rule",
         label: "Default Scoring Rule",
@@ -325,6 +334,14 @@ const GROUPS = [
         title: "Events & Tournaments",
         icon: "trophy",
         hint: "Allow members to browse club events, register for divisions, and view brackets.",
+      },
+      {
+        key: "member_menu.games",
+        type: "switch",
+        label: "Show My Games",
+        title: "My Games",
+        icon: "medal",
+        hint: "Allow members to see their own matches, scores, results and rating changes.",
       },
       {
         key: "member_menu.ranking",

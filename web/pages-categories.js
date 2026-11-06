@@ -281,12 +281,12 @@ export function createCategoriesPages({ api, getOrgId }) {
                 ...fields,
               });
             }
-            toast(editing ? "Category saved." : "Category added.", {
+            toast(editing ? "Category details updated." : "Category added.", {
               tone: "success",
             });
             await refresh();
           } catch (e) {
-            return fail(messageOf(e, "That did not work. Please try again."));
+            return fail(messageOf(e, "Unable to complete this action. Please try again."));
           }
         },
       });
@@ -408,12 +408,12 @@ export function createCategoriesPages({ api, getOrgId }) {
           }
           try {
             await run(reason, key);
-            toast("Category deleted.", { tone: "success" });
+            toast("Category archived.", { tone: "success" });
             await refresh();
           } catch (e) {
             error.textContent = messageOf(
               e,
-              "That did not work. Please try again.",
+              "Unable to complete this action. Please try again.",
             );
             error.hidden = false;
             return false;
@@ -434,12 +434,12 @@ export function createCategoriesPages({ api, getOrgId }) {
             "Someone else changed this category. Reload the page.",
           );
         }
-        toast(active ? "Category is active again." : "Category retired.", {
+        toast(active ? "Category reactivated." : "Category deactivated.", {
           tone: "success",
         });
         await refresh();
       } catch (e) {
-        toast(messageOf(e, "That did not work."), { tone: "error" });
+        toast(messageOf(e, "Unable to complete this action. Please try again."), { tone: "error" });
       }
     }
 
@@ -453,7 +453,7 @@ export function createCategoriesPages({ api, getOrgId }) {
         toast("Category restored.", { tone: "success" });
         await refresh();
       } catch (e) {
-        toast(messageOf(e, "That did not work."), { tone: "error" });
+        toast(messageOf(e, "Unable to complete this action. Please try again."), { tone: "error" });
       }
     }
 

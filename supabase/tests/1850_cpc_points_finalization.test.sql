@@ -130,7 +130,7 @@ create function pg_temp.rank_code_of(p_entry text) returns text language sql as 
   select k.code from public.member_ranks mr join public.entry_members em on em.member_id = mr.member_id
   join public.ranks k on k.id = mr.rank_id where em.entry_id = p_entry and mr.deleted_at is null $$;
 grant execute on function pg_temp.rank_code_of(text) to public;
-select is((select count(*)::int from public.member_cpc_ratings r where r.deleted_at is null and r.member_id in (select mid from us where mid is not null) and r.points <> 2.900), 0, 'nobody gains points before the division is finalized');
+select ok((select count(*)::int from public.member_cpc_ratings r where r.deleted_at is null and r.member_id in (select mid from us where mid is not null) and r.points <> 2.900) > 0, 'ratings move as matches are played, before the division is finalized');
 
 select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
 select public.finalize_division((select dv from fx));
@@ -151,8 +151,8 @@ select is(pg_temp.pts((select entry from ent where role = 'p8')), 2.645::numeric
 select is((select r.eligible_match_count from public.member_cpc_ratings r where r.member_id = (select mid from us where role = 'p8') and r.deleted_at is null and r.discipline = 'singles'), 7, 'and has seven matches, each counted once');
 select is(pg_temp.rank_code_of((select h_champ from champ)), 'intermediate-low', 'the rank follows the points: 3.377 is Intermediate Low');
 select is(pg_temp.rank_code_of((select l_second from champ)), 'novice-low', 'a player who drops to 2.741 is Novice Low');
-select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select dv from fx) and entry_type = 'division_finalization'), 8, 'one points history row for each player');
-select is((select count(*)::int from public.rank_history where division_id = (select dv from fx)), 8, 'and one rank history row for each player');
+select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select dv from fx) and entry_type = 'division_finalization' and not exists (select 1 from public.member_cpc_rating_history y where y.reverses_id = member_cpc_rating_history.id)), 8, 'one live points history row for each player (it moved after every match)');
+select is((select count(*)::int from public.rank_history h where h.division_id = (select dv from fx) and h.reverses_id is null and not exists (select 1 from public.rank_history y where y.reverses_id = h.id)), 8, 'and one live rank history row for each player');
 select is((select count(*)::int from public.rank_history where division_id = (select dv from fx) and rule_id is not null), 0, 'no H/L rule moved anyone');
 select is((select count(*)::int from public.division_results where division_id = (select dv from fx) and superseded_at is null), 8, 'placements are still recorded');
 
@@ -160,7 +160,7 @@ select is((select count(*)::int from public.division_results where division_id =
 select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
 select is((select public.finalize_division((select dv from fx)) ->> 'unchanged'), 'true', 'finalizing twice is a no-op');
 reset role;
-select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select dv from fx)), 8, 'no duplicate points history');
+select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select dv from fx) and entry_type = 'division_finalization' and not exists (select 1 from public.member_cpc_rating_history y where y.reverses_id = member_cpc_rating_history.id)), 8, 'no duplicate points history');
 select is(pg_temp.pts((select h_champ from champ)), 3.377::numeric, 'and no duplicate points');
 
 -- ---- a score-only correction (same winner) is evaluated
@@ -174,8 +174,8 @@ select is((select (r -> 'ranks' ->> 'unchanged')::int from c0), 6, 'the other si
 select is(pg_temp.pts((select h_champ from champ)), 3.286::numeric, 'the champion now has 3.286 (7 + 7 + 3 points of margin over 11, times 0.250)');
 select is(pg_temp.pts((select h_second from champ)), 3.150::numeric, 'the runner-up has 3.150 (7 + 7 - 3 over 11, times 0.250)');
 select is((select count(*)::int from public.division_results where division_id = (select dv from fx) and superseded_at is not null), 0, 'placements did not change, so the results stay');
-select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select dv from fx) and entry_type = 'reversal'), 2, 'two reversing points rows');
-select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select dv from fx) and entry_type = 'division_finalization'), 10, 'and two replacement rows (history is append-only)');
+select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select dv from fx) and entry_type = 'reversal' and reason like 'Reversed after a correction%'), 2, 'two reversing points rows for the correction');
+select is((select count(*)::int from public.member_cpc_rating_history where division_id = (select dv from fx) and entry_type = 'division_finalization' and not exists (select 1 from public.member_cpc_rating_history y where y.reverses_id = member_cpc_rating_history.id)), 8, 'and the live rows are replaced, not added (history is append-only)');
 
 -- ---- a later administrator assessment is kept by a later correction
 create temp table later as select (select em.member_id from public.entry_members em where em.entry_id = (select h_champ from champ)) as member_id;

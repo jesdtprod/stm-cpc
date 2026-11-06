@@ -19,6 +19,12 @@ export const MEMBER_SHORTCUTS = [
     href: "#/events",
   },
   {
+    label: "My Games",
+    desc: "Your matches, scores and rating changes",
+    icon: "medal",
+    href: "#/games",
+  },
+  {
     label: "Ranking",
     desc: "The club ladder and your rank history",
     icon: "medal",

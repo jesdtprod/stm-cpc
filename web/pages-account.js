@@ -579,7 +579,7 @@ export function createAccountPages(
           next.querySelector("input").value = "";
           again.querySelector("input").value = "";
           await session.refresh();
-          toast("Password changed.");
+          toast("Your password has been updated.");
           go(nextHash(session.getState()));
         } catch (e) {
           if (e.code === "weak_password") {
@@ -1115,8 +1115,8 @@ export function createAccountPages(
           await api.rpc("set_my_avatar", { p_path: null });
           showFace(null);
           photoInput.value = "";
-          photoNote.textContent = "Photo removed.";
-          toast("Photo removed.", { tone: "info" });
+          photoNote.textContent = "Profile photo removed.";
+          toast("Profile photo removed.", { tone: "info" });
           await session.refresh();
         } catch {
           photoNote.textContent = "The photo could not be removed. Try again.";
@@ -1207,8 +1207,8 @@ export function createAccountPages(
         if (upErr) throw upErr;
         await api.rpc("set_my_avatar", { p_path: path });
         showFace(URL.createObjectURL(blob));
-        photoNote.textContent = "Photo saved.";
-        toast("Photo saved.", { tone: "success" });
+        photoNote.textContent = "Profile photo updated.";
+        toast("Profile photo updated.", { tone: "success" });
         await session.refresh();
       } catch {
         photoNote.textContent =
@@ -1562,7 +1562,7 @@ export function createAccountPages(
           await api.rpc("update_my_profile", payload);
           await api.rpc("confirm_my_profile");
           await session.refresh();
-          toast("Profile saved.", { tone: "success" });
+          toast("Your profile has been updated.", { tone: "success" });
           go(nextHash(session.getState()));
         } catch (e) {
           const own = ["22023", "23505"].includes(e?.code) && e.cause?.message;

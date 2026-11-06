@@ -51,7 +51,14 @@ const DIVISION_STATUS = {
   cancelled: ["Cancelled", "danger"],
 };
 
-export function divisionStatusBadge(status, eventStatus) {
+/** Every stage is played to the end: the champion(s) are decided, even though the division is not finalized yet. */
+export function divisionPlayedOut(status, stages) {
+  const live = (stages ?? []).filter((s) => s.status !== "cancelled");
+  return status === "in_progress" && live.length > 0 && live.every((s) => s.status === "completed");
+}
+
+export function divisionStatusBadge(status, eventStatus, stages) {
+  if (divisionPlayedOut(status, stages)) return ["Completed", "success"];
   if (status !== "open") return DIVISION_STATUS[status] ?? [status, "neutral"];
   if (eventStatus === "draft") return ["Draft", "neutral"];
   if (eventStatus === "registration_open") return ["Open", "success"];
@@ -501,7 +508,7 @@ export function createEventsPages({ api, client }) {
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -747,14 +754,14 @@ export function createEventsPages({ api, client }) {
               editing ? "update_event" : "create_event",
               { p_id: key, ...args },
             );
-            toast(editing ? "Event saved." : "Event created.", {
+            toast(editing ? "Event details updated." : "Event created.", {
               tone: "success",
             });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -771,7 +778,7 @@ export function createEventsPages({ api, client }) {
         toast(done, { tone: "success" });
         await refresh();
       } catch (e) {
-        toast(messageOf(e, "That did not work. Please try again."), {
+        toast(messageOf(e, "Unable to complete this action. Please try again."), {
           tone: "danger",
         });
       }
@@ -893,7 +900,7 @@ export function createEventsPages({ api, client }) {
                       size: "sm",
                       variant: "success",
                       onClick: () =>
-                        setStatus(r, "registration_open", "Registration open."),
+                        setStatus(r, "registration_open", "Event registration is now open."),
                     })
                     : null,
                   r.status === "registration_open"
@@ -906,7 +913,7 @@ export function createEventsPages({ api, client }) {
                         setStatus(
                           r,
                           "registration_closed",
-                          "Registration closed.",
+                          "Event registration is now closed.",
                         ),
                     })
                     : null,
@@ -1033,7 +1040,7 @@ export function createEventsPages({ api, client }) {
                   { class: "member-decision-name" },
                   h("strong", { class: "member-name" }, row.name),
                   badge(
-                    ...divisionStatusBadge(row.status, ev.status),
+                    ...divisionStatusBadge(row.status, ev.status, row.stages),
                   ),
                 ),
                 h(
@@ -1247,14 +1254,14 @@ export function createEventsPages({ api, client }) {
                 ...common,
               });
             }
-            toast(editing ? "Division saved." : "Division added.", {
+            toast(editing ? "Division details updated." : "Division added.", {
               tone: "success",
             });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -1267,12 +1274,12 @@ export function createEventsPages({ api, client }) {
     async function runDraw(d) {
       try {
         await api.rpc("run_draw", { p_stage_id: stageOne(d).id });
-        toast("Draw made.", { tone: "success" });
+        toast("Division draw generated successfully.", { tone: "success" });
         await refresh();
         const fresh = state.divisions.find((x) => x.id === d.id);
         if (fresh) await drawModal(fresh);
       } catch (e) {
-        toast(messageOf(e, "The draw did not work. Please try again."), {
+        toast(messageOf(e, "Unable to generate the division draw. Please try again."), {
           tone: "danger",
         });
       }
@@ -1443,6 +1450,19 @@ export function createEventsPages({ api, client }) {
       });
     }
 
+    function undrawDivision(d) {
+      const key = api.newKey();
+      return reasonModal({
+        title: "Undraw",
+        eyebrow: `${state.open.name} · ${d.name}`,
+        note:
+          "The draw is taken back and the division opens for registration and roster changes again. Its scheduled matches are cancelled and the old draw stays in the history. The public pages update by themselves.",
+        confirmLabel: "Undraw",
+        run: (reason) => api.rpc("undraw_division", { p_division_id: d.id, p_reason: reason, p_key: key }),
+        done: "Draw taken back. The division is open again.",
+      });
+    }
+
     function redoDraw(d) {
       const key = api.newKey();
       return reasonModal({
@@ -1457,7 +1477,7 @@ export function createEventsPages({ api, client }) {
             p_reason: reason,
             p_key: key,
           }),
-        done: "Draw redone.",
+        done: "Division draw regenerated successfully.",
       });
     }
 
@@ -1574,12 +1594,12 @@ export function createEventsPages({ api, client }) {
               p_stage_id: stage.id,
               p_config: config,
             });
-            toast("Settings saved.", { tone: "success" });
+            toast("Division settings updated.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -1676,13 +1696,13 @@ export function createEventsPages({ api, client }) {
               key: "status",
               label: "Status",
               render: (r) =>
-                badge(...divisionStatusBadge(r.status, state.open.status)),
+                badge(...divisionStatusBadge(r.status, state.open.status, r.stages)),
             },
             {
               key: "actions",
               label: "Action",
               align: "center",
-              actionCount: 5,
+              actionCount: 6,
               render: (r) =>
                 h(
                   "span",
@@ -1722,6 +1742,17 @@ export function createEventsPages({ api, client }) {
                       size: "sm",
                       variant: "info",
                       onClick: () => drawModal(r),
+                    })
+                    : null,
+                  // Once drawn (and before any match is played) the draw can be taken back. The public pages read the live data, so the
+                  // roster, the match badges and the View Bracketing card update by themselves.
+                  r.status === "drawn" && stageOne(r)?.status === "drawn" && can("draws.redo")
+                    ? iconButton({
+                      label: `Undraw ${r.name}`,
+                      icon: "refresh",
+                      size: "sm",
+                      variant: "warning",
+                      onClick: () => undrawDivision(r),
                     })
                     : null,
                   r.status === "open" && poolStage(r)
@@ -1779,7 +1810,7 @@ export function createEventsPages({ api, client }) {
         await loadRegistrations();
         draw();
       } catch (e) {
-        toast(messageOf(e, "That did not work. Please try again."), {
+        toast(messageOf(e, "Unable to complete this action. Please try again."), {
           tone: "danger",
         });
       }
@@ -1872,8 +1903,17 @@ export function createEventsPages({ api, client }) {
         schema: {
           columns: [
             {
+              key: "team",
+              label: "Team",
+              render: (r) =>
+                h("div", { class: "member-table-stack" },
+                  h("strong", { class: "registration-team-title" }, r.meta?.team_name ?? "—"),
+                  h("span", { class: "sub" }, r.division?.name ?? "—"),
+                ),
+            },
+            {
               key: "member",
-              label: "Player",
+              label: "Player 1",
               render: (r) => {
                 // A member shows their photo; a guest shows initials.
                 const person = ({ name, sub, photo }) =>
@@ -1891,9 +1931,6 @@ export function createEventsPages({ api, client }) {
                 return h(
                   "div",
                   { class: "registration-team" },
-                  r.meta?.team_name
-                    ? h("div", { class: "registration-team-name" }, icon("users"), h("strong", {}, r.meta.team_name))
-                    : null,
                   person({
                     name: r.guest_name_snapshot ?? r.member?.person?.display_name ?? "—",
                     photo: state.photos?.get(r.member_id) ?? state.photos?.get(`g:${r.guest_participant_id}`),
@@ -1908,13 +1945,25 @@ export function createEventsPages({ api, client }) {
               },
             },
             {
-              key: "division",
-              label: "Division",
+              key: "partner",
+              label: "Player 2",
               render: (r) => {
-                const partnerName = r.guest_partner_name_snapshot || state.partners[r.meta?.partner_member_id]?.person?.display_name;
-                return h("div", { class: "member-table-stack" },
-                  h("span", {}, r.division?.name ?? "—"),
-                  partnerName ? h("span", { class: "sub" }, partnerName) : null,
+                // Same layout as Player 1: photo or initials, name, then member ID or "Guest".
+                const memberPartner = state.partners[r.meta?.partner_member_id];
+                const name = r.guest_partner_name_snapshot || memberPartner?.person?.display_name;
+                if (!name) return h("span", { class: "sub" }, "—");
+                const isGuest = Boolean(r.guest_partner_participant_id);
+                return h(
+                  "div",
+                  { class: "registration-person" },
+                  h("span", { class: "member-avatar registration-avatar", "aria-hidden": "true" },
+                    avatarImage(isGuest ? state.photos?.get(`g:${r.guest_partner_participant_id}`) : state.photos?.get(r.meta?.partner_member_id), name)),
+                  h(
+                    "div",
+                    { class: "registration-person-text" },
+                    h("div", { class: "registration-person-name" }, h("strong", {}, name)),
+                    h("span", { class: "sub" }, isGuest ? "Guest" : (memberPartner?.member_no ?? "")),
+                  ),
                 );
               },
             },
@@ -1952,16 +2001,8 @@ export function createEventsPages({ api, client }) {
               key: "actions",
               label: "Action",
               align: "center",
-              actionCount: can("events.admin_roster") ? 6 : 3,
+              actionCount: 3,
               render: (r) => r.status === "withdrawn" ? null : h("span", { class: "row-actions" },
-                r.guest_participant_id && can("events.admin_roster") && ["requested", "confirmed"].includes(r.status) && r.division?.status === "open" && ["registration_open", "registration_closed"].includes(state.open.status)
-                  ? [
-                    iconButton({ label: `Move division for ${r.guest_name_snapshot}`, icon: "shuffle", size: "sm", variant: "info", onClick: () => guestActions.change(r, "move") }),
-                    iconButton({ label: `Replace players for ${r.guest_name_snapshot}`, icon: "edit", size: "sm", variant: "edit", onClick: () => guestActions.change(r, "replace") }),
-                  ] : null,
-                r.guest_participant_id && can("events.admin_roster")
-                  ? iconButton({ label: `Edit guest ${r.guest_name_snapshot}`, icon: "user", size: "sm", variant: "edit", onClick: () => guestActions.editGuest(r.guest_participant_id) })
-                  : null,
                 r.guest_participant_id && ["requested", "waitlisted", "confirmed"].includes(r.status) && can("payments.submit") &&
                   Number(r.fee_snapshot) > Number(state.pays[r.id]?.verified_total ?? 0) + Number(state.pays[r.id]?.pending_total ?? 0)
                   ? iconButton({ label: `Record payment for ${r.guest_name_snapshot}`, icon: "file", size: "sm", variant: "info",
@@ -2072,7 +2113,7 @@ export function createEventsPages({ api, client }) {
             icon: "check",
             variant: "success",
             onClick: () =>
-              setStatus(ev, "registration_open", "Registration open."),
+              setStatus(ev, "registration_open", "Event registration is now open."),
           }),
         );
       } else if (ev.status === "registration_open") {
@@ -2082,7 +2123,7 @@ export function createEventsPages({ api, client }) {
             icon: "lock",
             variant: "warning",
             onClick: () =>
-              setStatus(ev, "registration_closed", "Registration closed."),
+              setStatus(ev, "registration_closed", "Event registration is now closed."),
           }),
         );
       } else if (ev.status === "in_progress") {

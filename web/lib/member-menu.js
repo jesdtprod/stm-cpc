@@ -6,6 +6,7 @@ export const MEMBER_MENU_SETTINGS = {
   "member_menu.bookings": "/bookings",
   "member_menu.events": "/events",
   "member_menu.ranking": "/ranking",
+  "member_menu.games": "/games",
 };
 
 let hidden = new Set();

@@ -86,8 +86,8 @@ export function createDev({ client, api, session, reporter }) {
             password: password.querySelector("input").value,
           }, token);
           password.querySelector("input").value = "";
-        } catch (e) {
-          toast(e.message ?? "Sign-in failed");
+        } catch {
+          toast("Unable to sign in to the development tools. Check your credentials and try again.", { tone: "error" });
         }
       },
     });

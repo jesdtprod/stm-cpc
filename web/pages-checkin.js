@@ -254,7 +254,7 @@ export function createCheckinPages({ api }) {
         });
         showResult(renderSuccess(r));
         courtBoard.refresh();
-        toast(`Checked in · ${r.member_name ?? ""}`, { tone: "success" });
+        toast(r.member_name ? `Check-in completed for ${r.member_name}.` : "Booking check-in completed.", { tone: "success" });
         if (navigator.vibrate) {
           try {
             navigator.vibrate([40, 60, 80]);

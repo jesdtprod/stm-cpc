@@ -27,6 +27,7 @@ const GROUPS = [
       { path: "/book", label: "Book a Court", icon: "calendar" },
       { path: "/bookings", label: "My Bookings", icon: "clock" },
       { path: "/events", label: "Events", icon: "trophy" },
+      { path: "/games", label: "My Games", icon: "medal" },
       { path: "/ranking", label: "Ranking", icon: "medal" },
       { path: "/notifications", label: "Notifications", icon: "inbox" },
     ],

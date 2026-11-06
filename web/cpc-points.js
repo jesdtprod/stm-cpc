@@ -377,10 +377,10 @@ export function assessPointsModal({ api, row, discipline = "singles", onDone }) 
           p_key: key,
           p_reason: reason,
         });
-        toast("Rating saved.", { tone: "success" });
+        toast("CPC rating assessment saved.", { tone: "success" });
         await onDone?.();
       } catch (e) {
-        return fail(messageOf(e, "That did not work. Try again."));
+        return fail(messageOf(e, "Unable to complete this action. Please try again."));
       }
     },
   });
@@ -396,7 +396,7 @@ export function cpcAdminPanel({ api, onChange }) {
       await onChange?.();
       await draw();
     } catch (e) {
-      toast(messageOf(e, "That did not work. Try again."), { tone: "danger" });
+      toast(messageOf(e, "Unable to complete this action. Please try again."), { tone: "danger" });
     }
   };
   async function draw() {
@@ -412,13 +412,13 @@ export function cpcAdminPanel({ api, onChange }) {
     if (can("ranks.override") && !ready) {
       actions.push(h("button", {
         class: "btn btn-secondary", type: "button",
-        onClick: () => run(() => api.rpc("initialize_member_cpc_ratings", { p_key: api.newKey() }), "Members prepared. Everyone is unrated until assessed."),
+        onClick: () => run(() => api.rpc("initialize_member_cpc_ratings", { p_key: api.newKey() }), "Member rating records initialized. Ratings remain unrated until assessed."),
       }, "Prepare Members"));
     }
     if (can("settings.manage") && ready) {
       const turn = (on) => run(
         () => api.rpc("update_setting", { p_key: SETTING, p_value: on, p_reason: on ? "Ratings turned on" : "Ratings turned off", p_idem: api.newKey() }),
-        on ? "Ratings are on." : "Ratings are off.",
+        on ? "CPC ratings enabled." : "CPC ratings disabled.",
       );
       actions.push(h("button", {
         class: s.enabled ? "btn btn-secondary" : "btn btn-primary", type: "button", onClick: () => turn(!s.enabled),

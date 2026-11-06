@@ -374,12 +374,12 @@ export function createScoringPages({ api, getOrgId }) {
                 ...fields,
               });
             }
-            toast(editing ? "Rule saved." : "Rule added.", { tone: "success" });
+            toast(editing ? "Scoring rule updated." : "Scoring rule created.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },
@@ -504,12 +504,12 @@ export function createScoringPages({ api, getOrgId }) {
               p_reason: reason,
               p_key: key,
             });
-            toast("Deleted.", { tone: "success" });
+            toast("Scoring rule archived.", { tone: "success" });
             await refresh();
           } catch (e) {
             return showError(
               error,
-              messageOf(e, "That did not work. Please try again."),
+              messageOf(e, "Unable to complete this action. Please try again."),
             );
           }
         },

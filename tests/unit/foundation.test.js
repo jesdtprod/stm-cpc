@@ -222,7 +222,7 @@ Deno.test("errors: a failing send never throws, and global handlers notify once 
   ev.error = new Error("kaboom");
   target.dispatchEvent(ev);
   assert.equal(notes.length, 1);
-  assert.match(notes[0], /Something went wrong/);
+  assert.match(notes[0], /Reload the page and try again/);
 });
 
 // ---------- permissions and guards (1B.3)

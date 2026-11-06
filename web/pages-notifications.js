@@ -184,10 +184,10 @@ export function createNotificationPages({ api, feed }) {
         await api.rpc("mark_notifications_read", {});
         state.items.forEach((n) => (n.is_read = true));
         feed?.refreshCount?.();
-        toast("All messages marked as read.", { tone: "success" });
+        toast("All notifications marked as read.", { tone: "success" });
         drawList();
       } catch {
-        toast("That did not work. Try again.", { tone: "error" });
+        toast("Unable to mark notifications as read. Please try again.", { tone: "error" });
       }
     }
 
@@ -221,9 +221,9 @@ export function createNotificationPages({ api, feed }) {
           onClick: async () => {
             try {
               await disablePush(api);
-              toast("Alerts are off on this device.", { tone: "success" });
+              toast("Notifications disabled on this device.", { tone: "success" });
             } catch {
-              toast("That did not work. Try again.", { tone: "error" });
+              toast("Unable to disable notifications on this device. Please try again.", { tone: "error" });
             }
             loadDevice();
           },
@@ -241,7 +241,7 @@ export function createNotificationPages({ api, feed }) {
             event.currentTarget.disabled = true;
             const r = await enablePush(api);
             if (r.ok) {
-              toast("Alerts are on for this device.", { tone: "success" });
+              toast("Notifications enabled on this device.", { tone: "success" });
             } else {
               toast(PUSH_MESSAGES[r.reason] ?? PUSH_MESSAGES.registration, {
                 tone: r.reason === "denied" ? "warning" : "error",

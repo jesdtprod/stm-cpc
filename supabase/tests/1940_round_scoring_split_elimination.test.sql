@@ -124,7 +124,8 @@ $$ select core.match_scoring_rule(id) from public.matches
    order by match_no limit 1 $$;
 grant execute on function pg_temp.rule_of(text, integer, integer) to public;
 
-select is((select count(*)::int from public.matches where division_stage_id = (select s from stg)), 8, 'sixteen teams: 8 first-round games');
+select is((select count(*)::int from public.matches where division_stage_id = (select s from stg) and group_label is null), 8, 'sixteen teams: 8 first-round games');
+select is((select count(*)::int from public.matches where division_stage_id = (select s from stg) and group_label in ('H', 'L')), 14, 'and the empty H and L brackets (7 games each) from the draw');
 
 -- permissions and input checks
 select pg_temp.as_user((select u from us where role = 'outsider')); set local role authenticated;
@@ -177,8 +178,7 @@ create temp table sf as select
   (select id from public.matches where division_stage_id = (select s from stg) and group_label = 'L' and round_no = 3 order by match_no limit 1) as l_sf;
 grant select on sf to public;
 select pg_temp.as_user((select u from us where role = 'ref')); set local role authenticated;
-select public.enter_score((select h_sf from sf), '[{"a":11,"b":4}]');
-select throws_ok(format('select public.finalize_match(%L)', (select h_sf from sf)), '22023', null, 'H semifinal: 11-4 is refused because the game is to 15');
+select throws_ok(format($f$select public.enter_score(%L, '[{"a":11,"b":4}]')$f$, (select h_sf from sf)), '22023', null, 'H semifinal: 11-4 is refused before saving because the game is to 15');
 select public.enter_score((select h_sf from sf), '[{"a":15,"b":9}]');
 select lives_ok(format('select public.finalize_match(%L)', (select h_sf from sf)), 'H semifinal: 15-9 is accepted');
 -- the L semifinal is to 11

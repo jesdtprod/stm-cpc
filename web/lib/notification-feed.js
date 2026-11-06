@@ -44,7 +44,7 @@ export function createNotificationFeed({ client, api, toast, onOpen }) {
           if (!n) return;
           show(count + 1);
           dispatchEvent(new CustomEvent("cpc:notification", { detail: n }));
-          toast(n.body ?? "", {
+          toast(n.body?.trim() || "You have a new club notification. Open Notifications to review it.", {
             title: n.title,
             actionLabel: n.url ? "Open" : undefined,
             onAction: n.url ? () => onOpen?.(n) : undefined,

@@ -1,6 +1,6 @@
 -- Explicit demo-data operation for EV-2026-00002, not an automatic migration.
--- Fill the two inspected doubles divisions to 16 with labeled fake guest teams.
--- Safe to rerun: stops at capacity and reuses existing numbered fake teams.
+-- Fill the two inspected doubles divisions to 16 with fictional player names.
+-- Safe to rerun: stops at capacity and reuses existing fictional guests.
 -- Uses the existing permission-checked RPCs and leaves approvals/payment rules intact.
 -- Run: npx supabase@2.118.0 db query --linked -f scripts/seed-event-demo-teams.sql -o json
 begin;
@@ -11,6 +11,10 @@ do $$
 declare ev public.events; dv public.divisions; actor uuid; pts numeric; ids text[];
   participant text; person_id text; registration text; existing public.registrations;
   names text[]; i integer; team_no integer; result jsonb; classification text; born date;
+  given_names text[] := array['Adrian','Marco','Paolo','Luis','Diego','Rafael','Miguel','Gabriel',
+    'Daniel','Carlo','Andre','Nico','Enzo','Javier','Lorenzo','Mateo',
+    'Julian','Lucas','Martin','Emilio','Tomas','Felix','Oscar','Victor',
+    'Bruno','Dante','Hugo','Ivan','Leon','Simon','Theo','Vincent'];
 begin
   select * into ev from public.events where id='01M61GRT7AQ9JB7V34G2NZW0HB' and doc_no='EV-2026-00002' for update;
   if not found or ev.name <> 'STM Halloween Pickleball Tournament 2026'
@@ -42,11 +46,11 @@ begin
         and (dv.max_rank_id is null or r.sort_order <= (select sort_order from public.ranks where id=dv.max_rank_id))
       order by r.sort_order limit 1;
     if pts is null then raise exception 'Division has no eligible numerical rating band'; end if;
-    for team_no in 1..16 loop
+    for team_no in 1..32 loop
     exit when (select count(*) from public.registrations r
       where r.division_id=dv.id and r.status in ('requested','confirmed')) >= 16;
-    names := array['TEST ONLY - ' || classification || ' ' || right(dv.id,6) || ' Team ' || team_no || ' Player A',
-                   'TEST ONLY - ' || classification || ' ' || right(dv.id,6) || ' Team ' || team_no || ' Player B'];
+    names := array[given_names[team_no] || case when classification='Beginner' then ' Santos' else ' Cruz' end,
+                   given_names[team_no] || case when classification='Beginner' then ' Reyes' else ' Garcia' end];
     ids := array[]::text[];
     for i in 1..2 loop
       select ep.id into participant from public.event_participants ep join public.persons pe on pe.id=ep.person_id
@@ -60,6 +64,12 @@ begin
       end if;
       ids := array_append(ids,participant);
     end loop;
+    -- Preserve registrations already entered through the UI; do not reuse either player.
+    if exists (select 1 from public.registrations r where r.event_id=ev.id
+      and r.status in ('requested','confirmed','waitlisted')
+      and (r.guest_participant_id=any(ids) or r.guest_partner_participant_id=any(ids))) then
+      continue;
+    end if;
     select * into existing from public.registrations r where r.division_id=dv.id
       and r.guest_participant_id=ids[1] and r.guest_partner_participant_id=ids[2]
       and r.status in ('requested','confirmed','waitlisted');
@@ -71,16 +81,26 @@ begin
         raise exception 'Division is full; demo seed will not take a waitlist place';
       end if;
       registration := core.ulid();
-      result := public.register_guest_for_event(registration,dv.id,ids[1],null,ids[2],null);
+      result := public.register_guest_for_event_team(registration,dv.id,ids[1],null,
+        names[1] || ' / ' || names[2],ids[2],null);
     end if;
     insert into demo_results values(dv.name,names[1],names[2],pts,result->>'status');
     end loop;
   end loop;
+  -- Complete free registrations through the existing approval/payment checks.
+  for existing in select * from public.registrations where event_id=ev.id and status='requested'
+    order by id for update loop
+    perform public.decide_registration(existing.id,'approve','Complete fictional event roster');
+  end loop;
+  update demo_results d set status = r.status from public.registrations r
+    join public.divisions v on v.id=r.division_id
+    where r.event_id=ev.id and r.status='confirmed' and v.name=d.division_name
+      and r.guest_name_snapshot=d.player_name and r.guest_partner_name_snapshot=d.partner_name;
   if (select count(*) from public.divisions d where d.event_id=ev.id
     and d.id in ('01M61J28YBTJ8B5X292GTADNY3','01M61J4WVH4V1ZAWC032YA22ZC')
     and (select count(*) from public.registrations r where r.division_id=d.id
-      and r.status in ('requested','confirmed'))=16) <> 2 then
-    raise exception 'Both inspected divisions must have exactly 16 active entries';
+      and r.status='confirmed')=16) <> 2 then
+    raise exception 'Both inspected divisions must have exactly 16 confirmed entries';
   end if;
 end $$;
 commit;

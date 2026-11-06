@@ -40,6 +40,8 @@ import { createMemberEventsPages } from "./pages-events-member.js";
 import { createScoringPages } from "./pages-scoring.js";
 import { createBracketPages } from "./pages-bracket.js";
 import { createRankingPages } from "./pages-ranking.js";
+import { createMyGamesPages } from "./pages-my-games.js";
+import { createPublicBracketPages } from "./pages-public-bracket.js";
 import { createPublicPages } from "./pages-public.js";
 import { createNotificationPages } from "./pages-notifications.js";
 import { createNotificationFeed } from "./lib/notification-feed.js";
@@ -90,7 +92,7 @@ const memberMenuLive = createMemberMenuLive({
   onChange: () => {
     shell.draw(currentPath());
     if (menuHiddenHere(currentPath())) {
-      toast("This page was turned off by the club.");
+      toast("This page is currently unavailable. You have been redirected to Home.");
       location.hash = "#/";
     } else if (currentPath() === "/") router.refresh();
   },
@@ -166,13 +168,13 @@ const session = createSession({
       memberMenuLive.stop();
       clearAuth();
       if (s.reason === "idle") {
-        toast("You were signed out because of inactivity.");
+        toast("Your session ended due to inactivity. Please sign in again.");
       }
     }
   },
   onIdleWarning: (seconds) =>
     toast(
-      `You will be signed out in ${seconds} seconds unless you keep working.`,
+      `Your session will expire in ${seconds} seconds. Continue using the app to stay signed in.`,
     ),
 });
 
@@ -294,6 +296,12 @@ route("/members", () => publicPages.membersPage(), "Members", "public");
 const rankingPages = createRankingPages({ api, client, session });
 route("/ranking", () => rankingPages.rankingPage(), "Ranking", "signedIn");
 
+const publicBracketPages = createPublicBracketPages({ api, client });
+route("/bracketing", () => publicBracketPages.publicBracketPage(), "Bracketing", "public");
+
+const myGamesPages = createMyGamesPages({ api });
+route("/games", () => myGamesPages.myGamesPage(), "My Games", "signedIn");
+
 const bracketPages = createBracketPages({ api });
 route("/bracket", () => bracketPages.bracketPage(), "Bracket", "signedIn");
 
@@ -346,7 +354,7 @@ route(
   () =>
     can("events.register")
       ? memberEventsPages.eventsPage()
-      : eventsPage({ api }),
+      : eventsPage({ api, client }),
   "Events",
   "public",
 );

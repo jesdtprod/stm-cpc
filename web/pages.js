@@ -1,5 +1,6 @@
 import { badge, button, h, icon, kpiCard, memberHero, pageHeader } from "./ui.js";
 import { formatCourtTime as time } from "./lib/dates.js";
+import { signedAvatarUrls } from "./lib/avatar.js";
 import {
   eventDivisions,
   eventSummary,
@@ -33,18 +34,39 @@ export function homePage() {
 // Public courts and events come from public_landing_info (1540/1550): names, dates, place, status, fee,
 // court settings and usual hours only. Nothing about members leaves the database.
 // One loader per page: draw loading cards, then the rows (or the error state with retry).
-function publicListPage({ api, hero, pick, renderCards, rpc = "public_landing_info" }) {
+function publicListPage({ api, hero, pick, renderCards, rpc = "public_landing_info", extra = null, refreshMs = 0 }) {
   const host = h("div", { class: "public-page-body" });
-  async function load() {
-    host.replaceChildren(renderCards([], "loading", load));
+  let signature = "";
+  // silent = a background refresh: no loading cards, and the page is only redrawn when the data really changed.
+  async function load(silent = false) {
+    if (!silent) host.replaceChildren(renderCards([], "loading", () => load()));
     try {
       const info = await api.rpc(rpc);
-      host.replaceChildren(renderCards(pick(info) ?? [], "ready", load));
+      // optional extra data (the events page's rosters); the page still works if it cannot be loaded
+      const more = extra ? await extra().catch(() => null) : null;
+      const next = JSON.stringify(info) + (more?.signature ?? "");
+      if (silent && next === signature) return;
+      signature = next;
+      host.replaceChildren(renderCards(pick(info) ?? [], "ready", () => load(), more));
     } catch {
-      host.replaceChildren(renderCards([], "error", load));
+      if (!silent) host.replaceChildren(renderCards([], "error", () => load()));
     }
   }
   load();
+  // Keep the page current while it is open (a draw or undraw shows up by itself); stops when the page is left.
+  if (refreshMs) {
+    const stop = () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    const tick = () => {
+      if (!host.isConnected) return stop();
+      if (!document.hidden) load(true);
+    };
+    const onVisible = () => { if (!document.hidden) tick(); };
+    const timer = setInterval(tick, refreshMs);
+    document.addEventListener("visibilitychange", onVisible);
+  }
   return h("div", { class: "page public-page" }, hero, host);
 }
 
@@ -246,7 +268,7 @@ function renderCourtCards(rows, state, onRetry) {
 }
 
 
-function renderEventCards(rows, state, onRetry) {
+function renderEventCards(rows, state, onRetry, rosters = null) {
   if (state === "loading") {
     return h(
       "div",
@@ -322,25 +344,35 @@ function renderEventCards(rows, state, onRetry) {
         "article",
         { class: "public-card public-event-card", "aria-label": e.name },
         ...eventSummary(e),
-        eventDivisions(e.divisions),
-        h(
-          "div",
-          { class: "public-card-footer" },
-          h(
+        eventDivisions(e.divisions, rosters ? (d) => rosters.get(`${e.name}|${e.starts_on}|${d.name}`) : null),
+        acceptsRegistrations(e)
+          ? h(
             "div",
-            { class: "public-card-footer-note" },
-            icon("info"),
-            h("span", {}, "Sign in as an active club member to register for this event."),
-          ),
-          h(
-            "div",
-            { class: "public-card-actions" },
-            h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In to Register"),
-          ),
-        ),
+            { class: "public-card-footer" },
+            h(
+              "div",
+              { class: "public-card-footer-note" },
+              icon("info"),
+              h("span", {}, "Sign in as an active club member to register for this event."),
+            ),
+            h(
+              "div",
+              { class: "public-card-actions" },
+              h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In to Register"),
+            ),
+          )
+          : null,
       );
     }),
   );
+}
+
+/** The sign-in-to-register footer only makes sense while people can still join: registration is open and a division has room. */
+function acceptsRegistrations(e) {
+  if (e.status !== "registration_open") return false;
+  const divisions = e.divisions ?? [];
+  if (!divisions.length) return true;
+  return divisions.some((d) => !(Number(d.max_entries ?? 0) > 0 && Number(d.taken ?? 0) >= Number(d.max_entries)));
 }
 
 export function bookingPage({ api }) {
@@ -364,9 +396,30 @@ export function bookingPage({ api }) {
   });
 }
 
-export function eventsPage({ api }) {
+// One request for every published event's approved teams, then one batch of signed photo links.
+async function loadRosters(api, client) {
+  const rows = (await api.rpc("public_event_rosters")) ?? [];
+  const urls = client
+    ? await signedAvatarUrls(client, rows.flatMap((r) => [r.p1_path, r.p2_path]))
+    : new Map();
+  const byDivision = new Map();
+  for (const r of rows) {
+    const key = `${r.event_name}|${r.starts_on}|${r.division_name}`;
+    const players = [{ name: r.p1_name, photo: urls.get(r.p1_path) }];
+    if (r.p2_name) players.push({ name: r.p2_name, photo: urls.get(r.p2_path) });
+    if (!byDivision.has(key)) byDivision.set(key, { divisionId: r.division_id, drawn: Boolean(r.drawn), finished: Boolean(r.finished), teams: [] });
+    byDivision.get(key).teams.push({ team: r.team_name, players, matchNo: r.match_no ?? null, opponent: r.opponent ?? null });
+  }
+  // what the roster rows say (not the photo links, which change every time they are signed): used to see if anything changed
+  byDivision.signature = JSON.stringify(rows);
+  return byDivision;
+}
+
+export function eventsPage({ api, client = null }) {
   return publicListPage({
     api,
+    extra: () => loadRosters(api, client),
+    refreshMs: 20000,
     hero: memberHero({
       iconName: "trophy",
       eyebrow: "Competition",
@@ -376,7 +429,11 @@ export function eventsPage({ api }) {
         "Club events and tournaments, including their current status.",
       chip: "Public Events",
     }),
-    pick: (info) => info?.events,
+    // The newest event first; finished events stay on the list.
+    pick: (info) =>
+      [...(info?.events ?? [])].sort((a, b) =>
+        String(b.starts_on).localeCompare(String(a.starts_on)) || String(a.name).localeCompare(String(b.name))
+      ),
     renderCards: renderEventCards,
   });
 }

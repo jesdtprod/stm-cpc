@@ -17,17 +17,25 @@ export function avatarFileError(file) {
   return null;
 }
 
-/** Keep initials visible if a private photo is missing or its signed URL expires. */
+/**
+ * The initials are always drawn; a photo is laid over them. If the photo is missing, still loading, blank or its signed link
+ * has expired, the initials stay visible instead of an empty circle.
+ */
 export function avatarImage(url, name) {
-  const fallback = () => document.createTextNode(initialsOf(name));
-  if (!url) return fallback();
+  const initials = document.createTextNode(initialsOf(name));
+  if (!url) return initials;
   const image = document.createElement("img");
   image.alt = "";
-  image.addEventListener("error", () => image.replaceWith(fallback()), {
-    once: true,
-  });
+  image.className = "avatar-photo-img";
+  image.addEventListener("error", () => {
+    image.hidden = true;
+    image.remove?.();
+  }, { once: true });
   image.src = url;
-  return image;
+  const holder = document.createElement("span");
+  holder.className = "avatar-photo";
+  holder.append(initials, image);
+  return holder;
 }
 
 /** Crops to the centre square and returns a JPEG blob of edge x edge pixels. */

@@ -106,14 +106,14 @@ reset role;
 select pg_temp.as_user((select u from us where role = 'whistle')); set local role authenticated;
 select throws_ok(format($f$select public.enter_score(%L, '[{"a":11,"b":11}]')$f$, (select f1 from st)), '22023', null, 'a level game is refused');
 select throws_ok(format($f$select public.enter_score(%L, '[{"a":11,"b":5},{"a":11,"b":6}]')$f$, (select f1 from st)), '22023', null, 'a single-game match takes one game');
-select is((select public.enter_score((select f1 from st), '[{"a":11,"b":10}]') ->> 'status'), 'in_progress', 'the assigned referee enters a score');
+select is((select public.enter_score((select f1 from st), '[{"a":11,"b":9}]') ->> 'status'), 'in_progress', 'the assigned referee enters a completed game score');
 select throws_ok(format($f$select public.finalize_match(%L)$f$, (select f1 from st)), '42501', null, 'a referee without the finalize permission cannot finalize');
 reset role;
 select is((select status from public.matches where id = (select f1 from st)), 'in_progress', 'the match is in progress');
 
 -- ---- finalizing
 select pg_temp.as_user((select u from us where role = 'ref')); set local role authenticated;
-select throws_ok(format($f$select public.finalize_match(%L)$f$, (select f1 from st)), '22023', null, '11-10 is not a finished game when winning by 2');
+select throws_ok(format($f$select public.enter_score(%L, '[{"a":11,"b":10}]')$f$, (select f1 from st)), '22023', null, '11-10 is rejected before saving when winning by 2');
 select public.enter_score((select f1 from st), '[{"a":11,"b":7}]');
 select is((select public.finalize_match((select f1 from st)) ->> 'status'), 'completed', 'a referee finalizes 11-7');
 select is((select public.finalize_match((select f1 from st)) ->> 'unchanged'), 'true', 'finalizing again returns the same result');
@@ -139,7 +139,13 @@ select is((select entry_b_id from public.matches where id = (select f3 from st))
 
 -- ---- corrections
 select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
-select throws_ok(format($f$select public.correct_match(%L, 'p2 really won', '[{"a":5,"b":11}]')$f$, (select f1 from st)), '22023', 'the next match already has a different opponent; void it first', 'a correction that changes an advanced winner is refused');
+-- once the next match has a score, the advanced winner is locked (before that a corrected winner takes the old one's place: 2530)
+reset role;
+select pg_temp.as_user((select u from us where role = 'ref')); set local role authenticated;
+select public.enter_score((select f3 from st), '[{"a":11,"b":5}]');
+reset role;
+select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
+select throws_ok(format($f$select public.correct_match(%L, 'p2 really won', '[{"a":5,"b":11}]')$f$, (select f1 from st)), '22023', 'the next match has already started; correct that match first, then this one', 'a correction that changes an advanced winner is refused once the next match has started');
 select throws_ok(format($f$select public.correct_match(%L, 'x', '[{"a":11,"b":8}]')$f$, (select f1 from st)), '22023', null, 'a correction needs a proper reason');
 create temp table cx as select public.correct_match((select f1 from st), 'Score misread', '[{"a":11,"b":8}]') as r;
 reset role;

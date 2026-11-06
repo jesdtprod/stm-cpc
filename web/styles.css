@@ -2208,6 +2208,18 @@ textarea.input {
   scrollbar-width: none;
   gap: 8px;
 }
+.pager-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-weight: 600;
+}
 
 /* ===== 8. Modal (native dialog) ===== */
 dialog.modal {
@@ -4831,8 +4843,48 @@ p.member-id,
 }
 .round-scoring-bracket {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   align-content: start;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.round-scoring-summary {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.round-scoring-summary-heading,
+.round-scoring-bracket-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.round-scoring-summary-heading {
+  justify-content: space-between;
+}
+.round-scoring-base-rule {
+  color: var(--accent);
+  font-size: 14px;
+}
+.round-scoring-bracket-head h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+.round-scoring-form .field {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+}
+.round-scoring-form .sub {
+  margin: 0;
 }
 @media (max-width: 720px) {
   .round-scoring-grid {

@@ -580,6 +580,10 @@ export function searchableSelect({
   let selected = findOption(value);
   let isOpen = false;
   let filtered = [...options];
+  // Long lists are drawn a page at a time and the next page is added as the list is scrolled, so a big list never
+  // builds hundreds of rows at once. (The options are already in the browser: scrolling makes no request.)
+  const PAGE = 40;
+  let shown = PAGE;
   const description = [hint ? `${id}-hint` : null, `${id}-err`].filter(Boolean)
     .join(" ");
   const triggerText = h("span", { class: "searchable-select-text" });
@@ -634,8 +638,17 @@ export function searchableSelect({
       filtered = options.filter((item) =>
         optionLabel(item).toLocaleLowerCase().includes(query)
       );
+      shown = PAGE;
       renderList();
     },
+  });
+  listEl.addEventListener("scroll", () => {
+    if (shown >= filtered.length) return;
+    if (listEl.scrollTop + listEl.clientHeight < listEl.scrollHeight - 48) return;
+    const top = listEl.scrollTop;
+    shown = Math.min(filtered.length, shown + PAGE);
+    renderList();
+    listEl.scrollTop = top;
   });
   const dropdown = h(
     "div",
@@ -673,7 +686,7 @@ export function searchableSelect({
     onSelect?.(optionValue(item), item);
   }
   function renderList() {
-    listEl.replaceChildren(...filtered.map((item) => {
+    listEl.replaceChildren(...filtered.slice(0, shown).map((item) => {
       const active = selected !== null &&
         String(optionValue(selected)) === String(optionValue(item));
       return h(
@@ -716,6 +729,8 @@ export function searchableSelect({
     if (open) {
       searchInput.value = "";
       filtered = [...options];
+      const at = selected === null ? -1 : filtered.findIndex((item) => String(optionValue(item)) === String(optionValue(selected)));
+      shown = Math.max(PAGE, Math.ceil((at + 1) / PAGE) * PAGE);
       renderList();
       position.start();
       document.addEventListener("pointerdown", outside);
@@ -779,6 +794,10 @@ export function searchableSelect({
     }
     event.preventDefault();
     if (!isOpen) toggle(true, false, false);
+    if (event.key === "End" && shown < filtered.length) {
+      shown = filtered.length;
+      renderList();
+    }
     const items = [...listEl.querySelectorAll("button:not(:disabled)")];
     if (!items.length) return;
     const current = items.indexOf(document.activeElement);
@@ -2615,7 +2634,7 @@ export function fileUploadField(
     const valid = [];
     for (const f of newFiles) {
       if (f.size > maxSizeMb * 1024 * 1024) {
-        toast(`File "${f.name}" exceeds ${maxSizeMb}MB limit.`, {
+        toast(`File "${f.name}" exceeds the ${maxSizeMb} MB limit. Choose a smaller file.`, {
           tone: "error",
         });
         continue;
@@ -3417,16 +3436,19 @@ export function pagination(
       onClick: () => onPage(current - 1),
     }, icon("chevl")),
   );
-  const first = Math.max(1, Math.min(current - 2, pages - 4));
-  const mobileFirst = Math.max(1, Math.min(current - 1, pages - 2));
-  for (let p = first; p <= Math.min(pages, first + 4); p++) {
+  const links = pages <= 5
+    ? Array.from({ length: pages }, (_, index) => index + 1)
+    : current <= 3 ? [1, 2, 3, null, pages]
+    : current >= pages - 2 ? [1, null, pages - 2, pages - 1, pages]
+    : [1, null, current, null, pages];
+  for (const p of links) {
+    if (p == null) {
+      nav.append(h("span", { class: "pager-ellipsis", "aria-hidden": "true" }, "…"));
+      continue;
+    }
     nav.append(
       h("button", {
-        class: `btn btn-icon${
-          compactMobile && (p < mobileFirst || p > mobileFirst + 2)
-            ? " pager-extra-page"
-            : ""
-        }`,
+        class: "btn btn-icon",
         type: "button",
         "aria-label": `Page ${p}`,
         "aria-current": p === current ? "page" : null,
@@ -3832,13 +3854,19 @@ export function toast(
   } = {},
 ) {
   const toastContainer = document.getElementById("toasts");
+  tone = tone === "danger" ? "error" : tone;
   const sentenceCase = (text) =>
     typeof text === "string"
-      ? text.replace(
+      ? text.trim().replace(/\s+/g, " ").replace(
         /^(\s*)([a-z])/,
         (_, space, first) => space + first.toUpperCase(),
       )
       : text;
+  const messageText = sentenceCase(message);
+  const formattedMessage = typeof messageText === "string" && messageText &&
+      !/[.!?…]$/.test(messageText)
+    ? `${messageText}.`
+    : messageText;
   const iconName = tone === "success"
     ? "checkCircle"
     : tone === "error"
@@ -3861,7 +3889,7 @@ export function toast(
       "div",
       { class: "toast-body" },
       title ? h("div", { class: "toast-title" }, sentenceCase(title)) : null,
-      h("div", { class: "toast-msg" }, sentenceCase(message)),
+      h("div", { class: "toast-msg" }, formattedMessage),
     ),
   );
 

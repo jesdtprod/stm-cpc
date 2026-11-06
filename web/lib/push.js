@@ -112,9 +112,9 @@ export const PUSH_MESSAGES = {
   unsupported:
     "This browser cannot receive device alerts. On an iPhone, add the app to your Home Screen and open it from there.",
   not_ready:
-    "Device alerts are still getting ready. Reload the page, then try again.",
+    "Device notifications are not ready. Reload the page, then try again.",
   denied:
-    "Alerts were not allowed. Allow notifications in your browser's site settings, then try again.",
+    "Notification permission was denied. Allow notifications in your browser's site settings, then try again.",
   subscription:
     "The browser could not connect to its notification service. Check your connection and notification settings. In Brave, turn on “Use Google Services for Push Messaging” in Settings > Privacy and security, then restart Brave and try again.",
   registration:

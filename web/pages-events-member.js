@@ -65,7 +65,7 @@ const compareDivisions = (a, b) =>
 
 const when = (d) => formatDate(`${d}T00:00:00+08:00`);
 
-function eventMessage(e, fallback = "That did not work. Please try again.") {
+function eventMessage(e, fallback = "Unable to complete this action. Please try again.") {
   if (e?.code === "23505" || e?.kind === "duplicate") {
     return e.cause?.message ??
       "You or your partner are already registered in this division.";
@@ -521,10 +521,10 @@ export function createMemberEventsPages({ api, client, session }) {
             });
             toast(
               r.status === "waitlisted"
-                ? "You are on the waitlist."
+                ? "Your registration has been added to the waitlist."
                 : r.status === "confirmed"
-                ? "You are registered."
-                : "Registration sent. It is confirmed once the club approves it.",
+                ? "Your event registration is confirmed."
+                : "Registration submitted for club approval.",
               { tone: "success" },
             );
             await refresh();
@@ -619,7 +619,7 @@ export function createMemberEventsPages({ api, client, session }) {
               p_registration_id: r.id,
               p_reason: String(form.get("reason") ?? "").trim() || null,
             });
-            toast("You have withdrawn.", { tone: "success" });
+            toast("Your event registration has been withdrawn.", { tone: "success" });
             await refresh();
           } catch (e) {
             error.textContent = eventMessage(e);
@@ -778,7 +778,7 @@ export function createMemberEventsPages({ api, client, session }) {
               p_amount: amount,
               p_proof_path: path,
             });
-            toast("Payment sent. An admin will check it.", { tone: "success" });
+            toast("Payment submitted for administrator verification.", { tone: "success" });
             await refresh();
           } catch (e) {
             return fail(eventMessage(e));

@@ -1166,7 +1166,8 @@ Deno.test("bracket scoring by round: H and L rules per round, locked once a brac
       assert(panel, "The gear opens the Scoring by Round modal");
       const selects = panel.querySelectorAll("select");
       assert(selects.length === 6, "Quarterfinals, semifinals and finals for the H and L brackets");
-      const valueOf = (id) => selects.find((x) => x.getAttribute("id") === id)?.value;
+      const valueOf = (id) => selects.find((x) => x.getAttribute("name") === id)?.value;
+      assert(panel.querySelectorAll(".searchable-select-trigger").length === 6, "All round rules use the shared searchable dropdown");
       assert(valueOf("rs-H-semifinal") === "r15" && valueOf("rs-H-final") === "r21", "The saved H rules are preselected");
       assert(valueOf("rs-L-final") === "r15" && valueOf("rs-L-semifinal") === "", "The L bracket has its own rules; unset rounds use the division rule");
       assert(selects.every((x) => !x.disabled), "Open for editing before the quarterfinals start");
@@ -1555,17 +1556,18 @@ Deno.test("mobile tables: all matching records remain accessible without paginat
 Deno.test("toasts: sentence casing preserves acronyms and semantic tones", () =>
   withDom((document) => {
     document.getElementById = () => null;
-    for (const tone of ["info", "success", "warning", "error"]) {
-      const view = toast("a draw needs at least 2 entries (this division has 0)", {
+    for (const tone of ["info", "success", "warning", "error", "danger"]) {
+      const view = toast("  a draw needs at least 2 entries (this division has 0)  ", {
         tone,
         title: "check CPC and DUPR settings",
         timeout: 0,
       });
-      assert(view.matches(`.toast-${tone}`));
-      assert(view.querySelector(".toast-msg").textContent === "A draw needs at least 2 entries (this division has 0)");
+      const effectiveTone = tone === "danger" ? "error" : tone;
+      assert(view.matches(`.toast-${effectiveTone}`));
+      assert(view.querySelector(".toast-msg").textContent === "A draw needs at least 2 entries (this division has 0).");
       assert(view.querySelector(".toast-title").textContent === "Check CPC and DUPR settings");
       assert(view.querySelector(".toast-close-btn").getAttribute("aria-label") === "Dismiss Notification");
-      assert(view.getAttribute("role") === (["warning", "error"].includes(tone) ? "alert" : "status"));
+      assert(view.getAttribute("role") === (["warning", "error"].includes(effectiveTone) ? "alert" : "status"));
     }
     const view = toast("DUPR settings saved.", { timeout: 0 });
     assert(view.querySelector(".toast-msg").textContent === "DUPR settings saved.");
@@ -1790,10 +1792,10 @@ Deno.test("pagination: empty lists have no visible footer or controls", () =>
 Deno.test("pagination: compact mobile controls retain the current page and end navigation", () =>
   withDom(() => {
     for (const [page, expected] of [
-      [1, [1, 2, 3]],
-      [4, [3, 4, 5]],
-      [119, [118, 119, 120]],
-      [120, [118, 119, 120]],
+      [1, [1, 2, 3, 120]],
+      [4, [1, 4, 120]],
+      [119, [1, 118, 119, 120]],
+      [120, [1, 118, 119, 120]],
     ]) {
       let selected;
       const pager = pagination({
@@ -1811,7 +1813,7 @@ Deno.test("pagination: compact mobile controls retain the current page and end n
       assert(
         JSON.stringify(numbered.map((button) => Number(button.textContent))) ===
           JSON.stringify(expected),
-        "Mobile must keep three useful page links at the start, middle and end",
+        "Pagination must retain the first, current and last pages",
       );
       assert(
         numbered.some((button) => button.getAttribute("aria-current") === "page"),
@@ -1827,7 +1829,8 @@ Deno.test("pagination: compact mobile controls retain the current page and end n
       assert(next.disabled === (page === 120));
       numbered[0].click();
       assert(selected === expected[0], "Compact page links must still navigate");
-      assert(buttons.length === 7, "Desktop keeps its five numbered page links");
+      assert(buttons.length <= 7, "Pagination stays compact for large page counts");
+      assert(pager.querySelectorAll(".pager-ellipsis").length === (page === 4 ? 2 : 1));
     }
   }));
 
