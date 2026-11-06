@@ -26,6 +26,7 @@ import {
   toProperCase,
   formatTemplateLabel as templateLabel,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 
 const CODE_RE = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const codeFrom = (name) =>
@@ -93,6 +94,7 @@ export function createRanksPages({ api, getOrgId }) {
       page: 1,
       ratingBandsAvailable: true,
     };
+    rememberView(state, "ranks", ["tab"]);
     const search = searchControl({
       class: "input",
       id: "ranks-search",

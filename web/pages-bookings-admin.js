@@ -20,6 +20,7 @@ import {
   tableFilter,
   toast,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { can } from "./lib/permissions.js";
 import { avatarImage, initialsOf, signedAvatarUrls } from "./lib/avatar.js";
 import { businessDate, formatDateTime } from "./lib/dates.js";
@@ -288,6 +289,7 @@ export function createBookingAdminPages({ api, client }) {
         status: "idle",
       },
     };
+    rememberView(state, "bookings-admin", ["tab"]);
     let timer = null;
 
     const search = searchControl({
@@ -1608,6 +1610,7 @@ export function createBookingAdminPages({ api, client }) {
     const tabsHost = h("div", { class: "member-status-filter" });
     const body = h("div", { class: "table-host" });
     const state = { tab: "check", status: "loading", rows: [], bookings: {} };
+    rememberView(state, "bookings-admin-2", ["tab"]);
 
     async function refresh() {
       state.status = state.rows.length ? "refreshing" : "loading";

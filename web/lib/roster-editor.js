@@ -8,10 +8,11 @@ import {
   selectControl,
   toast,
 } from "../ui.js";
+import { avatarImage } from "./avatar.js";
 
 /** Pre-draw roster editing. The server validates and commits each swap atomically. */
 export function openRosterEditor(
-  { api, event, division, registrations, partners = {}, editable, onSaved },
+  { api, event, division, registrations, partners = {}, photos, editable, onSaved },
 ) {
   const active = registrations.filter((r) =>
     ["requested", "confirmed"].includes(r.status)
@@ -26,6 +27,8 @@ export function openRosterEditor(
       name: r.guest_name_snapshot ?? r.member?.person?.display_name ??
         "Participant",
       guest: !r.member_id,
+      memberId: r.member_id ?? null,
+      participantId: r.guest_participant_id ?? null,
     },
     ...(r.guest_partner_participant_id || r.meta?.partner_member_id
       ? [{
@@ -36,6 +39,10 @@ export function openRosterEditor(
           partners[r.meta?.partner_member_id]?.person?.display_name ??
           "Partner",
         guest: Boolean(r.guest_partner_participant_id),
+        memberId: r.guest_partner_participant_id
+          ? null
+          : (r.meta?.partner_member_id ?? null),
+        participantId: r.guest_partner_participant_id ?? null,
       }]
       : []),
   ];
@@ -362,7 +369,7 @@ export function openRosterEditor(
               h(
                 "span",
                 {},
-                "No eligible replacements. Add a player within this division’s rank/rating range through Add Guest or Find Existing Player.",
+                "No eligible replacements. Add a player within this division’s rank/rating range through Add Guest. Eligible members appear automatically in the partner search.",
               ),
             )
             : null,
@@ -504,7 +511,7 @@ export function openRosterEditor(
             )
             : null,
           h("span", { class: "entry-seed-num" }, `#${index + 1}`),
-          h("span", { class: "entry-seed-text" }, `Entry ${index + 1}`),
+          h("span", { class: "entry-seed-text" }, r.meta?.team_name ?? `Entry ${index + 1}`),
         ),
         h(
           "div",
@@ -581,7 +588,10 @@ export function openRosterEditor(
                 class: `entry-player-icon ${p.guest ? "is-guest" : "is-member"}`,
                 "aria-hidden": "true",
               },
-              icon(p.guest ? "user" : "userCheck"),
+              avatarImage(
+                p.memberId ? photos?.get?.(p.memberId) : photos?.get?.(`g:${p.participantId}`),
+                p.name,
+              ),
             ),
             h(
               "div",

@@ -306,11 +306,11 @@ function renderEventCards(rows, state, onRetry) {
       "div",
       { class: "tbl-state card" },
       h("span", { class: "badge-icon" }, icon("inbox")),
-      h("h2", {}, "No upcoming events"),
+      h("h2", {}, "No public events yet"),
       h(
         "p",
         { class: "muted" },
-        "Club events appear here when registration opens. Check back soon.",
+        "Published club events and tournaments will appear here with their current status.",
       ),
     );
   }
@@ -336,7 +336,6 @@ function renderEventCards(rows, state, onRetry) {
             "div",
             { class: "public-card-actions" },
             h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In to Register"),
-            h("a", { class: "btn btn-outline", href: "#/signup" }, "Join Club"),
           ),
         ),
       );
@@ -374,11 +373,8 @@ export function eventsPage({ api }) {
       title: "Club Events & Tournaments",
       publicHeader: true,
       description:
-        "Upcoming and running club events. Sign in as a member to register.",
+        "Club events and tournaments, including their current status.",
       chip: "Public Events",
-      actions: [
-        h("a", { class: "btn btn-primary", href: "#/signin" }, "Sign In"),
-      ],
     }),
     pick: (info) => info?.events,
     renderCards: renderEventCards,

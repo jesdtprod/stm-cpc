@@ -14,6 +14,7 @@ import {
   searchControl,
   tabs,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatMemberName } from "./lib/names.js";
 import { formatPoints } from "./cpc-points.js";
@@ -37,6 +38,7 @@ export function createPublicPages({ api, client }) {
       results: null,
       category: "",
     };
+    rememberView(state, "public", ["tab"]);
 
     async function load() {
       state.status = state.board ? "refreshing" : "loading";

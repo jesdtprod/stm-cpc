@@ -72,6 +72,13 @@ function withDom(run) {
             value !== name
           ).join(" ");
         },
+        toggle: (name, force) => {
+          const has = (this.className ?? "").split(/\s+/).includes(name);
+          const on = force === undefined ? !has : Boolean(force);
+          if (on && !has) this.classList.add(name);
+          if (!on && has) this.classList.remove(name);
+          return on;
+        },
       };
     }
     prepend(...nodes) {
@@ -231,6 +238,9 @@ function withDom(run) {
     return node;
   };
   globalThis.document = document;
+  try {
+    globalThis.sessionStorage?.clear(); // every test starts on a page's first view, not a remembered tab
+  } catch { /* no storage in this runtime */ }
   globalThis.Node = Element;
   globalThis.HTMLSelectElement = Element;
   globalThis.HTMLInputElement = Element;
@@ -896,7 +906,7 @@ Deno.test("member events: guest partner search selects and submits the guest-spe
         if (name === "eligible_division_partners") return Promise.resolve([
           { member_id: null, guest_participant_id: "fake-guest", display_name: "Fake Eligible Guest", member_no: null },
         ]);
-        if (name === "register_for_event_with_guest") {
+        if (name === "register_for_event_with_guest_team") {
           writes.push(args);
           return Promise.resolve({ status: "confirmed" });
         }
@@ -920,7 +930,13 @@ Deno.test("member events: guest partner search selects and submits the guest-spe
     assert(dialog.querySelector(".staff-selected-card").textContent.includes("Event Guest"), "Guest preview does not invent a member ID");
     dialog.querySelector("form").dispatchEvent(new Event("submit"));
     await new Promise((resolve) => setTimeout(resolve, 0));
+    assert(writes.length === 0, "A doubles registration without a team name is not sent");
+    assert(dialog.textContent.includes("Enter a team name"), "The missing team name is explained");
+    dialog.querySelectorAll("input").find((el) => el.getAttribute("id") === "rg-team-name").value = "  Fake   Team ";
+    dialog.querySelector("form").dispatchEvent(new Event("submit"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     assert(writes.length === 1 && writes[0].p_guest_participant_id === "fake-guest", "Guest partner uses the guest-specific save RPC");
+    assert(writes[0].p_team_name === "FAKE TEAM", "The team name is cleaned and sent");
     assert(!("p_partner_member_id" in writes[0]), "Guest ID must not be passed as a member ID");
   }));
 
@@ -1142,24 +1158,30 @@ Deno.test("bracket scoring by round: H and L rules per round, locked once a brac
       const page = createBracketPages({ api: open.api }).bracketPage();
       document.body.append(page);
       await new Promise((resolve) => setTimeout(resolve, 5));
-      const panel = page.querySelector(".round-scoring-panel");
-      assert(panel, "The Scoring by Round panel is shown for a split division to an event manager");
+      const gear = page.querySelectorAll("button").find((x) => x.getAttribute("aria-label") === "Scoring by Round");
+      assert(gear, "A Scoring by Round gear button is shown for a split division to an event manager");
+      assert(!page.querySelector(".round-scoring-panel"), "The settings are no longer an always-open panel");
+      await gear.click();
+      const panel = document.body.querySelector("dialog");
+      assert(panel, "The gear opens the Scoring by Round modal");
       const selects = panel.querySelectorAll("select");
       assert(selects.length === 6, "Quarterfinals, semifinals and finals for the H and L brackets");
       const valueOf = (id) => selects.find((x) => x.getAttribute("id") === id)?.value;
       assert(valueOf("rs-H-semifinal") === "r15" && valueOf("rs-H-final") === "r21", "The saved H rules are preselected");
       assert(valueOf("rs-L-final") === "r15" && valueOf("rs-L-semifinal") === "", "The L bracket has its own rules; unset rounds use the division rule");
       assert(selects.every((x) => !x.disabled), "Open for editing before the quarterfinals start");
-      assert(panel.querySelectorAll("button").length === 1, "A Save button");
+      assert(panel.textContent.includes("Save Round Scoring"), "A Save button");
+      panel.remove();
 
       const started = build("completed");
       const lockedPage = createBracketPages({ api: started.api }).bracketPage();
       document.body.append(lockedPage);
       await new Promise((resolve) => setTimeout(resolve, 5));
-      const lockedPanel = lockedPage.querySelector(".round-scoring-panel");
+      await lockedPage.querySelectorAll("button").find((x) => x.getAttribute("aria-label") === "Scoring by Round").click();
+      const lockedPanel = document.body.querySelector("dialog");
       assert(lockedPanel.querySelectorAll("select").every((x) => x.disabled), "Locked once a bracket match has started");
       assert(lockedPanel.textContent.includes("Locked"), "The lock is explained");
-      assert(lockedPanel.querySelectorAll("button").length === 0, "No Save button when locked");
+      assert(!lockedPanel.textContent.includes("Save Round Scoring"), "No Save button when locked");
     } finally {
       globalThis.location = previousLocation;
       clearAuth();
@@ -2450,6 +2472,7 @@ Deno.test("admin guest roster: management permissions alone do not show guest wr
   withDom(async (document) => {
     try {
       for (const administrator of [false, true]) {
+        globalThis.sessionStorage?.clear();
         setAuth({ signedIn: true, grants: ["events.manage", "registrations.manage", ...(administrator ? ["events.admin_roster"] : [])].map((code) => ({ code, unit_id: null })) });
         const event = { id: "fake-admin-event", name: "Fake Admin Event", status: "registration_closed", allow_guest_players: true, starts_on: "2030-11-01", ends_on: "2030-11-01", fee: 0, divisions: [] };
         const api = {
@@ -2465,8 +2488,8 @@ Deno.test("admin guest roster: management permissions alone do not show guest wr
         await new Promise((resolve) => setTimeout(resolve, 0));
         page.querySelectorAll("button").find((b) => b.getAttribute("aria-label") === "Divisions of Fake Admin Event").click();
         await new Promise((resolve) => setTimeout(resolve, 0));
-        const labels = page.querySelectorAll("button").map((b) => b.textContent);
-        for (const label of ["Add Guest", "Find Existing Player", "Register Guest", "Guest Settings"]) {
+        const labels = page.querySelectorAll("button").map((b) => b.textContent || b.getAttribute("aria-label"));
+        for (const label of ["Add Guest", "Register Guest", "Guest Settings"]) {
           assert(labels.includes(label) === administrator, `${label} is admin-only in closed events`);
         }
         page.remove();

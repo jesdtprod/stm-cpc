@@ -19,6 +19,7 @@ import {
   tableFilter,
   toast,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { formatDate } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 import { ulid } from "./lib/ulid.js";
@@ -98,6 +99,7 @@ export function createMemberEventsPages({ api, client, session }) {
       settings: {},
       term: "",
     };
+    rememberView(state, "events-member", ["tab"]);
     const search = searchControl({
       id: "member-events-search",
       class: "input",
@@ -410,6 +412,41 @@ export function createMemberEventsPages({ api, client, session }) {
           : null,
       );
 
+      const teamName = h("input", {
+        class: "input team-name-input",
+        id: "rg-team-name",
+        name: "team-name",
+        type: "text",
+        maxlength: 40,
+        placeholder: "YOUR TEAM NAME",
+        autocomplete: "off",
+      });
+      // Team names are always capitals: converted as the person types, keeping the cursor where it was.
+      teamName.addEventListener("input", () => {
+        const at = teamName.selectionStart;
+        teamName.value = teamName.value.toUpperCase();
+        try { teamName.setSelectionRange(at, at); } catch { /* not supported for this input */ }
+      });
+      const teamPanel = doubles
+        ? h(
+          "div",
+          { class: "form-section event-registration-team-panel" },
+          h(
+            "div",
+            { class: "event-registration-partner-head" },
+            h(
+              "div",
+              { class: "event-registration-partner-label" },
+              icon("users"),
+              h("label", { for: "rg-team-name" }, h("strong", {}, "Team Name *")),
+            ),
+            badge("Required", "warning"),
+          ),
+          teamName,
+          h("p", { class: "sub form-help-text" }, "2 to 40 characters. Shown in the roster, draw and bracket."),
+        )
+        : null;
+
       const partnerPanel = doubles
         ? h(
           "div",
@@ -463,16 +500,23 @@ export function createMemberEventsPages({ api, client, session }) {
           "div",
           { class: "stack" },
           summaryCard,
+          teamPanel,
           partnerPanel,
           error,
         ),
         onConfirm: async () => {
+          const team = teamName.value.replace(/\s+/g, " ").trim().toUpperCase();
+          if (doubles && (team.length < 2 || team.length > 40)) return fail("Enter a team name of 2 to 40 characters.");
           if (doubles && !partner) return fail("Choose your doubles partner.");
           try {
             const guestPartner = partner?.guest_participant_id;
-            const r = await api.rpc(guestPartner ? "register_for_event_with_guest" : "register_for_event", {
+            const rpcName = doubles
+              ? (guestPartner ? "register_for_event_with_guest_team" : "register_for_event_team")
+              : "register_for_event";
+            const r = await api.rpc(rpcName, {
               p_id: regIdFor(`${d.id}:${guestPartner ? `guest:${guestPartner}` : partner?.member_id ?? ""}`),
               p_division_id: d.id,
+              ...(doubles ? { p_team_name: team } : {}),
               ...(guestPartner ? { p_guest_participant_id: guestPartner } : { p_partner_member_id: partner?.member_id ?? null }),
             });
             toast(
@@ -828,6 +872,9 @@ export function createMemberEventsPages({ api, client, session }) {
             when(ev.starts_on),
             ev.location,
           ].filter(Boolean).join(" · ")),
+          r.team_name
+            ? h("span", { class: "registration-team-name" }, icon("users"), h("strong", {}, `Team: ${r.team_name}`))
+            : null,
         ),
       );
 

@@ -80,7 +80,8 @@ export function formatTemplateLabel(name) {
 
 export function badge(text, tone = "info") {
   const properText = typeof text === "string" ? toProperCase(text) : text;
-  return h("span", { class: `badge badge-${tone}` }, properText);
+  return h("span", { class: `badge badge-${tone}` },
+    h("span", { class: "badge-label" }, properText));
 }
 
 export function button(
@@ -468,6 +469,9 @@ export function selectControl(props = {}, ...children) {
       value: option.value,
       label: option.textContent,
       disabled: option.disabled,
+      // An option may carry a small badge after its name (data-badge, data-badge-tone), e.g. a player's rank.
+      badge: option.getAttribute?.("data-badge") || null,
+      badgeTone: option.getAttribute?.("data-badge-tone") || "info",
     })),
     value: native.value,
     nativeSelect: native,
@@ -640,6 +644,13 @@ export function searchableSelect({
     listEl,
   );
 
+  function paintTrigger() {
+    if (selected?.badge) {
+      triggerText.replaceChildren(optionLabel(selected), " ", badge(selected.badge, selected.badgeTone));
+    } else {
+      triggerText.textContent = selected === null ? placeholder : optionLabel(selected);
+    }
+  }
   function sync() {
     if (!nativeSelect) {
       native.replaceChildren(...options.map((item) =>
@@ -650,9 +661,7 @@ export function searchableSelect({
       ));
     }
     native.value = selected === null ? "" : String(optionValue(selected));
-    triggerText.textContent = selected === null
-      ? placeholder
-      : optionLabel(selected);
+    paintTrigger();
   }
   function choose(item) {
     selected = item;
@@ -681,7 +690,8 @@ export function searchableSelect({
             choose(item);
           },
         },
-        h("span", {}, optionLabel(item)),
+        h("span", { class: "searchable-select-item-label" }, optionLabel(item)),
+        item.badge ? badge(item.badge, item.badgeTone) : null,
         active ? icon("check") : null,
       );
     }));
@@ -818,12 +828,12 @@ export function searchableSelect({
       value: option.value,
       label: option.textContent,
       disabled: option.disabled,
+      badge: option.getAttribute?.("data-badge") || null,
+      badgeTone: option.getAttribute?.("data-badge-tone") || "info",
     }));
     selected = findOption(native.value);
     filtered = [...options];
-    triggerText.textContent = selected === null
-      ? placeholder
-      : optionLabel(selected);
+    paintTrigger();
     triggerBtn.disabled = native.disabled;
     if (native.disabled && isOpen) toggle(false);
     if (isOpen) renderList();

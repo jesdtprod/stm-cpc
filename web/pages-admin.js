@@ -17,6 +17,7 @@ import {
   selectControl,
   toast,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { can } from "./lib/permissions.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatDate, formatDateTime } from "./lib/dates.js";
@@ -1121,6 +1122,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       total: 0,
       status: "loading",
     };
+    rememberView(state, "admin", ["tab"]);
     const counts = Object.fromEntries(TABS.map((item) => [item.id, null]));
     const root = h("div", { class: "page admin-dashboard admin-members-page" });
     attachPagePattern(root);

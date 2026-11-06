@@ -3,6 +3,7 @@
 //   * "Alerts on This Device" registers the device for push messages, so approvals, booking decisions, payments, draws,
 //     results, rank changes and match times arrive even when the app is in the background or closed.
 import { badge, button, emptyState, h, icon, memberHero, toast } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { formatDateTime } from "./lib/dates.js";
 import {
   disablePush,
@@ -139,6 +140,7 @@ export function createNotificationPages({ api, feed }) {
     const deviceHost = h("section", { class: "card notice-device-card" });
     const listHost = h("section", { class: "stack", "aria-live": "polite" });
     const state = { items: [], status: "loading", device: null, tab: "all" };
+    rememberView(state, "notifications", ["tab"]);
 
     async function load() {
       try {

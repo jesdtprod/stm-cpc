@@ -26,6 +26,7 @@ import {
   toast,
   formatTemplateLabel as templateLabel,
 } from "./ui.js";
+import { rememberView, savedViewId, saveViewId } from "./lib/view-memory.js";
 import { formatDate } from "./lib/dates.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
 import { formatMoney } from "./lib/money.js";
@@ -124,13 +125,31 @@ export function createEventsPages({ api, client }) {
       guestDupr: {},
       divStatus: "ready",
     };
+    rememberView(state, "events", ["detailTab"]);
+    let restoreOpen = true;
     const selectableTemplates = () => state.templates.filter((t) =>
       templateLabel(t.name).toLowerCase() !== "single elimination" &&
       !(t.stages?.length === 1 &&
         t.stages[0].stage_type === "single_elimination")
     );
     const guestActions = createGuestEventActions({
-      api, refresh, getEvent: () => state.open, getDivisions: () => state.divisions,
+      api, client, refresh, getEvent: () => state.open, getDivisions: () => state.divisions,
+      // Everyone who already holds an entry in this event, so the partner search can say "already registered".
+      getRegisteredPeople: () => (state.regs ?? [])
+        .filter((r) => ["requested", "confirmed", "waitlisted"].includes(r.status))
+        .flatMap((r) => [
+          {
+            name: r.guest_name_snapshot ?? r.member?.person?.display_name, memberNo: r.member?.member_no,
+            status: r.status, divisionId: r.division_id, participantId: r.guest_participant_id ?? null,
+          },
+          ...(r.guest_partner_participant_id || r.meta?.partner_member_id
+            ? [{
+              name: r.guest_partner_name_snapshot ?? state.partners?.[r.meta?.partner_member_id]?.person?.display_name,
+              memberNo: state.partners?.[r.meta?.partner_member_id]?.member_no,
+              status: r.status, divisionId: r.division_id, participantId: r.guest_partner_participant_id ?? null,
+            }]
+            : []),
+        ]).filter((p) => p.name),
       getRanks: () => state.categories.flatMap((category) => (category.ladders ?? [])
         .filter((ladder) => !ladder.deleted_at).flatMap((ladder) => (ladder.ranks ?? [])
           .filter((rank) => !rank.deleted_at).map((rank) => ({ id: rank.id, label: `${category.name}: ${rank.name}` })))),
@@ -168,9 +187,12 @@ export function createEventsPages({ api, client }) {
           rules: rules ?? [],
           status: "ready",
         });
-        if (state.open) {
-          state.open = state.events.find((e) => e.id === state.open.id) ??
-            null;
+        // After a browser refresh, reopen the event the person was viewing instead of the events list.
+        const openId = state.open?.id ?? (restoreOpen ? savedViewId("events", "openId") : null);
+        restoreOpen = false;
+        if (openId) {
+          state.open = state.events.find((e) => e.id === openId) ?? null;
+          if (!state.open) saveViewId("events", "openId", null);
         }
       } catch {
         state.status = "error";
@@ -247,11 +269,18 @@ export function createEventsPages({ api, client }) {
           (partners ?? []).map((m) => [m.id, m]),
         );
         state.photos = new Map();
-        if (client && can("events.manage") && regs.length) {
+        if (client && (can("events.manage") || can("events.admin_roster")) && regs.length) {
           try {
-            const rows = await api.rpc("registration_photos", { p_event_id: state.open.id }) ?? [];
-            const urls = await signedAvatarUrls(client, rows.map((x) => x.avatar_path));
-            state.photos = new Map(rows.map((x) => [x.member_id, urls.get(x.avatar_path)]));
+            // Member photos (events.manage) and guest photos (added by roster admins); a guest is keyed "g:<participant id>".
+            const [rows, guestRows] = await Promise.all([
+              can("events.manage") ? api.rpc("registration_photos", { p_event_id: state.open.id }).then((r) => r ?? []) : [],
+              api.rpc("guest_photos", { p_event_id: state.open.id }).then((r) => r ?? []).catch(() => []),
+            ]);
+            const urls = await signedAvatarUrls(client, [...rows, ...guestRows].map((x) => x.avatar_path));
+            state.photos = new Map([
+              ...rows.map((x) => [x.member_id, urls.get(x.avatar_path)]),
+              ...guestRows.map((x) => [`g:${x.participant_id}`, urls.get(x.avatar_path)]),
+            ]);
           } catch {
             state.photos = new Map();
           }
@@ -917,6 +946,7 @@ export function createEventsPages({ api, client }) {
     // ------------------------------------------------------------- divisions
     async function openEvent(ev) {
       state.open = ev;
+      saveViewId("events", "openId", ev.id);
       state.detailTab = "divisions";
       state.divisions = [];
       state.divStatus = "loading";
@@ -1253,6 +1283,7 @@ export function createEventsPages({ api, client }) {
         api, event: state.open, division: d,
         registrations: state.regs.filter((r) => r.division_id === d.id),
         partners: state.partners,
+        photos: state.photos,
         editable: can("events.admin_roster") && d.status === "open" &&
           ["registration_open", "registration_closed"].includes(state.open.status) &&
           !(d.stages ?? []).some((s) => s.status !== "pending"),
@@ -1266,7 +1297,7 @@ export function createEventsPages({ api, client }) {
       try {
         entries = await readGuestCompatible(() => api.read((c) =>
           c.from("entries").select(
-            "id,seed,members:entry_members(member:members(person:persons(display_name))),guests:entry_guests(display_name_snapshot)",
+            "id,seed,reg:registrations(meta),members:entry_members(member:members(person:persons(display_name))),guests:entry_guests(display_name_snapshot)",
           ).eq("division_id", d.id).eq("status", "active").order("seed")
         ), () => api.read((c) => c.from("entries").select("id,seed,members:entry_members(member:members(person:persons(display_name)))")
           .eq("division_id", d.id).eq("status", "active").order("seed"))) ?? [];
@@ -1355,6 +1386,9 @@ export function createEventsPages({ api, client }) {
                       h(
                         "div",
                         { class: "draw-entry-main" },
+                        e.reg?.meta?.team_name
+                          ? h("div", { class: "draw-team-title" }, h("strong", {}, e.reg.meta.team_name))
+                          : null,
                         h(
                           "div",
                           { class: "draw-team-names" },
@@ -1857,9 +1891,12 @@ export function createEventsPages({ api, client }) {
                 return h(
                   "div",
                   { class: "registration-team" },
+                  r.meta?.team_name
+                    ? h("div", { class: "registration-team-name" }, icon("users"), h("strong", {}, r.meta.team_name))
+                    : null,
                   person({
                     name: r.guest_name_snapshot ?? r.member?.person?.display_name ?? "—",
-                    photo: state.photos?.get(r.member_id),
+                    photo: state.photos?.get(r.member_id) ?? state.photos?.get(`g:${r.guest_participant_id}`),
                     sub: [
                       r.member?.member_no,
                       r.guest_participant_id ? "Guest" : null,
@@ -1997,13 +2034,12 @@ export function createEventsPages({ api, client }) {
       let guestSettings = null;
       let registerGuest = null;
       if (Object.hasOwn(ev, "allow_guest_players") && beforeDraw(ev) && can("events.admin_roster")) {
-        guestSettings = button({ label: "Guest Settings", icon: "settings", variant: "secondary", size: "sm", onClick: guestActions.policy });
+        guestSettings = iconButton({ label: "Guest Settings", icon: "settings", variant: "secondary", onClick: guestActions.policy });
       }
       if (ev.allow_guest_players && beforeDraw(ev) && can("events.admin_roster")) {
         rosterActions.push(
-          button({ label: "Add Guest", icon: "plus", variant: "secondary", onClick: guestActions.addGuest }),
-          button({ label: "Edit Guest", icon: "edit", variant: "secondary", onClick: () => guestActions.editGuest() }),
-          button({ label: "Find Existing Player", icon: "search", variant: "secondary", onClick: guestActions.addExisting }),
+          iconButton({ label: "Add Guest", icon: "plus", variant: "secondary", onClick: guestActions.addGuest }),
+          iconButton({ label: "Edit Guest", icon: "edit", variant: "secondary", onClick: () => guestActions.editGuest() }),
         );
         if (["registration_open", "registration_closed"].includes(ev.status)) {
           registerGuest = button({ label: "Register Guest", icon: "userPlus", variant: "primary", onClick: () => guestActions.register() });
@@ -2025,6 +2061,7 @@ export function createEventsPages({ api, client }) {
         variant: "ghost",
         onClick: () => {
           state.open = null;
+          saveViewId("events", "openId", null);
           draw();
         },
       });
@@ -2202,24 +2239,15 @@ export function createEventsPages({ api, client }) {
                 "div",
                 { class: "event-roster-copy" },
                 h("strong", { class: "event-roster-title" }, "Guest Management"),
-                h("span", { class: "sub" }, "Prepare a player profile, then register the guest in a division."),
+                h("span", { class: "sub" }, "Add or find a player, then register in a division."),
               ),
               ),
-              guestSettings,
             ),
-            rosterActions.length ? h(
+            guestSettings || rosterActions.length || registerGuest ? h(
               "div",
               { class: "event-roster-workflow" },
-              h("div", { class: "event-roster-step" },
-                h("span", { class: "event-roster-step-label" }, "1 · Prepare players"),
-                h("p", { class: "sub" }, "Create a guest profile, find an existing player, or update their details."),
-                h("div", { class: "event-roster-actions", role: "group", "aria-label": "Player profile actions" }, ...rosterActions),
-              ),
-              registerGuest ? h("div", { class: "event-roster-step is-registration" },
-                h("span", { class: "event-roster-step-label" }, "2 · Register in a division"),
-                h("p", { class: "sub" }, "Choose the guest, division and doubles partner to create an entry."),
-                registerGuest,
-              ) : null,
+              h("div", { class: "event-roster-actions", role: "group", "aria-label": "Guest management actions" }, guestSettings, ...rosterActions),
+              registerGuest,
             ) : null,
           )
           : null,

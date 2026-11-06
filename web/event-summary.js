@@ -8,6 +8,8 @@ const STATUS = {
   registration_closed: ["Registration Closed", "neutral"],
   drawn: ["Draw Made", "info"],
   in_progress: ["Under Way", "warning"],
+  completed: ["Completed", "success"],
+  cancelled: ["Cancelled", "danger"],
 };
 const day = (value) => formatDate(`${value}T00:00:00+08:00`);
 const detail = (label, value, symbol, className = "") =>

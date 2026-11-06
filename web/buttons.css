@@ -47,15 +47,15 @@
   color: var(--text-on-accent, #0b1210);
 }
 .btn-secondary {
-  background-color: var(--surface-2);
+  background-color: var(--surface-3);
   border-color: var(--border);
   color: var(--text);
 }
 .btn-secondary:hover {
-  background-color: var(--surface-3);
+  background-color: color-mix(in srgb, var(--surface-3) 85%, var(--text));
 }
 .btn-outline {
-  background-color: transparent;
+  background-color: var(--surface-3);
   border-color: var(--border);
   color: var(--text);
 }
@@ -64,16 +64,16 @@
   border-color: var(--text-2);
 }
 .btn-ghost {
-  background-color: transparent;
-  border-color: transparent;
-  color: var(--text-2);
+  background-color: var(--surface-3);
+  border-color: var(--border);
+  color: var(--text);
 }
 .btn-ghost:hover {
   background-color: var(--surface-2);
   color: var(--text);
 }
 .btn-link {
-  background-color: transparent;
+  background-color: var(--surface-3);
   border: none;
   color: var(--accent);
   padding: 0 var(--s2);
@@ -84,18 +84,32 @@
   text-decoration: underline;
 }
 .btn-danger {
-  background-color: var(--danger-bg);
-  border-color: var(--danger);
+  background-color: #b91c1c;
+  border-color: #b91c1c;
   color: #fff;
 }
 .btn-danger:hover {
-  background-color: color-mix(in srgb, var(--danger) 70%, #000);
+  background-color: #991b1b;
 }
 .btn-sm {
   min-height: 36px;
   padding: 0 var(--s3);
   font-size: 13px;
   border-radius: 10px;
+}
+/* Desktop: default-size text buttons (primary, secondary and the other variants) are 40px; phones keep the larger touch target. */
+@media (min-width: 721px) {
+  .btn:not(.btn-sm):not(.btn-lg):not(.btn-icon) {
+    min-height: 40px;
+    font-size: 14px;
+  }
+  /* icon-only buttons beside them match: 40px (table row actions keep their compact 36px) */
+  .btn-icon:not(.btn-sm):not(.btn-lg):not(.row-actions .btn-icon) {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
 }
 .btn-lg {
   min-height: var(--control-h-lg);
@@ -144,20 +158,20 @@
 .btn-archive,
 .btn-restore,
 .btn-edit {
-  background-color: color-mix(in srgb, var(--button-tone) 12%, var(--surface));
-  border-color: color-mix(in srgb, var(--button-tone) 40%, transparent);
-  color: var(--button-tone);
+  background-color: var(--button-tone);
+  border-color: var(--button-tone);
+  color: #0b1210;
 }
 .btn-info:hover,
 .btn-warning:hover,
 .btn-archive:hover,
 .btn-restore:hover,
 .btn-edit:hover {
-  background-color: color-mix(in srgb, var(--button-tone) 22%, var(--surface));
-  border-color: var(--button-tone);
+  background-color: color-mix(in srgb, var(--button-tone) 85%, #000);
+  border-color: color-mix(in srgb, var(--button-tone) 85%, #000);
 }
 .btn-secondary {
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: var(--border);
 }
 .btn:where(:not(.row-actions .btn-icon):not(.pager .btn)):hover:not(:disabled):not([aria-disabled="true"]):not([data-pending="true"]) {
   transform: none;
@@ -214,9 +228,9 @@
   color: var(--text-on-primary);
 }
 .row-actions .btn-icon {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  border-color: var(--border);
+  color: var(--text);
 }
 .row-actions .btn-info {
   --action-rgb: 56, 189, 248;
@@ -240,16 +254,16 @@
   --action-rgb: 223, 183, 86;
 }
 .row-actions .btn-icon:is(.btn-info, .btn-warning, .btn-archive, .btn-success, .btn-danger, .btn-restore, .btn-edit) {
-  background: rgba(var(--action-rgb), 0.1);
-  border-color: rgba(var(--action-rgb), 0.32);
+  background: rgba(var(--action-rgb), 0.12);
+  border-color: rgba(var(--action-rgb), 0.55);
   color: rgb(var(--action-rgb));
 }
 .row-actions .btn-icon:hover:not(:disabled) {
   transform: none;
 }
 .row-actions .btn-icon:is(.btn-info, .btn-warning, .btn-archive, .btn-success, .btn-danger, .btn-restore, .btn-edit):hover:not(:disabled) {
-  background: rgba(var(--action-rgb), 0.2);
-  border-color: rgba(var(--action-rgb), 0.6);
+  background: rgba(var(--action-rgb), 0.24);
+  border-color: rgb(var(--action-rgb));
 }
 .row-actions .btn-icon .icon {
   width: 17px;

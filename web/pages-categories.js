@@ -20,6 +20,7 @@ import {
   tableFilter,
   toast,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { button } from "./ui.js";
 
 const SELECT =
@@ -74,6 +75,7 @@ export function createCategoriesPages({ api, getOrgId }) {
       term: "",
       page: 1,
     };
+    rememberView(state, "categories", ["tab"]);
     const search = searchControl({
       class: "input",
       id: "categories-search",

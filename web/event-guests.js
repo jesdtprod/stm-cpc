@@ -6,6 +6,7 @@ import {
   dateControl,
   h,
   icon,
+  iconButton,
   inputWithIcon,
   openModal,
   searchControl,
@@ -14,6 +15,8 @@ import {
   toast,
 } from "./ui.js";
 import { formatMoney } from "./lib/money.js";
+import { equivalentRank, loadRatingBands } from "./cpc-points.js";
+import { AVATAR_TYPES, avatarFileError, avatarImage, resizeToJpeg, signedAvatarUrls } from "./lib/avatar.js";
 
 const field = (id, label, control, hint) =>
   h(
@@ -30,6 +33,12 @@ const select = (id, options, value = "") =>
       h("option", { value: key, selected: key === value }, label)
     ),
   );
+// Where a player already stands in a division: shown beside their name, and they cannot be picked again.
+const ENTRY_STATUS = {
+  requested: ["Pending Approval", "warning"],
+  confirmed: ["Approved", "success"],
+  waitlisted: ["Waitlisted", "info"],
+};
 const errorLine = () =>
   h("p", { class: "field-error", role: "alert", hidden: true });
 const fail = (error, e) => {
@@ -39,7 +48,7 @@ const fail = (error, e) => {
 };
 
 export function createGuestEventActions(
-  { api, refresh, getEvent, getDivisions },
+  { api, client, refresh, getEvent, getDivisions, getRegisteredPeople = () => [] },
 ) {
   function policy() {
     const event = getEvent();
@@ -127,7 +136,7 @@ export function createGuestEventActions(
       icon: "user",
       eyebrow: event.name,
       description:
-        "Create a guest identity once, then register them in eligible divisions. Search existing players first to avoid duplicate profiles.",
+        "Create a guest identity once, then register them in eligible divisions. Club members don't need to be added; they appear in the partner search automatically.",
       confirmLabel: "Add Guest",
       body: h(
         "div",
@@ -324,6 +333,11 @@ export function createGuestEventActions(
       toast("There are no guests to edit yet.", { tone: "warning" });
       return;
     }
+    const discipline = getDivisions()[0]?.format ?? "doubles";
+    const [ratingRows, bands] = await Promise.all([
+      api.rpc("guest_participant_ratings", { p_event_id: event.id }).catch(() => null),
+      loadRatingBands(api).catch(() => []),
+    ]);
     const error = errorLine();
     let loaded = null;
     let intent = null;
@@ -332,26 +346,212 @@ export function createGuestEventActions(
       guests.map((g) => [g.id, g.display_name]),
       guests.some((g) => g.id === participantId) ? participantId : guests[0].id,
     );
-    const nameInput = h("input", { id: "edit-name", name: "edit-name", class: "input", required: true, maxlength: 120 });
-    const mobileInput = h("input", { id: "edit-mobile", name: "edit-mobile", type: "tel", class: "input", maxlength: 40 });
+    guestSelect.replaceChildren(...guests.map((g) => {
+      const points = ratingRows?.find((r) => r.participant_id === g.id && r.discipline === discipline)?.points;
+      return h("option", {
+        value: g.id,
+        selected: g.id === (participantId || guests[0].id),
+        "data-badge": ratingRows == null ? "Rank Unavailable" : points == null
+          ? "Unrated" : equivalentRank(bands, points) ?? Number(points).toFixed(3),
+        "data-badge-tone": points == null ? "neutral" : "info",
+      }, g.display_name);
+    }));
+    const nameInput = h("input", {
+      id: "edit-name", name: "edit-name", class: "input", required: true, maxlength: 120,
+      placeholder: "Full legal or preferred name",
+    });
+    const mobileInput = h("input", {
+      id: "edit-mobile", name: "edit-mobile", type: "tel", class: "input", maxlength: 40,
+      placeholder: "0917XXXXXXX",
+    });
     const genderSelect = select("edit-gender", [["", "Not provided"], ["male", "Male"], ["female", "Female"]]);
     const dobInput = dateControl({ id: "edit-dob", name: "edit-dob" });
     const duprInput = h("input", {
       id: "edit-dupr", name: "edit-dupr", class: "input", maxlength: 32, autocapitalize: "characters", autocomplete: "off",
+      placeholder: "Optional ID",
     });
     const ratingInput = (id) =>
       h("input", {
-        id, name: id, class: "input", type: "number", inputmode: "decimal", min: "2", max: "8", step: "0.001",
+        id, name: id, class: "input guest-rating-input", type: "number", inputmode: "decimal", min: "2", max: "8", step: "0.001",
         placeholder: "NR (not rated)",
       });
     const singlesInput = ratingInput("edit-singles");
     const doublesInput = ratingInput("edit-doubles");
-    const singlesNote = h("p", { class: "sub" });
-    const doublesNote = h("p", { class: "sub" });
-    const reasonInput = h("textarea", {
-      id: "edit-reason", name: "edit-reason", class: "input textarea", rows: 2, maxlength: 500,
-      placeholder: "Required when a rating changes.",
+    const singlesBadgeHost = h("span", { class: "guest-rating-badge-host" });
+    const doublesBadgeHost = h("span", { class: "guest-rating-badge-host" });
+    const singlesNote = h("p", { class: "sub guest-rating-note" });
+    const doublesNote = h("p", { class: "sub guest-rating-note" });
+    // The guest's photo anchors the identity; staff can add, replace or remove it. Guests have no login, so staff
+    // upload it for them (private storage, signed links to read).
+    const photoUrls = new Map();
+    try {
+      const rows = (await api.rpc("guest_photos", { p_event_id: event.id })) ?? [];
+      if (client && rows.length) {
+        const urls = await signedAvatarUrls(client, rows.map((x) => x.avatar_path));
+        for (const row of rows) photoUrls.set(row.participant_id, urls.get(row.avatar_path) ?? null);
+      }
+    } catch {
+      // the form works without photos
+    }
+    const photoFace = h("span", { class: "guest-photo-face", "aria-hidden": "true" });
+    const photoNote = h("span", { class: "sub guest-photo-note", role: "status", "aria-live": "polite" });
+    const photoInput = h("input", { type: "file", accept: AVATAR_TYPES.join(","), id: "edit-photo", class: "guest-photo-input", hidden: true });
+    const photoChange = iconButton({ label: "Change guest photo", icon: "upload", variant: "secondary", onClick: () => photoInput.click() });
+    const photoRemove = iconButton({ label: "Remove guest photo", icon: "trash", variant: "secondary", onClick: () => savePhoto(null) });
+    function showPhoto() {
+      const id = guestSelect.value;
+      const name = nameInput.value.trim() || loaded?.display_name || "Guest";
+      photoFace.replaceChildren(avatarImage(photoUrls.get(id) ?? null, name));
+      photoRemove.hidden = !photoUrls.get(id);
+    }
+    async function savePhoto(file) {
+      const id = guestSelect.value;
+      photoNote.textContent = "";
+      if (file) {
+        const problem = avatarFileError(file);
+        if (problem) { photoNote.textContent = problem; return; }
+      }
+      photoChange.disabled = photoRemove.disabled = true;
+      try {
+        let path = null;
+        let preview = null;
+        if (file) {
+          if (!client) throw new Error("no storage");
+          const blob = await resizeToJpeg(file);
+          path = await api.rpc("guest_photo_path", { p_participant_id: id });
+          const { error: uploadError } = await client.storage.from("avatars").upload(path, blob, { contentType: "image/jpeg", upsert: false });
+          if (uploadError) throw uploadError;
+          preview = URL.createObjectURL(blob);
+        }
+        await api.rpc("set_event_guest_avatar", { p_participant_id: id, p_path: path });
+        photoUrls.set(id, preview);
+        showPhoto();
+        photoNote.textContent = file ? "Photo saved." : "Photo removed.";
+        refresh();
+      } catch (e) {
+        photoNote.textContent = e?.cause?.message || "The photo could not be saved. Try another picture.";
+      } finally {
+        photoChange.disabled = photoRemove.disabled = false;
+        photoInput.value = "";
+      }
+    }
+    photoInput.addEventListener("change", () => {
+      if (photoInput.files?.[0]) savePhoto(photoInput.files[0]);
     });
+    const subjectName = h("strong", { class: "guest-edit-subject-name" }, guests[0]?.display_name ?? "Guest Player");
+    const subjectSub = h("span", { class: "sub guest-edit-subject-sub" }, "Event Guest Profile");
+    const subjectBadges = h("div", { class: "guest-edit-subject-badges" }, badge("Guest Player", "info"));
+    const clubRankValue = h("strong", { class: "guest-club-rank-value" }, "Unrated (NR)");
+    const clubRankSub = h("span", { class: "sub guest-club-rank-sub" }, "Higher of Singles or Doubles rating determines Club Rank.");
+    const clubRankBadgeHost = h("span", { class: "guest-club-rank-badge" }, badge("Automatic", "neutral"));
+    const reasonBadgeHost = h("span", { class: "guest-reason-badge-host" }, badge("When Rating Changes", "neutral"));
+    const reasonCount = h("span", { class: "sub guest-char-counter", "aria-live": "polite" }, "0 / 500");
+    const reasonInput = h("textarea", {
+      id: "edit-reason", name: "edit-reason", class: "input textarea guest-reason-textarea", rows: 2, maxlength: 500,
+      placeholder: "e.g. Club assessment during tournament check-in...",
+    });
+
+    const singlesCard = h(
+      "div",
+      { class: "guest-rating-status" },
+      singlesBadgeHost,
+      singlesNote,
+    );
+    const doublesCard = h(
+      "div",
+      { class: "guest-rating-status" },
+      doublesBadgeHost,
+      doublesNote,
+    );
+
+    const parseRating = (raw) => {
+      const text = String(raw ?? "").trim();
+      if (!text) return { empty: true, value: null };
+      const n = Number(text);
+      return /^\d(\.\d{1,3})?$/.test(text) && n >= 2 && n <= 8 ? { value: n } : { invalid: true, value: null };
+    };
+    const isSideChanged = (parsed, side) =>
+      !parsed.empty && !parsed.invalid && Number(parsed.value) !== Number(side?.points ?? Number.NaN);
+
+    function syncGuestUi() {
+      const displayName = nameInput.value.trim() || loaded?.display_name || "Guest Player";
+      const genderLabel = genderSelect.value === "male" ? "Male" : genderSelect.value === "female" ? "Female" : null;
+      const mobileLabel = mobileInput.value.trim() || null;
+      const duprLabel = duprInput.value.trim().toUpperCase() ? `DUPR: ${duprInput.value.trim().toUpperCase()}` : null;
+      subjectName.textContent = displayName;
+      subjectSub.textContent = ["Event Guest", genderLabel, mobileLabel, duprLabel].filter(Boolean).join(" · ");
+
+      const sParsed = parseRating(singlesInput.value);
+      const dParsed = parseRating(doublesInput.value);
+      const sChanged = isSideChanged(sParsed, loaded?.singles);
+      const dChanged = isSideChanged(dParsed, loaded?.doubles);
+
+      for (const [label, card, note, badgeHost, side, parsed, changed] of [
+        ["Singles", singlesCard, singlesNote, singlesBadgeHost, loaded?.singles ?? {}, sParsed, sChanged],
+        ["Doubles", doublesCard, doublesNote, doublesBadgeHost, loaded?.doubles ?? {}, dParsed, dChanged],
+      ]) {
+        card.classList.toggle("is-frozen", Boolean(side.frozen));
+        card.classList.toggle("is-changed", Boolean(changed));
+        if (side.frozen) {
+          badgeHost.replaceChildren(badge("Frozen", "warning"));
+          note.textContent = "Frozen: in a drawn division, so the rating can't change.";
+        } else if (parsed.invalid) {
+          badgeHost.replaceChildren(badge("2.000–8.000", "danger"));
+          note.textContent = `${label}: enter 2.000 to 8.000 (up to 3 decimals).`;
+        } else if (changed) {
+          badgeHost.replaceChildren(badge("Updated", "warning"));
+          note.textContent = side.points == null
+            ? `Assessed at ${Number(parsed.value).toFixed(3)} · Reason required.`
+            : `Updated from ${Number(side.points).toFixed(3)} · Reason required.`;
+        } else if (parsed.value != null) {
+          badgeHost.replaceChildren(badge("Rated", "success"));
+          note.textContent = "2.000–8.000 club assessment scale.";
+        } else {
+          badgeHost.replaceChildren(badge("NR", "neutral"));
+          note.textContent = "Not rated (NR). Enter 2.000–8.000 to assess.";
+        }
+      }
+
+      const validSingles = !sParsed.empty && !sParsed.invalid ? sParsed.value : null;
+      const validDoubles = !dParsed.empty && !dParsed.invalid ? dParsed.value : null;
+      const bestPoints = validSingles != null && validDoubles != null
+        ? Math.max(validSingles, validDoubles)
+        : (validSingles ?? validDoubles);
+      const bestSource = bestPoints == null
+        ? null
+        : (validDoubles != null && validDoubles >= (validSingles ?? -Infinity) ? "Doubles" : "Singles");
+      if (bestPoints != null) {
+        const eqRank = equivalentRank(bands, bestPoints);
+        clubRankValue.textContent = eqRank ?? `${Number(bestPoints).toFixed(3)} CPC Points`;
+        clubRankSub.textContent = `Based on ${bestSource} Rating (${Number(bestPoints).toFixed(3)})`;
+        clubRankBadgeHost.replaceChildren(badge(eqRank ? "Assessed Rank" : "Rated", "success"));
+      } else {
+        clubRankValue.textContent = "Unrated (NR)";
+        clubRankSub.textContent = "Eligible for Beginner divisions starting at Beginner Low.";
+        clubRankBadgeHost.replaceChildren(badge("Automatic", "neutral"));
+      }
+
+      const sChip = sideSummaryBadge("Singles", loaded?.singles, sParsed);
+      const dChip = sideSummaryBadge("Doubles", loaded?.doubles, dParsed);
+      subjectBadges.replaceChildren(badge("Guest Player", "info"), sChip, dChip);
+
+      const needsReason = sChanged || dChanged;
+      reasonBadgeHost.replaceChildren(
+        needsReason ? badge("Required", "warning") : badge("When Rating Changes", "neutral"),
+      );
+      reasonCount.textContent = `${reasonInput.value.length} / 500`;
+    }
+
+    function sideSummaryBadge(label, side, parsed) {
+      if (side?.frozen) {
+        const pts = side.points != null ? Number(side.points).toFixed(3) : "NR";
+        return badge(`${label}: ${pts} (Frozen)`, "warning");
+      }
+      if (!parsed.empty && !parsed.invalid && parsed.value != null) {
+        return badge(`${label}: ${Number(parsed.value).toFixed(3)}`, "success");
+      }
+      return badge(`${label}: NR`, "neutral");
+    }
 
     async function loadGuest() {
       error.hidden = true;
@@ -366,30 +566,37 @@ export function createGuestEventActions(
       genderSelect.value = loaded.gender ?? "";
       dobInput.value = loaded.date_of_birth ?? "";
       duprInput.value = loaded.dupr_id ?? "";
-      for (const [discipline, input, note] of [["singles", singlesInput, singlesNote], ["doubles", doublesInput, doublesNote]]) {
+      for (const [discipline, input] of [["singles", singlesInput], ["doubles", doublesInput]]) {
         const side = loaded[discipline] ?? {};
         input.value = side.points == null ? "" : Number(side.points).toFixed(3);
         input.disabled = Boolean(side.frozen);
-        note.textContent = side.frozen
-          ? "Frozen: this guest is in a drawn division, so the rating can't change."
-          : side.points == null
-          ? "Not rated (NR). Enter a rating to assess the guest."
-          : "";
       }
       reasonInput.value = "";
+      syncGuestUi();
+      photoNote.textContent = "";
+      showPhoto();
     }
     guestSelect.addEventListener("change", loadGuest);
+    for (const el of [nameInput, mobileInput, duprInput, singlesInput, doublesInput, reasonInput]) {
+      el.addEventListener("input", syncGuestUi);
+    }
+    genderSelect.addEventListener("change", syncGuestUi);
     loadGuest();
 
-    const section = (iconName, title, ...children) =>
+    const section = (iconName, title, pill, ...children) =>
       h(
         "div",
         { class: "form-section event-registration-partner-panel guest-edit-section" },
         h(
           "div",
-          { class: "guest-modal-section-head" },
-          h("span", { class: "section-icon is-sm", "aria-hidden": "true" }, icon(iconName)),
-          h("span", { class: "guest-modal-section-title" }, title),
+          { class: "guest-modal-section-head guest-edit-section-head" },
+          h(
+            "div",
+            { class: "guest-edit-section-title-group" },
+            h("span", { class: "section-icon is-sm", "aria-hidden": "true" }, icon(iconName)),
+            h("span", { class: "guest-modal-section-title" }, title),
+          ),
+          pill,
         ),
         ...children,
       );
@@ -403,41 +610,115 @@ export function createGuestEventActions(
       body: h(
         "div",
         { class: "stack guest-edit-form" },
-        h("div", { class: "event-registration-summary-card guest-edit-selector" },
+        h(
+          "div",
+          { class: "event-registration-summary-card guest-edit-selector" },
+          h(
+            "div",
+            { class: "guest-edit-subject-row" },
+            h(
+              "div",
+              { class: "guest-edit-subject-identity" },
+              photoFace,
+              h("div", { class: "guest-edit-subject-copy" }, subjectName, subjectSub, subjectBadges),
+            ),
+            h(
+              "div",
+              { class: "guest-photo-block" },
+              h("div", { class: "guest-photo-actions" }, photoChange, photoRemove),
+              photoInput,
+              photoNote,
+            ),
+          ),
+          h("div", { class: "guest-edit-selector-divider", "aria-hidden": "true" }),
           field("edit-guest", "Choose Guest", guestSelect),
         ),
-        h("div", { class: "guest-edit-layout" },
-        section(
-          "user",
-          "Guest Details",
-          h("div", { class: "form-grid-2" },
-          field("edit-name", "Full Name *", inputWithIcon(nameInput, "user")),
-          field("edit-mobile", "Mobile", inputWithIcon(mobileInput, "phone")),
+        h(
+          "div",
+          { class: "guest-edit-layout" },
+          section(
+            "user",
+            "Guest Details",
+            badge("Profile & Eligibility", "neutral"),
+            field("edit-name", "Full Name *", inputWithIcon(nameInput, "user")),
+            h(
+              "div",
+              { class: "form-grid-2" },
+              field("edit-gender", "Gender", genderSelect),
+              field("edit-dob", "Birth Date", dobInput),
+            ),
+            h(
+              "div",
+              { class: "form-grid-2" },
+              field("edit-mobile", "Mobile", inputWithIcon(mobileInput, "phone")),
+              field("edit-dupr", "DUPR ID (Optional)", inputWithIcon(duprInput, "medal")),
+            ),
           ),
-          h(
-            "div",
-            { class: "form-grid-2" },
-            field("edit-gender", "Gender", genderSelect),
-            field("edit-dob", "Birth Date", dobInput),
+          section(
+            "trophy",
+            "Club Ratings",
+            badge("2.000–8.000 Scale", "info"),
+            h(
+              "div",
+              { class: "form-grid-2" },
+              field("edit-singles", "Singles Rating", singlesInput),
+              field("edit-doubles", "Doubles Rating", doublesInput),
+            ),
+            h(
+              "div",
+              { class: "form-grid-2 guest-rating-grid" },
+              singlesCard,
+              doublesCard,
+            ),
+            h(
+              "div",
+              { class: "guest-club-rank-tile" },
+              h("span", { class: "section-icon is-sm guest-club-rank-icon", "aria-hidden": "true" }, icon("medal")),
+              h(
+                "div",
+                { class: "guest-club-rank-copy" },
+                h(
+                  "div",
+                  { class: "guest-club-rank-head" },
+                  h("span", { class: "guest-club-rank-label" }, "Club Rank"),
+                  clubRankValue,
+                ),
+                clubRankSub,
+              ),
+              clubRankBadgeHost,
+            ),
           ),
-          field("edit-dupr", "DUPR ID (Optional)", inputWithIcon(duprInput, "medal")),
         ),
         section(
-          "trophy",
-          "Club Ratings",
+          "medal",
+          "Rank Assessment",
+          reasonBadgeHost,
           h(
             "div",
-            { class: "form-grid-2" },
-            field("edit-singles", "Singles Rating", singlesInput, "2.000–8.000"),
-            field("edit-doubles", "Doubles Rating", doublesInput, "2.000–8.000"),
+            { class: "field guest-reason-field" },
+            h(
+              "div",
+              { class: "guest-reason-head" },
+              h("label", { for: "edit-reason" }, "Reason for a rating change"),
+              reasonCount,
+            ),
+            reasonInput,
           ),
-          singlesNote,
-          doublesNote,
-          field("edit-reason", "Reason for a rating change", reasonInput),
         ),
-        ),
-        h("p", { class: "event-registration-partner-tip" }, icon("info"),
-          h("span", {}, "Existing registrations keep their original player names. A reason is required when changing a rating."),
+        h(
+          "div",
+          { class: "modal-callout is-info guest-edit-callout" },
+          h("span", { class: "modal-callout-icon", "aria-hidden": "true" }, icon("info")),
+          h(
+            "div",
+            { class: "modal-callout-text" },
+            h("strong", {}, "Roster & Rating Integrity"),
+            h(
+              "p",
+              { class: "sub" },
+              "Existing registrations keep their original player names. A reason is required when changing a rating, and changes must keep the guest eligible for any undrawn division they have already entered.",
+            ),
+          ),
         ),
         error,
       ),
@@ -745,6 +1026,17 @@ export function createGuestEventActions(
     } catch {
       ratingRows = [];
     }
+    const bands = await loadRatingBands(api).catch(() => []);
+    // With ratings on, a guest (or member) needs a rating for the division's format before any registration.
+    let ratingsOn = ratingRows.length > 0;
+    try {
+      const rows = await api.read((c) =>
+        c.from("settings").select("value").eq("key", "ranks.cpc_points_enabled").is("unit_id", null).is("deleted_at", null)
+      );
+      if (rows?.[0]) ratingsOn = [true, "true"].includes(rows[0].value);
+    } catch {
+      // keep the guess from the stored ratings; the database repeats the check when the guest is registered
+    }
     const ratingOf = (participantId, discipline) =>
       ratingRows.find((r) => r.participant_id === participantId && r.discipline === discipline)?.points ?? null;
     const ratingNote = (participantId, format) => {
@@ -786,6 +1078,39 @@ export function createGuestEventActions(
       divisions.map((d) => [d.id, d.name]),
       divisions.some((d) => d.id === divisionId) ? divisionId : divisions[0]?.id,
     );
+    // A guest who already has an entry in the chosen division stays in the list, marked and not selectable.
+    const guestEntry = (participantId) =>
+      change
+        ? null
+        : getRegisteredPeople().find((p) => p.divisionId === divisionSelect.value && p.participantId === participantId)?.status ?? null;
+    function refreshGuestOptions() {
+      const keep = guestSelect.value;
+      const list = guests.filter((p) =>
+        !change || change.kind !== "move" || p.id === source.guest_participant_id
+      );
+      const format = divisions.find((d) => d.id === divisionSelect.value)?.format ?? "singles";
+      const needsRating = (id) => ratingsOn && ratingOf(id, format) == null;
+      guestSelect.replaceChildren(...list.map((p) => {
+        const entry = guestEntry(p.id);
+        const points = ratingOf(p.id, format);
+        return h(
+          "option",
+          {
+            value: p.id,
+            disabled: Boolean(entry) || needsRating(p.id),
+            "data-badge": points == null ? "Unrated" : (equivalentRank(bands, points) ?? Number(points).toFixed(3)),
+            "data-badge-tone": points == null ? "neutral" : "info",
+          },
+          entry
+            ? `${p.display_name} · ${ENTRY_STATUS[entry]?.[0] ?? entry}`
+            : needsRating(p.id) ? `${p.display_name} · Needs Rating` : p.display_name,
+        );
+      }));
+      const usable = (p) => !guestEntry(p.id) && !needsRating(p.id);
+      const pick = list.find((p) => p.id === keep && usable(p)) ?? list.find(usable);
+      guestSelect.value = pick?.id ?? "";
+    }
+    refreshGuestOptions();
     const partnerSelect = h("select", { id: "guest-partner", name: "guest-partner", hidden: true },
       h("option", { value: "" }, "Loading partners…"));
     const partnerTerm = searchControl({
@@ -795,20 +1120,33 @@ export function createGuestEventActions(
     const partnerStatus = h("p", { class: "sub form-help-text", role: "status" }, "Type at least 2 letters or numbers.");
     const partnerResults = h("div", { class: "staff-results", role: "radiogroup", "aria-label": "Eligible doubles partners" });
     const partnerPreview = h("div", { class: "partner-preview-host" });
+    // Plain hint by default; a warning shows as an alert badge (not-eligible, already registered, division mismatch).
+    function setPartnerStatus(text, tone = null) {
+      if (!tone) return partnerStatus.replaceChildren(text);
+      const alert = badge(h("span", {}, text), tone);
+      alert.classList.add("partner-alert");
+      partnerStatus.replaceChildren(alert);
+    }
     function showPartner() {
       const selected = partners.find((p) => p.id === partnerSelect.value);
       partnerPreview.replaceChildren();
       partnerResults.hidden = Boolean(selected);
       partnerStatus.hidden = Boolean(selected);
       if (selected) partnerPreview.append(h("div", { class: "staff-selected-card" },
-        h("div", { class: "member-meta" },
-          h("strong", { class: "member-name" }, selected.display_name),
-          h("span", { class: "sub member-subtext" }, selected.member_no || "Guest"),
+        h("div", { class: "staff-selected-identity" },
+          h("span", { class: "member-avatar is-icon staff-selected-avatar", "aria-hidden": "true" }, icon("user")),
+          h("div", { class: "member-meta" },
+            h("div", { class: "staff-selected-header-row" },
+              h("strong", { class: "member-name" }, selected.display_name),
+              badge("Doubles Partner", "success"),
+            ),
+            h("span", { class: "sub member-subtext" }, selected.member_no || "Event Guest"),
+          ),
         ),
-        button({ label: "Change", icon: "refresh", variant: "ghost", onClick: () => {
+        button({ label: "Change", icon: "refresh", variant: "ghost", class: "staff-change-btn", onClick: () => {
           partnerSelect.value = "";
           partnerResults.replaceChildren();
-          partnerStatus.textContent = "Type at least 2 letters or numbers.";
+          setPartnerStatus("Type at least 2 letters or numbers.");
           showPartner();
           syncPartnerFields();
           partnerTerm.focus();
@@ -822,33 +1160,104 @@ export function createGuestEventActions(
       const term = partnerTerm.value.trim().toLocaleLowerCase();
       partnerResults.replaceChildren();
       if (partnerProblem) {
-        partnerStatus.textContent = partnerProblem;
+        setPartnerStatus(partnerProblem, "warning");
         return;
       }
       if (term.length < 2) {
-        partnerStatus.textContent = "Type at least 2 letters or numbers.";
+        setPartnerStatus("Type at least 2 letters or numbers.");
         return;
       }
       const found = partners.filter((p) => `${p.display_name} ${p.member_no ?? ""}`.toLocaleLowerCase().includes(term));
-      partnerStatus.textContent = found.length ? `${found.length} found. Choose one below.` : "No eligible partners match.";
+      // People who already have an entry in this division are listed too, with their status, but cannot be chosen.
+      const seen = new Set();
+      const registered = getRegisteredPeople().filter((p) => {
+        const key = `${p.name}|${p.memberNo ?? ""}`;
+        if (p.divisionId !== divisionSelect.value || seen.has(key)) return false;
+        seen.add(key);
+        return `${p.name} ${p.memberNo ?? ""}`.toLocaleLowerCase().includes(term);
+      });
+      const shown = new Set([...found.map((p) => p.id), guestSelect.value]);
+      const unrated = ratingsOn
+        ? (players ?? []).filter((p) =>
+          !p.member_id && !shown.has(p.id) && ratingOf(p.id, "doubles") == null &&
+          !registered.some((r) => r.participantId === p.id) &&
+          `${p.display_name}`.toLocaleLowerCase().includes(term)
+        )
+        : [];
+      let noMatch = "No eligible partners match. Check that the player fits this division.";
+      if (!found.length && !registered.length && unrated.length) {
+        noMatch = "These players need a rating before they can be a partner.";
+      }
+      if (!found.length && registered.length) {
+        noMatch = "This player already has an entry in this division, so they cannot be a partner.";
+      }
+      if (found.length) setPartnerStatus(`${found.length} found. Choose one below.`);
+      else setPartnerStatus(noMatch, "warning");
       partnerResults.replaceChildren(...found.map((p) => h("label", { class: "staff-result" },
         h("input", { type: "radio", name: "guest-partner-result", value: p.id, onChange: () => {
           partnerSelect.value = p.id;
           showPartner();
           syncPartnerFields();
         } }),
+        h("span", { class: "member-avatar is-icon", "aria-hidden": "true" }, icon("user")),
         h("span", { class: "member-meta" },
-          h("strong", { class: "member-name" }, p.display_name),
-          h("span", { class: "sub member-subtext" }, p.member_no || "Guest"),
+          h("span", { class: "member-name" }, p.display_name),
+          h("span", { class: "sub member-subtext" }, p.member_no || "Event Guest"),
         ),
-        badge(p.is_guest ? "Guest" : "Member", p.is_guest ? "neutral" : "info"),
-      )));
+        badge(p.is_guest ? "Guest" : "Active", p.is_guest ? "neutral" : "success"),
+      ), ...registered.map((p) => h("label", { class: "staff-result is-unavailable", "aria-disabled": "true" },
+        h("input", { type: "radio", name: "guest-partner-result", disabled: true }),
+        h("span", { class: "member-avatar is-icon", "aria-hidden": "true" }, icon("user")),
+        h("span", { class: "member-meta" },
+          h("span", { class: "member-name" }, p.name),
+          h("span", { class: "sub member-subtext" }, p.memberNo || "Event Guest"),
+        ),
+        badge(...(ENTRY_STATUS[p.status] ?? [p.status, "neutral"])),
+      )), ...unrated.map((p) => h("label", { class: "staff-result is-unavailable", "aria-disabled": "true" },
+        h("input", { type: "radio", name: "guest-partner-result", disabled: true }),
+        h("span", { class: "member-avatar is-icon", "aria-hidden": "true" }, icon("user")),
+        h("span", { class: "member-meta" },
+          h("span", { class: "member-name" }, p.display_name),
+          h("span", { class: "sub member-subtext" }, "Event Guest"),
+        ),
+        badge("Needs Rating", "warning"),
+      ))));
     }
     partnerTerm.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); searchPartners(); }
     });
     const partnerRatingNote = h("p", { class: "sub field-hint", hidden: true });
     const guestRatingNote = h("p", { class: "sub field-hint" });
+    const teamNameInput = h("input", {
+      class: "input team-name-input",
+      id: "guest-team-name",
+      name: "guest-team-name",
+      type: "text",
+      maxlength: 40,
+      placeholder: "TEAM NAME",
+      autocomplete: "off",
+      value: source?.meta?.team_name ?? "",
+    });
+    // Team names are always capitals: converted as the person types, keeping the cursor where it was.
+    teamNameInput.addEventListener("input", () => {
+      const at = teamNameInput.selectionStart;
+      teamNameInput.value = teamNameInput.value.toUpperCase();
+      try { teamNameInput.setSelectionRange(at, at); } catch { /* not supported for this input */ }
+    });
+    const teamPanel = h(
+      "section",
+      { class: "form-section event-registration-team-panel" },
+      h(
+        "div",
+        { class: "event-registration-partner-head" },
+        h("div", { class: "event-registration-partner-label" }, icon("users"),
+          h("label", { for: "guest-team-name" }, h("strong", {}, "Team Name *"))),
+        badge("Required", "warning"),
+      ),
+      teamNameInput,
+      h("p", { class: "sub form-help-text" }, "2 to 40 characters. Shown in the roster, draw and bracket."),
+    );
+    const partnerSearchButton = button({ label: "Search", icon: "search", variant: "secondary", onClick: searchPartners });
     const partnerPanel = h(
       "div",
       { class: "form-section event-registration-partner-panel" },
@@ -860,7 +1269,7 @@ export function createGuestEventActions(
       ),
       partnerSelect,
       h("div", { class: "guest-search-row" }, partnerTerm,
-        button({ label: "Search", icon: "search", variant: "secondary", onClick: searchPartners }),
+        partnerSearchButton,
       ),
       partnerStatus,
       partnerResults,
@@ -880,10 +1289,16 @@ export function createGuestEventActions(
     const partnerIsGuest = () => isDoubles() && partners.find((x) => x.id === partnerSelect.value)?.is_guest === true;
     const syncPartnerFields = () => {
       partnerPanel.hidden = !isDoubles();
+      teamPanel.hidden = !isDoubles() || Boolean(change);
       partnerRatingNote.hidden = !partnerIsGuest();
       if (partnerIsGuest()) partnerRatingNote.textContent = ratingNote(partnerSelect.value, "doubles");
       guestRatingNote.textContent = ratingNote(guestSelect.value, formatOf());
-      if (partnerProblem) partnerStatus.textContent = partnerProblem;
+      if (partnerProblem) setPartnerStatus(partnerProblem, "warning");
+      // A guest who does not suit the chosen division cannot be registered there: the team name and partner are locked.
+      const locked = Boolean(partnerProblem) && isDoubles();
+      for (const control of [teamNameInput, partnerTerm, partnerSearchButton]) control.disabled = locked;
+      teamPanel.classList[locked ? "add" : "remove"]("is-locked");
+      partnerPanel.classList[locked ? "add" : "remove"]("is-locked");
     };
     async function loadPartners() {
       const request = ++partnerLoad;
@@ -892,7 +1307,7 @@ export function createGuestEventActions(
       partnerResults.replaceChildren();
       partnerPreview.replaceChildren();
       partnerTerm.value = "";
-      partnerStatus.textContent = "Type at least 2 letters or numbers.";
+      setPartnerStatus("Type at least 2 letters or numbers.");
       if (!isDoubles()) {
         partners = [];
         partnerSelect.replaceChildren(h("option", { value: "" }, "No partner (singles)"));
@@ -930,6 +1345,7 @@ export function createGuestEventActions(
     }
     divisionSelect.addEventListener("change", () => {
       wantedPartner = "";
+      refreshGuestOptions();
       loadPartners();
     });
     guestSelect.addEventListener("change", () => {
@@ -964,6 +1380,7 @@ export function createGuestEventActions(
           ),
           field("guest-division", "Division *", divisionSelect),
         ),
+        teamPanel,
         h(
           "div",
           { class: "form-section event-registration-partner-panel" },
@@ -1011,6 +1428,16 @@ export function createGuestEventActions(
       ),
       onConfirm: async (form) => {
         try {
+          if (!form.get("guest-player")) {
+            return fail(error, new Error("No guest can be registered in this division: each one already has an entry or needs a rating. Choose another division, or assess a guest's rating first."));
+          }
+          if (partnerProblem && isDoubles()) {
+            return fail(error, new Error(partnerProblem));
+          }
+          const teamName = teamNameInput.value.replace(/\s+/g, " ").trim().toUpperCase();
+          if (!change && isDoubles() && (teamName.length < 2 || teamName.length > 40)) {
+            return fail(error, new Error("Enter a team name of 2 to 40 characters."));
+          }
           if (isDoubles() && !form.get("guest-partner")) {
             return fail(error, new Error("Choose a doubles partner."));
           }
@@ -1043,8 +1470,12 @@ export function createGuestEventActions(
               ? form.get("guest-player")
               : null;
           }
+          const named = !change && isDoubles();
+          if (named) request.p_team_name = teamName;
           await api.rpc(
-            change ? "change_guest_registration" : "register_guest_for_event",
+            change
+              ? "change_guest_registration"
+              : (named ? "register_guest_for_event_team" : "register_guest_for_event"),
             request,
           );
           toast(

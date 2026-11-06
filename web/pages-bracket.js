@@ -9,6 +9,7 @@ import {
   button,
   dataTable,
   h,
+  icon,
   iconButton,
   memberHero,
   openModal,
@@ -535,6 +536,211 @@ export function createBracketPages({ api }) {
       );
     }
 
+    // ------------------------------------------------------------ bracket tree (initial round + H / L brackets)
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const done = (m) => ["completed", "forfeited"].includes(m.status) && m.winner_entry_id;
+
+    function slot(m, side) {
+      const id = side === "a" ? m.entry_a_id : m.entry_b_id;
+      const name = side === "a" ? m.a_name : m.b_name;
+      const label = side === "a" ? m.a_label : m.b_label;
+      const win = done(m) && id && m.winner_entry_id === id;
+      const loss = done(m) && id && !win;
+      return h(
+        "div",
+        { class: `bt-slot${name ? "" : " is-empty"}${win ? " is-winner" : ""}${loss ? " is-loser" : ""}` },
+        h("span", { class: "bt-slot-name", title: name ?? label ?? "" }, name ?? label ?? "To be decided"),
+        win ? h("span", { class: "bt-result bt-result-w", "aria-label": "Winner" }, "W") : null,
+        loss ? h("span", { class: "bt-result bt-result-l", "aria-label": "Eliminated" }, "L") : null,
+      );
+    }
+
+    const matchFoot = (m) =>
+      h(
+        "div",
+        { class: "bt-match-foot" },
+        scoreText(m) !== "—" ? h("span", { class: "sub bt-score" }, scoreText(m)) : null,
+        actionsFor(m),
+      );
+
+    /** Round 1 of a split bracket: a pair card with the two sides facing each other. */
+    function pairCard(m) {
+      return h(
+        "article",
+        { class: "bt-pair" },
+        h("div", { class: "bt-index", "aria-label": `Match ${m.round_no}.${m.match_no}` }, h("span", {}, "M"), String(m.match_no).padStart(2, "0")),
+        slot(m, "a"),
+        h("span", { class: "bt-vs", "aria-hidden": "true" }, "VS"),
+        slot(m, "b"),
+        matchFoot(m),
+      );
+    }
+
+    function treeMatch(m) {
+      return h(
+        "article",
+        { class: "bt-node" },
+        h(
+          "div",
+          { class: "bt-node-head" },
+          h("span", { class: "bt-code" }, `Match ${m.match_no}`),
+          badge(...(MATCH_STATUS[m.status] ?? [m.status, "neutral"])),
+        ),
+        slot(m, "a"),
+        slot(m, "b"),
+        matchFoot(m),
+      );
+    }
+
+    function connectorSvg(single) {
+      const svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("viewBox", "0 0 36 100");
+      svg.setAttribute("preserveAspectRatio", "none");
+      svg.setAttribute("class", "bt-svg");
+      const path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", single ? "M 0 50 H 36" : "M 0 25 H 18 V 75 H 0 M 18 50 H 36");
+      path.setAttribute("fill", "none");
+      path.setAttribute("stroke-linecap", "round");
+      path.setAttribute("stroke-linejoin", "round");
+      svg.append(path);
+      return svg;
+    }
+
+    const connectorCol = (cells, single) =>
+      h(
+        "div",
+        { class: "bt-connector", "aria-hidden": "true" },
+        h("div", { class: "bt-spacer" }),
+        h("div", { class: "bt-connector-body" }, ...Array.from({ length: cells }, () => h("div", { class: "bt-connector-cell" }, connectorSvg(single)))),
+      );
+
+    /** Connected knockout tree: a column per round, connectors between rounds, the champion at the end. */
+    function bracketTree(rows, title, tone, teamCount) {
+      const rs = [...new Set(rows.map((m) => m.round_no))].sort((a, b) => a - b);
+      const columns = rs.map((r) => rows.filter((m) => m.round_no === r).sort((a, b) => a.match_no - b.match_no));
+      const last = columns.at(-1)?.[0];
+      const champion = last && done(last) ? (last.winner_entry_id === last.entry_a_id ? last.a_name : last.b_name) : null;
+      const parts = [];
+      columns.forEach((col, i) => {
+        parts.push(h(
+          "div",
+          { class: "bt-round" },
+          h("div", { class: "bt-round-head" }, h("span", { class: "bt-pill" }, roundName(i + 1, rs.length))),
+          h("div", { class: "bt-round-matches" }, ...col.map(treeMatch)),
+        ));
+        const next = columns[i + 1];
+        if (next) parts.push(connectorCol(next.length, false));
+      });
+      parts.push(connectorCol(1, true));
+      parts.push(h(
+        "div",
+        { class: "bt-round" },
+        h("div", { class: "bt-round-head" }, h("span", { class: "bt-pill" }, "Champion")),
+        h(
+          "div",
+          { class: "bt-round-matches" },
+          h(
+            "div",
+            { class: "bt-champion" },
+            icon("trophy"),
+            h("strong", {}, `${title} Champion`),
+            h("span", { class: "sub" }, champion ?? "To be decided"),
+          ),
+        ),
+      ));
+      return h(
+        "section",
+        { class: `bt-panel bt-${tone}`, "aria-label": title },
+        h(
+          "div",
+          { class: "bt-panel-head" },
+          h("h3", {}, title),
+          h(
+            "div",
+            { class: "bt-tags" },
+            teamCount ? h("span", { class: "bt-tag" }, `${teamCount} Teams`) : null,
+            h("span", { class: "bt-tag" }, "Single Elimination"),
+          ),
+        ),
+        h("div", { class: "bt-scroller" }, h("div", { class: "bt-tree" }, ...parts)),
+      );
+    }
+
+    function splitView() {
+      const part = (label) => state.matches.filter((m) => m.group_label === label);
+      const first = state.matches.filter((m) => !m.group_label).sort((a, b) => a.match_no - b.match_no);
+      const teams = (rows) => {
+        const r1 = Math.min(...rows.map((m) => m.round_no));
+        return rows.filter((m) => m.round_no === r1).length * 2;
+      };
+      // The database builds the H and L matches only when every Round 1 match is finished; until then the trees are
+      // shown empty, with the slots named after the Round 1 match they will be filled from.
+      const planned = (prefix) => {
+        const rows = [];
+        let count = Math.floor(first.length / 2);
+        let round = 1;
+        while (count >= 1) {
+          for (let i = 1; i <= count; i++) {
+            const from = (side) =>
+              round === 1
+                ? `${prefix === "H" ? "Winner" : "Loser"} of Match ${(i - 1) * 2 + side}`
+                : `Winner of ${roundName(round - 1, Math.log2(first.length))} ${(i - 1) * 2 + side}`;
+            rows.push({
+              match_id: `plan-${prefix}-${round}-${i}`,
+              round_no: round,
+              match_no: i,
+              group_label: prefix,
+              status: "scheduled",
+              a_name: null,
+              b_name: null,
+              a_label: from(1),
+              b_label: from(2),
+              games: [],
+            });
+          }
+          count = Math.floor(count / 2);
+          round += 1;
+        }
+        return rows;
+      };
+      const waiting = !part("H").length && !part("L").length && first.length >= 2;
+      const hRows = waiting ? planned("H") : part("H");
+      const lRows = waiting ? planned("L") : part("L");
+      return h(
+        "div",
+        { class: "bt-layout" },
+        first.length
+          ? h(
+            "aside",
+            { class: "bt-initial", "aria-label": "Round 1" },
+            h(
+              "div",
+              { class: "bt-initial-head" },
+              h("span", { class: "bt-stage-tag" }, "Round 1"),
+              h("h3", {}, `${first.length * 2} Teams Initial Round`),
+              h("span", { class: "sub" }, `${first.length} Classification Matches`),
+            ),
+            h("div", { class: "bt-pairs" }, ...first.map(pairCard)),
+            h(
+              "div",
+              { class: "bt-advance" },
+              h("div", { class: "bt-advance-box is-h" }, h("span", {}, "H Pathway"), h("strong", {}, `${first.length} Winners Advance`)),
+              h("div", { class: "bt-advance-box is-l" }, h("span", {}, "L Pathway"), h("strong", {}, `${first.length} Losers Advance`)),
+            ),
+          )
+          : null,
+        h(
+          "div",
+          { class: "bt-brackets" },
+          waiting
+            ? h("p", { class: "sub bt-waiting" }, "The H and L brackets are built automatically once every Round 1 match is final.")
+            : null,
+          hRows.length ? bracketTree(hRows, "H Bracket", "high", teams(hRows)) : null,
+          lRows.length ? bracketTree(lRows, "L Bracket", "low", teams(lRows)) : null,
+        ),
+      );
+    }
+
     function matchesView() {
       const rounds = [...new Set(state.matches.map((m) => m.round_no))];
       const schema = {
@@ -611,45 +817,12 @@ export function createBracketPages({ api }) {
           emptyText: "Matches appear once the draw has been made.",
         });
       }
-      if (stage()?.stage_type === "split_single_elimination") {
-        const part = (label) =>
-          state.matches.filter((m) => m.group_label === label);
-        const section = (title, rows, named) => {
-          if (!rows.length) return null;
-          const rs = [...new Set(rows.map((m) => m.round_no))].sort((a, b) =>
-            a - b
-          );
-          return h(
-            "section",
-            { class: "stack" },
-            h("h3", {}, title),
-            ...rs.map((r) =>
-              h(
-                "section",
-                { class: "stack" },
-                named ? h("h4", {}, roundName(r - rs[0] + 1, rs.length)) : null,
-                dataTable({
-                  searchState: state,
-                  schema,
-                  rows: rows.filter((m) => m.round_no === r),
-                  state: "ready",
-                  ariaLabel: `${title} round ${r}`,
-                }),
-              )
-            ),
-          );
-        };
-        return h(
-          "div",
-          { class: "stack" },
-          section(
-            "Round 1",
-            state.matches.filter((m) => !m.group_label),
-            false,
-          ),
-          section("H bracket", part("H"), true),
-          section("L bracket", part("L"), true),
-        );
+      if (stage()?.stage_type === "split_single_elimination") return splitView();
+      if (
+        stage()?.stage_type === "single_elimination" &&
+        !state.matches.some((m) => m.group_label)
+      ) {
+        return h("div", { class: "bt-stack" }, bracketTree(state.matches, "Bracket", "gold"));
       }
       const groups = [
         ...new Set(state.matches.map((m) => m.group_label).filter(Boolean)),
@@ -818,9 +991,11 @@ export function createBracketPages({ api }) {
 
     // Scoring by Round (Split Single Elimination, events.manage): a rule for the H and the L bracket quarterfinals,
     // semifinals and finals. Set after Round 1 and before the quarterfinals start; the database locks it after that.
-    function roundScoringPanel() {
+    const showRoundScoring = () => stage()?.stage_type === "split_single_elimination" && can("events.manage");
+
+    function roundScoringModal() {
       const s = stage();
-      if (s?.stage_type !== "split_single_elimination" || !can("events.manage")) return null;
+      if (!showRoundScoring() || !s) return null;
       const rules = state.scoringRules ?? [];
       const locked = state.matches.some((m) => ["H", "L"].includes(m.group_label) && !["scheduled", "void"].includes(m.status));
       const base = s.scoring_rule_snapshot?.name ?? "the division rule";
@@ -848,13 +1023,27 @@ export function createBracketPages({ api }) {
           field(group, "final", "Finals"),
         );
       const error = errorLine();
-      const save = button({
-        label: "Save Round Scoring",
-        icon: "check",
-        variant: "primary",
-        type: "button",
-        disabled: locked,
-        onClick: async () => {
+      return openModal({
+        title: "Scoring by Round",
+        eyebrow: STAGE_LABEL[s.stage_type],
+        icon: "settings",
+        size: "lg",
+        confirmLabel: locked ? null : "Save Round Scoring",
+        cancelLabel: locked ? "Close" : "Cancel",
+        body: h(
+          "div",
+          { class: "stack" },
+          h(
+            "p",
+            { class: "sub" },
+            locked
+              ? "Locked: the bracket rounds have started. Round 1 and any round left on the division rule use " + base + "."
+              : `Round 1 uses ${base}. Choose a rule for each round of the H and L brackets; set this before the quarterfinals start.`,
+          ),
+          h("div", { class: "round-scoring-grid" }, bracket("H", "H Bracket"), bracket("L", "L Bracket")),
+          error,
+        ),
+        onConfirm: async () => {
           error.hidden = true;
           const rulesOut = { H: {}, L: {} };
           for (const [key, select] of Object.entries(selects)) {
@@ -866,28 +1055,13 @@ export function createBracketPages({ api }) {
             toast("Round scoring saved.", { tone: "success" });
             await load();
           } catch (e) {
-            showError(
+            return showError(
               error,
               ["22023", "42501"].includes(e?.code) ? e.cause?.message || e.message : "The round scoring could not be saved. Try again.",
             );
           }
         },
       });
-      return h(
-        "section",
-        { class: "card round-scoring-panel", "aria-label": "Scoring by Round" },
-        h("h3", {}, "Scoring by Round"),
-        h(
-          "p",
-          { class: "sub" },
-          locked
-            ? "Locked: the bracket rounds have started. Round 1 and any round left on the division rule use " + base + "."
-            : `Round 1 uses ${base}. Choose a rule for each round of the H and L brackets; set this before the quarterfinals start.`,
-        ),
-        h("div", { class: "round-scoring-grid" }, bracket("H", "H Bracket"), bracket("L", "L Bracket")),
-        error,
-        locked ? null : h("div", { class: "actions" }, save),
-      );
     }
 
     function draw() {
@@ -951,6 +1125,14 @@ export function createBracketPages({ api }) {
               icon: "chevl",
               onClick: () => history.back(),
             }),
+            showRoundScoring()
+              ? iconButton({
+                label: "Scoring by Round",
+                icon: "settings",
+                variant: "secondary",
+                onClick: roundScoringModal,
+              })
+              : null,
           ),
           h(
             "p",
@@ -977,7 +1159,6 @@ export function createBracketPages({ api }) {
             : null,
           resultsView(),
           stageTabs,
-          roundScoringPanel(),
           s?.stage_type === "single_elimination" ? championLine() : null,
           s?.stage_type === "single_elimination" ||
             s?.stage_type === "split_single_elimination"
@@ -1001,7 +1182,7 @@ export function createBracketPages({ api }) {
       memberHero({
         iconName: "trophy",
         eyebrow: "Bracket",
-        title: "Standings and matches",
+        title: "Standings and Matches",
         chip: "Match Results",
         titleBadge: true,
         description:

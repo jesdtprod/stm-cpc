@@ -23,6 +23,7 @@ import {
   timeControl,
   toast,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { businessDate, formatDateTime } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 
@@ -98,6 +99,7 @@ export function createCourtsPages({ api, getOrgId }) {
       rates: [],
       blackouts: [],
     };
+    rememberView(state, "courts", ["tab"]);
 
     async function refresh() {
       state.status = state.courts.length ? "refreshing" : "loading";

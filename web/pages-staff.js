@@ -20,6 +20,7 @@ import {
   tableFilter,
   toast,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { avatarImage } from "./lib/avatar.js";
 import { createStaffAccount } from "./lib/auth-api.js";
 
@@ -64,6 +65,7 @@ export function createStaffPages({ api, client }) {
     });
     const body = h("div", { class: "staff-body" });
     const state = { tab: "staff", status: "loading", staff: [], roles: [] };
+    rememberView(state, "staff", ["tab"]);
     const addBtn = button({
       label: "Give Someone a Role",
       icon: "plus",

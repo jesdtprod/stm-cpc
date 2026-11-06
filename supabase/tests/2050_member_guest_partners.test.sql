@@ -45,7 +45,7 @@ select public.create_division((select high from fx),(select ev from fx),'Beginne
   (select id from public.ranks where code='beginner-high' and deleted_at is null),null,null,(select tpl from fx),null);
 select public.create_division((select singles from fx),(select ev from fx),'Beginner Singles',
   (select id from public.categories where code='beginner' and deleted_at is null),'singles',null,null,null,null,null,(select tpl from fx),null);
-select public.create_guest_event_participant((select guest from fx),(select ev from fx),(select gp from fx),'Fake Search Guest',null,null,null,null,2.800,null);
+select public.create_guest_event_participant((select guest from fx),(select ev from fx),(select gp from fx),'Fake Search Guest',null,null,null,null,2.800,2.100);
 select public.create_guest_event_participant((select wrong from fx),(select ev from fx),(select wp from fx),'Fake Search Wrong',null,null,null,null,null,3.800);
 select public.set_event_status((select ev from fx),'registration_open',null);
 reset role;
@@ -86,12 +86,12 @@ select is((select member_id from public.registrations where id=(select reg from 
 select is(core.registration_payer((select reg from fx)),(select mid from us where role='me'),'member remains payer');
 select is((select count(*)::int from public.entry_members em join public.entries e on e.id=em.entry_id where e.registration_id=(select reg from fx)),1,'confirmed team has one member');
 select is((select count(*)::int from public.entry_guests eg join public.entries e on e.id=eg.entry_id where e.registration_id=(select reg from fx)),1,'confirmed team has one guest');
-select ok(not exists(select 1 from public.event_participant_cpc_ratings where participant_id=(select guest from fx) and discipline='doubles' and points is not null),'guest stays NR');
+select is((select points from public.event_participant_cpc_ratings where participant_id=(select guest from fx) and discipline='doubles' and deleted_at is null),2.100,'registering does not change the guest rating');
 update public.event_participant_cpc_ratings set points=2.100 where participant_id=(select wrong from fx) and discipline='doubles';
 update public.divisions set max_entries=2 where id=(select dv from fx);
 select pg_temp.as_user((select u from us where role='admin')); set local role authenticated;
-select public.create_guest_event_participant((select filler1 from fx),(select ev from fx),(select filler_person1 from fx),'Fake Capacity Guest One');
-select public.create_guest_event_participant((select filler2 from fx),(select ev from fx),(select filler_person2 from fx),'Fake Capacity Guest Two');
+select public.create_guest_event_participant((select filler1 from fx),(select ev from fx),(select filler_person1 from fx),'Fake Capacity Guest One',null,null,null,null,2.100,2.100);
+select public.create_guest_event_participant((select filler2 from fx),(select ev from fx),(select filler_person2 from fx),'Fake Capacity Guest Two',null,null,null,null,2.100,2.100);
 select public.register_guest_for_event(core.ulid(),(select dv from fx),(select filler1 from fx),null,(select filler2 from fx),null);
 select is((select count(*)::int from public.eligible_division_partners((select dv from fx),'Search Wrong') where guest_participant_id=(select wrong from fx)),1,
   'rated guest within the band can be found');

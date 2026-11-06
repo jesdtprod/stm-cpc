@@ -126,9 +126,9 @@ select pg_temp.as_user((select u from us where role = 'admin')); set local role 
 select is((select count(*)::int from public.eligible_event_partners((select dv_d from fx), null)
   where id = (select gp1 from fx)), 0, 'guest partner without a Doubles rating is excluded');
 select is((select count(*)::int from public.eligible_event_partners((select dv_b from fx), (select gp1 from fx))
-  where id = (select gp4 from fx)), 1, 'unrated lead guest can find an unrated Doubles partner in Beginner Low');
-select is((public.guest_division_eligibility((select dv_b from fx),(select gp1 from fx))->>'eligible')::boolean,true,
-  'feedback allows an unrated guest in Beginner Low');
+  where id = (select gp4 from fx)), 0, 'an unrated lead guest cannot find a partner: a rating is required');
+select is((public.guest_division_eligibility((select dv_b from fx),(select gp1 from fx))->>'eligible')::boolean,false,
+  'feedback refuses an unrated guest, even in Beginner Low');
 select is((select count(*)::int from public.eligible_event_partners((select dv_d from fx), null)
   where id = (select gp4 from fx)), 0, 'Singles rating cannot qualify a guest for Novice Doubles');
 reset role;
@@ -150,8 +150,8 @@ select is((select count(*)::int from public.eligible_event_partners((select dv_b
 reset role;
 update public.divisions set age_group = null where id = (select dv_b from fx);
 select pg_temp.as_user((select u from us where role = 'admin')); set local role authenticated;
-select lives_ok(format('select public.register_guest_for_event(%L,%L,%L,null,%L,null)', core.ulid(),
-  (select dv_b from fx), (select gp1 from fx), (select gp4 from fx)), 'two unrated guests can save a Beginner Low doubles entry');
+select throws_ok(format('select public.register_guest_for_event(%L,%L,%L,null,%L,null)', core.ulid(),
+  (select dv_b from fx), (select gp1 from fx), (select gp4 from fx)), '22023', null, 'two unrated guests cannot be registered: a rating is required');
 reset role;
 select ok(not exists(select 1 from public.event_participant_cpc_ratings where participant_id in (select gp1 from fx union select gp4 from fx)
   and discipline = 'doubles' and points is not null), 'NR registration does not assign either guest a rating');

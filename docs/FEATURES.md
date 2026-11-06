@@ -449,6 +449,8 @@ Scoped to the club (organization) and validated, audited, and enforced on the se
 
 ## 11. Landing / welcome page
 
+Public event summaries include every published event and its current status, including completed and cancelled events, regardless of its scheduled end date. Drafts remain private. The Events & Tournaments banner has no Sign In action; the navigation and event registration actions provide sign-in access.
+
 - The public Members directory uses the same shared name formatter as staff Members: Last Name, First Name, middle initial and extension when saved; otherwise the proper-case display name. Show the actual CPC member number beneath the name, as explicitly requested by the club. Publish only the middle initial, never the full middle name, internal IDs or contact details. Existing publication settings and membership eligibility still apply.
 - The public Members total includes every eligible member, without a 1,000-member cap; pagination still displays 12 cards at a time and search covers the complete directory. Admin's All total can differ because it also includes statuses excluded from public publication.
 - Each public member card shows a white check in a solid green circle at the right of its identity header when the server-provided `is_active` flag is true; imported/invited members show a white clock in the same green circle. Accessible labels and tooltips identify Active/Not Active. Detailed status/reasons remain private and other statuses remain excluded.

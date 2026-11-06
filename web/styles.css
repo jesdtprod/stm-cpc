@@ -294,6 +294,7 @@ main[aria-busy="true"] {
 }
 .actions {
   display: flex;
+  align-items: center;
   gap: var(--s2);
   flex-wrap: wrap;
 }
@@ -439,9 +440,17 @@ input[type="time"]::-webkit-inner-spin-button {
   color: var(--danger);
   font-size: 12px;
 }
-.field-hint {
+/* Shared secondary copy across pages, modals and form controls. */
+.sub,
+.field-hint,
+.form-help-text {
   color: var(--text-2);
   font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+p:is(.sub, .field-hint, .form-help-text) {
+  margin: 0;
 }
 .field-hint.block {
   display: block;
@@ -1688,6 +1697,12 @@ textarea.input {
   border-radius: 50%;
   background-color: currentColor;
   flex-shrink: 0;
+}
+.badge > .badge-label {
+  display: block;
+  line-height: 1;
+  /* Center the visible letters, excluding the font's extra ascent/descent. */
+  text-box: trim-both cap alphabetic;
 }
 .tab-btn .badge::before,
 .nav-link-badge::before,

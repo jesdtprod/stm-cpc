@@ -20,6 +20,7 @@ import {
   tableFilter,
   toast,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { businessDate, formatDate, formatDateTime } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 import {
@@ -991,6 +992,7 @@ export function createBookingPages({ api, client, session }) {
       status: "loading",
       settings: {},
     };
+    rememberView(state, "booking", ["tab"]);
 
     async function load() {
       state.status = state.rows.length ? "refreshing" : "loading";

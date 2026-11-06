@@ -14,6 +14,7 @@ import {
   iconButton,
   openModal,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
@@ -133,6 +134,7 @@ export function createRankingPages({ api, client, session }) {
       bands: [],
       photos: new Map(),
     };
+    rememberView(state, "ranking", ["tab"]);
 
     const TABS = [
       { id: "ranking", label: "Ranking" },

@@ -19,6 +19,7 @@ import {
   tableFilter,
   toast,
 } from "./ui.js";
+import { rememberView } from "./lib/view-memory.js";
 import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
 
@@ -52,6 +53,7 @@ export function createImportPages({ api }) {
       batchCount: null,
       summaryReady: false,
     };
+    rememberView(state, "import", ["tab"]);
     const page = h("div", {
       class: "page admin-dashboard admin-members-page admin-import-page",
     });
