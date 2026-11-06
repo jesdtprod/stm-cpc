@@ -15172,7 +15172,12 @@ body .public-page-hero .public-header-logo {
     gap: 16px;
   }
   body .public-page-hero .public-header-logo {
-    display: none;
+    display: block;
+    width: 96px;
+    height: 96px;
+    flex: 0 0 96px;
+    align-self: center;
+    margin: 0;
   }
 }
 
