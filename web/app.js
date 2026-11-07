@@ -302,7 +302,7 @@ route("/bracketing", () => publicBracketPages.publicBracketPage(), "Bracketing",
 const myGamesPages = createMyGamesPages({ api });
 route("/games", () => myGamesPages.myGamesPage(), "My Games", "signedIn");
 
-const bracketPages = createBracketPages({ api });
+const bracketPages = createBracketPages({ api, client });
 route("/bracket", () => bracketPages.bracketPage(), "Bracket", "signedIn");
 
 const scoringPages = createScoringPages({

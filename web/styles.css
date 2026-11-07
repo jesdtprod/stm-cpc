@@ -1669,8 +1669,19 @@ textarea.input {
 }
 
 /* Badges */
+.tab-btn {
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+.tab-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
 .badge {
   display: inline-flex;
+  box-sizing: border-box;
   align-items: center;
   justify-content: center;
   text-align: center;
@@ -1699,10 +1710,11 @@ textarea.input {
   flex-shrink: 0;
 }
 .badge > .badge-label {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
   line-height: 1;
-  /* Center the visible letters, excluding the font's extra ascent/descent. */
-  text-box: trim-both cap alphabetic;
+  text-box: normal;
 }
 .tab-btn .badge::before,
 .nav-link-badge::before,
@@ -2212,8 +2224,9 @@ textarea.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 36px;
-  height: 36px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  cursor: default;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-2);

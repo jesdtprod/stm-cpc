@@ -120,6 +120,10 @@ export function button(
     },
     ...children,
   );
+  if (typeof label === "string" && /^refresh list$/i.test(label.trim())) {
+    btn.classList.add("mobile-refresh-list");
+    btn.refreshPage = () => onClick?.(new Event("click"));
+  }
   return btn;
 }
 
@@ -3443,7 +3447,7 @@ export function pagination(
     : [1, null, current, null, pages];
   for (const p of links) {
     if (p == null) {
-      nav.append(h("span", { class: "pager-ellipsis", "aria-hidden": "true" }, "…"));
+      nav.append(h("span", { class: "btn btn-icon pager-ellipsis", "aria-hidden": "true" }, "…"));
       continue;
     }
     nav.append(

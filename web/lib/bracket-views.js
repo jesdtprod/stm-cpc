@@ -74,10 +74,9 @@ export function createBracketViews({ getMatches, getDivisionName = () => null, g
 
   /** Round 1 of a split bracket: a pair card with the two sides facing each other. */
   function pairCard(m) {
-    const toneClass = m.match_no ? ` match-tone-${((m.match_no - 1) % 8) + 1}` : "";
     return clickable(h(
       "article",
-      { class: `bt-pair${toneClass}${done(m) ? " is-complete" : ""}` },
+      { class: `bt-pair${done(m) ? " is-complete" : ""}` },
       h(
         "div",
         { class: "bt-index", "aria-label": `Match ${m.round_no}.${m.match_no}` },
@@ -363,4 +362,220 @@ export function createBracketViews({ getMatches, getDivisionName = () => null, g
 
 
   return { done, slot, pairCard, treeMatch, bracketTree, splitView };
+}
+
+export function bracketTreeSkeleton(_title = "Bracket", tone = "gold") {
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const connectorSvg = (single) => {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 36 100");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("class", "bt-svg");
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", single ? "M 0 50 H 36" : "M 0 25 H 18 V 75 H 0 M 18 50 H 36");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    svg.append(path);
+    return svg;
+  };
+  const connectorCol = (cells, single) =>
+    h(
+      "div",
+      { class: "bt-connector", "aria-hidden": "true" },
+      h("div", { class: "bt-spacer" }),
+      h(
+        "div",
+        { class: "bt-connector-body" },
+        ...Array.from({ length: cells }, () => h("div", { class: "bt-connector-cell" }, connectorSvg(single))),
+      ),
+    );
+  const nodeSk = (i) =>
+    h(
+      "article",
+      { class: "bt-node is-skeleton", "aria-hidden": "true" },
+      h(
+        "div",
+        { class: "bt-node-head" },
+        h("span", { class: "sk bt-sk-node-code" }),
+        h("span", { class: "sk sk-pill bt-sk-node-status" }),
+      ),
+      h(
+        "div",
+        { class: "bt-slot" },
+        h("span", { class: `sk ${i % 2 ? "w-50" : "w-70"}` }),
+      ),
+      h(
+        "div",
+        { class: "bt-slot" },
+        h("span", { class: `sk ${i % 2 ? "w-70" : "w-50"}` }),
+      ),
+    );
+
+  return h(
+    "section",
+    { class: `bt-panel bt-${tone} is-skeleton`, "aria-hidden": "true" },
+    h(
+      "div",
+      { class: "bt-panel-head" },
+      h(
+        "div",
+        { class: "bt-panel-title" },
+        h("span", { class: "bt-panel-icon" }, icon(tone === "low" ? "medal" : "trophy")),
+        h("span", { class: "sk bt-sk-panel-title" }),
+      ),
+      h(
+        "div",
+        { class: "bt-tags" },
+        h("span", { class: "sk sk-pill bt-sk-tag" }),
+        h("span", { class: "sk sk-pill bt-sk-tag-lg" }),
+      ),
+    ),
+    h(
+      "div",
+      { class: "bt-scroller" },
+      h(
+        "div",
+        { class: "bt-tree" },
+        h(
+          "div",
+          { class: "bt-round bt-round-quarterfinal" },
+          h("div", { class: "bt-round-head" }, h("span", { class: "sk sk-pill bt-sk-round-pill" })),
+          h("div", { class: "bt-round-matches" }, nodeSk(0), nodeSk(1), nodeSk(2), nodeSk(3)),
+        ),
+        connectorCol(2, false),
+        h(
+          "div",
+          { class: "bt-round bt-round-semifinal" },
+          h("div", { class: "bt-round-head" }, h("span", { class: "sk sk-pill bt-sk-round-pill" })),
+          h("div", { class: "bt-round-matches" }, nodeSk(4), nodeSk(5)),
+        ),
+        connectorCol(1, false),
+        h(
+          "div",
+          { class: "bt-round bt-round-final" },
+          h("div", { class: "bt-round-head" }, h("span", { class: "sk sk-pill bt-sk-round-pill" })),
+          h("div", { class: "bt-round-matches" }, nodeSk(6)),
+        ),
+        connectorCol(1, true),
+        h(
+          "div",
+          { class: "bt-round bt-round-champion" },
+          h("div", { class: "bt-round-head" }, h("span", { class: "sk sk-pill bt-sk-round-pill" })),
+          h(
+            "div",
+            { class: "bt-round-matches" },
+            h(
+              "div",
+              { class: "bt-champion is-skeleton" },
+              h("span", { class: "bt-champion-medal" }, icon("trophy")),
+              h("span", { class: "sk sk-sub bt-sk-champ-kicker" }),
+              h("span", { class: "sk bt-sk-champ-title" }),
+              h("span", { class: "sk sk-sub bt-sk-champ-sub" }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+export function splitBracketSkeleton() {
+  const pairSk = (i) =>
+    h(
+      "article",
+      { class: "bt-pair is-skeleton", "aria-hidden": "true" },
+      h("div", { class: "bt-index" }, h("span", { class: "sk bt-sk-pair-idx" })),
+      h(
+        "div",
+        { class: "bt-slot is-detailed" },
+        h("div", { class: "bt-slot-top" }, h("span", { class: `sk ${i % 2 ? "w-50" : "w-70"}` })),
+        h("span", { class: "sk sk-sub w-50" }),
+      ),
+      h("span", { class: "bt-vs", "aria-hidden": "true" }, "VS"),
+      h(
+        "div",
+        { class: "bt-slot is-detailed" },
+        h("div", { class: "bt-slot-top" }, h("span", { class: `sk ${i % 2 ? "w-70" : "w-50"}` })),
+        h("span", { class: "sk sk-sub w-50" }),
+      ),
+    );
+
+  return h(
+    "div",
+    { class: "bt-layout is-skeleton", "aria-busy": "true", "aria-label": "Loading bracket matches" },
+    h(
+      "div",
+      { class: "bt-left-col", "aria-hidden": "true" },
+      h(
+        "aside",
+        { class: "bt-initial" },
+        h(
+          "div",
+          { class: "bt-initial-head" },
+          h(
+            "div",
+            { class: "bt-initial-head-top" },
+            h(
+              "div",
+              { class: "bt-initial-badges" },
+              h("span", { class: "bt-initial-icon" }, icon("layers")),
+              h("span", { class: "sk sk-pill bt-sk-tag" }),
+            ),
+            h("span", { class: "sk sk-pill bt-sk-tag" }),
+          ),
+          h("span", { class: "sk bt-sk-initial-title" }),
+          h(
+            "div",
+            { class: "bt-initial-chips" },
+            h(
+              "div",
+              { class: "bt-initial-chip" },
+              h("span", { class: "bt-initial-chip-icon" }, icon("users")),
+              h(
+                "div",
+                { class: "bt-initial-chip-text bt-sk-chip-text" },
+                h("span", { class: "sk w-70" }),
+                h("span", { class: "sk sk-sub w-50" }),
+              ),
+            ),
+            h(
+              "div",
+              { class: "bt-initial-chip" },
+              h("span", { class: "bt-initial-chip-icon" }, icon("grid")),
+              h(
+                "div",
+                { class: "bt-initial-chip-text bt-sk-chip-text" },
+                h("span", { class: "sk w-70" }),
+                h("span", { class: "sk sk-sub w-50" }),
+              ),
+            ),
+          ),
+        ),
+        h("div", { class: "bt-pairs" }, ...Array.from({ length: 6 }, (_, i) => pairSk(i))),
+        h(
+          "div",
+          { class: "bt-advance" },
+          h(
+            "div",
+            { class: "bt-advance-box is-h bt-sk-advance-box" },
+            h("span", { class: "sk sk-sub w-50" }),
+            h("span", { class: "sk w-70" }),
+          ),
+          h(
+            "div",
+            { class: "bt-advance-box is-l bt-sk-advance-box" },
+            h("span", { class: "sk sk-sub w-50" }),
+            h("span", { class: "sk w-70" }),
+          ),
+        ),
+      ),
+    ),
+    h(
+      "div",
+      { class: "bt-brackets", "aria-hidden": "true" },
+      bracketTreeSkeleton("H Bracket", "high"),
+      bracketTreeSkeleton("L Bracket", "low"),
+    ),
+  );
 }

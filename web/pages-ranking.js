@@ -7,7 +7,6 @@ import {
   adminHero,
   attachPagePattern,
   badge,
-  button,
   dataTable,
   h,
   icon,
@@ -15,6 +14,7 @@ import {
   openModal,
 } from "./ui.js";
 import { rememberView } from "./lib/view-memory.js";
+import { enableTilt } from "./lib/tilt.js";
 import { can } from "./lib/permissions.js";
 import { formatDateTime } from "./lib/dates.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
@@ -51,26 +51,28 @@ export function createRankingPages({ api, client, session }) {
             label: "Rank Change",
             minWidth: 360,
             render: (r) => {
-              const flow = r.from_name && r.from_name !== r.to_name
+              const fromName = r.from_name ? splitRankLabel(r.from_name).name : null;
+              const toName = r.to_name ? splitRankLabel(r.to_name).name : null;
+              const flow = fromName && fromName !== toName
                 ? h(
                   "span",
                   { class: "rank-change-flow" },
-                  badge(r.from_name, "neutral"),
+                  badge(fromName, "neutral"),
                   h("span", { class: "rank-change-arrow", "aria-hidden": "true" }, "→"),
-                  badge(r.to_name, "success"),
+                  badge(toName, "success"),
                 )
-                : r.from_name === r.to_name
+                : fromName && fromName === toName
                 ? h(
                   "span",
                   { class: "rank-change-flow" },
-                  badge(r.to_name, "neutral"),
+                  badge(toName, "neutral"),
                   h("span", { class: "sub rank-change-sub" }, "(no change)"),
                 )
                 : h(
                   "span",
                   { class: "rank-change-flow" },
                   h("span", { class: "rank-change-prefix" }, "Set to"),
-                  badge(r.to_name ?? "Unranked", "success"),
+                  badge(toName ?? "Unranked", "success"),
                 );
               const statusBadge = r.is_reversal
                 ? badge("Reversal", "warning")
@@ -172,6 +174,7 @@ export function createRankingPages({ api, client, session }) {
     );
 
     const tableHost = h("div", { class: "table-host" });
+    enableTilt(tableHost, ".tbl-row:has(.ranking-player-identity)");
     const directoryCard = h(
       "div",
       { class: "member-directory-card ranking-directory-card" },
@@ -463,6 +466,8 @@ export function createRankingPages({ api, client, session }) {
     }
 
     const isAdmin = can("members.read");
+    const refreshLists = () => Promise.all([load(), loadMine(), loadPoints()]);
+    page.refreshPage = refreshLists;
     const hero = adminHero({
       title: "Club Ranking",
       chip: "Ratings & Ranking",
@@ -470,18 +475,6 @@ export function createRankingPages({ api, client, session }) {
       description: isAdmin
         ? "Every player by Singles and Doubles rating, highest first, and how ratings and ranks have changed."
         : "Your Singles and Doubles ratings, current rank and how they have changed.",
-      actions: [
-        button({
-          label: "Refresh List",
-          icon: "refresh",
-          variant: "secondary",
-          onClick: () => {
-            load();
-            loadMine();
-            loadPoints();
-          },
-        }),
-      ],
     });
 
     page.append(

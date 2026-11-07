@@ -81,6 +81,20 @@ export function formatDate(instant) {
   return shortDate.format(new Date(instant));
 }
 
+/** Compact inclusive event dates, interpreted in Manila. */
+export function formatEventDates(from, to = from) {
+  const start = `${from}T00:00:00+08:00`;
+  if (!to || to === from) return formatDate(start);
+  const end = `${to}T00:00:00+08:00`;
+  const parts = (value) => Object.fromEntries(shortDate.formatToParts(new Date(value))
+    .filter((p) => p.type !== "literal").map((p) => [p.type, p.value]));
+  const a = parts(start);
+  const b = parts(end);
+  if (a.year !== b.year) return `${formatDate(start)}–${formatDate(end)}`;
+  if (a.month !== b.month) return `${a.month} ${a.day}–${b.month} ${b.day}, ${a.year}`;
+  return `${a.month} ${a.day}–${b.day}, ${a.year}`;
+}
+
 export function formatDateTime(instant) {
   return dateTime.format(new Date(instant));
 }

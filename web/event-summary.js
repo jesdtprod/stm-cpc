@@ -51,6 +51,7 @@ export function eventSummary(event) {
           { class: "public-card-title-copy" },
           h("span", { class: "eyebrow" }, "Club Event"),
           h("h2", { class: "public-card-title" }, event.name),
+          h("span", { class: "sub public-event-venue" }, event.location || "To Be Announced"),
         ),
       ),
       h(
@@ -68,12 +69,13 @@ export function eventSummary(event) {
       { class: "public-event-meta" },
       detail(
         "Schedule",
-        event.starts_on === event.ends_on
+        h("span", {}, event.starts_on === event.ends_on
           ? day(event.starts_on)
           : `${day(event.starts_on)} – ${day(event.ends_on)}`,
+          h("span", { class: "sub" }, `Registration: ${window}`)),
         "calendar",
+        "public-meta-schedule public-meta-span2",
       ),
-      detail("Registration Window", window, "clock", "public-meta-span2"),
       detail(
         "Entry Fee",
         Number(event.fee) > 0 ? formatMoney(event.fee) : "Free",
@@ -82,21 +84,11 @@ export function eventSummary(event) {
       ),
       detail(
         "Divisions",
-        `${count} ${count === 1 ? "Division" : "Divisions"}`,
-        "layers",
-      ),
-      detail(
-        "Format Template",
-        formatTemplateLabel(
+        h("span", {}, `${count} ${count === 1 ? "Division" : "Divisions"}`,
+          h("span", { class: "sub" }, formatTemplateLabel(
           event.default_format_template_name || "Standard Format",
-        ),
-        "copy",
-      ),
-      detail(
-        "Venue",
-        event.location || "To Be Announced",
-        "grid",
-        "public-meta-span2",
+        ))),
+        "layers",
       ),
     ),
   ];
@@ -123,7 +115,7 @@ function bracketLink(info) {
     h("span", { class: "public-roster-index public-roster-bracket-arrow", "aria-hidden": "true" }, icon("chevr")),
   ];
   return open
-    ? h("a", { class: "btn btn-secondary public-roster-bracket", href: `#/bracketing?division=${encodeURIComponent(info.divisionId)}&tab=matches` }, ...body)
+    ? h("a", { class: "btn btn-secondary public-roster-bracket", href: `#/bracketing?division=${encodeURIComponent(info.divisionId)}&tab=${info.finished ? "standings" : "matches"}` }, ...body)
     : h("span", { class: "btn btn-secondary public-roster-bracket is-disabled", role: "link", "aria-disabled": "true" }, ...body);
 }
 
@@ -329,10 +321,10 @@ export function eventSummarySkeleton() {
     h(
       "dl",
       { class: "public-event-meta" },
-      ...Array.from({ length: 6 }, (_, i) =>
+      ...Array.from({ length: 3 }, (_, i) =>
         h(
           "div",
-          { class: i === 1 || i === 5 ? "public-meta-span2" : "" },
+          { class: i === 0 ? "public-meta-span2" : "" },
           h("dt", {}, sk("w-40 sk-sub")),
           h("dd", {}, sk("w-70")),
         )),

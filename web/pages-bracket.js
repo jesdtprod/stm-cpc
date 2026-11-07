@@ -18,8 +18,16 @@ import {
   toast,
 } from "./ui.js";
 import { can } from "./lib/permissions.js";
-import { createBracketViews, MATCH_STATUS, roundName } from "./lib/bracket-views.js";
+import {
+  bracketTreeSkeleton,
+  createBracketViews,
+  MATCH_STATUS,
+  roundName,
+  splitBracketSkeleton,
+} from "./lib/bracket-views.js";
 import { finishedGamesError } from "./lib/score-validation.js";
+import { createFinalResultsView, finalResultsSkeleton } from "./lib/final-results.js";
+import { signedAvatarUrls } from "./lib/avatar.js";
 
 const STAGE_LABEL = {
   round_robin: "Round Robin",
@@ -44,7 +52,7 @@ function messageOf(e, fallback) {
   return own || e?.message || fallback;
 }
 
-export function createBracketPages({ api }) {
+export function createBracketPages({ api, client }) {
   function bracketPage() {
     const divisionId = new URLSearchParams(location.hash.split("?")[1] ?? "")
       .get("division");
@@ -58,12 +66,35 @@ export function createBracketPages({ api }) {
       matches: [],
       results: [],
       playersByTeam: new Map(),
+      teamPhotos: new Map(),
+      playerPhotos: new Map(),
       detail: "loading",
       scoringRules: null,
     };
 
     const stage = () =>
       state.division?.stages?.find((s) => s.id === state.stageId);
+
+    const finalResultsView = createFinalResultsView({
+      playersFor: (teamName, playersStr) => {
+        if (teamName) {
+          const found = state.teamPhotos.get(String(teamName).trim().toUpperCase());
+          if (found && found.length) return found;
+        }
+        if (playersStr) {
+          const found = state.teamPhotos.get(String(playersStr).trim().toUpperCase());
+          if (found && found.length) return found;
+          const names = playersStr.split(/\s*(?:&|,)\s*/).map((s) => s.trim()).filter(Boolean);
+          if (names.length) {
+            return names.map((name) => ({
+              name,
+              photo: state.playerPhotos.get(name.toUpperCase()) ?? null,
+            }));
+          }
+        }
+        return (playersStr || teamName || "?").split(/\s*&\s*/).map((name) => ({ name, photo: null }));
+      },
+    });
 
     async function load() {
       if (!divisionId) {
@@ -89,12 +120,6 @@ export function createBracketPages({ api }) {
           ["drawn", "in_progress"].includes(s.status)
         ) ?? division.stages[0])?.id;
         state.status = "ready";
-        draw();
-        if (division.status === "finalized") {
-          state.results = await api.rpc("division_results_view", {
-            p_division_id: division.id,
-          }) ?? [];
-        }
         await loadStage();
       } catch {
         state.status = "error";
@@ -107,23 +132,50 @@ export function createBracketPages({ api }) {
       state.detail = state.matches.length ? "refreshing" : "loading";
       draw();
       try {
-        const [standings, matches, rosters] = await Promise.all([
+        const isFinalized = state.division?.status === "finalized";
+        const [standings, matches, rosters, results] = await Promise.all([
           api.rpc("stage_standings", { p_stage_id: state.stageId }),
           api.rpc("stage_matches", { p_stage_id: state.stageId }),
           Promise.resolve(api.rpc("public_event_rosters")).catch(() => []),
+          isFinalized
+            ? Promise.resolve(api.rpc("division_results_view", { p_division_id: state.division.id })).catch(() => [])
+            : Promise.resolve([]),
         ]);
         state.standings = standings ?? [];
         state.matches = matches ?? [];
+        if (isFinalized) state.results = results ?? [];
         const playersByTeam = new Map();
-        for (const r of rosters ?? []) {
-          if (r.division_id && state.division?.id && r.division_id !== state.division.id) continue;
+        let divRosters = (rosters ?? []).filter(
+          (r) => !state.division?.id || !r.division_id || r.division_id === state.division.id,
+        );
+        if (!divRosters.length && (rosters ?? []).length) divRosters = rosters;
+        const photoPaths = divRosters.flatMap((r) => [r.p1_path, r.p2_path]).filter(Boolean);
+        const photoUrls = client ? await signedAvatarUrls(client, photoPaths) : new Map();
+        const teamPhotos = new Map();
+        const playerPhotos = new Map();
+        for (const r of divRosters) {
           const teamKey = String(r.team_name ?? "").trim().toUpperCase();
           const players = [r.p1_name, r.p2_name].filter(Boolean).join(" & ");
+          const pair = [];
+          if (r.p1_name) {
+            const photo = photoUrls.get(r.p1_path) ?? null;
+            pair.push({ name: r.p1_name, photo });
+            playerPhotos.set(String(r.p1_name).trim().toUpperCase(), photo);
+          }
+          if (r.p2_name) {
+            const photo = photoUrls.get(r.p2_path) ?? null;
+            pair.push({ name: r.p2_name, photo });
+            playerPhotos.set(String(r.p2_name).trim().toUpperCase(), photo);
+          }
+          if (teamKey) teamPhotos.set(teamKey, pair);
+          if (players) teamPhotos.set(players.toUpperCase(), pair);
           if (teamKey && players && players.toUpperCase() !== teamKey) {
             playersByTeam.set(teamKey, players);
           }
         }
         state.playersByTeam = playersByTeam;
+        state.teamPhotos = teamPhotos;
+        state.playerPhotos = playerPhotos;
         state.detail = "ready";
       } catch {
         state.detail = "error";
@@ -804,6 +856,14 @@ export function createBracketPages({ api }) {
         ],
       };
       if (!state.matches.length) {
+        if (state.detail === "loading") {
+          if (stage()?.stage_type === "split_single_elimination") {
+            return splitBracketSkeleton();
+          }
+          if (stage()?.stage_type === "single_elimination") {
+            return h("div", { class: "bt-stack" }, bracketTreeSkeleton("Bracket", "gold"));
+          }
+        }
         return dataTable({
           searchState: state,
           schema,
@@ -1117,6 +1177,42 @@ export function createBracketPages({ api }) {
       });
     }
 
+    function toolbarSkeleton() {
+      return h(
+        "div",
+        { class: "bt-toolbar-card is-skeleton", "aria-hidden": "true" },
+        h(
+          "div",
+          { class: "bt-toolbar-left" },
+          h(
+            "div",
+            { class: "actions bt-toolbar-actions" },
+            h("span", { class: "sk sk-pill bt-sk-back-btn" }),
+          ),
+          h("span", { class: "bt-toolbar-divider" }),
+          h(
+            "div",
+            { class: "bt-toolbar-identity" },
+            h("span", { class: "bt-toolbar-icon" }, icon("trophy")),
+            h(
+              "div",
+              { class: "bt-toolbar-titles bt-sk-toolbar-titles" },
+              h("span", { class: "sk sk-sub bt-sk-toolbar-event" }),
+              h("span", { class: "sk bt-sk-toolbar-division" }),
+            ),
+          ),
+        ),
+        h(
+          "div",
+          { class: "bt-toolbar-pills" },
+          h("span", { class: "sk sk-pill bt-sk-tag" }),
+          h("span", { class: "sk sk-pill bt-sk-tag" }),
+          h("span", { class: "sk sk-pill bt-sk-tag-lg" }),
+          h("span", { class: "sk sk-pill bt-sk-tag" }),
+        ),
+      );
+    }
+
     function draw() {
       if (state.status === "error") {
         body.replaceChildren(
@@ -1135,20 +1231,19 @@ export function createBracketPages({ api }) {
       }
       if (state.status === "loading" || !state.division) {
         body.replaceChildren(
-          dataTable({
-            searchState: state,
-            schema: {
-              columns: [{ key: "n", label: "Bracket", render: () => "" }],
-            },
-            rows: [],
-            state: "loading",
-            ariaLabel: "Bracket",
-          }),
+          h(
+            "div",
+            { class: "stack", "aria-busy": "true", "aria-label": "Loading bracket" },
+            toolbarSkeleton(),
+            splitBracketSkeleton(),
+          ),
         );
         return;
       }
       const d = state.division;
       const s = stage();
+      const isFinalized = d.status === "finalized";
+      const isSplit = s?.stage_type === "split_single_elimination";
       const stageTabs = d.stages.length > 1
         ? tabs({
           activeId: state.stageId,
@@ -1175,14 +1270,14 @@ export function createBracketPages({ api }) {
             { class: "bt-toolbar-card" },
             h(
               "div",
-              { class: "bt-toolbar-top" },
+              { class: "bt-toolbar-left" },
               h(
                 "div",
                 { class: "actions bt-toolbar-actions" },
                 button({
                   label: "Back",
                   icon: "chevl",
-                  onClick: () => history.back(),
+                  onClick: () => { location.hash = "#/admin/events"; },
                 }),
                 showUndraw()
                   ? button({
@@ -1209,27 +1304,50 @@ export function createBracketPages({ api }) {
                   })
                   : null,
               ),
+              h("span", { class: "bt-toolbar-divider", "aria-hidden": "true" }),
               h(
                 "div",
-                { class: "bt-toolbar-pills" },
-                d.category?.name ? badge(d.category.name, "info") : null,
-                badge(d.format === "doubles" ? "Doubles" : "Singles", "neutral"),
-                s ? badge(STAGE_LABEL[s.stage_type] ?? s.stage_type, "warning") : null,
-                s ? badge(STAGE_STATUS[s.status] ?? s.status, s.status === "completed" ? "success" : "info") : null,
+                { class: "bt-toolbar-identity" },
+                h("span", { class: "bt-toolbar-icon", "aria-hidden": "true" }, icon("trophy")),
+                h(
+                  "div",
+                  { class: "bt-toolbar-titles" },
+                  d.event?.name
+                    ? h("span", { class: "bt-toolbar-event" }, d.event.name)
+                    : null,
+                  h("strong", { class: "bt-toolbar-division" }, d.name ?? "Division"),
+                ),
               ),
             ),
             h(
-              "p",
-              { class: "muted bt-toolbar-meta" },
-              [
-                d.event?.name,
-                d.category?.name,
-                d.format === "doubles" ? "Doubles" : "Singles",
-                s ? STAGE_LABEL[s.stage_type] : null,
-                s ? STAGE_STATUS[s.status] : null,
-              ].filter(Boolean).join(" · "),
+              "div",
+              { class: "bt-toolbar-pills" },
+              d.category?.name ? badge(d.category.name, "info") : null,
+              badge(d.format === "doubles" ? "Doubles" : "Singles", "neutral"),
+              s ? badge(STAGE_LABEL[s.stage_type] ?? s.stage_type, "warning") : null,
+              s
+                ? badge(
+                  d.status === "finalized" ? "Finalized" : (STAGE_STATUS[s.status] ?? s.status),
+                  d.status === "finalized" || s.status === "completed" ? "success" : "info",
+                )
+                : null,
             ),
           ),
+          isFinalized
+            ? (state.detail === "loading"
+              ? finalResultsSkeleton({ split: isSplit })
+              : state.results.length
+              ? finalResultsView({
+                placements: state.results.map((r) => ({
+                  place: r.placement,
+                  name: r.entry_name,
+                  tier: r.bracket_tier,
+                  result: r.bracket_result,
+                  players: state.playersByTeam.get(String(r.entry_name ?? "").trim().toUpperCase()),
+                })),
+              }, { showLeagues: false })
+              : null)
+            : null,
           stageTabs,
           s?.stage_type === "single_elimination" ? championLine() : null,
           s?.stage_type === "single_elimination" ||
@@ -1240,12 +1358,6 @@ export function createBracketPages({ api }) {
             s?.stage_type === "split_single_elimination"
             ? null
             : standingsView(),
-          h(
-            "h2",
-            { class: "bt-section-heading" },
-            icon("layers"),
-            s?.stage_type === "single_elimination" ? "Bracket" : "Matches",
-          ),
           matchesView(),
         ),
       );

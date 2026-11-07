@@ -1,5 +1,6 @@
 // Hash router with access rules. Routes map "#/path" to a render function returning a Node.
 // Stale renders never overwrite a newer navigation. Access rules are in lib/permissions.js.
+import { enablePullRefresh } from "./lib/pull-refresh.js";
 const routes = new Map();
 let token = 0;
 
@@ -44,6 +45,13 @@ export function start(main, { onChange, notFound, forbidden, check }) {
     const node = await entry.render();
     if (mine !== token) return;
     main.replaceChildren(node);
+    enablePullRefresh(node, async () => {
+      if (mine !== token) return;
+      const refreshButton = node.querySelector(".mobile-refresh-list");
+      if (node.refreshPage) await node.refreshPage();
+      else if (refreshButton?.refreshPage) await refreshButton.refreshPage();
+      else await run();
+    });
     main.setAttribute("aria-busy", "false");
     document.title = `${entry.title} · Capitol Pickleball Club`;
     onChange?.(path);

@@ -190,6 +190,60 @@ v344. Awaiting user visual review.
 | [x] 7.4 | Single elimination stage (byes, rounds) and page | Correct for power-of-two and other sizes | *Verified: migration 1470 adds the standard bracket order, the layout for any entry count and the single elimination generator (built by the draw, rebuilt after a redo, each winner feeding the next round). Database tests 36/36: sizes 2 to 33 give n-1 matches, ceil(log2 n) rounds, one final and every seed placed once with the byes going to the best seeds; eight players give 4/2/1 matches paired 1v8, 4v5, 2v7, 3v6; five players give 4 matches (one first-round match, three byes); a redo rebuilds the bracket; played through, winners move on round by round and the final completes the stage with the strongest player champion (eight and five players). The bracket page names the rounds and shows the champion; the third-place game is not built yet; not yet checked live in a browser.*
 | [x] 7.5 | **Regular (Bracketing):** pool play with dynamic bracket count, crossover knockout | 20 entrants in 4 brackets: 40 pool games, quarterfinals A1 v D1, A2 v D2, B1 v C1, B2 v C2 | *Verified: migration 1480 adds pool play (brackets A, B, C ... by a set count or a target size, round robin in each), set_stage_config, the crossover knockout built when the pools finish (club rule: brackets paired outside in, same finish v same finish, standard tree; any other count falls back to a seeded bracket with byes and says so) and stage_matches with the A1 / D1 labels. Database tests 49/49: 20 entries make 4 brackets of 5 with 40 pool games; the knockout waits for the pools, then has 7 matches with quarterfinals A1 v D1, A2 v D2, B1 v C1, B2 v C2 and the right semifinal pairing; 47 games in all; 6 entries (2 brackets) give A1 v B1, A2 v B2; 9 entries (3 brackets) use the flagged seeded fallback; settings are validated and locked after the draw. Bracket page shows a table and match list per bracket; division settings window added; not yet checked live in a browser. Not built: the admin confirmation of a proposed crossover for odd bracket counts, and the optional third-place game.*
 | [ ] 7.6 | **Split single elimination** (H and L brackets) | 16 entrants: 8 Round 1 games, 7 games in each bracket, two champions |
+
+Requested Round 1 color simplification: match rows and number badges use the shared
+gold accent instead of cycling through eight colors. Winner/loss cards and H/L
+pathway cards retain their existing styling. Awaiting user visual verification.
+
+Requested placement redesign: removed the Final Placements heading and team count;
+champion cards share a subdued gold treatment, other placements use neutral badges,
+and card columns/rows use consistent 16px/12px spacing. Lint and diff checks pass;
+awaiting visual verification on mobile and desktop.
+
+Placement avatar spacing correction: removed the duplicate negative left margin
+on reversed avatar stacks so the 12px badge-to-photos gap stays intact while
+avatars overlap by 12px. Awaiting user visual verification.
+
+Finalized admin Standings and Matches now shows champion cards and final placement
+lists above the stage tabs and match sections, using authenticated division results.
+The layout is shared with the public results renderer; public placement behavior
+is retained. Awaiting user verification on a finalized admin division.
+
+H bracket round headings now match the red H header; round match accents share
+the red palette. Win/loss cards retain their existing styling. Awaiting visual review.
+
+Removed the redundant Matches/Bracket section heading above the admin match view.
+Lint and diff checks pass; awaiting visual review.
+
+L bracket round headings now match its blue header, with consistent blue match
+accents and existing win/loss styling retained. Awaiting visual review.
+
+H/L round labels now use a darker green background gradient with their red/blue
+text and borders retained. Awaiting visual review.
+
+Corrected the more specific non-early-round pill rule that was overriding the
+dark green gradient. Diff and lint checks pass; awaiting visual review.
+
+Round labels now match the requested dark green summary-card palette with shared
+gold text and subtle gold borders in both H/L brackets. Awaiting visual review.
+
+H/L round labels use an 8px corner radius for a rounded rectangle shape.
+Diff and lint checks pass; awaiting visual review.
+
+Admin bracket Back now navigates directly to Events (which restores the viewed
+event), instead of relying on browser history. Awaiting navigation verification.
+
+Redesigned H/L round labels as full-column rounded header bars with left-aligned
+type, consistent padding and a small vertical gold accent. Existing connector
+geometry is preserved. Lint and diff checks pass; awaiting visual review.
+
+Restored the previous admin bracket toolbar layout and styling at user request;
+the direct Back navigation fix is retained. Awaiting visual review.
+
+Restored the previous member event registration cards at user request.
+
+Event summary links now open Standings for View Final Results and Matches for
+View Bracketing. Uses the existing explicit tab parameter. Awaiting click verification.
 | [ ] 7.7 | Multi-stage pipelines and best-of-N playoffs | A configured multi-stage format runs end to end |
 | [ ] 7.8 | Bracketing page for each type, mobile layouts, division finalization | Pages verified at mobile, tablet, desktop |
 
@@ -277,6 +331,11 @@ Requested directory update (1770): public Members shares the staff Members name 
 | [ ] 10.7 | Go live; monitor auth failures, function errors, and the audit log for the first weeks | No critical findings |
 
 ---
+
+Mobile pull-to-refresh now uses the Club Ranking icon gesture across routed pages.
+Existing Refresh List actions are reused and their buttons hidden on mobile;
+other pages reload their current view. Open dialogs and edited forms block the
+gesture. Shared helper lint and 277 unit tests pass; awaiting device verification.
 
 ## Definition of done for any step
 

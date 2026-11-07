@@ -1379,7 +1379,8 @@ Deno.test("ranking page redesign: renders executive hero, directory card, segmen
     assert(hero, "Must render executive admin hero");
     assert(hero.classList.contains ? hero.classList.contains("is-admin") : hero.className.includes("is-admin"), "Hero is admin styled");
     assert(hero.textContent.includes("Ratings & Ranking"), "Hero chip for ranking");
-    assert(hero.textContent.includes("Refresh List"), "Hero refresh action");
+    assert(!hero.textContent.includes("Refresh List"), "Ranking uses pull refresh instead of a hero button");
+    assert(typeof page.refreshPage === "function", "Ranking exposes its data refresh action to the shared gesture");
 
     // Directory card wrapper
     assert(page.querySelector(".ranking-directory-card"), "Table wrapped in directory card");

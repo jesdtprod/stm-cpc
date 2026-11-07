@@ -1,4 +1,14 @@
 /* Shared flat button design. Use .btn with one semantic variant. */
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"] {
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:focus:not(:focus-visible) {
+  outline: none;
+}
 .btn {
   display: inline-flex;
   align-items: center;
@@ -181,7 +191,7 @@
 }
 .btn:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: -3px;
 }
 .btn:disabled,
 .btn[aria-disabled="true"],

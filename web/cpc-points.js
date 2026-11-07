@@ -139,7 +139,15 @@ export function pointsHistoryTable(rows, state, onRetry, filter, searchable = fa
                 badge(formatPoints(r.points_after), r.is_reversal ? "warning" : "success"),
                 r.points_delta == null
                   ? null
-                  : h("span", { class: "sub rank-change-sub" }, signed(Number(r.points_delta))),
+                  : h(
+                    "span",
+                    {
+                      class: `sub rank-change-sub rank-change-delta ${
+                        Number(r.points_delta) >= 0 ? "is-positive" : "is-negative"
+                      }`,
+                    },
+                    signed(Number(r.points_delta)),
+                  ),
               ),
               status,
             );

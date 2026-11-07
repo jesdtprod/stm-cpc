@@ -3,7 +3,6 @@
 // result, and (when the division is rated) how much the match moved their rating. Nothing here changes any data.
 import {
   attachPagePattern,
-  badge,
   emptyState,
   h,
   icon,
@@ -45,7 +44,14 @@ export function createMyGamesPages({ api }) {
       state.status = state.rows.length ? "refreshing" : "loading";
       draw();
       try {
-        state.rows = (await api.rpc("my_games")) ?? [];
+        state.rows = ((await api.rpc("my_games")) ?? []).sort((a, b) => {
+          const time = (r) => {
+            const value = Date.parse(r.played_at ?? "");
+            return Number.isFinite(value) ? value : -Infinity;
+          };
+          const newest = time(b) - time(a);
+          return newest || String(b.match_id ?? "").localeCompare(String(a.match_id ?? ""));
+        });
         state.status = "ready";
       } catch {
         state.status = "error";
@@ -62,7 +68,6 @@ export function createMyGamesPages({ api }) {
       tone = "",
       iconName = "layers",
       progress = null,
-      formDots = null,
     }) {
       return h(
         "div",
@@ -86,15 +91,6 @@ export function createMyGamesPages({ api }) {
             "div",
             { class: "my-games-stat-meter", "aria-hidden": "true" },
             h("div", { class: "my-games-stat-bar", style: `width: ${Math.max(0, Math.min(100, progress))}%` }),
-          )
-          : null,
-        formDots && formDots.length
-          ? h(
-            "div",
-            { class: "my-games-stat-form", "aria-hidden": "true" },
-            ...formDots.map((f) =>
-              h("span", { class: `my-games-form-dot is-${f.toLowerCase()}` }, f)
-            ),
           )
           : null,
         subtext ? h("div", { class: "my-games-stat-footer" }, subtext) : null,
@@ -224,8 +220,6 @@ export function createMyGamesPages({ api }) {
       const hasRating = state.rows.some((r) => r.rating_change != null);
       const avgChange = done.length ? total / done.length : 0;
 
-      // Recent form: up to 5 most recent finished matches
-      const formDots = done.slice(0, 5).map((r) => (r.result === "win" ? "W" : "L"));
 
       // Streak calculation
       let streak = 0;
@@ -276,7 +270,6 @@ export function createMyGamesPages({ api }) {
               subtext: `${wins} Won · ${losses} Lost`,
               tone: "record",
               iconName: "medal",
-              formDots: formDots,
             }),
             statCard({
               label: "Win Rate",

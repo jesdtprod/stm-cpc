@@ -20,7 +20,7 @@ import {
   toast,
 } from "./ui.js";
 import { rememberView } from "./lib/view-memory.js";
-import { formatDate } from "./lib/dates.js";
+import { formatDate, formatEventDates } from "./lib/dates.js";
 import { formatMoney } from "./lib/money.js";
 import { ulid } from "./lib/ulid.js";
 import { eventSummary, eventSummarySkeleton } from "./event-summary.js";
@@ -135,7 +135,7 @@ export function createMemberEventsPages({ api, client, session }) {
           api.rpc("my_event_options"),
           api.read((c) =>
             c.from("registrations").select(
-              "id,member_id,status,status_reason,fee_snapshot,meta,division:divisions(id,name,status),event:events(name,starts_on)",
+              "id,member_id,status,status_reason,fee_snapshot,meta,division:divisions(id,name,status),event:events(name,starts_on,ends_on)",
             ).order("created_at", { ascending: false }).limit(100)
           ),
           loadSettings([
@@ -863,13 +863,15 @@ export function createMemberEventsPages({ api, client, session }) {
             "div",
             { class: "member-decision-name" },
             h("strong", { class: "member-name" }, d.name),
-            badge(statusText, statusTone),
-            badge(d.format === "doubles" ? "Doubles" : "Singles", "neutral"),
-            d.category ? badge(d.category, "info") : null,
           ),
+          h("div", { class: "registration-division-tags" },
+            d.category ? badge(d.category, "info") : null,
+            badge(d.format === "doubles" ? "Doubles" : "Singles", "neutral"),
+          ),
+          h("div", { class: "registration-division-tags" }, badge(statusText, statusTone)),
           h("span", { class: "sub member-id" }, [
             ev.name,
-            when(ev.starts_on),
+            ev.starts_on ? formatEventDates(ev.starts_on, ev.ends_on) : null,
             ev.location,
           ].filter(Boolean).join(" · ")),
           r.team_name
@@ -955,7 +957,7 @@ export function createMemberEventsPages({ api, client, session }) {
         ),
       );
 
-      let dialog;
+      let dialog = null;
       const actionButtons = [];
       if (own && due > 0 && row) {
         actionButtons.push(
@@ -1035,6 +1037,17 @@ export function createMemberEventsPages({ api, client, session }) {
           ? badge("Waitlist", "info")
           : badge("Open", "success");
 
+      const divisionAvatarTone = (d) =>
+        d.mine
+          ? d.mine.status === "confirmed"
+            ? "is-eligible"
+            : d.mine.status === "requested" || d.mine.status === "waitlisted"
+            ? "is-restricted"
+            : "is-muted"
+          : d.problem
+          ? "is-restricted"
+          : "is-eligible";
+
       return h(
         "div",
         { class: "member-event-division-list" },
@@ -1057,7 +1070,7 @@ export function createMemberEventsPages({ api, client, session }) {
                         "div",
                         { class: "member-event-division-identity" },
                         h("span", {
-                          class: `member-avatar is-icon ${d.problem && !d.mine ? "is-restricted" : "is-eligible"}`,
+                          class: `member-avatar is-icon ${divisionAvatarTone(d)}`,
                           "aria-hidden": "true",
                         }, icon("trophy")),
                         h(
@@ -1078,12 +1091,12 @@ export function createMemberEventsPages({ api, client, session }) {
                               d.category,
                             ].filter(Boolean).join(" · "),
                           ),
+                          h(
+                            "div",
+                            { class: "member-event-division-badge-mobile" },
+                            divisionBadge(d),
+                          ),
                         ),
-                      ),
-                      h(
-                        "div",
-                        { class: "member-event-division-badge-mobile" },
-                        divisionBadge(d),
                       ),
                     ),
                     d.problem && !d.mine
@@ -1265,13 +1278,9 @@ export function createMemberEventsPages({ api, client, session }) {
                 "div",
                 { class: "member-event-divisions-heading" },
                 h("h3", {}, "Divisions"),
-                h(
-                  "span",
-                  { class: "sub" },
-                  `${ev.divisions.length} ${
+                badge(`${ev.divisions.length} ${
                     ev.divisions.length === 1 ? "Division" : "Divisions"
-                  }`,
-                ),
+                  }`, "success"),
               ),
               divisionsTable(ev),
             ),
@@ -1281,108 +1290,165 @@ export function createMemberEventsPages({ api, client, session }) {
     }
 
     function mineView() {
-      return dataTable({
-        searchable: false,
-        searchState: state,
-        schema: {
-          columns: [
-            {
-              key: "event",
-              label: "Event",
-              render: (r) =>
-                h(
-                  "span",
-                  {},
-                  r.event?.name ?? "—",
-                  h("span", { class: "sub" }, r.division?.name ?? ""),
-                ),
-            },
-            {
-              key: "fee",
-              label: "Fee",
-              align: "right",
-              render: (r) =>
-                Number(r.fee_snapshot)
-                  ? formatMoney(r.fee_snapshot)
-                  : badge("Free", "success"),
-            },
-            {
-              key: "status",
-              label: "Status",
-              render: (r) =>
-                h(
-                  "span",
-                  {},
-                  badge(...(REG_STATUS[r.status] ?? [r.status, "neutral"])),
-                  r.status === "rejected" && r.status_reason
-                    ? h("span", { class: "sub" }, r.status_reason)
-                    : null,
-                ),
-            },
-            {
-              key: "actions",
-              label: "Action",
-              align: "center",
-              actionCount: 3,
-              render: (r) => {
-                const live = ["requested", "confirmed", "waitlisted"].includes(
-                  r.status,
-                );
-                return h(
-                  "span",
-                  { class: "row-actions" },
-                  live && r.is_owner !== false && remaining(r) > 0
-                    ? iconButton({
-                      icon: "currency",
-                      label: "Pay",
-                      variant: "success",
-                      onClick: () => payModal(r),
-                    })
-                    : null,
-                  r.division && ["drawn", "in_progress", "finalized"].includes(
-                      r.division.status,
-                    )
-                    ? iconButton({
-                      icon: "layers",
-                      label: "Bracket",
-                      variant: "info",
-                      onClick: () => {
-                        location.hash = `#/bracket?division=${r.division.id}`;
-                      },
-                    })
-                    : null,
-                  live && r.is_owner !== false && r.division?.status === "open"
-                    ? iconButton({
-                      icon: "x",
-                      label: "Withdraw",
-                      variant: "danger",
-                      onClick: () => withdrawModal(r),
-                    })
-                    : null,
-                );
+      const avatarTone = (status) =>
+        status === "confirmed"
+          ? "is-eligible"
+          : status === "requested" || status === "waitlisted"
+          ? "is-restricted"
+          : "is-muted";
+
+      return h(
+        "div",
+        { class: "member-registration-list" },
+        dataTable({
+          searchable: false,
+          searchState: state,
+          schema: {
+            columns: [
+              {
+                key: "event",
+                label: "Event",
+                skeleton: "member",
+                render: (r) =>
+                  h(
+                    "div",
+                    { class: "member-registration-col" },
+                    h(
+                      "div",
+                      { class: "member-registration-identity" },
+                      h("span", {
+                        class: `member-avatar is-icon ${avatarTone(r.status)}`,
+                        "aria-hidden": "true",
+                      }, icon("trophy")),
+                      h(
+                        "div",
+                        { class: "member-registration-copy" },
+                        h(
+                          "strong",
+                          { class: "member-registration-title" },
+                          r.event?.name ?? "—",
+                        ),
+                        h(
+                          "span",
+                          { class: "sub" },
+                          [
+                            r.division?.name,
+                            r.event?.starts_on ? formatEventDates(r.event.starts_on, r.event.ends_on) : null,
+                          ].filter(Boolean).join(" · "),
+                        ),
+                        h(
+                          "div",
+                          { class: "member-registration-badge-mobile" },
+                          badge(...(REG_STATUS[r.status] ?? [r.status, "neutral"])),
+                        ),
+                      ),
+                    ),
+                    r.status === "rejected" && r.status_reason
+                      ? h(
+                        "div",
+                        { class: "member-event-restriction-note" },
+                        icon("info"),
+                        h("span", {}, r.status_reason),
+                      )
+                      : null,
+                  ),
               },
-            },
-          ],
-        },
-        rows: state.mine.filter((r) =>
-          matches(
-            r.event?.name,
-            r.division?.name,
-            REG_STATUS[r.status]?.[0],
-            r.status_reason,
-            Number(r.fee_snapshot) ? formatMoney(r.fee_snapshot) : "Free",
-          )
-        ),
-        state: state.status,
-        ariaLabel: "My Registrations",
-        onRetry: refresh,
-        emptyTitle: "No registrations yet",
-        emptyText: "Register for an event and it will be listed here.",
-      });
+              {
+                key: "fee",
+                label: "Fee",
+                align: "right",
+                render: (r) =>
+                  h(
+                    "div",
+                    { class: "member-registration-fee" },
+                    h("span", { class: "member-registration-meta-label" }, "Entry Fee"),
+                    Number(r.fee_snapshot)
+                      ? h(
+                        "strong",
+                        { class: "member-registration-fee-amount" },
+                        formatMoney(r.fee_snapshot),
+                      )
+                      : badge("Free", "success"),
+                  ),
+              },
+              {
+                key: "status",
+                label: "Status",
+                skeleton: "badge",
+                render: (r) =>
+                  h(
+                    "div",
+                    { class: "member-registration-status" },
+                    h("span", { class: "member-registration-meta-label" }, "Status"),
+                    badge(...(REG_STATUS[r.status] ?? [r.status, "neutral"])),
+                  ),
+              },
+              {
+                key: "actions",
+                label: "Action",
+                align: "center",
+                actionCount: 3,
+                render: (r) => {
+                  const live = ["requested", "confirmed", "waitlisted"].includes(
+                    r.status,
+                  );
+                  return h(
+                    "span",
+                    { class: "row-actions" },
+                    live && r.is_owner !== false && remaining(r) > 0
+                      ? iconButton({
+                        icon: "currency",
+                        label: "Pay",
+                        variant: "success",
+                        onClick: () => payModal(r),
+                      })
+                      : null,
+                    r.division && ["drawn", "in_progress", "finalized"].includes(
+                        r.division.status,
+                      )
+                      ? iconButton({
+                        icon: "layers",
+                        label: "Bracket",
+                        variant: "info",
+                        onClick: () => {
+                          location.hash = `#/bracket?division=${r.division.id}`;
+                        },
+                      })
+                      : null,
+                    live && r.is_owner !== false && r.division?.status === "open"
+                      ? iconButton({
+                        icon: "x",
+                        label: "Withdraw",
+                        variant: "danger",
+                        onClick: () => withdrawModal(r),
+                      })
+                      : null,
+                  );
+                },
+              },
+            ],
+          },
+          rows: state.mine.filter((r) =>
+            matches(
+              r.event?.name,
+              r.division?.name,
+              REG_STATUS[r.status]?.[0],
+              r.status_reason,
+              Number(r.fee_snapshot) ? formatMoney(r.fee_snapshot) : "Free",
+            )
+          ),
+          state: state.status,
+          ariaLabel: "My Registrations",
+          onRetry: refresh,
+          emptyTitle: "No registrations yet",
+          emptyText: "Register for an event and it will be listed here.",
+        }),
+      );
     }
 
     function draw() {
       tabsHost.replaceChildren(tableFilter({
+        id: "member-event-tabs",
         activeId: state.tab,
         tabs: [
           { id: "open", label: "Open Events", badge: state.options.length },
