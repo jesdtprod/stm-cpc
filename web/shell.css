@@ -4357,10 +4357,7 @@ body:not([data-landing="true"]) .app-shell > main:has(.auth-page) {
     border-radius: var(--r-full);
     color: var(--text);
     cursor: pointer;
-    background: radial-gradient(circle at 35% 35%, rgba(223, 183, 86, 0.25),
-      rgba(12, 32, 22, 0.95));
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: #0c2016;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(223, 183, 86,
       0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25);
     touch-action: none;
@@ -4421,10 +4418,7 @@ body:not([data-landing="true"]) .app-shell > main:has(.auth-page) {
     max-height: min(600px, calc(100dvh - 36px));
     margin: 0;
     padding: 0;
-    background: linear-gradient(168deg, rgba(14, 34, 25, 0.96) 0%, rgba(7, 18,
-      13, 0.98) 100%);
-    backdrop-filter: blur(28px) saturate(190%);
-    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    background: linear-gradient(168deg, #0e2219 0%, #07120d 100%);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 22px;
     box-shadow: 0 32px 72px -12px rgba(0, 0, 0, 0.85),
@@ -4780,7 +4774,7 @@ body:not([data-landing="true"]) .app-shell > main:has(.auth-page) {
     background: rgba(15, 23, 42, 0.45);
   }
   [data-theme="light"] .assistive-nav-menu {
-    background: rgba(255, 255, 255, 0.94);
+    background: #ffffff;
     border-color: rgba(0, 0, 0, 0.08);
     box-shadow: 0 24px 60px rgba(9, 33, 20, 0.18), 0 0 0 1px rgba(0, 0, 0,
       0.05);
@@ -10257,7 +10251,7 @@ body[data-signed-in="true"] .member-header-logo {
     flex-direction: row;
     justify-content: flex-end;
   }
-  body .member-mobile-lists:not(.my-bookings-page):not(.member-ranking-page) .tbl-actions:not(:has(button, a)) {
+  body .member-mobile-lists:not(.my-bookings-page):not(.member-ranking-page) .tbl-actions:not(:has(button, a, .sk-action)) {
     display: none;
   }
   body .member-mobile-lists .notice-list {
@@ -10611,10 +10605,10 @@ body[data-signed-in="true"] .member-header-logo {
   }
 
   /* When there are no actions, Payment expands cleanly across column 2 and 3 */
-  .my-bookings-page .tbl-row:not(:has(.tbl-actions button)) .tbl-cell[data-label="Payment"] {
+  .my-bookings-page .tbl-row:not(:has(.tbl-actions button, .tbl-actions .sk-action)) .tbl-cell[data-label="Payment"] {
     grid-column: 2 / -1;
   }
-  .my-bookings-page .tbl-actions:not(:has(button)) {
+  .my-bookings-page .tbl-actions:not(:has(button, .sk-action)) {
     display: none;
   }
 
@@ -10916,7 +10910,7 @@ body[data-signed-in="true"] .member-header-logo {
     justify-content: center;
   }
 
-  body .member-ranking-page .tbl-actions:not(:has(button)) {
+  body .member-ranking-page .tbl-actions:not(:has(button, .sk-action)) {
     display: none;
   }
 
@@ -12620,10 +12614,10 @@ body[data-signed-in="true"] .member-header-logo {
   }
 
   /* Full width entries when no action button exists */
-  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-event-division-list .tbl-body > .tbl-row:not(:has(.tbl-actions button, .tbl-actions a)) .tbl-cell[data-label="Entries"] {
+  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-event-division-list .tbl-body > .tbl-row:not(:has(.tbl-actions button, .tbl-actions a, .tbl-actions .sk-action)) .tbl-cell[data-label="Entries"] {
     grid-column: 1 / -1 !important;
   }
-  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-event-division-list .tbl-body > .tbl-row:not(:has(.tbl-actions button, .tbl-actions a)) .tbl-cell.tbl-actions {
+  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-event-division-list .tbl-body > .tbl-row:not(:has(.tbl-actions button, .tbl-actions a, .tbl-actions .sk-action)) .tbl-cell.tbl-actions {
     display: none !important;
   }
 
@@ -12792,10 +12786,10 @@ body[data-signed-in="true"] .member-header-logo {
     justify-self: end !important;
     align-self: center !important;
   }
-  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-registration-list .tbl-body > .tbl-row:not(:has(.tbl-actions button, .tbl-actions a)) .tbl-cell[data-label="Fee"] {
+  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-registration-list .tbl-body > .tbl-row:not(:has(.tbl-actions button, .tbl-actions a, .tbl-actions .sk-action)) .tbl-cell[data-label="Fee"] {
     grid-column: 2 / -1 !important;
   }
-  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-registration-list .tbl-body > .tbl-row:not(:has(.tbl-actions button, .tbl-actions a)) .tbl-cell.tbl-actions {
+  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-registration-list .tbl-body > .tbl-row:not(:has(.tbl-actions button, .tbl-actions a, .tbl-actions .sk-action)) .tbl-cell.tbl-actions {
     display: none !important;
   }
   .member-registration-meta-label {
@@ -20206,5 +20200,257 @@ main:has(.bracket-page) {
   }
   body :is(.member-status-badges, .tabs-nav, .notice-tabs, [role="tablist"]) > button:only-child {
     grid-column: 1 / -1;
+  }
+}
+
+/* My Digital ID (Members Portal) */
+.digital-id-page {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+}
+.digital-id-card {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  max-width: 420px;
+  margin-inline: auto;
+  padding: 20px;
+}
+.digital-id-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.digital-id-club {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+.digital-id-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.digital-id-photo {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+.digital-id-photo .avatar-photo,
+.digital-id-photo .avatar-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.digital-id-meta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.digital-id-name {
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+.digital-id-no {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+.digital-id-qr {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+}
+.digital-id-qr .qr-svg {
+  width: min(100%, 240px);
+  height: auto;
+}
+.digital-id-note {
+  text-align: center;
+}
+
+/* =====================================================================================
+   Unified Structure-Matched Skeleton Loading (Desktop & Mobile Across All Pages)
+   ===================================================================================== */
+.sk-flex-1 {
+  flex: 1;
+}
+.sk-position {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.cpc-points-cell.sk-meta {
+  width: 100%;
+}
+.cpc-points-cell.sk-meta > .sk:first-child {
+  height: 18px;
+  border-radius: 5px;
+}
+
+/* Notifications Page Skeleton */
+.notice-card.is-skeleton {
+  pointer-events: none;
+}
+.notice-sk-count {
+  width: 22px;
+  height: 18px;
+  border-radius: 999px;
+}
+.notice-sk-mark-btn {
+  width: 136px;
+  height: 34px;
+  border-radius: 10px;
+}
+.notice-sk-title {
+  height: 16px;
+  border-radius: 5px;
+}
+.notice-sk-arrow {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+/* My Games Page Skeleton */
+.my-games-stat.is-skeleton,
+.my-games-card.is-skeleton {
+  pointer-events: none;
+}
+.my-games-sk-val {
+  width: 68px;
+  height: 28px;
+  border-radius: 6px;
+}
+.my-games-sk-badge {
+  width: 78px;
+  height: 22px;
+}
+.my-games-sk-event {
+  height: 17px;
+  border-radius: 5px;
+}
+.my-games-sk-meta-pill {
+  width: 84px;
+  height: 20px;
+  border-radius: 6px;
+}
+.my-games-sk-outcome {
+  width: 72px;
+  height: 24px;
+}
+.my-games-sk-win-pill {
+  width: 58px;
+  height: 18px;
+  border-radius: 999px;
+}
+.my-games-sk-score {
+  width: 112px;
+  height: 30px;
+}
+.my-games-sk-rating {
+  width: 118px;
+  height: 30px;
+}
+
+/* Settings & Ranks Ladders Skeleton */
+.settings-card.is-loading,
+.ladder-card.is-loading {
+  pointer-events: none;
+}
+.settings-sk-title {
+  height: 20px;
+  border-radius: 5px;
+}
+.settings-sk-toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.settings-sk-input {
+  width: 100%;
+  height: 42px;
+  border-radius: var(--r-control);
+  display: block;
+}
+.settings-sk-textarea {
+  width: 100%;
+  height: 68px;
+  border-radius: var(--r-control);
+  display: block;
+}
+.ladder-card.is-loading .rank-pos.sk {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.podium-sk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  body .member-ranking-page .tbl-body > .tbl-row:has(.sk-member-cell) {
+    padding: 16px;
+    gap: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    background: linear-gradient(165deg, rgba(16, 40, 27, 0.94) 0%, rgba(9, 24, 16, 0.98) 100%);
+    box-shadow: 0 8px 22px -6px rgba(0, 0, 0, 0.38);
+  }
+  body .member-ranking-page .tbl-cell[data-label="Player"] .sk-avatar {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border: 2px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  }
+  body .member-ranking-page .tbl-cell[data-label="#"] .sk-position {
+    width: 18px;
+    height: 14px;
+    border-radius: 4px;
+  }
+  body .member-ranking-page .cpc-points-cell.sk-meta {
+    width: 100%;
+  }
+  body .member-ranking-page .cpc-points-cell.sk-meta > .sk:first-child {
+    height: 24px;
+  }
+  /* Member Events Division Cards: show status pill in loading skeleton on mobile */
+  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-event-division-list .tbl-row[aria-hidden="true"] .tbl-cell[data-mobile-kind="status"] {
+    display: flex !important;
+    grid-column: 1 / -1 !important;
+    grid-row: 1 !important;
+    align-self: end !important;
+    margin-top: 46px !important;
+    padding-left: 50px !important;
+  }
+  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-event-division-list .tbl-cell[data-mobile-kind="primary"] .sk-avatar {
+    border-radius: var(--r-control);
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+  }
+  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-registration-list .tbl-cell[data-mobile-kind="primary"] .sk-avatar {
+    border-radius: var(--r-control);
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
   }
 }

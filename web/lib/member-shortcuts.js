@@ -37,6 +37,12 @@ export const MEMBER_SHORTCUTS = [
     href: "#/notifications",
   },
   {
+    label: "My Digital ID",
+    desc: "Your member ID card and QR code",
+    icon: "idCard",
+    href: "#/digital-id",
+  },
+  {
     label: "My Profile",
     desc: "Your details, photo and contact",
     icon: "user",

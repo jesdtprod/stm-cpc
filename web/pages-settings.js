@@ -344,6 +344,14 @@ const GROUPS = [
         hint: "Allow members to see their own matches, scores, results and rating changes.",
       },
       {
+        key: "member_menu.digital_id",
+        type: "switch",
+        label: "Show My Digital ID",
+        title: "My Digital ID",
+        icon: "idCard",
+        hint: "Allow members to open their digital member ID card with photo and QR code.",
+      },
+      {
         key: "member_menu.ranking",
         type: "switch",
         label: "Show Ranking",

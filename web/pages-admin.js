@@ -1493,6 +1493,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
       isAttention,
       tone = "emerald",
       tabId,
+      loading = false,
     }) {
       return h(
         "button",
@@ -1500,7 +1501,8 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           type: "button",
           class: `home-card member-stat-card is-link is-tone-${tone}${
             isAttention ? " is-attention" : ""
-          }`,
+          }${loading ? " is-loading" : ""}`,
+          "aria-busy": loading ? "true" : "false",
           onClick: () => {
             state.tab = tabId;
             state.page = 1;
@@ -1519,15 +1521,27 @@ export function createAdminPages({ client, api, adminResetPassword }) {
           h(
             "div",
             { class: "member-stat-copy" },
-            h("span", { class: "home-card-value" }, String(value ?? "0")),
+            loading
+              ? h("span", {
+                class: "sk sk-stat-value",
+                "aria-hidden": "true",
+              })
+              : h("span", { class: "home-card-value" }, String(value ?? "0")),
             h("span", { class: "home-card-label" }, label),
           ),
-          pill,
+          loading
+            ? h("span", { class: "sk sk-pill", "aria-hidden": "true" })
+            : pill,
         ),
         h(
           "div",
           { class: "home-card-bottom" },
-          h("div", { class: "home-card-hint" }, hint),
+          loading
+            ? h("span", {
+              class: "sk sk-stat-hint",
+              "aria-hidden": "true",
+            })
+            : h("div", { class: "home-card-hint" }, hint),
           h(
             "span",
             { class: "home-card-go" },
@@ -1539,6 +1553,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
     }
 
     function drawKpis() {
+      const kpiLoading = counts.pending === undefined;
       const pCount = Number(counts.pending) || 0;
       const sCount = Number(counts.suspended) || 0;
       const aCount = Number(counts.active) || 0;
@@ -1547,11 +1562,12 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         memberStatCard({
           label: "Waiting for Approval",
           value: counts.pending ?? "—",
+          loading: kpiLoading,
           hint: pCount > 0
             ? "Requires administrator review"
             : "Approval queue is clear",
           iconName: "clock",
-          isAttention: pCount > 0,
+          isAttention: !kpiLoading && pCount > 0,
           tone: "amber",
           tabId: "pending",
           pill: pCount > 0
@@ -1571,6 +1587,7 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         memberStatCard({
           label: "Active Members",
           value: counts.active ?? "—",
+          loading: kpiLoading,
           hint: `${aCount} registered member${aCount === 1 ? "" : "s"} in club`,
           iconName: "user",
           isAttention: false,
@@ -1586,11 +1603,12 @@ export function createAdminPages({ client, api, adminResetPassword }) {
         memberStatCard({
           label: "Suspended",
           value: counts.suspended ?? "—",
+          loading: kpiLoading,
           hint: sCount > 0
             ? "Accounts restricted from play"
             : "Zero account suspensions",
           iconName: "alert",
-          isAttention: sCount > 0,
+          isAttention: !kpiLoading && sCount > 0,
           tone: "rose",
           tabId: "suspended",
           pill: sCount > 0

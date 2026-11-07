@@ -41,6 +41,7 @@ import { createScoringPages } from "./pages-scoring.js";
 import { createBracketPages } from "./pages-bracket.js";
 import { createRankingPages } from "./pages-ranking.js";
 import { createMyGamesPages } from "./pages-my-games.js";
+import { createDigitalIdPages } from "./pages-digital-id.js";
 import { createPublicBracketPages } from "./pages-public-bracket.js";
 import { createPublicPages } from "./pages-public.js";
 import { createNotificationPages } from "./pages-notifications.js";
@@ -299,6 +300,9 @@ route("/ranking", () => rankingPages.rankingPage(), "Ranking", "signedIn");
 
 const publicBracketPages = createPublicBracketPages({ api, client });
 route("/bracketing", () => publicBracketPages.publicBracketPage(), "Bracketing", "public");
+
+const digitalIdPages = createDigitalIdPages({ session, client });
+route("/digital-id", () => digitalIdPages.digitalIdPage(), "My Digital ID", "signedIn");
 
 const myGamesPages = createMyGamesPages({ api });
 route("/games", () => myGamesPages.myGamesPage(), "My Games", "signedIn");
