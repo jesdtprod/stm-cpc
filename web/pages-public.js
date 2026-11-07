@@ -76,18 +76,41 @@ export function createPublicPages({ api, client }) {
     }
 
     function leaderboardView() {
+      const boardSchema = {
+        columns: [
+          {
+            key: "no",
+            label: "#",
+            align: "right",
+            render: (p) => String((state.board?.players ?? []).indexOf(p) + 1),
+          },
+          { key: "name", label: "Player", render: (p) => p.name },
+          { key: "category", label: "Category", render: (p) => p.category },
+          { key: "rank", label: "Rank", render: (p) => p.rank },
+        ],
+      };
       if (!state.board?.enabled) {
         return state.status === "ready"
           ? notPublished("The Leaderboard")
-          : dataTable({
-            schema: {
-              columns: [{ key: "n", label: "Player", render: () => "" }],
-            },
-            rows: [],
-            state: state.status === "error" ? "error" : "loading",
-            onRetry: load,
-            ariaLabel: "Leaderboard",
-          });
+          : h(
+            "div",
+            { class: "stack" },
+            state.status === "loading"
+              ? h(
+                "div",
+                { class: "field", "aria-hidden": "true" },
+                h("span", { class: "sk w-30 sk-sub" }),
+                h("span", { class: "sk settings-sk-input" }),
+              )
+              : null,
+            dataTable({
+              schema: boardSchema,
+              rows: [],
+              state: state.status === "error" ? "error" : "loading",
+              onRetry: load,
+              ariaLabel: "Leaderboard",
+            }),
+          );
       }
       const players = state.board.players ?? [];
       return h(
@@ -118,19 +141,7 @@ export function createPublicPages({ api, client }) {
           ),
         ),
         dataTable({
-          schema: {
-            columns: [
-              {
-                key: "no",
-                label: "#",
-                align: "right",
-                render: (p) => String(players.indexOf(p) + 1),
-              },
-              { key: "name", label: "Player", render: (p) => p.name },
-              { key: "category", label: "Category", render: (p) => p.category },
-              { key: "rank", label: "Rank", render: (p) => p.rank },
-            ],
-          },
+          schema: boardSchema,
           rows: players,
           state: state.status === "refreshing" ? "ready" : "ready",
           ariaLabel: "Leaderboard",
@@ -142,15 +153,46 @@ export function createPublicPages({ api, client }) {
 
     function resultsView() {
       if (!state.results?.enabled) {
-        return state.status === "ready" ? notPublished("Results") : dataTable({
-          schema: {
-            columns: [{ key: "n", label: "Division", render: () => "" }],
+        if (state.status === "ready") return notPublished("Results");
+        if (state.status === "error") {
+          return dataTable({
+            schema: {
+              columns: [{ key: "n", label: "Division", render: () => "" }],
+            },
+            rows: [],
+            state: "error",
+            onRetry: load,
+            ariaLabel: "Results",
+          });
+        }
+        return h(
+          "div",
+          {
+            class: "stack",
+            "aria-busy": "true",
+            "aria-label": "Loading results",
           },
-          rows: [],
-          state: state.status === "error" ? "error" : "loading",
-          onRetry: load,
-          ariaLabel: "Results",
-        });
+          ...Array.from({ length: 3 }, () =>
+            h(
+              "section",
+              { class: "card stack is-skeleton", "aria-hidden": "true" },
+              h("span", { class: "sk w-50 settings-sk-title" }),
+              h("span", { class: "sk w-30 sk-sub" }),
+              h(
+                "ol",
+                { class: "podium" },
+                ...Array.from({ length: 3 }, (_, idx) =>
+                  h(
+                    "li",
+                    { class: "podium-sk-row" },
+                    h("span", { class: "sk sk-pill" }),
+                    h("span", {
+                      class: `sk ${idx % 2 === 0 ? "w-50" : "w-30"}`,
+                    }),
+                  )),
+              ),
+            )),
+        );
       }
       const divisions = state.results.divisions ?? [];
       if (!divisions.length) {

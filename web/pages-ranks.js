@@ -1509,15 +1509,91 @@ export function createRanksPages({ api, getOrgId }) {
         return;
       }
       if (state.status === "loading" && state.tab === "ladders") {
+        const ladderSkeleton = () =>
+          h(
+            "div",
+            {
+              class: "member-panel ladder-card is-loading",
+              "aria-hidden": "true",
+            },
+            h(
+              "div",
+              { class: "ladder-head" },
+              h(
+                "div",
+                { class: "member-cell" },
+                h(
+                  "span",
+                  { class: "member-avatar is-icon", "aria-hidden": "true" },
+                  icon("layers"),
+                ),
+                h(
+                  "div",
+                  { class: "member-meta sk-meta" },
+                  h("span", { class: "sk w-50 settings-sk-title" }),
+                  h("span", { class: "sk w-30 sk-sub" }),
+                ),
+              ),
+              h("span", { class: "sk sk-pill" }),
+            ),
+            h(
+              "div",
+              { class: "field stack" },
+              h("span", { class: "sk w-40 sk-sub" }),
+              h("span", { class: "sk settings-sk-input" }),
+              h("span", { class: "sk w-70 sk-sub" }),
+            ),
+            h(
+              "div",
+              { class: "ladder-order muted" },
+              h("span", { class: "sk w-30 sk-sub" }),
+            ),
+            h(
+              "ol",
+              { class: "rank-list" },
+              ...Array.from({ length: 3 }, (_, idx) =>
+                h(
+                  "li",
+                  { class: "rank-item" },
+                  h("span", { class: "sk rank-pos" }),
+                  h(
+                    "span",
+                    { class: "rank-name sk-meta" },
+                    h("span", { class: `sk ${idx % 2 ? "w-50" : "w-70"}` }),
+                    h(
+                      "span",
+                      { class: "rank-meta" },
+                      h("span", { class: "sk w-30 sk-sub" }),
+                      idx === 0 ? h("span", { class: "sk sk-pill" }) : null,
+                    ),
+                  ),
+                  h(
+                    "span",
+                    { class: "row-actions" },
+                    ...Array.from(
+                      { length: 4 },
+                      () => h("span", { class: "sk sk-action" }),
+                    ),
+                  ),
+                )),
+            ),
+            h(
+              "div",
+              { class: "actions ladder-actions" },
+              h("span", { class: "sk sk-action-btn sk-btn-outline" }),
+            ),
+          );
         body.replaceChildren(
           h(
             "div",
             {
-              class: "member-panel settings-card is-loading",
+              class: "rank-grid",
               "aria-busy": "true",
+              "aria-label": "Loading rank ladders",
             },
-            h("span", { class: "sk-line" }),
-            h("span", { class: "sk-line sk-wide" }),
+            ladderSkeleton(),
+            ladderSkeleton(),
+            ladderSkeleton(),
           ),
         );
         return;

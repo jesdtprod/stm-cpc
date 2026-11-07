@@ -427,16 +427,118 @@ export function createSettingsPages({ api }) {
     );
 
     function drawLoading() {
+      const group = GROUPS.find((g) => g.id === activeId) ?? GROUPS[0];
+      const switches = group.items.filter((it) => it.type === "switch");
+      const fields = group.items.filter((it) => it.type !== "switch");
       body.replaceChildren(
+        tabs({
+          activeId,
+          tabs: GROUPS.map((g) => ({ id: g.id, label: g.label })),
+          onChange: (id) => {
+            activeId = id;
+            drawLoading();
+          },
+        }),
         h(
           "div",
           {
             class: "member-panel settings-card is-loading",
             "aria-busy": "true",
+            "aria-label": `Loading ${group.title}`,
           },
-          h("span", { class: "sk-line" }),
-          h("span", { class: "sk-line sk-wide" }),
-          h("span", { class: "sk-line" }),
+          h(
+            "div",
+            { class: "settings-card-header", "aria-hidden": "true" },
+            h(
+              "div",
+              { class: "section-icon settings-header-icon-squircle" },
+              icon(group.icon || "settings"),
+            ),
+            h(
+              "div",
+              { class: "settings-header-meta" },
+              h("span", { class: "sk w-30 sk-sub" }),
+              h("span", { class: "sk w-50 settings-sk-title" }),
+              h("span", { class: "sk w-70 sk-sub" }),
+            ),
+            h(
+              "div",
+              { class: "settings-header-badge" },
+              h("span", { class: "sk sk-pill" }),
+            ),
+          ),
+          switches.length > 0
+            ? h(
+              "div",
+              { class: "settings-switch-grid", "aria-hidden": "true" },
+              ...switches.map((it) =>
+                h(
+                  "div",
+                  { class: "setting-switch-tile is-skeleton" },
+                  h(
+                    "div",
+                    { class: "setting-switch-tile-header" },
+                    h(
+                      "div",
+                      { class: "setting-switch-tile-icon" },
+                      icon(it.icon || "layers"),
+                    ),
+                    h(
+                      "div",
+                      { class: "setting-switch-tile-info" },
+                      h(
+                        "div",
+                        { class: "setting-switch-tile-heading" },
+                        h("span", { class: "sk w-50" }),
+                        h("span", { class: "sk sk-pill" }),
+                      ),
+                      h("span", { class: "sk w-70 sk-sub" }),
+                    ),
+                    h("span", { class: "sk settings-sk-toggle" }),
+                  ),
+                )),
+            )
+            : null,
+          fields.length > 0
+            ? h(
+              "div",
+              { class: "settings-fields-grid", "aria-hidden": "true" },
+              ...fields.map(() =>
+                h(
+                  "div",
+                  { class: "setting-field-card is-skeleton stack" },
+                  h("span", { class: "sk w-40 sk-sub" }),
+                  h("span", { class: "sk settings-sk-input" }),
+                  h("span", { class: "sk w-70 sk-sub" }),
+                )),
+            )
+            : null,
+          h(
+            "div",
+            { class: "settings-audit-box", "aria-hidden": "true" },
+            h(
+              "div",
+              { class: "settings-audit-box-header" },
+              h("span", { class: "sk w-30" }),
+              h("span", { class: "sk sk-pill" }),
+            ),
+            h("span", { class: "sk settings-sk-textarea" }),
+          ),
+          h(
+            "div",
+            { class: "actions settings-actions", "aria-hidden": "true" },
+            h(
+              "div",
+              { class: "settings-audit-notice" },
+              h("span", { class: "sk w-50 sk-sub" }),
+            ),
+            h(
+              "div",
+              { class: "settings-action-buttons" },
+              h("span", { class: "sk sk-action-btn sk-btn-outline" }),
+              h("span", { class: "sk sk-action-btn sk-btn-primary" }),
+            ),
+          ),
         ),
       );
     }

@@ -157,6 +157,7 @@ const session = createSession({
   storage: globalThis.localStorage,
   cacheStorage: globalThis.caches ?? null,
   onChange: (s) => {
+    if (s.status === "signed_out" && s.reason === "manual") location.hash = "#/";
     dispatchEvent(new CustomEvent("cpc:session", { detail: s }));
     if (s.status === "signed_in") {
       setAuth({ signedIn: true, grants: s.grants, gate: s.gate });
