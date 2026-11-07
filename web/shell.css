@@ -20723,6 +20723,39 @@ main:has(.bracket-page) {
   animation: digitalIdStickerGlare 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* iOS Safari: keep masked foil layers flat instead of nesting blended 3D surfaces. */
+@supports (-webkit-touch-callout: none) {
+  .digital-id-holo-sticker {
+    transform-style: flat;
+    filter: none;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    animation-name: digitalIdStickerTiltIOS;
+  }
+  .digital-id-holo-sticker-grating,
+  .digital-id-holo-sticker-rainbow,
+  .digital-id-holo-sticker-sparkle,
+  .digital-id-holo-sticker-glare {
+    mix-blend-mode: normal;
+    -webkit-mask-composite: source-over;
+  }
+  .digital-id-holo-sticker-grating { opacity: 0.15; }
+  .digital-id-holo-sticker-rainbow { opacity: 0.16; }
+  .digital-id-holo-sticker-sparkle { animation-name: digitalIdStickerSparkleIOS; }
+  .digital-id-holo-sticker-logo { will-change: filter; }
+}
+.digital-id-holo-sticker.has-ios-motion,
+.digital-id-holo-sticker.has-ios-motion > * { animation: none; }
+@keyframes digitalIdStickerTiltIOS {
+  0%, 100% { transform: rotate(-2deg) scale(1); }
+  25% { transform: rotate(-1deg) scale(1.015); }
+  50% { transform: rotate(-3deg) scale(0.99); }
+  75% { transform: rotate(-1.5deg) scale(1.01); }
+}
+@keyframes digitalIdStickerSparkleIOS {
+  from { opacity: 0.1; background-position: 0% 0%; }
+  to { opacity: 0.22; background-position: 100% 100%; }
+}
 @keyframes digitalIdStickerTilt {
   0%, 100% {
     transform: perspective(360px) rotate(-2deg) rotateX(0deg) rotateY(0deg) translateZ(0);

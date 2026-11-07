@@ -2,9 +2,11 @@
 // of the member ID placed on its blank areas. Read only. The QR carries the member ID only (no password, token or contact).
 import { attachPagePattern, button, h, icon, memberHero, toast } from "./ui.js";
 import { avatarImage, signedAvatarUrls } from "./lib/avatar.js";
-import { downloadBlob, qrStyledPngBlob, qrStyledSvg } from "./lib/qr.js";
+import { qrStyledPngBlob, qrStyledSvg } from "./lib/qr.js";
+import { saveImage } from "./lib/save-image.js";
 import { renderDigitalIdBlob } from "./lib/digital-id-export.js";
 import { enableTilt } from "./lib/tilt.js";
+import { enableHologramMotion } from "./lib/hologram-motion.js";
 import { formatMemberName } from "./lib/names.js";
 
 export function createDigitalIdPages({ session, client, api }) {
@@ -115,7 +117,7 @@ export function createDigitalIdPages({ session, client, api }) {
               logo: "icons/cpc-logo-256.webp", quiet: 2,
               cornerRadius: 14 * 1024 / previewWidth,
             });
-            downloadBlob(blob, `${me.member_no}-qr.png`);
+            await saveImage(blob, `${me.member_no}-qr.png`);
           } catch {
             toast("Could not download the QR code. Please try again.", { tone: "error" });
           } finally {
@@ -149,8 +151,8 @@ export function createDigitalIdPages({ session, client, api }) {
         card.style.transform = "none";
         try {
           const blob = await renderDigitalIdBlob(card);
-          downloadBlob(blob, `${me.member_no || "CPC"}-digital-id.png`);
-          toast("Your Digital ID was saved.", { tone: "success" });
+          const result = await saveImage(blob, `${me.member_no || "CPC"}-digital-id.png`);
+          if (result === "downloaded") toast("Your Digital ID was downloaded.", { tone: "success" });
         } catch {
           toast("Could not save your Digital ID. Please try again.", { tone: "error" });
         } finally {
@@ -299,6 +301,7 @@ export function createDigitalIdPages({ session, client, api }) {
       }),
       showcase,
     );
+    enableHologramMotion(holoSticker);
     return page;
   }
 
