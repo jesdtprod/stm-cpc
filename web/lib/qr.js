@@ -277,3 +277,127 @@ export function downloadBlob(blob, filename) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Styled QR for the Digital ID: round dots and rounded finder squares in one colour on a white tile. Same data, same scan. */
+/** Download-ready QR, rendered locally with configurable preview styling. */
+export async function qrStyledPngBlob(text, { logo = null, quiet = 4, cornerRadius = 0 } = {}) {
+  let embeddedLogo = logo;
+  if (logo) {
+    const response = await fetch(new URL(logo, document.baseURI));
+    if (!response.ok) throw new Error("QR logo unavailable");
+    const blob = await response.blob();
+    embeddedLogo = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("QR logo failed"));
+      reader.readAsDataURL(blob);
+    });
+  }
+  const svg = qrStyledSvg(text, { quiet, logo: embeddedLogo });
+  svg.setAttribute("width", "1024");
+  svg.setAttribute("height", "1024");
+  const url = URL.createObjectURL(
+    new Blob([new XMLSerializer().serializeToString(svg)], {
+      type: "image/svg+xml",
+    }),
+  );
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("QR image failed"));
+      img.src = url;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1024;
+    const context = canvas.getContext("2d");
+    if (cornerRadius > 0) {
+      context.beginPath();
+      context.roundRect(0, 0, 1024, 1024, cornerRadius);
+      context.clip();
+    }
+    context.drawImage(image, 0, 0, 1024, 1024);
+    return await new Promise((resolve, reject) =>
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error("QR export failed")),
+        "image/png",
+      )
+    );
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+export function qrStyledSvg(
+  text,
+  { label = "QR code", color = "#0c3a1f", quiet = 1, logo = null } = {},
+) {
+  const qr = globalThis.qrcode(0, logo ? "H" : "Q");
+  qr.addData(text);
+  qr.make();
+  const n = qr.getModuleCount();
+  const size = n + quiet * 2;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", label);
+  svg.setAttribute("class", "qr-svg");
+  const add = (tag, attrs) => {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    svg.append(el);
+  };
+  add("rect", { width: size, height: size, fill: "#fff" });
+  const inFinder = (x, y) =>
+    (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7);
+  const inLogo = (x, y) =>
+    Boolean(logo) &&
+    Math.abs(x + 0.5 - n / 2) < n * 0.14 &&
+    Math.abs(y + 0.5 - n / 2) < n * 0.14;
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      if (qr.isDark(y, x) && !inFinder(x, y) && !inLogo(x, y)) {
+        add("circle", {
+          cx: x + quiet + 0.5,
+          cy: y + quiet + 0.5,
+          r: 0.47,
+          fill: color,
+        });
+      }
+    }
+  }
+  for (const [fx, fy] of [[0, 0], [n - 7, 0], [0, n - 7]]) {
+    const x = fx + quiet;
+    const y = fy + quiet;
+    add("rect", {
+      x: x + 0.5,
+      y: y + 0.5,
+      width: 6,
+      height: 6,
+      rx: 1.8,
+      fill: "none",
+      stroke: color,
+      "stroke-width": 1,
+    });
+    add("rect", {
+      x: x + 2,
+      y: y + 2,
+      width: 3,
+      height: 3,
+      rx: 1,
+      fill: color,
+    });
+  }
+  if (logo) {
+    const edge = n * 0.2;
+    add("image", {
+      href: logo,
+      x: (size - edge) / 2,
+      y: (size - edge) / 2,
+      width: edge,
+      height: edge,
+      preserveAspectRatio: "xMidYMid meet",
+    });
+  }
+  return svg;
+}

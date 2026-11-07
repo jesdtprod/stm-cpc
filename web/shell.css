@@ -20203,254 +20203,1181 @@ main:has(.bracket-page) {
   }
 }
 
-/* My Digital ID (Members Portal) */
+/* My Digital ID (Members Portal): the club ID card artwork with the member's details placed on its blank areas. */
 .digital-id-page {
   display: grid;
   gap: 20px;
   align-content: start;
 }
-.digital-id-card {
-  display: grid;
-  gap: 18px;
+/* The header and showcase share one width so the hero aligns cleanly with the showcase container. */
+.digital-id-page > :not(.dashboard-pattern) {
+  justify-self: center;
   width: 100%;
-  max-width: 420px;
-  margin-inline: auto;
-  padding: 20px;
+  max-width: 960px;
 }
-.digital-id-head {
+
+.digital-id-showcase {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(223, 183, 86, 0.26);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(223, 183, 86, 0.09) 0%, transparent 60%),
+    radial-gradient(90% 80% at 50% 55%, rgba(34, 197, 94, 0.08) 0%, transparent 65%),
+    linear-gradient(180deg, rgba(16, 38, 27, 0.94) 0%, rgba(9, 22, 16, 0.98) 100%);
+  box-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+.digital-id-showcase::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(223, 183, 86, 0.65) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.digital-id-showcase-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(223, 183, 86, 0.14);
+  background: rgba(6, 17, 12, 0.42);
+}
+.digital-id-showcase-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.digital-id-showcase-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 12px;
+  border: 1px solid rgba(223, 183, 86, 0.34);
+  background: linear-gradient(135deg, rgba(223, 183, 86, 0.18), rgba(21, 128, 61, 0.22));
+  color: var(--accent, #dfb756);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.digital-id-showcase-icon .icon {
+  width: 20px;
+  height: 20px;
+}
+.digital-id-showcase-titles {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.digital-id-showcase-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text, #fff);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+.digital-id-meta-sub {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.digital-id-showcase-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.digital-id-copy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(223, 183, 86, 0.32);
+  background: rgba(223, 183, 86, 0.1);
+  color: var(--accent, #dfb756);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.digital-id-copy-chip:hover {
+  background: rgba(223, 183, 86, 0.18);
+  border-color: rgba(223, 183, 86, 0.55);
+  transform: translateY(-1px);
+}
+.digital-id-copy-chip:focus-visible {
+  outline: 2px solid var(--accent, #dfb756);
+  outline-offset: 2px;
+}
+.digital-id-copy-chip .icon {
+  width: 13.5px;
+  height: 13.5px;
+}
+.digital-id-verified-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 222, 128, 0.28);
+  background: rgba(22, 101, 52, 0.32);
+  color: #86efac;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.digital-id-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: clamp(14px, 3vw, 28px);
+  background:
+    radial-gradient(75% 75% at 50% 50%, rgba(223, 183, 86, 0.11) 0%, rgba(11, 42, 23, 0.22) 55%, rgba(4, 12, 8, 0.55) 100%);
+}
+.digital-id-stage-hint {
+  position: absolute;
+  right: clamp(22px, 4vw, 40px);
+  bottom: clamp(22px, 4vw, 38px);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(223, 183, 86, 0.38);
+  background: rgba(7, 19, 14, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0.92;
+  transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.digital-id-stage-hint .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--accent, #dfb756);
+}
+.digital-id-stage:hover .digital-id-stage-hint,
+.digital-id-card:focus-visible ~ .digital-id-stage-hint {
+  opacity: 1;
+  transform: translateY(-2px);
+  border-color: rgba(223, 183, 86, 0.68);
+}
+
+.digital-id-card {
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  width: 100%;
+  max-width: 900px;
+  margin-inline: auto;
+  aspect-ratio: 2598 / 1668;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #0b2a17;
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(223, 183, 86, 0.34),
+    0 0 28px rgba(223, 183, 86, 0.08);
+  color: #0c3a1f;
+  cursor: zoom-in;
+  /* Turns toward the mouse, side to side, like the member cards on the public Members page (lib/tilt.js sets --tilt-y). */
+  transform: perspective(900px) rotateY(var(--tilt-y, 0deg));
+  transform-origin: center;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
+}
+/* Light sheen that sweeps across the card on hover, like the member cards on the public Members page. */
+.digital-id-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: linear-gradient(115deg, transparent 18%, rgba(255, 244, 205, 0.34) 50%, transparent 82%);
+  transform: translateX(-120%);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.digital-id-card:hover:not(.is-zoom)::after {
+  transform: translateX(120%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .digital-id-card::after {
+    display: none;
+  }
+}
+.digital-id-card.is-tilting {
+  transition: transform 0.12s ease-out, box-shadow 0.22s ease;
+}
+.digital-id-card:hover:not(.is-zoom) {
+  transform: perspective(900px) rotateY(var(--tilt-y, 0deg)) translateY(-2px);
+  box-shadow:
+    0 26px 60px rgba(0, 0, 0, 0.65),
+    0 0 0 1.5px rgba(223, 183, 86, 0.55),
+    0 0 36px rgba(223, 183, 86, 0.16);
+}
+.digital-id-card:focus-visible {
+  outline: 2px solid var(--accent, #dfb756);
+  outline-offset: 4px;
+}
+.digital-id-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  -webkit-mask-image: url("icons/digital-id-photo-mask.svg");
+  mask-image: url("icons/digital-id-photo-mask.svg");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  /* Slightly oversized so no light edge or sub-pixel gap shows around the card. */
+  transform: scale(1.015);
+  pointer-events: none;
+  user-select: none;
+}
+.digital-id-photo,
+.digital-id-qr {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #fff;
+}
+.digital-id-photo {
+  z-index: 0;
+  /* Cover the artwork's printed frame after its 1.015 scale, without a second border. */
+  left: 8.85%;
+  top: 45.85%;
+  width: 19.6%;
+  height: 35.3%;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 1.8cqw;
+  font-weight: 800;
+  font-size: 7cqw;
+}
+.digital-id-photo .avatar-photo,
+.digital-id-photo .avatar-photo-img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  object-fit: cover;
+  object-position: center;
+}
+.digital-id-photo .avatar-photo-img {
+  min-width: 100%;
+  min-height: 100%;
+  image-orientation: from-image;
+  transform: none;
+  border-radius: 1.5cqw;
+}
+@media (max-width: 720px) {
+  .digital-id-photo .avatar-photo {
+    overflow: hidden;
+  }
+  .digital-id-photo .avatar-photo-img {
+    /* Keep the same full-frame crop when the entire ID is rotated/enlarged. */
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: center;
+  }
+}
+.digital-id-qr {
+  z-index: 4;
+  left: 74.9%;
+  top: 35.65%;
+  width: 14.2%;
+  height: 24%;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.2cqw;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 1.4cqw;
+  padding: 0 0 0.15cqw;
+}
+
+/* Animated holographic CPC logo sticker in the lower-right corner. */
+.digital-id-holo-sticker {
+  position: absolute;
+  z-index: 3;
+  left: 73.75%;
+  top: 68%;
+  width: 16.5cqw;
+  height: 16.5cqw;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.5;
+  mix-blend-mode: normal;
+  transform-style: preserve-3d;
+  -webkit-mask-image: radial-gradient(ellipse, #000 66%, rgba(0, 0, 0, 0.9) 82%, transparent 100%);
+  mask-image: radial-gradient(ellipse, #000 66%, rgba(0, 0, 0, 0.9) 82%, transparent 100%);
+  filter:
+    drop-shadow(0 -0.05cqw 0 rgba(255, 255, 255, 0.85))
+    drop-shadow(-0.05cqw 0 0 rgba(226, 232, 240, 0.8))
+    drop-shadow(0.05cqw 0.07cqw 0 rgba(15, 23, 42, 0.45))
+    drop-shadow(0 0.22cqw 0.4cqw rgba(0, 0, 0, 0.35));
+  transform: rotate(-2deg) translateZ(0);
+  animation: digitalIdStickerTilt 6s ease-in-out infinite;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.digital-id-holo-sticker-logo {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+  animation: digitalIdStickerHoloHue 4.2s linear infinite;
+}
+/* 1. Rotating laser sunburst / pinwheel diffraction grating (like physical foil stickers) */
+.digital-id-holo-sticker-grating {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    repeating-conic-gradient(
+      from 0deg at 50% 48%,
+      rgba(255, 255, 255, 0) 0deg,
+      rgba(255, 255, 255, 0.55) 7deg,
+      rgba(0, 245, 212, 0.38) 14deg,
+      rgba(255, 255, 255, 0) 22deg,
+      rgba(255, 0, 128, 0.35) 29deg,
+      rgba(255, 255, 255, 0) 36deg
+    ),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0) 0px,
+      rgba(255, 255, 255, 0) 1.5px,
+      rgba(255, 255, 255, 0.32) 2.2px,
+      rgba(0, 0, 0, 0.18) 3px
+    );
+  mix-blend-mode: overlay;
+  opacity: 0.35;
+  -webkit-mask-image: url("icons/cpc-logo-holo.png");
+  mask-image: url("icons/cpc-logo-holo.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  animation: digitalIdStickerGrating 4s ease-in-out infinite alternate;
+}
+/* 2. High-definition iridescent rainbow spectral wave bands masked to the holographic logo */
+.digital-id-holo-sticker-rainbow {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background:
+    repeating-linear-gradient(
+      118deg,
+      #ff007f 0%,
+      #ffbe0b 9%,
+      #00f5d4 18%,
+      #00bbf9 27%,
+      #9b5de5 36%,
+      #f15bb5 45%,
+      #fee440 54%,
+      #00f5d4 63%,
+      #3a86ff 72%,
+      #ff007f 81%,
+      #ffbe0b 90%,
+      #00f5d4 100%
+    ),
+    conic-gradient(
+      from 0deg at 50% 50%,
+      #ff007f,
+      #ffbe0b,
+      #00f5d4,
+      #00bbf9,
+      #9b5de5,
+      #ff007f
+    );
+  background-size: 300% 300%, 150% 150%;
+  background-blend-mode: overlay;
+  mix-blend-mode: color;
+  opacity: 0.28;
+  -webkit-mask-image: url("icons/cpc-logo-holo.png");
+  mask-image: url("icons/cpc-logo-holo.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  animation: digitalIdStickerPrism 3.2s linear infinite;
+}
+/* 3. Sequined micro-prism glitter & starburst sparkle matrix masked to the holographic logo */
+.digital-id-holo-sticker-sparkle {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 1) 0.06cqw, transparent 0.18cqw),
+    radial-gradient(circle at 34% 16%, rgba(0, 245, 212, 1) 0.07cqw, transparent 0.2cqw),
+    radial-gradient(circle at 66% 18%, rgba(255, 230, 0, 1) 0.07cqw, transparent 0.2cqw),
+    radial-gradient(circle at 82% 28%, rgba(255, 255, 255, 1) 0.06cqw, transparent 0.18cqw),
+    radial-gradient(circle at 26% 46%, rgba(255, 0, 128, 1) 0.07cqw, transparent 0.2cqw),
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 1) 0.08cqw, transparent 0.22cqw),
+    radial-gradient(circle at 74% 48%, rgba(56, 189, 248, 1) 0.07cqw, transparent 0.2cqw),
+    radial-gradient(circle at 22% 68%, rgba(250, 204, 21, 1) 0.07cqw, transparent 0.2cqw),
+    radial-gradient(circle at 46% 64%, rgba(255, 255, 255, 1) 0.08cqw, transparent 0.22cqw),
+    radial-gradient(circle at 62% 70%, rgba(74, 222, 128, 1) 0.07cqw, transparent 0.2cqw),
+    radial-gradient(circle at 78% 66%, rgba(255, 255, 255, 1) 0.06cqw, transparent 0.18cqw),
+    radial-gradient(circle at 50% 84%, rgba(192, 132, 252, 1) 0.07cqw, transparent 0.2cqw),
+    repeating-linear-gradient(
+      -42deg,
+      rgba(255, 255, 255, 0) 0px,
+      rgba(255, 255, 255, 0) 2px,
+      rgba(255, 255, 255, 0.42) 2.8px,
+      rgba(0, 245, 212, 0.35) 3.6px
+    );
+  background-size:
+    125% 125%, 130% 130%, 125% 125%, 135% 135%,
+    130% 130%, 120% 120%, 135% 135%, 125% 125%,
+    130% 130%, 125% 125%, 135% 135%, 120% 120%,
+    170% 170%;
+  mix-blend-mode: overlay;
+  opacity: 0.92;
+  -webkit-mask-image: url("icons/cpc-logo-holo.png");
+  mask-image: url("icons/cpc-logo-holo.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  animation: digitalIdStickerDrizzle 2.2s ease-in-out infinite alternate;
+}
+/* 4. Sharp dual-beam metallic foil specular glint across the holographic logo */
+.digital-id-holo-sticker-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: linear-gradient(
+    112deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.12) 36%,
+    rgba(0, 245, 212, 0.48) 43%,
+    rgba(255, 255, 255, 0.98) 47%,
+    rgba(255, 190, 11, 0.55) 50%,
+    transparent 53%,
+    rgba(255, 255, 255, 0.85) 57%,
+    rgba(255, 0, 128, 0.38) 61%,
+    transparent 74%
+  );
+  background-size: 260% 260%;
+  mix-blend-mode: hard-light;
+  opacity: 0.9;
+  -webkit-mask-image: url("icons/cpc-logo-holo.png");
+  mask-image: url("icons/cpc-logo-holo.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  animation: digitalIdStickerGlare 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes digitalIdStickerTilt {
+  0%, 100% {
+    transform: perspective(360px) rotate(-2deg) rotateX(0deg) rotateY(0deg) translateZ(0);
+  }
+  25% {
+    transform: perspective(360px) rotate(-1.5deg) rotateX(3deg) rotateY(-4deg) translateZ(0);
+  }
+  50% {
+    transform: perspective(360px) rotate(-2.5deg) rotateX(-2deg) rotateY(4deg) translateZ(0);
+  }
+  75% {
+    transform: perspective(360px) rotate(-1.7deg) rotateX(2deg) rotateY(3deg) translateZ(0);
+  }
+}
+@keyframes digitalIdStickerHoloHue {
+  0% {
+    filter: contrast(1.08) saturate(0.55) hue-rotate(0deg) brightness(1.04);
+  }
+  50% {
+    filter: contrast(1.1) saturate(0.65) hue-rotate(30deg) brightness(1.08);
+  }
+  100% {
+    filter: contrast(1.08) saturate(0.55) hue-rotate(0deg) brightness(1.04);
+  }
+}
+@keyframes digitalIdStickerGrating {
+  0% {
+    filter: hue-rotate(0deg) contrast(1.35);
+    background-position: 0% 0%, 0% 0%;
+  }
+  100% {
+    filter: hue-rotate(90deg) contrast(1.55);
+    background-position: 100% 100%, 40% 60%;
+  }
+}
+@keyframes digitalIdStickerPrism {
+  0% {
+    background-position: 0% 0%, 0% 50%;
+    filter: hue-rotate(0deg) saturate(1.45);
+  }
+  50% {
+    background-position: 100% 100%, 100% 50%;
+    filter: hue-rotate(180deg) saturate(1.65);
+  }
+  100% {
+    background-position: 0% 0%, 0% 50%;
+    filter: hue-rotate(360deg) saturate(1.45);
+  }
+}
+@keyframes digitalIdStickerDrizzle {
+  0% {
+    background-position:
+      0% 0%, 100% 0%, 0% 100%, 100% 100%,
+      20% 40%, 50% 50%, 80% 30%, 30% 70%,
+      60% 20%, 40% 80%, 75% 75%, 50% 10%,
+      0% 0%;
+    opacity: 0.25;
+  }
+  100% {
+    background-position:
+      14% 18%, 84% 16%, 18% 82%, 82% 86%,
+      36% 24%, 38% 64%, 64% 48%, 46% 54%,
+      44% 36%, 58% 66%, 62% 60%, 36% 26%,
+      100% 100%;
+    opacity: 0.4;
+  }
+}
+@keyframes digitalIdStickerGlare {
+  0%, 8% {
+    background-position: 190% 0%;
+    opacity: 0;
+  }
+  42% {
+    opacity: 0.45;
+  }
+  78%, 100% {
+    background-position: -90% 100%;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .digital-id-holo-sticker,
+  .digital-id-holo-sticker-logo,
+  .digital-id-holo-sticker-grating,
+  .digital-id-holo-sticker-rainbow,
+  .digital-id-holo-sticker-sparkle,
+  .digital-id-holo-sticker-glare {
+    animation: none;
+  }
+}
+.digital-id-qr-code {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.digital-id-qr .qr-svg {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  min-height: 0;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+}
+.digital-id-qr-label {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding-top: 0.25cqw;
+  text-align: center;
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-size: 1.6cqw;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  -webkit-text-stroke: 0.015cqw currentColor;
+  text-transform: uppercase;
+}
+.digital-id-field {
+  z-index: 2;
+  position: absolute;
+  left: 37.8%;
+  width: 36%;
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-size: 2.7cqw;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.digital-id-field.is-id {
+  top: 49.8%;
+  left: 37.6%;
+  font-weight: 400;
+  text-align: left;
+  -webkit-text-stroke: 0.015cqw currentColor;
+}
+.digital-id-field.is-name {
+  top: 61%;
+  left: 37.6%;
+  font-size: 3.7cqw;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-height: 10.5%;
+  -webkit-text-stroke: 0.055cqw currentColor;
+}
+.digital-id-field.is-category {
+  top: 75.6%;
+  left: 37.6%;
+  text-align: left;
+  -webkit-text-stroke: 0.015cqw currentColor;
+}
+
+.digital-id-deck {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  padding: 18px 24px;
+  border-top: 1px solid rgba(223, 183, 86, 0.14);
+  background: rgba(6, 17, 12, 0.56);
+}
+.digital-id-guide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.digital-id-guide-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  background: rgba(22, 101, 52, 0.24);
+  color: #4ade80;
+}
+.digital-id-guide-icon .icon {
+  width: 18px;
+  height: 18px;
+}
+.digital-id-guide-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.digital-id-guide-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text, #fff);
+  line-height: 1.3;
+}
+.digital-id-note {
+  margin: 0;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.digital-id-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: none;
+  gap: 10px;
+}
+.digital-id-actions > .btn {
+  min-height: 44px;
+  padding-inline: 20px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+.digital-id-btn-download {
+  box-shadow: 0 8px 22px rgba(22, 163, 74, 0.28);
+}
+
+@media (max-width: 760px) {
+  .digital-id-showcase {
+    border-radius: 18px;
+  }
+  .digital-id-showcase-head {
+    padding: 14px 16px;
+  }
+  .digital-id-stage {
+    padding: 12px;
+  }
+  .digital-id-stage-hint {
+    display: none;
+  }
+  .digital-id-deck {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 16px;
+  }
+  .digital-id-guide {
+    align-items: flex-start;
+  }
+  .digital-id-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+  .digital-id-actions > .btn {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 10px;
+    font-size: 13.5px;
+    white-space: nowrap;
+  }
+}
+
+body.digital-id-zoomed {
+  overflow: hidden;
+}
+.digital-id-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: block;
+  width: 100%;
+  height: 100dvh;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px))
+    max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  background:
+    radial-gradient(circle at 50% 50%, rgba(20, 56, 37, 0.5) 0%, rgba(5, 12, 9, 0.96) 75%),
+    rgba(3, 8, 6, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  cursor: zoom-out;
+}
+.digital-id-zoom .digital-id-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(calc(100vw - 48px), calc((100dvh - 48px) * 1.5576));
+  max-width: none;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  cursor: zoom-out;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.78),
+    0 0 0 1.5px rgba(223, 183, 86, 0.48);
+}
+@media (orientation: portrait) {
+  .digital-id-zoom .digital-id-card {
+    width: min(calc(100dvh - 48px), calc((100vw - 36px) * 1.5576));
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+}
+
+/* My Digital ID: Luxury View QR Code modal */
+dialog.modal.digital-id-qr-dialog,
+dialog.modal:has(.digital-id-qr-modal) {
+  width: min(92vw, 430px);
+  max-width: 430px;
+  border-radius: 24px;
+  border: 1px solid rgba(223, 183, 86, 0.34);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(223, 183, 86, 0.14) 0%, transparent 58%),
+    radial-gradient(90% 70% at 50% 50%, rgba(34, 197, 94, 0.08) 0%, transparent 65%),
+    linear-gradient(180deg, #10261b 0%, #08150f 100%);
+  box-shadow:
+    0 32px 72px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 1px 0 rgba(223, 183, 86, 0.45) inset;
+}
+dialog.modal.digital-id-qr-dialog .modal-head,
+dialog.modal:has(.digital-id-qr-modal) .modal-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid rgba(223, 183, 86, 0.15);
+  background: rgba(5, 14, 10, 0.38);
+}
+dialog.modal.digital-id-qr-dialog .modal-head .badge-icon,
+dialog.modal:has(.digital-id-qr-modal) .modal-head .badge-icon {
+  border: 1px solid rgba(223, 183, 86, 0.38);
+  background: linear-gradient(135deg, rgba(223, 183, 86, 0.2), rgba(21, 128, 61, 0.25));
+  color: var(--accent, #dfb756);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+dialog.modal.digital-id-qr-dialog .modal-head .eyebrow,
+dialog.modal:has(.digital-id-qr-modal) .modal-head .eyebrow {
+  color: var(--accent, #dfb756);
+  letter-spacing: 0.12em;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+dialog.modal.digital-id-qr-dialog .modal-body,
+dialog.modal:has(.digital-id-qr-modal) .modal-body {
+  padding: 20px 22px;
+}
+dialog.modal.digital-id-qr-dialog .modal-foot,
+dialog.modal:has(.digital-id-qr-modal) .modal-foot {
+  padding: 14px 22px 18px;
+  border-top: 1px solid rgba(223, 183, 86, 0.14);
+  background: rgba(5, 14, 10, 0.48);
+}
+dialog.modal.digital-id-qr-dialog .modal-foot > .btn,
+dialog.modal:has(.digital-id-qr-modal) .modal-foot > .btn {
+  width: 100%;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(223, 183, 86, 0.28);
+  background: linear-gradient(180deg, rgba(24, 54, 38, 0.85), rgba(14, 34, 24, 0.95));
+  color: #f8fafc;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+dialog.modal.digital-id-qr-dialog .modal-foot > .btn:hover,
+dialog.modal:has(.digital-id-qr-modal) .modal-foot > .btn:hover {
+  border-color: rgba(223, 183, 86, 0.52);
+  background: linear-gradient(180deg, rgba(30, 68, 48, 0.95), rgba(18, 42, 30, 1));
+}
+
+.digital-id-qr-modal {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+/* Top member identity card inside modal */
+.digital-id-qr-modal-member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  border: 1px solid rgba(223, 183, 86, 0.22);
+  background: linear-gradient(135deg, rgba(223, 183, 86, 0.09) 0%, rgba(9, 26, 18, 0.65) 100%);
+  text-align: left;
+}
+.digital-id-qr-modal-crest {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+.digital-id-qr-modal-identity {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.digital-id-qr-modal-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.digital-id-qr-modal-cat {
+  font-size: 11.5px;
+  color: rgba(223, 183, 86, 0.9);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.digital-id-qr-modal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  background: rgba(22, 101, 52, 0.34);
+  color: #86efac;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Borderless QR surface; the SVG supplies its white scanning margin. */
+.digital-id-qr-overlay {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(440px, calc(100vw - 24px), calc(100dvh - 80px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  overflow: hidden;
+}
+.digital-id-qr-overlay::backdrop { background: rgba(0, 12, 7, 0.8); }
+.digital-id-qr-only { position: relative; aspect-ratio: 1; background: #fff; border-radius: 14px; overflow: hidden; }
+.digital-id-qr-actions { display: flex; justify-content: flex-end; padding-top: 12px; }
+.digital-id-qr-only > .qr-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+}
+.digital-id-qr-save.btn {
+  position: static;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: #0c3a1f;
+  color: #fff;
+  border-radius: 10px;
+}
+.digital-id-qr-modal-pedestal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0;
+  border-radius: 16px;
+  border: 0;
+  background: transparent;
+}
+.digital-id-qr-corner {
+  display: none;
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: var(--accent, #dfb756);
+  border-style: solid;
+  pointer-events: none;
+  opacity: 0.85;
+}
+.digital-id-qr-corner.is-tl {
+  top: 7px;
+  left: 7px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: 10px;
+}
+.digital-id-qr-corner.is-tr {
+  top: 7px;
+  right: 7px;
+  border-width: 2px 2px 0 0;
+  border-top-right-radius: 10px;
+}
+.digital-id-qr-corner.is-bl {
+  bottom: 7px;
+  left: 7px;
+  border-width: 0 0 2px 2px;
+  border-bottom-left-radius: 10px;
+}
+.digital-id-qr-corner.is-br {
+  bottom: 7px;
+  right: 7px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: 10px;
+}
+
+.digital-id-qr-modal-tile {
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+}
+.digital-id-qr-modal-tile .qr-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: none;
+}
+
+/* Luxury Player ID credential bar with one-tap copy */
+.digital-id-qr-modal-credential {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
+  width: 100%;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  border: 1px solid rgba(223, 183, 86, 0.24);
+  background: rgba(6, 17, 12, 0.65);
 }
-.digital-id-club {
+.digital-id-qr-modal-id-group {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+  min-width: 0;
+}
+.digital-id-qr-modal-id-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+.digital-id-qr-modal-no {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--accent, #dfb756);
+}
+.digital-id-qr-modal-copy {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(223, 183, 86, 0.32);
+  background: rgba(223, 183, 86, 0.12);
+  color: var(--accent, #dfb756);
+  font-size: 12px;
   font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
-.digital-id-body {
-  display: flex;
+.digital-id-qr-modal-copy:hover {
+  background: rgba(223, 183, 86, 0.22);
+  border-color: rgba(223, 183, 86, 0.55);
+  transform: translateY(-1px);
+}
+.digital-id-qr-modal-copy .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.digital-id-qr-modal-scan-note {
+  display: inline-flex;
   align-items: center;
-  gap: 16px;
+  justify-content: center;
+  gap: 7px;
+  color: var(--text-2);
 }
-.digital-id-photo {
+.digital-id-qr-modal-scan-note .icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--accent, #dfb756);
+}
+.digital-id-qr-modal-scan-note .sub {
+  font-size: 12px;
+  line-height: 1.35;
+}
+dialog.modal.digital-id-qr-dialog {
+  border-radius: 18px;
+  background: linear-gradient(155deg, var(--surface), var(--bg));
+  border-color: var(--border);
+}
+dialog.modal.digital-id-qr-dialog .modal-head,
+dialog.modal.digital-id-qr-dialog .modal-body {
+  padding: 14px 16px;
+}
+dialog.modal.digital-id-qr-dialog .modal-foot {
   display: grid;
-  place-items: center;
-  width: 84px;
-  height: 84px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 12px 16px;
+  gap: 8px;
+}
+dialog.modal.digital-id-qr-dialog .modal-foot > .btn {
+  min-width: 0;
+  padding-inline: 8px;
+  font-size: 13px;
+}
+dialog.modal.digital-id-qr-dialog .modal-foot > .btn[type="submit"] {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.digital-id-qr-modal-crest { width: 32px; height: 32px; }
+.digital-id-qr-modal-photo {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   flex: none;
   overflow: hidden;
   border-radius: 50%;
-  font-weight: 700;
-  font-size: 1.5rem;
 }
-.digital-id-photo .avatar-photo,
-.digital-id-photo .avatar-photo-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.digital-id-meta {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-.digital-id-name {
-  font-size: 1.15rem;
-  overflow-wrap: anywhere;
-}
-.digital-id-no {
-  font-family: ui-monospace, monospace;
-  letter-spacing: 0.04em;
-  opacity: 0.8;
-}
-.digital-id-qr {
-  display: grid;
-  place-items: center;
-  padding: 12px;
-  border-radius: 12px;
-  background: #fff;
-}
-.digital-id-qr .qr-svg {
-  width: min(100%, 240px);
-  height: auto;
-}
-.digital-id-note {
-  text-align: center;
-}
-
-/* =====================================================================================
-   Unified Structure-Matched Skeleton Loading (Desktop & Mobile Across All Pages)
-   ===================================================================================== */
-.sk-flex-1 {
-  flex: 1;
-}
-.sk-position {
-  display: inline-block;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-.cpc-points-cell.sk-meta {
-  width: 100%;
-}
-.cpc-points-cell.sk-meta > .sk:first-child {
-  height: 18px;
-  border-radius: 5px;
-}
-
-/* Notifications Page Skeleton */
-.notice-card.is-skeleton {
-  pointer-events: none;
-}
-.notice-sk-count {
-  width: 22px;
-  height: 18px;
-  border-radius: 999px;
-}
-.notice-sk-mark-btn {
-  width: 136px;
-  height: 34px;
-  border-radius: 10px;
-}
-.notice-sk-title {
-  height: 16px;
-  border-radius: 5px;
-}
-.notice-sk-arrow {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-}
-
-/* My Games Page Skeleton */
-.my-games-stat.is-skeleton,
-.my-games-card.is-skeleton {
-  pointer-events: none;
-}
-.my-games-sk-val {
-  width: 68px;
-  height: 28px;
-  border-radius: 6px;
-}
-.my-games-sk-badge {
-  width: 78px;
-  height: 22px;
-}
-.my-games-sk-event {
-  height: 17px;
-  border-radius: 5px;
-}
-.my-games-sk-meta-pill {
-  width: 84px;
-  height: 20px;
-  border-radius: 6px;
-}
-.my-games-sk-outcome {
-  width: 72px;
-  height: 24px;
-}
-.my-games-sk-win-pill {
-  width: 58px;
-  height: 18px;
-  border-radius: 999px;
-}
-.my-games-sk-score {
-  width: 112px;
-  height: 30px;
-}
-.my-games-sk-rating {
-  width: 118px;
-  height: 30px;
-}
-
-/* Settings & Ranks Ladders Skeleton */
-.settings-card.is-loading,
-.ladder-card.is-loading {
-  pointer-events: none;
-}
-.settings-sk-title {
-  height: 20px;
-  border-radius: 5px;
-}
-.settings-sk-toggle {
-  width: 44px;
-  height: 24px;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-.settings-sk-input {
-  width: 100%;
-  height: 42px;
-  border-radius: var(--r-control);
-  display: block;
-}
-.settings-sk-textarea {
-  width: 100%;
-  height: 68px;
-  border-radius: var(--r-control);
-  display: block;
-}
-.ladder-card.is-loading .rank-pos.sk {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.podium-sk-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
+dialog.modal.digital-id-qr-dialog .modal-body { padding-inline: 4px !important; }
+.digital-id-qr-modal-name { white-space: normal; line-height: 1.3; }
+.digital-id-qr-modal-cat { font-size: 11px; }
+.digital-id-qr-modal-credential { padding: 8px 10px; border-radius: 10px; }
+.digital-id-qr-modal-scan-note .sub { font-size: 11px; }
 @media (max-width: 720px) {
-  body .member-ranking-page .tbl-body > .tbl-row:has(.sk-member-cell) {
-    padding: 16px;
-    gap: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    background: linear-gradient(165deg, rgba(16, 40, 27, 0.94) 0%, rgba(9, 24, 16, 0.98) 100%);
-    box-shadow: 0 8px 22px -6px rgba(0, 0, 0, 0.38);
-  }
-  body .member-ranking-page .tbl-cell[data-label="Player"] .sk-avatar {
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
-    border: 2px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-  }
-  body .member-ranking-page .tbl-cell[data-label="#"] .sk-position {
-    width: 18px;
-    height: 14px;
-    border-radius: 4px;
-  }
-  body .member-ranking-page .cpc-points-cell.sk-meta {
-    width: 100%;
-  }
-  body .member-ranking-page .cpc-points-cell.sk-meta > .sk:first-child {
-    height: 24px;
-  }
-  /* Member Events Division Cards: show status pill in loading skeleton on mobile */
-  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-event-division-list .tbl-row[aria-hidden="true"] .tbl-cell[data-mobile-kind="status"] {
-    display: flex !important;
-    grid-column: 1 / -1 !important;
-    grid-row: 1 !important;
-    align-self: end !important;
-    margin-top: 46px !important;
-    padding-left: 50px !important;
-  }
-  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-event-division-list .tbl-cell[data-mobile-kind="primary"] .sk-avatar {
-    border-radius: var(--r-control);
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
-  }
-  :is(body .member-mobile-lists, .member-mobile-lists, body) .member-registration-list .tbl-cell[data-mobile-kind="primary"] .sk-avatar {
-    border-radius: var(--r-control);
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
+  dialog.modal.digital-id-qr-dialog[open] {
+    --modal-screen-height: 100dvh;
+    top: 50dvh;
+    transform: translateY(-50%);
+    animation: none;
+    max-width: 400px !important;
   }
 }

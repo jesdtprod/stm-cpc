@@ -21,6 +21,15 @@
     U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* Bebas Neue, self-hosted (SIL OFL, see fonts/bebas-neue/OFL.txt). */
+@font-face {
+  font-family: "Bebas Neue";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/bebas-neue/BebasNeue-Regular.ttf") format("truetype");
+}
+
 /* ===== 1. Design tokens (UI_DESIGN.md section 2) ===== */
 :root {
   color-scheme: dark;

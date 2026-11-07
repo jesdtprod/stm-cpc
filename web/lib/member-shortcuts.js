@@ -31,16 +31,16 @@ export const MEMBER_SHORTCUTS = [
     href: "#/ranking",
   },
   {
-    label: "Notifications",
-    desc: "Your club messages and alerts",
-    icon: "inbox",
-    href: "#/notifications",
-  },
-  {
     label: "My Digital ID",
     desc: "Your member ID card and QR code",
     icon: "idCard",
     href: "#/digital-id",
+  },
+  {
+    label: "Notifications",
+    desc: "Your club messages and alerts",
+    icon: "inbox",
+    href: "#/notifications",
   },
   {
     label: "My Profile",

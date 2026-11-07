@@ -12,6 +12,19 @@ Step-by-step plan from project setup to launch. It starts with the project setup
 
 ## Working rules
 
+User-authorized pre-production hard-delete exception (2620/2630): applied together
+atomically after explicit user instruction to execute the reviewed plan. Removed
+EV-2026-00002/00003 and their test activity, six test bookings, notifications and
+client diagnostics. Payments/ledger were empty. Backup of 30 affected tables is
+outside the repository. Transaction checks verified 32 protected data sets,
+retained assessment history, restored ratings and original security configuration.
+Post-application database checks pass 6/6 and 10/10. Members, imports, accounts,
+club setup and audit logs remain; no tables dropped or counters reset.
+
+- [x] Pre-production test-data cleanup (2620/2630): committed and independently
+  verified; 1,437 members, 1,419 profiles, 4 import batches and 13 assessment-history
+  rows retained. Test events/matches/bookings/notifications have zero rows.
+
 1. **One step at a time.** A step is finished only when its "Done when" check passes and the output has been reviewed.
 2. **Paste the output.** After each step, paste the terminal or dashboard output used for verification before the next step starts.
 3. **Never paste secrets.** Do not share the `service_role` key, database password, Turnstile secret key, or temporary passwords in chat or in the repository. The project URL and anon key are public.
@@ -349,6 +362,12 @@ clean up on close. All 282 unit tests pass; fake-data browser checks at 320x568,
 phone verification with browser chrome and the software keyboard.
 
 ## Definition of done for any step
+
+Digital ID QR modal redesign: compact member/QR layout, mobile viewport-centered
+dialog, and side-by-side Close/Download QR actions. Download renders a local
+1024x1024 PNG with a four-module quiet zone. Fake-data browser checks verify PNG
+dimensions and centered, contained dialogs at 375x667, 320x568 and 667x375;
+changed JS lint and diff checks pass. Awaiting phone visual/download verification.
 
 - The "Done when" check passed and its output was reviewed.
 - Tests for the step were added and pass.

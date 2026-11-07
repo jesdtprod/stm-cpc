@@ -24,6 +24,7 @@ import {
   createMemberMenuLive,
   MEMBER_MENU_SETTINGS,
   memberMenuHidden,
+  setActiveMemberCheck,
   setMemberMenu,
 } from "./lib/member-menu.js";
 import { createDev, isLocalDev } from "./dev.js";
@@ -102,6 +103,7 @@ const memberMenuLive = createMemberMenuLive({
 // Convenience only: the page's data stays guarded by the database.
 // A check-in scanner sees the Check-in page, and its own account pages, only.
 const SCANNER_PAGES = ["/checkin", "/profile", "/password"];
+setActiveMemberCheck(() => session.getState().access?.status === "active");
 const menuHiddenHere = (path) =>
   session.getState().status === "signed_in" && !isAdminAccount() &&
   memberMenuHidden(path);
@@ -301,7 +303,7 @@ route("/ranking", () => rankingPages.rankingPage(), "Ranking", "signedIn");
 const publicBracketPages = createPublicBracketPages({ api, client });
 route("/bracketing", () => publicBracketPages.publicBracketPage(), "Bracketing", "public");
 
-const digitalIdPages = createDigitalIdPages({ session, client });
+const digitalIdPages = createDigitalIdPages({ session, client, api });
 route("/digital-id", () => digitalIdPages.digitalIdPage(), "My Digital ID", "signedIn");
 
 const myGamesPages = createMyGamesPages({ api });

@@ -29,8 +29,8 @@ const GROUPS = [
       { path: "/events", label: "Events", icon: "trophy" },
       { path: "/games", label: "My Games", icon: "medal" },
       { path: "/ranking", label: "Ranking", icon: "medal" },
-      { path: "/notifications", label: "Notifications", icon: "inbox" },
       { path: "/digital-id", label: "My Digital ID", icon: "idCard" },
+      { path: "/notifications", label: "Notifications", icon: "inbox" },
     ],
   },
   {

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1027">
+  <defs>
+    <mask id="photo-window" maskUnits="userSpaceOnUse" x="0" y="0" width="1600" height="1027" style="mask-type:luminance">
+      <rect width="1600" height="1027" fill="white"/>
+      <rect x="159" y="480" width="292" height="340" rx="25" fill="black"/>
+    </mask>
+  </defs>
+  <rect width="1600" height="1027" fill="white" mask="url(#photo-window)"/>
+</svg>

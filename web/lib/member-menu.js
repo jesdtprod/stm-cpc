@@ -12,6 +12,14 @@ export const MEMBER_MENU_SETTINGS = {
 
 let hidden = new Set();
 
+// Pages that only an approved, active member sees, whatever the Member Menu switches say. The app registers how to tell
+// (setActiveMemberCheck); until then they stay hidden. Convenience only: the database still guards the data.
+const ACTIVE_MEMBER_ONLY = new Set(["/digital-id"]);
+let isActiveMember = () => false;
+export function setActiveMemberCheck(fn) {
+  isActiveMember = typeof fn === "function" ? fn : () => false;
+}
+
 /** rows: [{ key, value }] from the settings table; a key that is missing or not false stays visible. */
 export function setMemberMenu(rows = []) {
   hidden = new Set(
@@ -22,7 +30,8 @@ export function setMemberMenu(rows = []) {
 
 /** path: "/book" or "#/book". */
 export function memberMenuHidden(path) {
-  return hidden.has(String(path).replace(/^#/, ""));
+  const p = String(path).replace(/^#/, "");
+  return hidden.has(p) || (ACTIVE_MEMBER_ONLY.has(p) && !isActiveMember());
 }
 
 // Live menu (Settings > Member Menu). After an admin saves a member_menu switch, announce() sends an empty Realtime

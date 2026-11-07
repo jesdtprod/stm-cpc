@@ -1,11 +1,14 @@
 // App shell cache only. Bump CACHE on every release so activate removes the old one.
 // Only same-origin shell files are cached. Supabase and every other request
 // goes straight to the network, so no authenticated data ever reaches the cache.
-const CACHE = "cpc-shell-v612";
+const CACHE = "cpc-shell-v673";
 const LOCAL_DEV = ["localhost", "127.0.0.1"].includes(self.location.hostname);
 const SHELL = [
   "./",
   "index.html",
+  "icons/digital-id-photo-mask.svg",
+  "icons/digital-id-card.png",
+  "icons/cpc-logo-holo.png",
   "styles.css",
   "buttons.css",
   "app.js",
@@ -34,6 +37,7 @@ const SHELL = [
   "pages-ranking.js",
   "pages-my-games.js",
   "pages-digital-id.js",
+  "lib/digital-id-export.js",
   "pages-public-bracket.js",
   "lib/bracket-views.js",
   "lib/final-results.js",
@@ -88,6 +92,7 @@ const SHELL = [
   "supabase-config.js",
   "manifest.webmanifest",
   "fonts/inter-latin-wght-normal.woff2",
+  "fonts/bebas-neue/BebasNeue-Regular.ttf",
   "fonts/inter-latin-ext-wght-normal.woff2",
   "icons/cpc-logo-256.webp",
   "icons/cpc-logo-64.png",
