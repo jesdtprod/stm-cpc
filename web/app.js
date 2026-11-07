@@ -406,8 +406,8 @@ if ("serviceWorker" in navigator) {
       );
     }
   }
-  navigator.serviceWorker.register("./service-worker.js").then((reg) => {
-    const announce = () => {};
+  navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" }).then((reg) => {
+    const announce = (worker) => worker.postMessage({ type: "SKIP_WAITING" });
     if (reg.waiting && navigator.serviceWorker.controller) {
       announce(reg.waiting);
     }
@@ -419,7 +419,12 @@ if ("serviceWorker" in navigator) {
         ) announce(worker);
       });
     });
-  });
+    const checkForUpdate = () => {
+      if (!isLocalDev && document.visibilityState === "visible") reg.update().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", checkForUpdate);
+    checkForUpdate();
+  }).catch(() => {});
   let reloading = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (isLocalDev) return;

@@ -4859,6 +4859,20 @@ body:not([data-landing="true"]) .app-shell > main:has(.auth-page) {
     color: #557565;
   }
 
+  .assistive-nav,
+  .assistive-nav * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .assistive-nav-toggle,
+  .assistive-nav-menu-close {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  .assistive-nav-toggle:focus:not(:focus-visible),
+  .assistive-nav-menu-close:focus:not(:focus-visible),
+  .assistive-nav-item:focus:not(:focus-visible) {
+    outline: none;
+  }
   .assistive-nav-toggle:focus-visible,
   .assistive-nav-menu-close:focus-visible,
   .assistive-nav-item:focus-visible {

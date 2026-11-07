@@ -337,6 +337,11 @@ Existing Refresh List actions are reused and their buttons hidden on mobile;
 other pages reload their current view. Open dialogs and edited forms block the
 gesture. Shared helper lint and 277 unit tests pass; awaiting device verification.
 
+Deployment update fix: shell requests revalidate browser caches, service-worker
+updates bypass HTTP caches and are checked on app visibility, and missing offline
+JS no longer receives HTML. Three update tests and changed-file lint pass.
+Awaiting verification of a new deployment from an already-cached mobile app.
+
 ## Definition of done for any step
 
 - The "Done when" check passed and its output was reviewed.

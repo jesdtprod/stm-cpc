@@ -1,7 +1,7 @@
 // App shell cache only. Bump CACHE on every release so activate removes the old one.
 // Only same-origin shell files are cached. Supabase and every other request
 // goes straight to the network, so no authenticated data ever reaches the cache.
-const CACHE = "cpc-shell-v605";
+const CACHE = "cpc-shell-v607";
 const LOCAL_DEV = ["localhost", "127.0.0.1"].includes(self.location.hostname);
 const SHELL = [
   "./",
@@ -101,7 +101,9 @@ const SHELL_URLS = new Set(SHELL.map((p) => new URL(p, self.location).href));
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   if (LOCAL_DEV) return;
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
+  event.waitUntil(caches.open(CACHE).then((c) =>
+    c.addAll(SHELL.map((path) => new Request(new URL(path, self.location), { cache: "no-cache" })))
+  ));
 });
 
 self.addEventListener("activate", (event) => {
@@ -130,7 +132,7 @@ self.addEventListener("fetch", (event) => {
   if (!isShell) return;
   // Network first so releases show up; fall back to the cached shell offline.
   event.respondWith(
-    fetch(req)
+    fetch(req, { cache: "no-cache" })
       .then((res) => {
         if (res.ok && SHELL_URLS.has(url.href)) {
           const copy = res.clone();
@@ -138,9 +140,16 @@ self.addEventListener("fetch", (event) => {
         }
         return res;
       })
-      .catch(() =>
-        caches.match(req).then((hit) => hit ?? caches.match("index.html"))
-      ),
+      .catch(async () => {
+        const cache = await caches.open(CACHE);
+        const hit = await cache.match(req);
+        if (hit) return hit;
+        if (req.mode === "navigate") {
+          const shell = await cache.match("index.html");
+          if (shell) return shell;
+        }
+        return Response.error();
+      }),
   );
 });
 

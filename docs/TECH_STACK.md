@@ -67,6 +67,7 @@ STM-CPC is the web app of the Capitol Pickleball Club (CPC), a single club: memb
 - Cache the app shell (`index.html`, `app.js`, `styles.css`, `report.html`, manifest, icons, pinned CDN files).
 - Never cache authenticated API responses in the shared cache; use network-first for Supabase calls.
 - Version the cache name. On release, bump it so the old cache is deleted in the `activate` handler.
+- Revalidate app-shell files during installation and online fetches (`cache: "no-cache"`). Register the worker with `updateViaCache: "none"` and check for updates when the app becomes visible. Activate waiting updates and reload on controller changes. Offline fallback uses the current shell cache; only navigation requests may fall back to HTML.
 - Show the user when a new version is ready instead of reloading silently mid-task.
 - Keep the manifest complete: `name`, `short_name`, `start_url`, `scope`, `display`, `theme_color`, `background_color`, and 192px / 512px (maskable) icons.
 
