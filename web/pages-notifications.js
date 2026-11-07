@@ -198,8 +198,15 @@ export function createNotificationPages({ api, feed }) {
       let actionBtn = null;
 
       if (!d) {
-        statusBadge = badge("Checking", "neutral");
-        descText = "Checking alert capability on this device...";
+        statusBadge = h("span", { class: "sk sk-pill", "aria-hidden": "true" });
+        descText = h("span", {
+          class: "sk w-70 sk-sub",
+          "aria-hidden": "true",
+        });
+        actionBtn = h("span", {
+          class: "sk sk-action-btn sk-btn-outline",
+          "aria-hidden": "true",
+        });
       } else if (!d.supported) {
         statusBadge = badge("Unavailable", "neutral");
         descText = `${
@@ -289,9 +296,93 @@ export function createNotificationPages({ api, feed }) {
 
     function drawList() {
       if (state.status === "loading") {
-        listHost.replaceChildren(
-          h("p", { class: "muted" }, "Loading your messages..."),
+        const skToolbar = h(
+          "div",
+          { class: "notice-toolbar", "aria-hidden": "true" },
+          h(
+            "div",
+            { class: "notice-tabs", role: "tablist" },
+            h(
+              "button",
+              {
+                type: "button",
+                class: "notice-tab-btn is-active",
+                disabled: true,
+              },
+              "All",
+              h("span", { class: "sk notice-sk-count" }),
+            ),
+            h(
+              "button",
+              {
+                type: "button",
+                class: "notice-tab-btn",
+                disabled: true,
+              },
+              "Unread",
+              h("span", { class: "sk notice-sk-count" }),
+            ),
+          ),
+          h("span", { class: "sk notice-sk-mark-btn" }),
         );
+        const skList = h(
+          "ul",
+          {
+            class: "notice-list",
+            "aria-label": "Loading notifications",
+            "aria-busy": "true",
+          },
+          ...Array.from({ length: 4 }, (_, idx) =>
+            h(
+              "li",
+              { "aria-hidden": "true" },
+              h(
+                "div",
+                { class: "notice-card is-skeleton" },
+                h("span", { class: "sk notice-avatar" }),
+                h(
+                  "div",
+                  { class: "notice-content" },
+                  h(
+                    "div",
+                    { class: "notice-header" },
+                    h("span", {
+                      class: `sk ${idx % 2 === 0 ? "w-50" : "w-70"} notice-sk-title`,
+                    }),
+                    h(
+                      "div",
+                      { class: "notice-meta" },
+                      h("span", { class: "sk w-30 sk-sub" }),
+                    ),
+                  ),
+                ),
+                h(
+                  "span",
+                  { class: "notice-arrow", "aria-hidden": "true" },
+                  h("span", { class: "sk notice-sk-arrow" }),
+                ),
+                idx % 2 === 0
+                  ? h(
+                    "div",
+                    { class: "notice-details-grid" },
+                    ...Array.from({ length: 4 }, () =>
+                      h(
+                        "div",
+                        { class: "notice-detail-col" },
+                        h("span", { class: "sk w-40 sk-sub" }),
+                        h("span", { class: "sk w-70" }),
+                      )),
+                  )
+                  : h(
+                    "div",
+                    { class: "notice-body sk-meta" },
+                    h("span", { class: "sk w-70" }),
+                    h("span", { class: "sk w-50 sk-sub" }),
+                  ),
+              ),
+            )),
+        );
+        listHost.replaceChildren(skToolbar, skList);
         return;
       }
       if (state.status === "error") {

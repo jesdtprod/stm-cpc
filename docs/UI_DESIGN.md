@@ -334,6 +334,11 @@ For a page with date-range controls, use **Reset Filters & Date Range**. Otherwi
 
 ## 9. Standard modal anatomy
 
+On mobile, shared dialogs follow the visible viewport (including browser bars and
+keyboard changes), retain an 8px outer gap plus safe-area insets, and keep the
+header/footer outside the scrolling body. Use the shared viewport helper for
+dialogs; do not add fixed heights that exceed the phone's available screen.
+
 Every modal must use the same header and footer design, including nested and dynamically created modals.
 
 - Header: shared icon badge, optional eyebrow, title, concise description, and icon-only close button.

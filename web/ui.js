@@ -1,6 +1,7 @@
 import { LUCIDE, LUCIDE_SOLID } from "./lib/lucide.js";
 import { buttonClasses } from "./lib/buttons.js";
 import { dropdownPosition } from "./lib/dropdown-position.js";
+import { fitModalViewport } from "./lib/modal-viewport.js";
 import { DEFAULT_PAGE_SIZE } from "./lib/paginate.js";
 export { DEFAULT_PAGE_SIZE } from "./lib/paginate.js";
 import { tableColumn, tableMinWidth, tableTracks } from "./lib/table-layout.js";
@@ -3112,6 +3113,26 @@ export function dataTable(
               h("span", { class: "sk w-30 sk-sub" }),
             ),
           );
+        } else if (shape === "position") {
+          bar = h("span", { class: "sk sk-position" });
+        } else if (shape === "rating") {
+          bar = h(
+            "div",
+            { class: "cpc-points-cell sk-meta" },
+            h("span", { class: "sk w-50" }),
+            h("span", { class: "sk w-70 sk-sub" }),
+          );
+        } else if (shape === "badge-flow") {
+          bar = h(
+            "div",
+            { class: "rank-history-change" },
+            h(
+              "span",
+              { class: "rank-change-flow" },
+              h("span", { class: "sk sk-pill" }),
+              h("span", { class: "sk sk-pill" }),
+            ),
+          );
         } else if (shape === "stack") {
           bar = h(
             "div",
@@ -3150,6 +3171,14 @@ export function dataTable(
             }`,
           });
         }
+        if (c === primaryColumn && shape !== "member") {
+          bar = h(
+            "div",
+            { class: "mobile-record-identity" },
+            h("span", { class: "sk sk-avatar mobile-record-icon" }),
+            h("div", { class: "mobile-record-summary" }, bar),
+          );
+        }
         row.append(
           h("div", {
             class: `tbl-cell ${c.align}${c.actions ? " tbl-actions" : ""}`,
@@ -3159,11 +3188,21 @@ export function dataTable(
         );
       }
       if (actions.length) {
-        row.append(h(
-          "div",
-          { class: "tbl-cell center tbl-actions" },
-          actions.map(() => h("span", { class: "sk sk-action" })),
-        ));
+        row.append(
+          h(
+            "div",
+            {
+              class: "tbl-cell center tbl-actions",
+              "data-label": "Action",
+              "data-mobile-kind": "actions",
+            },
+            h(
+              "div",
+              { class: "row-actions" },
+              ...actions.map(() => h("span", { class: "sk sk-action" })),
+            ),
+          ),
+        );
       }
       body.append(row);
     }
@@ -3620,6 +3659,7 @@ export function openModal(
   });
   dialog.append(form);
   document.body.append(dialog);
+  fitModalViewport(dialog);
   dialog.showModal();
   const firstControl = dialog.querySelector(
     ".modal-body input:not([type=hidden]):not(:disabled):not([readonly]), .modal-body textarea:not(:disabled):not([readonly]), .modal-body .searchable-select-trigger:not(:disabled)",
@@ -3707,6 +3747,7 @@ export function openDrawer(
   });
   dialog.append(content);
   document.body.append(dialog);
+  fitModalViewport(dialog);
   dialog.showModal();
   return dialog;
 }

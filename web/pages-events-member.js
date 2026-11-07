@@ -1224,10 +1224,15 @@ export function createMemberEventsPages({ api, client, session }) {
           h(
             "div",
             { class: "member-event-divisions" },
-            h("div", {
-              class: "member-event-divisions-heading",
-              "aria-hidden": "true",
-            }, bar("w-30")),
+            h(
+              "div",
+              {
+                class: "member-event-divisions-heading",
+                "aria-hidden": "true",
+              },
+              bar("w-30"),
+              h("span", { class: "sk sk-pill" }),
+            ),
             divisionsTable({ name: "Loading Event", divisions: [] }, "loading"),
           ),
         );

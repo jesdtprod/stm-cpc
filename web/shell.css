@@ -20027,6 +20027,61 @@ main:has(.bracket-page) {
 }
 
 /* Shared mobile tab layout: two equal columns, or one full-width tab. */
+@media (max-width: 720px) {
+  dialog.modal[open],
+  dialog.drawer[open] {
+    --modal-screen-height: var(--modal-visible-height, 100dvh);
+    --modal-screen-gap: calc(16px + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+    position: fixed;
+    top: calc(var(--modal-visible-top, 0px) + 8px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    left: 8px;
+    right: 8px;
+    margin: 0 auto;
+    width: calc(100% - 16px) !important;
+    max-width: calc(100% - 16px) !important;
+    height: auto;
+    max-height: calc(var(--modal-screen-height) - var(--modal-screen-gap)) !important;
+    box-sizing: border-box;
+    overflow: hidden;
+    animation: none;
+    transform: none;
+  }
+  dialog.modal > .modal-form,
+  dialog.drawer > .drawer-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    max-height: calc(var(--modal-screen-height) - var(--modal-screen-gap) - 2px);
+    overflow: hidden;
+  }
+  dialog:is(.modal, .drawer) .modal-head {
+    flex: 0 0 auto;
+    gap: 10px;
+    padding: 14px !important;
+    min-width: 0;
+  }
+  dialog:is(.modal, .drawer) .modal-head .grow { min-width: 0; }
+  dialog:is(.modal, .drawer) .modal-head h2 { font-size: 18px; overflow-wrap: anywhere; }
+  dialog:is(.modal, .drawer) .modal-head .eyebrow { font-size: 10px; overflow-wrap: anywhere; }
+  dialog:is(.modal, .drawer) .modal-head .muted { font-size: 12px; }
+  dialog:is(.modal, .drawer) .modal-head .badge-icon { width: 36px; height: 36px; flex: 0 0 36px; }
+  dialog:is(.modal, .drawer) .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    padding: 14px !important;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  dialog:is(.modal, .drawer) .modal-foot {
+    flex: 0 0 auto;
+    padding: 10px 14px !important;
+    gap: 8px;
+  }
+}
 @media (max-width: 720px) and (hover: hover) {
   body .member-ranking-page .tbl-body > .tbl-row:has(.ranking-player-identity) {
     transform: perspective(900px) rotateY(var(--tilt-y, 0deg));

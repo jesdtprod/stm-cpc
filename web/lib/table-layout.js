@@ -29,10 +29,22 @@ export function tableColumn(column) {
         ? "actions"
         : money
         ? "text"
-        : /^(name|member)$/.test(column.key)
+        : /^(no|order|sort_order|position|priority)$/.test(column.key) ||
+            column.label === "#"
+        ? "position"
+        : /^(singles|doubles)$/.test(column.key)
+        ? "rating"
+        : /^(change|points)$/.test(column.key)
+        ? "badge-flow"
+        : /^(name|member|player|court|who)$/.test(column.key)
         ? "member"
-        : /status/.test(key)
+        : /status|state|rank|category|ladder|role|outcome/.test(key) &&
+            !/change|points|rating/.test(key)
         ? "badge"
+        : /^(why|event|division|format|team|partner|for|how|spots|fee|paid|price)$/.test(
+            column.key,
+          )
+        ? "stack"
         : date
         ? "date"
         : "text"),

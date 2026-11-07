@@ -50,7 +50,9 @@ Deno.test("published push worker: app shell still gets cached for offline access
     },
   });
   await installing;
-  assert(cached.includes("index.html"));
-  assert(cached.includes("lib/push.js"));
+  const paths = cached.map((request) => new URL(request.url).pathname);
+  assert(paths.includes("/cpc/index.html"));
+  assert(paths.includes("/cpc/lib/push.js"));
+  assert(cached.every((request) => request.cache === "no-cache"));
   assert(events.has("push"));
 });

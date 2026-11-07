@@ -7,7 +7,6 @@ import {
   h,
   icon,
   memberHero,
-  skeleton,
   tableFilter,
 } from "./ui.js";
 import { rememberView } from "./lib/view-memory.js";
@@ -94,6 +93,110 @@ export function createMyGamesPages({ api }) {
           )
           : null,
         subtext ? h("div", { class: "my-games-stat-footer" }, subtext) : null,
+      );
+    }
+
+    function statSkeletonCard({ label, tone = "", iconName = "layers" }) {
+      return h(
+        "div",
+        {
+          class: `my-games-stat is-skeleton${tone ? ` is-${tone}` : ""}`,
+          "aria-hidden": "true",
+        },
+        h(
+          "div",
+          { class: "my-games-stat-top" },
+          h("span", { class: "my-games-stat-label" }, label),
+          h(
+            "span",
+            { class: "my-games-stat-icon", "aria-hidden": "true" },
+            icon(iconName),
+          ),
+        ),
+        h(
+          "div",
+          { class: "my-games-stat-main" },
+          h("span", { class: "sk my-games-sk-val" }),
+          h("span", { class: "sk sk-pill my-games-sk-badge" }),
+        ),
+        h(
+          "div",
+          { class: "my-games-stat-footer" },
+          h("span", { class: "sk w-70 sk-sub" }),
+        ),
+      );
+    }
+
+    function cardSkeleton() {
+      const skSide = (me) =>
+        h(
+          "div",
+          { class: `my-games-side${me ? " is-me" : ""}` },
+          h(
+            "div",
+            { class: "my-games-side-header" },
+            h(
+              "span",
+              { class: `my-games-side-tag${me ? " is-me-tag" : ""}` },
+              me ? "Your Team" : "Opponent",
+            ),
+            h("span", { class: "sk my-games-sk-win-pill" }),
+          ),
+          h("span", { class: "sk w-70" }),
+          h("span", { class: "sk w-50 sk-sub" }),
+        );
+      return h(
+        "article",
+        { class: "my-games-card is-skeleton", "aria-hidden": "true" },
+        h(
+          "div",
+          { class: "my-games-head" },
+          h(
+            "div",
+            { class: "my-games-title" },
+            h(
+              "div",
+              { class: "my-games-event-row" },
+              h(
+                "span",
+                { class: "my-games-event-icon", "aria-hidden": "true" },
+                icon("trophy"),
+              ),
+              h("span", { class: "sk w-50 my-games-sk-event" }),
+            ),
+            h(
+              "div",
+              { class: "my-games-meta-pills" },
+              h("span", { class: "sk sk-pill my-games-sk-meta-pill" }),
+              h("span", { class: "sk sk-pill my-games-sk-meta-pill" }),
+              h("span", { class: "sk sk-pill my-games-sk-meta-pill" }),
+            ),
+          ),
+          h(
+            "div",
+            { class: "my-games-badges" },
+            h("span", { class: "sk sk-pill my-games-sk-outcome" }),
+            h("span", { class: "sk w-50 sk-sub" }),
+          ),
+        ),
+        h(
+          "div",
+          { class: "my-games-versus" },
+          skSide(true),
+          h("span", { class: "my-games-vs", "aria-hidden": "true" }, "VS"),
+          skSide(false),
+        ),
+        h(
+          "div",
+          { class: "my-games-foot" },
+          h(
+            "div",
+            { class: "my-games-scores" },
+            h("span", { class: "sk sk-pill my-games-sk-score" }),
+            h("span", { class: "sk sk-pill my-games-sk-score" }),
+          ),
+          h("span", { class: "sk sk-pill my-games-sk-rating" }),
+        ),
       );
     }
 
@@ -251,7 +354,30 @@ export function createMyGamesPages({ api }) {
         },
       }));
       summaryHost.replaceChildren(
-        ...(state.status === "ready" && state.rows.length
+        ...(state.status === "loading"
+          ? [
+            statSkeletonCard({
+              label: "Games Played",
+              tone: "games",
+              iconName: "layers",
+            }),
+            statSkeletonCard({
+              label: "Match Record",
+              tone: "record",
+              iconName: "medal",
+            }),
+            statSkeletonCard({
+              label: "Win Rate",
+              tone: "winrate",
+              iconName: "checkCircle",
+            }),
+            statSkeletonCard({
+              label: "Rating Impact",
+              tone: "up",
+              iconName: "chevronUp",
+            }),
+          ]
+          : state.status === "ready" && state.rows.length
           ? [
             statCard({
               label: "Games Played",
@@ -297,7 +423,11 @@ export function createMyGamesPages({ api }) {
       );
       const shown = state.rows.filter(matches[state.filter]);
       if (state.status === "loading") {
-        listHost.replaceChildren(skeleton({ count: 3, variant: "text", height: "96px" }));
+        listHost.replaceChildren(
+          cardSkeleton(),
+          cardSkeleton(),
+          cardSkeleton(),
+        );
       } else if (state.status === "error") {
         listHost.replaceChildren(emptyState({
           icon: "alert",

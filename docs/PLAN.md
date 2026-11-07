@@ -342,6 +342,12 @@ updates bypass HTTP caches and are checked on app visibility, and missing offlin
 JS no longer receives HTML. Three update tests and changed-file lint pass.
 Awaiting verification of a new deployment from an already-cached mobile app.
 
+Shared mobile modals now follow the visible viewport and safe areas, with compact
+headers, fixed header/footer sections and a scrolling body. Viewport listeners
+clean up on close. All 282 unit tests pass; fake-data browser checks at 320x568,
+375x667 and 667x375 verify bounds, visible footer and internal scrolling. Awaiting
+phone verification with browser chrome and the software keyboard.
+
 ## Definition of done for any step
 
 - The "Done when" check passed and its output was reviewed.
